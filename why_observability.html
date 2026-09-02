@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Why observability works the way it does</title>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#111a2e; --panel-2:#16213a; --line:#243252;
+    --ink:#e6edf7; --ink-dim:#93a4c4; --ink-faint:#64748b;
+    --accent:#38bdf8; --accent-2:#22d3ee;
+    --good:#34d399; --warn:#fbbf24; --bad:#f87171; --sensor:#f43f5e;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{padding:20px 24px 14px;border-bottom:1px solid var(--line)}
+  h1{margin:0 0 4px;font-size:19px;letter-spacing:-.2px}
+  header p{margin:0;color:var(--ink-dim);font-size:13px;max-width:70ch}
+  #wrap{display:grid;grid-template-columns:260px 1fr;gap:0;align-items:start}
+  @media (max-width:900px){#wrap{grid-template-columns:1fr}}
+  #side{padding:18px;border-right:1px solid var(--line);position:sticky;top:0}
+  #stagewrap{padding:18px 24px 40px;min-width:0}
+  .grp{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+       padding:14px;margin-bottom:14px}
+  .lab{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.7px;
+       color:var(--ink-faint);margin-bottom:7px;font-weight:600}
+  .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+  .val{font:600 13px var(--mono);color:var(--accent)}
+  input[type=range]{width:100%;accent-color:var(--accent);margin:0 0 12px}
+  input[type=range]:last-child{margin-bottom:0}
+  button{font:inherit;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);
+         border-radius:7px;padding:7px 10px;cursor:pointer;text-align:left;width:100%;
+         margin-bottom:6px;font-size:12.5px}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button:last-child{margin-bottom:0}
+  canvas{width:100%;height:400px;display:block;background:var(--panel);
+         border:1px solid var(--line);border-radius:10px;cursor:ew-resize}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 13px}
+  .card .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-faint);
+           font-weight:600;margin-bottom:5px}
+  .card .v{font:600 21px/1.15 var(--mono);color:var(--ink)}
+  .card .s{font-size:11.5px;color:var(--ink-dim);margin-top:3px}
+  .card.hi .v{color:var(--good)} .card.lo .v{color:var(--bad)}
+  .fml{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+       padding:14px;font:13px/1.9 var(--mono);overflow-x:auto;white-space:pre}
+  .note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);
+        border-radius:8px;padding:12px 14px;color:var(--ink-dim);font-size:13px;margin:14px 0}
+  .note b{color:var(--ink)}
+  .prose{max-width:78ch;color:var(--ink-dim);font-size:13.5px}
+  .prose h2{color:var(--ink);font-size:15px;margin:26px 0 8px;letter-spacing:-.1px}
+  .prose b{color:var(--ink)} .prose code{font:12.5px var(--mono);color:var(--accent-2)}
+  .prose ol,.prose ul{padding-left:20px} .prose li{margin-bottom:5px}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:6px}
+  th,td{text-align:left;padding:6px 9px;border-bottom:1px solid var(--line)}
+  th{color:var(--ink-faint);font-size:10.5px;text-transform:uppercase;letter-spacing:.6px}
+  td.num{text-align:right;font-family:var(--mono)}
+  .lgd{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:11.5px;color:var(--ink-dim)}
+  .lgd i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;
+         vertical-align:-1px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Why observability works the way it does</h1>
+  <p>A side view of one sewer line. Drag the blockage. The question the whole project turns on is
+     which sensors notice it, and the answer is a piece of simple geometry.</p>
+</header>
+
+<div id="wrap">
+  <div id="side">
+    <div class="grp">
+      <span class="lab">Presets</span>
+      <button data-pre="ros-model">Steep catchment, diameter proxy</button>
+      <button data-pre="ros-real">Steep catchment, real manhole depth</button>
+      <button data-pre="mal-model">Flat catchment, diameter proxy</button>
+      <button data-pre="mal-real">Flat catchment, real manhole depth</button>
+    </div>
+
+    <div class="grp">
+      <span class="lab">Terrain</span>
+      <div class="row"><span>Pipe gradient</span><span class="val" id="v-slope">1.64 %</span></div>
+      <input type="range" id="slope" min="0.2" max="5" step="0.01" value="1.64">
+      <div class="row"><span>Manhole spacing</span><span class="val" id="v-space">53 m</span></div>
+      <input type="range" id="space" min="20" max="100" step="1" value="53">
+    </div>
+
+    <div class="grp">
+      <span class="lab">Detection budget</span>
+      <div class="row"><span>Manhole depth</span><span class="val" id="v-depth">0.15 m</span></div>
+      <input type="range" id="depth" min="0.15" max="3" step="0.05" value="0.15">
+      <div class="row"><span>Coefficient c</span><span class="val" id="v-c">0.70</span></div>
+      <input type="range" id="c" min="0.1" max="1" step="0.05" value="0.7">
+    </div>
+
+    <div class="grp">
+      <span class="lab">Blockage</span>
+      <div class="row"><span>At manhole</span><span class="val" id="v-blk">MH7</span></div>
+      <input type="range" id="blk" min="1" max="9" step="1" value="7">
+      <div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">
+        Or drag anywhere on the diagram.</div>
+    </div>
+  </div>
+
+  <div id="stagewrap">
+    <canvas id="cv"></canvas>
+    <div class="lgd">
+      <span><i style="background:#38bdf8"></i>backed-up wastewater</span>
+      <span><i style="background:#34d399"></i>sensor detects</span>
+      <span><i style="background:#64748b"></i>sensor sees nothing</span>
+      <span><i style="background:#f43f5e"></i>blockage</span>
+    </div>
+
+    <div class="cards">
+      <div class="card"><div class="k">Vertical budget</div>
+        <div class="v" id="c-budget">0.10 m</div>
+        <div class="s">c &times; manhole depth</div></div>
+      <div class="card"><div class="k">Upstream reach</div>
+        <div class="v" id="c-reach">6 m</div>
+        <div class="s">budget &divide; gradient</div></div>
+      <div class="card" id="card-det"><div class="k">Manholes detecting</div>
+        <div class="v" id="c-det">0</div>
+        <div class="s" id="c-det-sub">upstream of the blockage</div></div>
+      <div class="card"><div class="k">Vertical exaggeration</div>
+        <div class="v" id="c-vx">&times;1</div>
+        <div class="s">the drawing is stretched</div></div>
+    </div>
+
+    <div class="fml" id="fml"></div>
+
+    <div class="note" id="verdict"></div>
+
+    <div class="prose">
+
+      <h2>1. What an overflow actually is</h2>
+      <p>A gravity sewer is a pipe running downhill, flowing part full. Manholes are vertical shafts
+         down to it, roughly every 40 to 60 metres, and they are the only places a sensor can
+         physically go.</p>
+      <p>Something blocks the pipe: tree roots, fat, debris. Flow cannot pass. Wastewater backs up
+         <b>behind</b> the blockage, which means <b>upstream</b> of it, because that is the only
+         direction that is uphill. The level rises in the pipe and in the manhole shafts. If it keeps
+         rising it reaches the surface and spills out of a manhole lid, or backs into the lowest
+         household connection. That spill is the overflow.</p>
+
+      <h2>2. So which sensor sees it</h2>
+      <p>This is the part that is counter-intuitive, and it is the answer to your question.</p>
+      <ul>
+        <li>A sensor <b>upstream</b> of the blockage sits in the water that is backing up. Its
+            reading climbs. <b>This is the sensor that detects.</b></li>
+        <li>A sensor <b>downstream</b> of the blockage is on the dry side. Nothing is reaching it.
+            Its level does not rise; if anything the flow past it drops away.</li>
+        <li>A sensor <b>at the overflow point itself</b> tells you at the moment it is already
+            spilling, which is too late to be worth much.</li>
+      </ul>
+      <p>So detection runs <b>against the flow</b>. A sensor watches the network <b>below</b> it,
+         never above it. That single asymmetry is what makes the problem directional, and it is why
+         a gravity sewer being a directed acyclic graph matters so much: downstream is fixed and
+         never reverses, unlike a pressurised water main.</p>
+
+      <h2>3. But it only reaches so far, and that is observability</h2>
+      <p>The water backing up does not climb forever. It can only rise until it spills out at the
+         blockage. That gives you a <b>vertical budget</b>: how many metres of height the water can
+         gain before you have an overflow anyway.</p>
+      <p>The budget is <code>c &times; manhole depth</code>. Depth is how far it is from the lid down
+         to the pipe invert. The coefficient <code>c = 0.70</code> is the published value from Ninh
+         et al., and it means we count the blockage as caught only if the sensor gets wet by the time
+         the water is 70&nbsp;percent up the shaft, leaving 30&nbsp;percent of freeboard as warning
+         margin.</p>
+      <p>Now spend that budget. Going upstream, the pipe rises at the gradient. So:</p>
+      <div class="fml" style="margin:10px 0">upstream reach  =  vertical budget  &divide;  gradient</div>
+      <p>That is the blue wedge in the diagram. A sensor is inside the wedge or it is not. Inside, it
+         gets wet and detects. Outside, the pipe beneath it is above the water line and it stays dry
+         no matter how bad the blockage gets.</p>
+      <p><b>A node is observable if at least one manhole in the network can be inside its wedge.</b>
+         That is the whole definition. Not "is it important", not "is it near a creek". Just: can
+         anywhere upstream get wet before this spills.</p>
+
+      <h2>4. Why a steep catchment comes out almost blind</h2>
+      <p>Set the presets against each other. The steep catchment has a median gradient of 1.64&nbsp;percent,
+         which is steep, and the sandbox has no manhole depths to work with so it substitutes the
+         pipe diameter, 0.15&nbsp;m. Budget becomes 0.105&nbsp;m, reach becomes about 6&nbsp;m, and
+         manholes are 53&nbsp;m apart. <b>The wedge does not reach the next manhole.</b> Nothing sees
+         anything, which is exactly why the sandbox reports only 394 observable nodes out of 3,377.</p>
+      <p>Now switch to real manhole depth. At 2.5&nbsp;m the budget is 1.75&nbsp;m, the reach is about
+         107&nbsp;m, and two manholes upstream are covered. On a flatter catchment the same depth reaches
+         five.</p>
+
+      <div class="note"><b>This is the finding worth carrying forward.</b>
+        "Two up, two down" is not folklore. At realistic manhole depths on this terrain the geometry
+        lands on almost exactly two manholes upstream, so the rule of thumb encodes real physics.
+        What breaks it is not the rule, it is that manhole depth is not published anywhere, so the
+        model is running on pipe diameter and understating the reach by a factor of roughly fifteen.
+        Getting surveyed manhole depths is worth more to this project than any algorithm change.</div>
+
+      <h2>5. How the code writes this down</h2>
+      <p>Same geometry, rearranged. For a candidate sensor at node <code>s</code> and a blockage at a
+         downstream node <code>v</code>, water at <code>v</code> rises to elevation
+         <code>elev[v] + c*depth[v]</code>, and it reaches the sensor if that is above the pipe
+         invert at <code>s</code>:</p>
+      <div class="fml" style="margin:10px 0">elev[v] + c * depth[v]  &gt;  elev[s]</div>
+      <p>Read left to right it is the water level at the blockage. Read right to left it is the pipe
+         bottom at the sensor. The comparison is just "does the water get up there".</p>
+      <p>Three things to keep in mind when you read <code>osp_core.js</code>:</p>
+      <ol>
+        <li><code>computeObservable</code> loops over sensors and collects <b>descendants</b>, so it
+            answers "what can this sensor see". The diagram above answers the mirror question, "who
+            can see this blockage". Same condition, read from the other end.</li>
+        <li>Strict descendants only, so a node never observes itself. A sensor in the same manhole as
+            the blockage is not credited, which is conservative.</li>
+        <li>The real network is not one tidy line. Elevation at a node is the <b>lowest</b> invert
+            recorded there, so it does not fall monotonically downstream, which is why the code walks
+            every descendant instead of pruning on elevation. That prune was tried and it silently
+            dropped real coverage.</li>
+      </ol>
+
+      <h2>6. What this diagram simplifies</h2>
+      <ul>
+        <li>One straight line at constant gradient and constant manhole depth. Real branches join,
+            gradients change, ground undulates.</li>
+        <li>The backed-up surface is drawn flat. A real backwater profile curves slightly.</li>
+        <li>"Wet" is treated as "detected". A real sensor needs a rise it can distinguish from normal
+            flow, so the true reach is a little shorter than the geometry suggests.</li>
+        <li>Nothing here is calibrated against a South Australian blockage. The 0.70 came from
+            someone else's network.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const NMH = 10;
+const S = { slope:1.64, space:53, depth:0.15, c:0.70, blk:7 };
+
+const PRESETS = {
+  "ros-model":{slope:1.64,space:53,depth:0.15,c:0.70},
+  "ros-real" :{slope:1.64,space:53,depth:2.50,c:0.70},
+  "mal-model":{slope:0.81,space:40,depth:0.15,c:0.70},
+  "mal-real" :{slope:0.81,space:40,depth:2.50,c:0.70},
+};
+
+/* ---- geometry. z = 0 at the invert of MH0, positive up. ---- */
+const grad    = () => S.slope/100;
+const xAt     = i => i*S.space;
+const invAt   = x => -grad()*x;
+const invMH   = i => invAt(xAt(i));
+const gndMH   = i => invMH(i)+S.depth;
+const budget  = () => S.c*S.depth;
+const reach   = () => budget()/grad();
+const waterZ  = () => invMH(S.blk)+budget();      // flat backed-up surface
+const xCross  = () => Math.max(0, xAt(S.blk)-reach());
+
+/* ---- canvas ---- */
+const cv=$("cv"), ctx=cv.getContext("2d");
+let dpr=1, PX, PZ, x0, z0;
+
+function resize(){
+  dpr=Math.min(2,window.devicePixelRatio||1);
+  const r=cv.getBoundingClientRect();
+  cv.width=Math.round(r.width*dpr); cv.height=Math.round(r.height*dpr);
+}
+function project(){
+  const r=cv.getBoundingClientRect();
+  const padL=46, padR=18, padT=30, padB=34;
+  const wx=(NMH-1)*S.space;
+  const zmin=invMH(NMH-1)-0.35, zmax=gndMH(0)+0.35;
+  PX=(r.width-padL-padR)/wx;
+  PZ=(r.height-padT-padB)/(zmax-zmin);
+  x0=padL; z0=padT+(zmax)*PZ;
+  return {w:r.width,h:r.height,padL,padR,padT,padB};
+}
+const sx = x => x0+x*PX;
+const sz = z => z0-z*PZ;
+
+function draw(){
+  const {w,h,padL,padT,padB}=project();
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+
+  const wx=(NMH-1)*S.space;
+  const xL=sx(0), xR=sx(wx);
+  const WZ=waterZ(), XC=xCross(), XB=xAt(S.blk);
+
+  /* soil below ground */
+  ctx.beginPath();
+  ctx.moveTo(xL,sz(gndMH(0)));
+  ctx.lineTo(xR,sz(gndMH(NMH-1)));
+  ctx.lineTo(xR,h-padB+22); ctx.lineTo(xL,h-padB+22); ctx.closePath();
+  ctx.fillStyle="#0e1728"; ctx.fill();
+
+  /* ground surface */
+  ctx.beginPath();
+  ctx.moveTo(xL,sz(gndMH(0))); ctx.lineTo(xR,sz(gndMH(NMH-1)));
+  ctx.strokeStyle="#3d4d6e"; ctx.lineWidth=2; ctx.stroke();
+  ctx.font="10.5px ui-monospace,Consolas,monospace"; ctx.fillStyle="#64748b";
+  ctx.textAlign="left"; ctx.fillText("ground surface", xL+4, sz(gndMH(0))-6);
+
+  /* manhole shafts */
+  const shaftW=Math.max(7,Math.min(15,PX*S.space*0.14));
+  for(let i=0;i<NMH;i++){
+    const cx=sx(xAt(i)), top=sz(gndMH(i)), bot=sz(invMH(i));
+    ctx.fillStyle="#131d33"; ctx.fillRect(cx-shaftW/2,top,shaftW,bot-top);
+    ctx.strokeStyle="#2b3b5f"; ctx.lineWidth=1.5;
+    ctx.strokeRect(cx-shaftW/2,top,shaftW,bot-top);
+  }
+
+  /* the backed-up water wedge, plus wet shafts */
+  if(XC<XB){
+    ctx.beginPath();
+    ctx.moveTo(sx(XC),sz(WZ)); ctx.lineTo(sx(XB),sz(WZ)); ctx.lineTo(sx(XB),sz(invAt(XB)));
+    ctx.closePath();
+    ctx.fillStyle="rgba(56,189,248,.30)"; ctx.fill();
+    for(let i=0;i<NMH;i++){
+      const x=xAt(i);
+      if(x<XC-1e-6||x>XB+1e-6) continue;
+      const cx=sx(x), top=sz(Math.min(WZ,gndMH(i))), bot=sz(invMH(i));
+      ctx.fillStyle="rgba(56,189,248,.30)"; ctx.fillRect(cx-shaftW/2,top,shaftW,bot-top);
+    }
+    ctx.beginPath(); ctx.moveTo(sx(XC),sz(WZ)); ctx.lineTo(sx(XB),sz(WZ));
+    ctx.strokeStyle="#38bdf8"; ctx.lineWidth=2; ctx.stroke();
+    ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(sx(XB),sz(WZ)); ctx.lineTo(xR,sz(WZ));
+    ctx.strokeStyle="rgba(56,189,248,.35)"; ctx.lineWidth=1; ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  /* pipe invert */
+  ctx.beginPath(); ctx.moveTo(xL,sz(invAt(0))); ctx.lineTo(xR,sz(invAt(wx)));
+  ctx.strokeStyle="#93a4c4"; ctx.lineWidth=2.5; ctx.stroke();
+
+  /* flow arrows */
+  ctx.fillStyle="#4b5f88";
+  for(let i=0;i<NMH-1;i++){
+    const xm=xAt(i)+S.space*0.5, px=sx(xm), pz=sz(invAt(xm))-5;
+    ctx.beginPath(); ctx.moveTo(px-4,pz-3); ctx.lineTo(px+4,pz); ctx.lineTo(px-4,pz+3);
+    ctx.closePath(); ctx.fill();
+  }
+
+  /* blockage */
+  const bx=sx(XB), bTop=sz(invMH(S.blk)+Math.max(S.depth*0.22,0.12)), bBot=sz(invMH(S.blk));
+  ctx.fillStyle="#f43f5e"; ctx.fillRect(bx-3,bTop,6,bBot-bTop);
+  ctx.beginPath(); ctx.arc(bx,bTop-9,4.5,0,7); ctx.fill();
+  ctx.font="600 10.5px system-ui"; ctx.textAlign="center"; ctx.fillStyle="#f87171";
+  ctx.fillText("BLOCKAGE", bx, sz(invMH(S.blk))+16);
+
+  /* sensors */
+  let nDet=0;
+  for(let i=0;i<NMH;i++){
+    const x=xAt(i), cx=sx(x), cy=sz(gndMH(i))-1;
+    const upstream = i<S.blk;
+    const wet = XC<XB && x>=XC-1e-6 && x<=XB+1e-6;
+    const det = upstream && wet;
+    if(det) nDet++;
+    if(det){
+      ctx.beginPath(); ctx.arc(cx,cy,9,0,7);
+      ctx.fillStyle="rgba(52,211,153,.20)"; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx,cy,5,0,7);
+      ctx.fillStyle="#34d399"; ctx.fill();
+    }else{
+      ctx.beginPath(); ctx.arc(cx,cy,4.5,0,7);
+      ctx.fillStyle="#1a2540"; ctx.fill();
+      ctx.strokeStyle="#64748b"; ctx.lineWidth=1.5; ctx.stroke();
+    }
+    ctx.font="10px ui-monospace,Consolas,monospace"; ctx.textAlign="center";
+    ctx.fillStyle=det?"#34d399":"#64748b";
+    ctx.fillText("MH"+i, cx, cy-14);
+  }
+
+  /* reach bracket */
+  if(XC<XB){
+    const by=h-padB+12;
+    ctx.strokeStyle="#38bdf8"; ctx.lineWidth=1.2;
+    ctx.beginPath();
+    ctx.moveTo(sx(XC),by-4); ctx.lineTo(sx(XC),by); ctx.lineTo(sx(XB),by); ctx.lineTo(sx(XB),by-4);
+    ctx.stroke();
+    ctx.font="10.5px ui-monospace,Consolas,monospace"; ctx.fillStyle="#38bdf8";
+    ctx.textAlign="center";
+    ctx.fillText("reach "+Math.round(reach())+" m", (sx(XC)+sx(XB))/2, by-7);
+  }
+
+  /* budget bracket at the blockage */
+  const bxx=sx(XB)+shaftW/2+7;
+  ctx.strokeStyle="#22d3ee"; ctx.lineWidth=1.2;
+  ctx.beginPath();
+  ctx.moveTo(bxx-4,sz(invMH(S.blk))); ctx.lineTo(bxx,sz(invMH(S.blk)));
+  ctx.lineTo(bxx,sz(WZ)); ctx.lineTo(bxx-4,sz(WZ));
+  ctx.stroke();
+  ctx.textAlign="left"; ctx.fillStyle="#22d3ee";
+  ctx.font="10.5px ui-monospace,Consolas,monospace";
+  ctx.fillText(budget().toFixed(2)+" m", bxx+4, (sz(invMH(S.blk))+sz(WZ))/2+3);
+
+  /* axis hint */
+  ctx.textAlign="left"; ctx.fillStyle="#4b5f88"; ctx.font="10px system-ui";
+  ctx.fillText("flow direction", xL+2, h-6);
+  ctx.textAlign="right";
+  ctx.fillText(Math.round(wx)+" m of sewer", xR, h-6);
+
+  return nDet;
+}
+
+/* ---- readouts ---- */
+function update(){
+  $("v-slope").textContent=S.slope.toFixed(2)+" %";
+  $("v-space").textContent=S.space+" m";
+  $("v-depth").textContent=S.depth.toFixed(2)+" m";
+  $("v-c").textContent=S.c.toFixed(2);
+  $("v-blk").textContent="MH"+S.blk;
+
+  const nDet=draw();
+  const r=reach();
+
+  $("c-budget").textContent=budget().toFixed(3)+" m";
+  $("c-reach").textContent=Math.round(r)+" m";
+  $("c-det").textContent=nDet;
+  $("c-vx").textContent="×"+(PZ/PX).toFixed(0);
+  $("c-det-sub").textContent=nDet===1?"manhole upstream":"manholes upstream";
+  const card=$("card-det");
+  card.className="card "+(nDet===0?"lo":"hi");
+
+  /* the code's condition, with live numbers, tested on the nearest upstream manhole */
+  const s=Math.max(0,S.blk-1), v=S.blk;
+  const lhs=invMH(v)+S.c*S.depth, rhs=invMH(s);
+  const pass=lhs>rhs;
+  $("fml").textContent =
+    "the condition in osp_core.js, for the manhole one step upstream\n\n"+
+    "  elev[v] + c * depth[v]   >   elev[s]\n"+
+    "  "+invMH(v).toFixed(3)+"  +  "+S.c.toFixed(2)+" × "+S.depth.toFixed(2)+
+      "        >   "+rhs.toFixed(3)+"\n"+
+    "  "+lhs.toFixed(3)+"                     >   "+rhs.toFixed(3)+"    "+
+      (pass?"✓  MH"+s+" gets wet, it detects":"✗  MH"+s+" stays dry, it detects nothing")+
+    "\n\n  v = MH"+v+" (blockage)      s = MH"+s+" (candidate sensor)";
+
+  const need=(S.space*grad()).toFixed(3);
+  $("verdict").innerHTML = nDet===0
+    ? "<b>Nothing detects this blockage.</b> The water gains "+budget().toFixed(3)+
+      " m of head, but the pipe climbs "+need+" m in the "+S.space+
+      " m back to the next manhole upstream. The wedge dies before it gets there, so this blockage "+
+      "is <b>not observable at all</b>: no sensor anywhere in the network would catch it. Raise the "+
+      "manhole depth, or flatten the gradient, and watch it come alive."
+    : "<b>"+nDet+" manhole"+(nDet===1?"":"s")+" upstream detect"+(nDet===1?"s":"")+" this blockage.</b> "+
+      "The water gains "+budget().toFixed(3)+" m of head and the pipe climbs "+need+
+      " m per span, so the backwater reaches "+Math.round(r)+" m upstream before it runs out of "+
+      "height. Every sensor inside that wedge gets wet. Every sensor outside it, and every sensor "+
+      "downstream, reads normal.";
+}
+
+/* ---- wiring ---- */
+const bind=(id,key,fn)=>$(id).addEventListener("input",e=>{S[key]=fn(e.target.value);update()});
+bind("slope","slope",Number); bind("space","space",Number);
+bind("depth","depth",Number); bind("c","c",Number); bind("blk","blk",Number);
+
+document.querySelectorAll("[data-pre]").forEach(b=>b.onclick=()=>{
+  Object.assign(S,PRESETS[b.dataset.pre]);
+  $("slope").value=S.slope; $("space").value=S.space;
+  $("depth").value=S.depth; $("c").value=S.c;
+  update();
+});
+
+let drag=false;
+function pickFromEvent(e){
+  const r=cv.getBoundingClientRect();
+  const wxv=(e.clientX-r.left-x0)/PX;
+  const i=Math.round(wxv/S.space);
+  const clamped=Math.max(1,Math.min(NMH-1,i));
+  if(clamped!==S.blk){ S.blk=clamped; $("blk").value=clamped; update(); }
+}
+cv.addEventListener("mousedown",e=>{drag=true;pickFromEvent(e)});
+window.addEventListener("mousemove",e=>{if(drag)pickFromEvent(e)});
+window.addEventListener("mouseup",()=>{drag=false});
+
+window.addEventListener("resize",()=>{resize();update();});
+resize(); update();
+</script>
+</body>
+</html>

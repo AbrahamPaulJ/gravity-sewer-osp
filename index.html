@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Optimal Sensor Placement in Gravity Sewers</title>
+<style>
+:root{--bg:#0b1220;--panel:#111c2f;--panel-2:#16233a;--line:#22314d;
+  --ink:#e7edf7;--ink-dim:#a9b8d4;--ink-faint:#6f81a3;--accent:#38bdf8;--good:#34d399;--warn:#fbbf24}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:52px 26px 80px}
+h1{font-size:30px;margin:0 0 6px;letter-spacing:-.4px}
+.sub{color:var(--ink-faint);font-size:15px;margin:0 0 30px}
+h2{font-size:18px;margin:38px 0 10px;color:var(--accent)}
+p{color:var(--ink-dim);margin:11px 0}
+a{color:var(--accent)}
+.cards{display:grid;grid-template-columns:1fr;gap:13px;margin:22px 0}
+@media(min-width:680px){.cards{grid-template-columns:1fr 1fr}}
+.card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:17px 19px;text-decoration:none;transition:border-color .15s,transform .15s}
+.card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.card h3{margin:0 0 5px;font-size:16px;color:var(--ink)}
+.card p{margin:0;font-size:13.5px;color:var(--ink-faint);line-height:1.55}
+.card .tag{display:inline-block;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--accent);border:1px solid var(--line);border-radius:99px;padding:1px 8px;margin-bottom:7px}
+.big{grid-column:1/-1;border-left:3px solid var(--accent)}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left}
+th{background:var(--panel-2)}
+td{color:var(--ink-dim)}
+.num{font-family:ui-monospace,Menlo,Consolas,monospace}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;background:var(--panel-2);
+  border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);
+  border-radius:9px;padding:13px 16px;margin:20px 0;font-size:13.5px;color:var(--ink-dim)}
+footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);
+  color:var(--ink-faint);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Optimal sensor placement in gravity sewers</h1>
+<p class="sub">An interactive sandbox and two explainers, built on openly published South
+Australian network data.</p>
+
+<p>Water utilities put level sensors in sewer maintenance holes to catch blockages before they
+become overflows. There are far more chambers than sensors, so the question is which chambers.
+This is a working tool for exploring that, running on a real network rather than a synthetic one.</p>
+
+<div class="cards">
+  <a class="card big" href="osp_sandbox.html">
+    <span class="tag">Interactive</span>
+    <h3>OSP Sandbox</h3>
+    <p>Place a budget of sensors on 1,002 real gravity mains and 360 real maintenance holes. Seven
+    algorithms scored against the same objective, including a practitioner rule of thumb and a slot
+    for your own JavaScript. Includes an assumptions register, the method and its sources, and a
+    glossary.</p>
+  </a>
+  <a class="card" href="manhole_anatomy.html">
+    <span class="tag">Explainer</span>
+    <h3>What a maintenance hole is</h3>
+    <p>A rotatable 3D half section. What the chamber looks like inside, where the sensor sits, and
+    what happens when a blockage forms. Start here if the vocabulary is new.</p>
+  </a>
+  <a class="card" href="why_observability.html">
+    <span class="tag">Explainer</span>
+    <h3>Why observability is limited</h3>
+    <p>A draggable long section showing the backwater wedge behind a blockage, and the arithmetic
+    that decides how far upstream a sensor can still see it.</p>
+  </a>
+</div>
+
+<h2>What is interesting here</h2>
+
+<p>Two things came out of building this that are worth more than the tool itself.</p>
+
+<p><strong>A published method's own parameterisation was doing most of the damage.</strong> The
+placement condition uses a water-depth capacity term. Substituting pipe diameter for it, which is
+what you do when manhole depth is not published, understates the term by roughly a factor of
+nineteen. That single substitution is the difference between most of the network appearing
+unobservable and almost none of it:</p>
+
+<table>
+  <thead><tr><th>Depth used in the model</th><th>Observable universe</th><th>Chambers observing nothing</th></tr></thead>
+  <tbody>
+    <tr><td>Pipe diameter, 0.15 m</td><td class="num">157 / 1010</td><td class="num">840 (83.2%)</td></tr>
+    <tr><td>Measured depth, median 2.92 m</td><td class="num">813 / 1010</td><td class="num">32 (3.2%)</td></tr>
+  </tbody>
+</table>
+
+<p><strong>The invert fields are labelled by flow, not by geometry.</strong> On both publishers
+examined, <code>START_INVE</code> is the upstream-of-flow invert whichever way the line was drawn.
+Reading it as a geometric label silently reverses the majority of pipes while leaving every record,
+node and edge count identical, so the error is invisible to the usual sanity checks. Verified by
+testing which reading makes inverts agree at shared chambers: 95.3% exact against 35.2% and 37.0%
+for the alternatives.</p>
+
+<div class="note">
+It also means the common check <code>START_INVE &gt; END_INVERT</code> returning every record is
+<strong>true by definition of the field names</strong>. It is a naming convention, not evidence
+that a network runs downhill and not evidence that it is acyclic.
+</div>
+
+<h2>Where the data comes from</h2>
+
+<p>Everything here is built from services that answer anonymous queries, so every figure can be
+re-checked independently. The network is a council's open republication of the operator's sewer
+asset register: 1,002 gravity mains with invert levels on every record, 360 mapped maintenance
+holes, and a 1 m contour layer.</p>
+
+<p>Chamber depth is published almost nowhere, so it is reconstructed as cover level minus invert,
+with cover interpolated from those contours. That reconstruction was validated three ways and lands
+within about 0.23 m against surveyed values, on chamber depths of roughly 2.9 m. The
+<a href="osp_sandbox.html#assumptions">assumptions tab</a> lists every figure, every remaining
+assumption, and what data would remove it.</p>
+
+<h2>Honest limits</h2>
+
+<p>Nothing here has been validated against a recorded blockage: no public source lists historical
+chokes or overflows, so the tool can say which chambers <em>would</em> see a blockage under this
+model, not whether they did. The detection threshold is a declared parameter rather than a
+calibrated one, because no sensor readings for this network are public. And the network is clipped
+to a council boundary rather than a drainage catchment, so anything near an edge is wrong in a
+known direction. All of this is stated in the tool itself.</p>
+
+<footer>
+Built from public data. Runs entirely in the browser, no server and no tracking.
+</footer>
+
+</div>
+</body>
+</html>

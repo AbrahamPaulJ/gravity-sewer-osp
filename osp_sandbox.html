@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OSP Sandbox</title>
+<style>
+:root{
+  --bg:#0b1220; --panel:#111c2f; --panel-2:#16233a; --line:#22314d;
+  --ink:#e7edf7; --ink-dim:#a9b8d4; --ink-faint:#6f81a3;
+  --accent:#38bdf8; --accent-2:#1d4ed8; --sensor:#f43f5e; --anchor:#fbbf24;
+  --good:#34d399; --warn:#fbbf24; --bad:#f87171;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:13px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+#app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* ---------- header + tabs ---------- */
+header{padding:12px 20px 0;border-bottom:1px solid var(--line);background:var(--panel)}
+.title{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.title h1{margin:0;font-size:16px;font-weight:650;letter-spacing:.2px}
+.title .sub{color:var(--ink-faint);font-size:12px}
+.tabs{display:flex;gap:2px;margin-top:10px}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--ink-faint);
+  padding:8px 14px;font:inherit;font-size:12.5px;cursor:pointer;border-radius:6px 6px 0 0}
+.tabs button:hover{color:var(--ink-dim);background:var(--panel-2)}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.panes{flex:1;min-height:0;position:relative}
+.pane{position:absolute;inset:0;overflow:auto}
+.pane[hidden]{display:none!important}
+
+/* ---------- sandbox layout ---------- */
+#sandbox{display:grid;grid-template-columns:288px 1fr 300px;height:100%}
+#side,#right{overflow:auto;padding:14px;background:var(--panel)}
+#side{border-right:1px solid var(--line)}
+#right{border-left:1px solid var(--line)}
+#stage{position:relative;min-width:0;background:var(--bg)}
+canvas{width:100%;height:100%;display:block;cursor:crosshair}
+canvas.dragging{cursor:grabbing}
+
+.grp{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+  padding:11px 12px;margin-bottom:11px}
+.grp h3{margin:0 0 9px;font-size:11px;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--ink-faint);font-weight:600}
+label{display:block;font-size:12px;color:var(--ink-dim);margin:9px 0 4px}
+label:first-of-type{margin-top:0}
+select,input[type=range],textarea{width:100%}
+select,textarea{background:var(--panel);color:var(--ink);border:1px solid var(--line);
+  border-radius:7px;padding:6px 8px;font:inherit}
+textarea{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;
+  min-height:150px;resize:vertical}
+input[type=range]{accent-color:var(--accent);margin:2px 0}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.val{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--accent);font-size:12px}
+button.go{width:100%;background:var(--accent-2);color:#fff;border:0;border-radius:8px;
+  padding:9px;font:inherit;font-weight:600;cursor:pointer;margin-top:4px}
+button.go:hover{filter:brightness(1.12)}
+.seg{display:flex;gap:2px;margin-bottom:8px}
+.seg button{flex:1;background:var(--panel);color:var(--ink-dim);border:1px solid var(--line);
+  padding:6px;font:inherit;font-size:12px;cursor:pointer}
+.seg button:first-child{border-radius:7px 0 0 7px}
+.seg button:last-child{border-radius:0 7px 7px 0}
+.seg button.on{background:var(--accent-2);color:#fff;border-color:var(--accent-2)}
+.hint{font-size:11.5px;color:var(--ink-faint);line-height:1.45}
+.stat{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:12px}
+.stat span:first-child{color:var(--ink-faint)}
+.stat span:last-child{font-family:ui-monospace,Menlo,Consolas,monospace}
+.big{font-size:30px;font-weight:650;letter-spacing:-.5px;line-height:1.1}
+.bigsub{color:var(--ink-faint);font-size:11.5px;margin:2px 0 10px}
+.empty{color:var(--ink-faint);font-size:12px;font-style:italic}
+.err{background:#3b0d17;border:1px solid #7f1d2d;color:#fecdd3;padding:8px 10px;
+  border-radius:8px;font-size:11.5px;white-space:pre-wrap;margin-top:8px}
+.warnbox{background:#3a2c07;border:1px solid #7c5c10;color:#fde68a;padding:7px 9px;
+  border-radius:8px;font-size:11.5px;margin-top:8px}
+hr{border:0;border-top:1px solid var(--line);margin:10px 0}
+
+#busy{position:absolute;inset:0;display:none;place-items:center;background:rgba(11,18,32,.72);
+  color:var(--ink-dim);font-size:13px}
+#busy.on{display:grid}
+#hud{position:absolute;left:12px;top:12px;background:rgba(17,28,47,.95);border:1px solid var(--line);
+  border-radius:9px;padding:8px 11px;font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:11.5px;display:none;pointer-events:none;line-height:1.6;max-width:260px}
+#hud.on{display:block}
+#legend{position:absolute;right:12px;bottom:12px;background:rgba(17,28,47,.95);
+  border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:11.5px}
+#legend div{display:flex;align-items:center;gap:7px;margin:3px 0;color:var(--ink-dim)}
+.sw{width:16px;height:3px;border-radius:2px;display:inline-block}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.badge{display:inline-block;padding:1px 7px;border-radius:999px;font-size:10.5px;
+  font-weight:600;letter-spacing:.03em;vertical-align:middle}
+.b-measured{background:#064e3b;color:#6ee7b7}
+.b-transferred{background:#422006;color:#fcd34d}
+
+/* ---------- document panes ---------- */
+.doc{max-width:920px;margin:0 auto;padding:26px 30px 70px}
+.doc h2{font-size:19px;margin:0 0 6px;font-weight:650}
+.doc h3{font-size:14.5px;margin:26px 0 8px;color:var(--accent);font-weight:620}
+.doc h4{font-size:13px;margin:18px 0 5px;font-weight:620}
+.doc p{margin:9px 0;color:var(--ink-dim);line-height:1.62}
+.doc li{color:var(--ink-dim);line-height:1.6;margin:5px 0}
+.doc .lede{color:var(--ink-faint);font-size:12.5px;margin-bottom:20px}
+.doc code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.8px;
+  background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.doc table{border-collapse:collapse;width:100%;margin:12px 0;font-size:12px}
+.doc th,.doc td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+.doc th{background:var(--panel-2);color:var(--ink);font-weight:600}
+.doc td{color:var(--ink-dim)}
+.doc .num{font-family:ui-monospace,Menlo,Consolas,monospace}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:13px 15px;margin:12px 0}
+.card.warn{border-left:3px solid var(--warn)}
+.card.good{border-left:3px solid var(--good)}
+.card.bad{border-left:3px solid var(--bad)}
+.card h4{margin-top:0}
+.qa{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}
+.qa:first-of-type{border-top:0}
+.qa .q{font-weight:620;color:var(--ink);font-size:13.5px;margin-bottom:2px}
+details{margin:8px 0}
+summary{cursor:pointer;color:var(--accent);font-size:12.5px}
+.gloss dt{font-weight:620;color:var(--ink);margin-top:13px;font-size:13px}
+.gloss dd{margin:3px 0 0;color:var(--ink-dim);line-height:1.6}
+.tag{font-size:10.5px;color:var(--ink-faint);border:1px solid var(--line);border-radius:4px;
+  padding:0 5px;margin-left:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div id="app">
+
+<header>
+  <div class="title">
+    <h1>OSP Sandbox</h1>
+    <span class="sub">Sensor placement on real South Australian gravity sewer topology, built entirely from openly published data.</span>
+  </div>
+  <nav class="tabs">
+    <button data-tab="sandbox" class="on">Sandbox</button>
+    <button data-tab="assumptions">Assumptions</button>
+    <button data-tab="qa">Questions answered</button>
+    <button data-tab="method">Method &amp; sources</button>
+    <button data-tab="glossary">Glossary</button>
+  </nav>
+</header>
+
+<div class="panes">
+
+<!-- ================= SANDBOX ================= -->
+<div class="pane" id="pane-sandbox">
+<div id="sandbox">
+
+  <div id="side">
+    <div class="grp">
+      <h3>Region</h3>
+      <select id="region"></select>
+      <div id="region-badge" style="margin-top:7px"></div>
+      <div class="hint" id="region-note" style="margin-top:7px"></div>
+    </div>
+
+    <div class="grp">
+      <h3>Mode</h3>
+      <div class="seg" id="mode-seg">
+        <button data-mode="network" class="on">Network</button>
+        <button data-mode="anchor">Anchor</button>
+      </div>
+      <div class="hint" id="mode-hint">Place a budget of sensors across the whole network.</div>
+    </div>
+
+    <div class="grp">
+      <h3>Observability model</h3>
+      <select id="model">
+        <option value="headroom">Measured headroom (default)</option>
+        <option value="legacy">Ninh as published, c x diameter</option>
+        <option value="drop">Plain elevation budget</option>
+      </select>
+
+      <div id="p-headroom" style="margin-top:10px">
+        <div class="row"><span>Detection threshold</span><span class="val" id="t-val">0.05 m</span></div>
+        <input type="range" id="threshold" min="0" max="0.5" step="0.01" value="0.05">
+        <div class="hint">The rise a sensor must see to tell a blockage from a normal Tuesday.
+          Not calibratable from public data, so it is a declared parameter.</div>
+        <label style="margin-top:9px"><input type="checkbox" id="useorg" style="width:auto;margin-right:6px">
+          Count property relief gullies as escape points</label>
+        <div class="hint">Lowers the ceiling where a property connection sits below the manhole lid.</div>
+      </div>
+
+      <div id="p-legacy" style="margin-top:10px;display:none">
+        <div class="row"><span>Coefficient c</span><span class="val" id="c-val">0.70</span></div>
+        <input type="range" id="c" min="0.1" max="1" step="0.05" value="0.7">
+        <div class="hint">Kept for comparison only. It multiplies pipe diameter, not manhole
+          depth, which is the substitution this rebuild exists to remove.</div>
+      </div>
+
+      <div id="p-drop" style="margin-top:10px;display:none">
+        <div class="row"><span>Allowed invert drop</span><span class="val" id="d-val">1.00 m</span></div>
+        <input type="range" id="drop" min="0.1" max="4" step="0.1" value="1">
+      </div>
+
+      <hr>
+      <div class="row"><span>Starved-flow share</span><span class="val" id="s-val">off</span></div>
+      <input type="range" id="starve" min="0" max="1" step="0.05" value="0">
+      <div class="hint">Credits a sensor downstream of a blockage, which sees flow stop rather
+        than rise. Zero disables it. The share is how much of the flow past the sensor must
+        halt before it is distinguishable.</div>
+    </div>
+
+    <div class="grp">
+      <h3>Placement</h3>
+      <div class="row"><span>Budget</span><span class="val" id="b-val">40</span></div>
+      <input type="range" id="budget" min="1" max="200" step="1" value="40">
+      <label>Objective</label>
+      <select id="objective">
+        <option value="nodes">Maximise nodes observed</option>
+        <option value="length">Maximise pipe length observed</option>
+      </select>
+      <label>Algorithm</label>
+      <select id="algo">
+        <option value="greedy">Greedy set cover (CELF)</option>
+        <option value="twoupdown">Two up, two down (rule of thumb)</option>
+        <option value="upstream">Largest upstream catchment</option>
+        <option value="between">Highest betweenness</option>
+        <option value="outdeg">Highest out-degree</option>
+        <option value="indeg">Highest in-degree</option>
+        <option value="random">Random (best of 20)</option>
+        <option value="custom">Custom JavaScript</option>
+      </select>
+      <div class="hint" id="algo-hint" style="margin-top:7px"></div>
+
+      <div id="p-updown" style="margin-top:10px;display:none">
+        <div class="row"><span>k up / k down</span><span class="val" id="k-val">2 / 2</span></div>
+        <input type="range" id="kup" min="0" max="5" step="1" value="2">
+        <input type="range" id="kdown" min="0" max="5" step="1" value="2">
+      </div>
+
+      <div id="p-custom" style="margin-top:10px;display:none">
+        <textarea id="code" spellcheck="false"></textarea>
+        <div class="hint">Runs in a Web Worker with an 8 s kill. Must define
+          <code>place(graph, budget, api)</code> returning node ids.</div>
+      </div>
+
+      <button class="go" id="run">Run placement</button>
+      <div id="run-err"></div>
+    </div>
+
+    <div class="grp">
+      <h3>Colour by</h3>
+      <select id="colourby">
+        <option value="coverage">Coverage</option>
+        <option value="elevation">Invert level</option>
+        <option value="depth">Chamber depth</option>
+      </select>
+    </div>
+
+    <div class="grp">
+      <h3>Data quality</h3>
+      <div id="dq"></div>
+    </div>
+  </div>
+
+  <div id="stage">
+    <canvas id="map"></canvas>
+    <div id="busy">Computing…</div>
+    <div id="hud"></div>
+    <div id="legend">
+      <div><span class="sw" style="background:#2b3a55"></span>not observable</div>
+      <div><span class="sw" style="background:#1d4ed8"></span>observable</div>
+      <div><span class="sw" style="background:#38bdf8"></span>covered</div>
+      <div><span class="dot" style="background:#f43f5e"></span>sensor</div>
+      <div><span class="dot" style="background:#fbbf24"></span>anchor</div>
+    </div>
+  </div>
+
+  <div id="right">
+    <div class="grp">
+      <h3>Result</h3>
+      <div id="result"><div class="empty">Run a placement to see results.</div></div>
+    </div>
+    <div class="grp" id="anchor-grp" style="display:none">
+      <h3>Mandated anchor</h3>
+      <div id="anchor-out"><div class="empty">Click a chamber on the map.</div></div>
+    </div>
+    <div class="grp">
+      <h3>Leaderboard <span class="tag">this exact setup</span></h3>
+      <div id="lb"></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ================= ASSUMPTIONS ================= -->
+<div class="pane" id="pane-assumptions" hidden>
+  <div class="doc" id="doc-assumptions"></div>
+</div>
+
+<!-- ================= Q&A ================= -->
+<div class="pane" id="pane-qa" hidden>
+  <div class="doc" id="doc-qa"></div>
+</div>
+
+<!-- ================= METHOD ================= -->
+<div class="pane" id="pane-method" hidden>
+  <div class="doc" id="doc-method"></div>
+</div>
+
+<!-- ================= GLOSSARY ================= -->
+<div class="pane" id="pane-glossary" hidden>
+  <div class="doc" id="doc-glossary"></div>
+</div>
+
+</div>
+</div>
+
+<script src="osp_data.js"></script>
+<script src="osp_core.js"></script>
+<script src="osp_docs.js"></script>
+<script src="osp_ui.js"></script>
+</body>
+</html>
