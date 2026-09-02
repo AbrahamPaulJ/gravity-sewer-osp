@@ -26,9 +26,9 @@ function assumptions(ctx) {
       <td><b>${esc(r.g.label)}</b><br><span style="font-size:11px;color:var(--ink-faint)">${esc(r.g.role)}</span></td>
       <td class="num">${r.st.nodes}</td>
       <td class="num">${r.st.pipes_used}</td>
-      <td class="num">${r.st.manholes_matched || 0}${r.st.manholes_published ? " / " + r.st.manholes_published : ""}</td>
+      <td class="num">${r.st.manholes_published ? (r.st.manholes_matched || 0) + " of " + r.st.manholes_published : "none published"}</td>
       <td class="num">${r.ds.median != null ? r.ds.median.toFixed(2) : "n/a"}</td>
-      <td class="num">${r.ds.surveyed} / ${r.ds.contour} / ${r.ds.transferred}</td>
+      <td class="num">${r.ds.surveyed} / ${r.ds.contour} / ${r.ds.transferred}${r.ds.unknown ? " / " + r.ds.unknown : ""}</td>
       <td class="num">${r.st.invert_violations ?? "n/a"}</td>
     </tr>`).join("");
 
@@ -46,9 +46,17 @@ function assumptions(ctx) {
   </div>
 
   <h3>What the loaded regions actually contain</h3>
+  <p><b>Chambers usable as sites</b> counts published maintenance holes that were matched to a
+  node in the graph, and therefore can hold a sensor. Where several nodes fall within the match
+  radius of one manhole, only the closest is kept, so the same physical chamber is never offered
+  to the optimiser twice. <b>Cover level from</b> breaks the nodes down by where their ground
+  level came from: surveyed, interpolated from contours, transferred from another region as a
+  constant, or discarded as unusable. <b>Invert violations</b> counts nodes where the outgoing
+  invert sits above the incoming one, which water cannot do under gravity, so it is a count of
+  data errors rather than a modelling choice.</p>
   <table>
-    <thead><tr><th>Region</th><th>Nodes</th><th>Pipes</th><th>Real manholes</th>
-      <th>Median depth (m)</th><th>Cover: surveyed / contour / transferred</th><th>Invert violations</th></tr></thead>
+    <thead><tr><th>Region</th><th>Nodes</th><th>Pipes</th><th>Chambers usable as sites</th>
+      <th>Median depth (m)</th><th>Cover level from</th><th>Invert violations</th></tr></thead>
     <tbody>${regionTable}</tbody>
   </table>
 

@@ -470,7 +470,8 @@ function setRegion(k) {
   $("dq").innerHTML = `
     <div class="stat"><span>Pipes</span><span>${st.pipes_used}</span></div>
     <div class="stat"><span>Nodes</span><span>${st.nodes}</span></div>
-    <div class="stat"><span>Real manholes</span><span>${st.manholes_matched || 0} / ${st.manholes_published || 0}</span></div>
+    <div class="stat"><span>Published manholes</span><span>${st.manholes_published || 0}</span></div>
+    <div class="stat"><span>Matched to a node</span><span>${st.manholes_matched || 0}${st.manhole_duplicates_merged ? ` <span style="color:var(--ink-faint)">(${st.manhole_duplicates_merged} dup merged)</span>` : ""}</span></div>
     <div class="stat"><span>Direction from field</span><span>${(st.direction || {}).from_field ?? "n/a"}</span></div>
     <div class="stat"><span>Direction fallback</span><span>${(st.direction || {}).geometry_fallback ?? "n/a"}</span></div>
     <div class="stat"><span>Invert violations</span><span>${st.invert_violations ?? "n/a"}</span></div>
@@ -481,7 +482,8 @@ function setRegion(k) {
     <div class="stat"><span>Depth p10 / p90</span><span>${ds.p10 != null ? ds.p10.toFixed(2) + " / " + ds.p90.toFixed(2) : "n/a"}</span></div>
     <div class="stat"><span>Cover surveyed</span><span>${ds.surveyed}</span></div>
     <div class="stat"><span>Cover from contours</span><span>${ds.contour}</span></div>
-    <div class="stat"><span>Cover transferred</span><span>${ds.transferred}</span></div>
+    ${ds.transferred ? `<div class="stat"><span>Cover transferred</span><span>${ds.transferred}</span></div>` : ""}
+    ${ds.unknown ? `<div class="stat"><span>Cover unusable, discarded</span><span>${ds.unknown}</span></div>` : ""}
     <div class="hint" style="margin-top:8px">${measured && legA
       ? `Cover levels are interpolated from the 1 m contour layer. Measured against ${legA.n}
          surveyed covers in this same area the error is ${legA.mean_abs} m mean,

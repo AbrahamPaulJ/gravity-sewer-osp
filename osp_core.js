@@ -298,14 +298,17 @@ function depthStats(g) {
   for (let i = 0; i < g.n; i++) if (g.cover[i] > 0) d.push(g.cover[i] - g.inv[i]);
   d.sort((a, b) => a - b);
   const q = f => d.length ? d[Math.min(d.length - 1, Math.floor(f * d.length))] : null;
-  let surveyed = 0, contour = 0, transferred = 0;
+  // Four categories, not three. They must sum to the node count, or a node has
+  // silently lost its cover level somewhere.
+  let surveyed = 0, contour = 0, transferred = 0, unknown = 0;
   for (let i = 0; i < g.n; i++) {
     if (g.coverSrc[i] === 1) surveyed++;
     else if (g.coverSrc[i] === 2) contour++;
     else if (g.coverSrc[i] === 3) transferred++;
+    else unknown++;               // cover was below the invert, so it was discarded
   }
   return { n: d.length, p10: q(0.1), median: q(0.5), p90: q(0.9),
-           surveyed, contour, transferred };
+           surveyed, contour, transferred, unknown, total: g.n };
 }
 
 /* --------------------------------------------------------------- scoring */
