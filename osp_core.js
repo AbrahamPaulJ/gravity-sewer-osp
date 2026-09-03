@@ -29,7 +29,8 @@
    PRESERVED FROM THE ORIGINAL, deliberately:
    - Every algorithm draws from the same candidate pool (see feasible). An earlier cut
      let greedy and the centrality heuristics draw only from nodes that observe
-     something while "two up, two down" drew from all nodes, which cost the two up, two down rule of thumb more than half its score.
+     something while "two up, two down" drew from all nodes, which cost that rule of
+     thumb more than half its score.
    - No elevation-based prune on the traversal. It was tried and rejected: node
      elevation does not fall monotonically downstream, so pruning silently drops real
      observable nodes while leaving headline counts unchanged. */
@@ -248,7 +249,7 @@ function computeObservable(g, opt) {
 
     // Starved flow: s sits DOWNSTREAM of the blockage, so nothing backs up to it, but
     // the flow that normally arrives stops. A level sensor reads that as an unexplained
-    // dry spell, and it is most of what the "two down" half of the two up, two down rule of thumb buys.
+    // dry spell, and it is most of what the "two down" half of the rule of thumb buys.
     // Detectable only when the stopped branch is a big enough share of what passes s,
     // otherwise it is lost in normal diurnal variation.
     if (starveFrac > 0) {
@@ -460,7 +461,7 @@ function collectUpDown(g, anchor, kup, kdown) {
   return out;
 }
 
-/* The the two up, two down rule of thumb applied network-wide: anchors largest-catchment-first, spaced so
+/* The two up, two down rule of thumb applied network-wide: anchors largest-catchment-first, spaced so
    their groups do not overlap, then k up and k down around each.
    Anchors are drawn from the same feasible pool as every other algorithm, so the rule is
    not handicapped by spending its anchor on a node that observes nothing. The supporting

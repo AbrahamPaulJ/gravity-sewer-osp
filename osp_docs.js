@@ -307,7 +307,7 @@ function qa() {
     pipe barrel the upstream chamber goes wet and detects it, while the downstream chamber stays
     dry. But the flow that normally arrives there stops, and a level sensor reads that as an
     unexplained dry spell.</p>
-    <p>That starved-flow signal is most of what the "two down" half of the two up, two down rule of thumb is for. It
+    <p>That starved-flow signal is most of what the "two down" half of the rule of thumb is for. It
     is included here as an optional term with its own control: the stopped branch has to be a big
     enough share of what normally passes the sensor, otherwise it is lost in normal daily variation.
     Set the share to zero to disable it and see what the rule loses.</p>
@@ -347,7 +347,7 @@ function method(ctx) {
         <td>The published condition is binary, so a 2 mm rise counts the same as 2 m.</td></tr>
       <tr><td>Starved-flow term added</td>
         <td>A sensor downstream of a blockage scored zero, though flow stopping is a real and
-            detectable signal, and it is half of what the two up, two down rule of thumb buys.</td></tr>
+            detectable signal, and it is half of what the rule of thumb buys.</td></tr>
       <tr><td>Candidates restricted to published manholes</td>
         <td>A recommendation naming a spot with no chamber cannot be acted on.</td></tr>
     </tbody>
@@ -394,7 +394,8 @@ function method(ctx) {
   level sensors have difficulty detecting blockages early <b>particularly in steep systems where
   sensor coverage is limited</b>, and that an abnormal level at a manhole is <b>insufficient to
   pinpoint where the blockage is</b>. The first is exactly the effect seen in a steep catchment;
-  the second is the argument for pairing sensors rather than placing them singly, which is what the two up, two down rule of thumb encodes.</p>
+  the second is the argument for pairing sensors rather than placing them singly, which is what the
+  "two up, two down" rule of thumb encodes.</p>
 
   <h3>Data sources, all public and anonymously queryable</h3>
   <table>
@@ -415,7 +416,7 @@ function method(ctx) {
   <ul>
     <li><b>Greedy set cover (CELF)</b>, the optimiser and the benchmark. Coverage is submodular, so
       a cached marginal gain can only overstate the truth, which makes lazy re-evaluation exact.</li>
-    <li><b>Two up, two down</b>, the two up, two down rule of thumb, scored on the same footing as everything
+    <li><b>Two up, two down</b>, a practitioner rule of thumb, scored on the same footing as everything
       else. Its anchors are drawn from the same candidate pool; its supporting chambers are taken as
       the rule dictates whether or not they observe anything, because that is what the rule says and
       it is where its cost legitimately shows up.</li>
@@ -423,7 +424,8 @@ function method(ctx) {
     <li><b>Random, best of 20</b>, the floor any method must clear.</li>
     <li><b>Custom JavaScript</b>, run in a worker with an 8 s kill.</li>
   </ul>
-  <p>Every algorithm draws from the same candidate pool. An earlier version did not, and it cost the two up, two down rule of thumb more than half its score, so there is now a regression test asserting it.</p>
+  <p>Every algorithm draws from the same candidate pool. An earlier version did not, and it cost that
+  rule of thumb more than half its score, so there is now a regression test asserting it.</p>
 
   <h3>Reproducing all of this</h3>
   <p><code>python tools/build_demo_data.py</code> re-harvests every region and rewrites the dataset,

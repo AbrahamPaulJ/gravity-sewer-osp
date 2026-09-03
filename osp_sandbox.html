@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OSP Sandbox</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
 <style>
 :root{
   --bg:#0b1220; --panel:#111c2f; --panel-2:#16233a; --line:#22314d;
@@ -33,10 +41,16 @@ header{padding:12px 20px 0;border-bottom:1px solid var(--line);background:var(--
 
 /* ---------- sandbox layout ---------- */
 #sandbox{display:grid;grid-template-columns:288px 1fr 300px;height:100%}
-#side,#right{overflow:auto;padding:14px;background:var(--panel)}
-#side{border-right:1px solid var(--line)}
+#right{overflow:auto;padding:14px;background:var(--panel)}
+#side{display:flex;flex-direction:column;min-height:0;background:var(--panel);
+  border-right:1px solid var(--line)}
+#side-scroll{flex:1;min-height:0;overflow:auto;padding:14px}
+#run-bar{flex:0 0 auto;padding:12px 14px;border-top:1px solid var(--line);background:var(--panel)}
+#run-bar .go{margin-top:0}
 #right{border-left:1px solid var(--line)}
-#stage{position:relative;min-width:0;background:var(--bg)}
+#stage{position:relative;min-width:0;background:var(--bg);display:flex}
+#pane2d,#pane3d{position:relative;flex:1 1 0;min-width:0;height:100%;overflow:hidden}
+#pane3d{display:none;border-left:1px solid var(--line)}
 canvas{width:100%;height:100%;display:block;cursor:crosshair}
 canvas.dragging{cursor:grabbing}
 
@@ -44,6 +58,12 @@ canvas.dragging{cursor:grabbing}
   padding:11px 12px;margin-bottom:11px}
 .grp h3{margin:0 0 9px;font-size:11px;text-transform:uppercase;letter-spacing:.09em;
   color:var(--ink-faint);font-weight:600}
+#side-scroll .grp h3{cursor:pointer;user-select:none;
+  display:flex;align-items:center;justify-content:space-between}
+#side-scroll .grp h3::after{content:"▾";font-size:9px;color:var(--ink-faint);transition:transform .15s}
+#side-scroll .grp.collapsed h3{margin-bottom:0}
+#side-scroll .grp.collapsed h3::after{transform:rotate(-90deg)}
+#side-scroll .grp.collapsed>*:not(h3){display:none!important}
 label{display:block;font-size:12px;color:var(--ink-dim);margin:9px 0 4px}
 label:first-of-type{margin-top:0}
 select,input[type=range],textarea{width:100%}
@@ -149,6 +169,7 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
 <div id="sandbox">
 
   <div id="side">
+   <div id="side-scroll">
     <div class="grp">
       <h3>Region</h3>
       <select id="region"></select>
@@ -165,7 +186,7 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
       <div class="hint" id="mode-hint">Place a budget of sensors across the whole network.</div>
     </div>
 
-    <div class="grp">
+    <div class="grp collapsed">
       <h3>Observability model</h3>
       <select id="model">
         <option value="headroom">Measured headroom (default)</option>
@@ -176,7 +197,7 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
       <div id="p-headroom" style="margin-top:10px">
         <div class="row"><span>Detection threshold</span><span class="val" id="t-val">0.05 m</span></div>
         <input type="range" id="threshold" min="0" max="0.5" step="0.01" value="0.05">
-        <div class="hint">The rise a sensor must see to tell a blockage from a normal Tuesday.
+        <div class="hint">The rise a sensor must see to tell a blockage from ordinary diurnal variation.
           Not calibratable from public data, so it is a declared parameter.</div>
         <label style="margin-top:9px"><input type="checkbox" id="useorg" style="width:auto;margin-right:6px">
           Count property relief gullies as escape points</label>
@@ -236,12 +257,9 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
         <div class="hint">Runs in a Web Worker with an 8 s kill. Must define
           <code>place(graph, budget, api)</code> returning node ids.</div>
       </div>
-
-      <button class="go" id="run">Run placement</button>
-      <div id="run-err"></div>
     </div>
 
-    <div class="grp">
+    <div class="grp collapsed">
       <h3>Colour by</h3>
       <select id="colourby">
         <option value="coverage">Coverage</option>
@@ -250,22 +268,48 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
       </select>
     </div>
 
-    <div class="grp">
+    <div class="grp collapsed">
+      <h3>View</h3>
+      <div class="seg" id="view-seg">
+        <button data-view="2d" class="on">2D</button>
+        <button data-view="3d">3D</button>
+        <button data-view="split">Side by side</button>
+      </div>
+      <div id="p-3d" style="margin-top:10px;display:none">
+        <div class="row"><span>Elevation exaggeration</span><span class="val" id="exagg-val">30x</span></div>
+        <input type="range" id="exagg" min="1" max="150" step="1" value="30">
+        <div class="hint">Real elevation change is tiny next to the map's width, so height is
+          stretched by this factor to make upstream and downstream visibly different. Drag to
+          rotate, scroll to zoom, right-drag to pan.</div>
+      </div>
+    </div>
+
+    <div class="grp collapsed">
       <h3>Data quality</h3>
       <div id="dq"></div>
     </div>
+   </div>
+   <div id="run-bar">
+     <button class="go" id="run">Run placement</button>
+     <div id="run-err"></div>
+   </div>
   </div>
 
   <div id="stage">
-    <canvas id="map"></canvas>
-    <div id="busy">Computing…</div>
-    <div id="hud"></div>
-    <div id="legend">
-      <div><span class="sw" style="background:#2b3a55"></span>not observable</div>
-      <div><span class="sw" style="background:#1d4ed8"></span>observable</div>
-      <div><span class="sw" style="background:#38bdf8"></span>covered</div>
-      <div><span class="dot" style="background:#f43f5e"></span>sensor</div>
-      <div><span class="dot" style="background:#fbbf24"></span>anchor</div>
+    <div id="pane2d">
+      <canvas id="map"></canvas>
+      <div id="busy">Computing…</div>
+      <div id="hud"></div>
+      <div id="legend">
+        <div><span class="sw" style="background:#2b3a55"></span>not observable</div>
+        <div><span class="sw" style="background:#1d4ed8"></span>observable</div>
+        <div><span class="sw" style="background:#38bdf8"></span>covered</div>
+        <div><span class="dot" style="background:#f43f5e"></span>sensor</div>
+        <div><span class="dot" style="background:#fbbf24"></span>anchor</div>
+      </div>
+    </div>
+    <div id="pane3d">
+      <div id="view3d" style="position:absolute;inset:0"></div>
     </div>
   </div>
 
@@ -313,6 +357,7 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
 <script src="osp_data.js"></script>
 <script src="osp_core.js"></script>
 <script src="osp_docs.js"></script>
+<script src="osp_3d.js"></script>
 <script src="osp_ui.js"></script>
 </body>
 </html>

@@ -19,6 +19,7 @@ const S = {
   kup: 2, kdown: 2,
   colourBy: "coverage",
   anchor: null, sensors: [], covered: null, lastResult: null,
+  view: "2d", exaggeration: 30,
 };
 
 let G = null;
@@ -169,10 +170,21 @@ const dpr = Math.min(2, window.devicePixelRatio || 1);
 
 function resize() {
   const r = cv.getBoundingClientRect();
-  if (!r.width || !r.height) return;
-  cv.width = Math.round(r.width * dpr);
-  cv.height = Math.round(r.height * dpr);
-  draw();
+  if (r.width && r.height) {
+    cv.width = Math.round(r.width * dpr);
+    cv.height = Math.round(r.height * dpr);
+    draw();
+  }
+  if (S.view !== "2d") window.OSP3D.resize($("view3d"));
+}
+
+/* Rebuilds the 3D scene from current state, whenever a 3D-showing view (3d or split) is
+   active. No-op otherwise, so every state-changing handler can call this unconditionally. */
+let threeReady = null;
+function render3D(reframe) {
+  if (S.view === "2d" || !G) return;
+  if (!threeReady) threeReady = window.OSP3D.ensureThree().then(() => window.OSP3D.initScene($("view3d")));
+  threeReady.then(() => window.OSP3D.build(G, S, { exaggeration: S.exaggeration, reframe: !!reframe }));
 }
 function fitView() {
   if (!G) return;
@@ -190,9 +202,21 @@ const sy = v => view.oy - v * view.scale;
 const wx = p => (p - view.ox) / view.scale;
 const wy = p => (view.oy - p) / view.scale;
 
-function ramp(t, a, b) {
+/* Multi-stop ramps, not a single lerp between two colours: equal steps in value should look
+   like genuinely different colours, not a blur through a muddy midpoint. */
+const ELEV_STOPS = [[0, [37, 99, 235]], [0.33, [45, 212, 191]], [0.66, [250, 204, 21]], [1, [220, 38, 38]]];
+const DEPTH_STOPS = [[0, [186, 230, 253]], [0.5, [59, 130, 246]], [1, [190, 24, 93]]];
+function rampN(t, stops) {
   t = Math.max(0, Math.min(1, t));
-  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * t)},${Math.round(a[1] + (b[1] - a[1]) * t)},${Math.round(a[2] + (b[2] - a[2]) * t)})`;
+  for (let i = 0; i < stops.length - 1; i++) {
+    const [t0, c0] = stops[i], [t1, c1] = stops[i + 1];
+    if (t <= t1) {
+      const f = (t - t0) / Math.max(1e-6, t1 - t0);
+      return `rgb(${Math.round(c0[0] + (c1[0] - c0[0]) * f)},${Math.round(c0[1] + (c1[1] - c0[1]) * f)},${Math.round(c0[2] + (c1[2] - c0[2]) * f)})`;
+    }
+  }
+  const [, c] = stops[stops.length - 1];
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
 function draw() {
@@ -228,8 +252,7 @@ function draw() {
         if (!isFinite(v)) { style = "#3a4257"; width = 1; }
         else {
           const t = (v - lo) / Math.max(1e-6, hi - lo);
-          style = S.colourBy === "depth" ? ramp(t, [125, 211, 252], [190, 24, 93])
-                                         : ramp(t, [45, 212, 191], [251, 191, 36]);
+          style = rampN(t, S.colourBy === "depth" ? DEPTH_STOPS : ELEV_STOPS);
           width = 1.3;
         }
       } else {
@@ -367,7 +390,7 @@ async function run() {
     const res = C.score(G, sensors);
     S.covered = res.covered;
     S.lastResult = { ...res, sensors: sensors.length, extra };
-    renderResult(); saveScore(); draw();
+    renderResult(); saveScore(); draw(); render3D();
   } catch (err) {
     $("run-err").innerHTML = `<div class="err">${escapeHtml(err.message || String(err))}</div>`;
   } finally { busy(false); }
@@ -381,24 +404,26 @@ function runAnchor() {
   const free = C.greedy(G, budget, S.objective);
   const forced = C.greedyForced(G, [a], budget, S.objective);
   const rRule = C.score(G, rule), rFree = C.score(G, free), rForced = C.score(G, forced);
-  S.sensors = rule; S.covered = rRule.covered;
+  S.sensors = forced; S.covered = rForced.covered;
   const key = S.objective === "length" ? "len" : "nodes";
   const fmt = v => S.objective === "length" ? fmtM(v) : v;
   const pct = v => rFree[key] > 0 ? Math.round(100 * v / rFree[key]) + "%" : "n/a";
 
   $("anchor-out").innerHTML = `
     <div class="stat"><span>Anchor node</span><span>${a}</span></div>
-    <div class="stat"><span>Rule (${S.kup} up / ${S.kdown} down)</span><span>${budget} sensors</span></div>
+    <div class="stat"><span>Budget (= rule size, ${S.kup} up / ${S.kdown} down)</span><span>${budget} sensors</span></div>
     <hr>
+    <div class="stat"><span style="font-weight:600">Optimiser, anchor forced</span><span style="font-weight:600">${fmt(rForced[key])}</span></div>
+    <div class="hint" style="margin-top:-4px;margin-bottom:6px">Shown on the map. Includes the
+      anchor, plus the optimiser's best choices for the rest of the budget.</div>
     <div class="stat"><span>Rule covers</span><span>${fmt(rRule[key])}</span></div>
     <div class="stat"><span>Optimiser, free</span><span>${fmt(rFree[key])}</span></div>
-    <div class="stat"><span>Optimiser, anchor forced</span><span>${fmt(rForced[key])}</span></div>
     <hr>
-    <div class="stat"><span>Rule vs free optimum</span><span style="color:${rRule[key] >= rFree[key] * 0.9 ? "var(--good)" : "var(--warn)"}">${pct(rRule[key])}</span></div>
+    <div class="stat"><span>Forced vs free optimum</span><span style="color:${rForced[key] >= rFree[key] * 0.9 ? "var(--good)" : "var(--warn)"}">${pct(rForced[key])}</span></div>
     <div class="stat"><span>Cost of mandating</span><span>${fmt(rFree[key] - rForced[key])}</span></div>
-    <div class="hint" style="margin-top:8px">The last row is what the mandate costs: the optimiser
-      loses this much by being forced to use the anchor.</div>`;
-  draw();
+    <div class="hint" style="margin-top:8px">Free is never drawn, it is only the unconstrained
+      baseline. Cost of mandating is what it would gain by not being tied to the anchor.</div>`;
+  draw(); render3D();
 }
 
 function renderResult() {
@@ -442,7 +467,18 @@ function saveScore() {
 }
 function renderLB() {
   const k = paramKey();
-  const rows = loadLB().filter(r => r.k === k).sort((a, b) => b.v - a.v).slice(0, 12);
+  // Collapse exact repeats (same algorithm, same score) to their most recent run, so ten
+  // identical greedy runs cannot crowd twelve distinct algorithms out of the visible list.
+  // A genuinely different result under the same settings (random draws, a tweaked custom
+  // function) still gets its own row.
+  const seen = new Map();
+  for (const r of loadLB()) {
+    if (r.k !== k) continue;
+    const dk = r.algo + "|" + r.v;
+    const prev = seen.get(dk);
+    if (!prev || r.t > prev.t) seen.set(dk, r);
+  }
+  const rows = [...seen.values()].sort((a, b) => b.v - a.v).slice(0, 12);
   if (!rows.length) { $("lb").innerHTML = '<div class="empty">No runs yet for this exact setup.</div>'; return; }
   const fmt = v => S.objective === "length" ? fmtM(v) : v;
   const newest = Math.max(...rows.map(r => r.t));
@@ -500,7 +536,7 @@ function setRegion(k) {
   const pool = C.feasible(G).length;
   $("budget").max = Math.max(10, Math.min(400, pool || 50));
   if (S.budget > +$("budget").max) { S.budget = +$("budget").max; $("budget").value = S.budget; }
-  fitView(); syncParamUI(); renderLB();
+  fitView(); syncParamUI(); renderLB(); render3D(true);
 }
 
 function syncParamUI() {
@@ -517,11 +553,12 @@ function syncParamUI() {
   $("p-custom").style.display = S.algo === "custom" ? "" : "none";
   $("anchor-grp").style.display = S.mode === "anchor" ? "" : "none";
   $("algo-hint").textContent = ALGO_HINTS[S.algo] || "";
+  $("exagg-val").textContent = S.exaggeration + "x";
 }
 
 const ALGO_HINTS = {
   greedy: "Repeatedly takes the sensor adding the most new coverage. The benchmark to beat.",
-  twoupdown: "The the two up, two down rule of thumb of thumb, scored on the same footing as everything else. " +
+  twoupdown: "A practitioner rule of thumb, scored on the same footing as everything else. " +
              "Anchors come from the candidate pool; the k up and k down chambers are taken as the " +
              "rule dictates, which is where its cost shows up.",
   upstream: "Ranks chambers by how much network drains through them.",
@@ -550,29 +587,52 @@ function init() {
   $("code").value = DEFAULT_CODE;
 
   $("region").addEventListener("change", e => setRegion(e.target.value));
-  $("model").addEventListener("change", e => { S.model = e.target.value; syncParamUI(); ensureObs(); draw(); });
+  $("model").addEventListener("change", e => { S.model = e.target.value; syncParamUI(); ensureObs(); draw(); render3D(); });
   $("objective").addEventListener("change", e => { S.objective = e.target.value; renderLB(); });
   $("algo").addEventListener("change", e => { S.algo = e.target.value; syncParamUI(); });
-  $("colourby").addEventListener("change", e => { S.colourBy = e.target.value; draw(); });
-  $("useorg").addEventListener("change", e => { S.useOrg = e.target.checked; ensureObs(); draw(); });
-  bindRange("c", "c", () => { ensureObs(); draw(); });
-  bindRange("drop", "drop", () => { ensureObs(); draw(); });
-  bindRange("threshold", "threshold", () => { ensureObs(); draw(); });
-  bindRange("starve", "starveFrac", () => { ensureObs(); draw(); });
+  $("colourby").addEventListener("change", e => { S.colourBy = e.target.value; draw(); render3D(); });
+  $("useorg").addEventListener("change", e => { S.useOrg = e.target.checked; ensureObs(); draw(); render3D(); });
+  bindRange("c", "c", () => { ensureObs(); draw(); render3D(); });
+  bindRange("drop", "drop", () => { ensureObs(); draw(); render3D(); });
+  bindRange("threshold", "threshold", () => { ensureObs(); draw(); render3D(); });
+  bindRange("starve", "starveFrac", () => { ensureObs(); draw(); render3D(); });
+  bindRange("exagg", "exaggeration", () => render3D());
   bindRange("budget", "budget", renderLB);
   bindRange("kup", "kup");
   bindRange("kdown", "kdown");
   $("run").addEventListener("click", run);
+
+  document.querySelectorAll("#side-scroll .grp > h3").forEach(h => {
+    h.addEventListener("click", () => h.parentElement.classList.toggle("collapsed"));
+  });
 
   document.querySelectorAll("#mode-seg button").forEach(b => {
     b.addEventListener("click", () => {
       document.querySelectorAll("#mode-seg button").forEach(x => x.classList.remove("on"));
       b.classList.add("on");
       S.mode = b.dataset.mode;
+      if (S.mode === "network" && S.anchor != null) {
+        S.anchor = null; S.sensors = []; S.covered = null;
+        $("anchor-out").innerHTML = "";
+        draw(); render3D();
+      }
       $("mode-hint").textContent = S.mode === "anchor"
-        ? "Click a chamber to treat it as a mandated location, then compare the rule against a free optimiser and against one forced to use it."
+        ? "Click a chamber to treat it as a mandated location; the optimiser is then forced to use it."
         : "Place a budget of sensors across the whole network.";
       syncParamUI();
+    });
+  });
+
+  document.querySelectorAll("#view-seg button").forEach(b => {
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#view-seg button").forEach(x => x.classList.remove("on"));
+      b.classList.add("on");
+      S.view = b.dataset.view;
+      $("p-3d").style.display = S.view === "2d" ? "none" : "";
+      $("pane2d").style.display = S.view === "3d" ? "none" : "";
+      $("pane3d").style.display = S.view === "2d" ? "none" : "block";
+      resize(); draw();
+      if (S.view !== "2d") render3D(true);
     });
   });
 
