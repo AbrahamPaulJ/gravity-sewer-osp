@@ -325,7 +325,39 @@ function score(g, sensors) {
   return { covered, nodes, len };
 }
 
-const weightOf = (g, i, obj) => (obj === "length" ? g.lenIn[i] : 1);
+/* How many of a marked set of nodes a placement observes, and how many exist.
+   Used to report the overcapacity objective honestly: "24 of 183 surcharging
+   chambers observed" is the number that means something, not a share of all
+   nodes. Kept separate from score() so the existing return shape is unchanged. */
+function scoreMarked(g, sensors, mark) {
+  const covered = new Uint8Array(g.n);
+  for (const s of sensors) {
+    if (!Number.isInteger(s) || s < 0 || s >= g.n) continue;
+    const set = obsOf(g, s);
+    for (let i = 0; i < set.length; i++) covered[set[i]] = 1;
+  }
+  let hit = 0, total = 0;
+  for (let i = 0; i < g.n; i++) {
+    if (!mark[i]) continue;
+    total++;
+    if (covered[i]) hit++;
+  }
+  return { hit, total };
+}
+
+/* Objective weight for observing node i.
+
+   `obj` is normally the string "nodes" or "length". It may also be an object
+   carrying a per-node weight array, `{ w: Float64Array }`, which is how the
+   overcapacity objective is expressed: weight 1 on chambers that surcharge and 0
+   everywhere else, so the optimiser maximises coverage of the places overcapacity
+   actually threatens rather than treating every chamber as equally likely to
+   block. Every algorithm here routes its scoring through this one function, so
+   supporting a weight vector here is enough to make all of them weightable. */
+const weightOf = (g, i, obj) =>
+  (obj && obj.w) ? obj.w[i]
+  : obj === "length" ? g.lenIn[i]
+  : 1;
 
 /* ------------------------------------------------------------ algorithms */
 /* Lazy (CELF) greedy. Coverage is submodular, so a cached marginal gain can only
@@ -530,7 +562,7 @@ function greedyForced(g, forced, budget, obj) {
 
 return {
   buildGraph, ceilings, computeObservable, obsOf, depthStats,
-  score, weightOf, feasible,
+  score, scoreMarked, weightOf, feasible,
   greedy, greedyForced, topBy, topoOrder, upstreamSize, betweenness,
   collectUpDown, twoUpTwoDown, randomPlace,
 };

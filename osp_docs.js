@@ -1,6 +1,10 @@
 /* Documentation panes for the OSP sandbox.
    The assumptions register is rendered from the LOADED dataset, not typed in, so its
-   figures cannot drift out of step with the data the tool is actually running on. */
+   figures cannot drift out of step with the data the tool is actually running on.
+
+   The Assumptions pane is the CANONICAL register for the whole project. README.md
+   and the written documents point at it rather than restating it, so an assumption
+   added or removed in code gets added or removed there in the same change. */
 "use strict";
 
 window.OSPDocs = (function () {
@@ -10,6 +14,24 @@ const esc = s => String(s).replace(/[&<>"]/g,
 const m = v => (v == null || !isFinite(v)) ? "n/a" : v.toFixed(2) + " m";
 
 /* ------------------------------------------------------------ assumptions */
+/* This pane is CANONICAL. Every assumption either model rests on is registered
+   here, in one place, and other documents point at it rather than restating it.
+   If an assumption is added or removed in code, it is added or removed here in
+   the same change.
+
+   Two models run in this sandbox and they answer different questions, so the
+   register is in two parts:
+     A  the network, its geometry, and the BLOCKAGE observability model (Ninh 2025)
+     B  the flow, capacity and growth model (osp_capacity.js), which is OVERCAPACITY
+   Part C is what remains assumed across both, stated plainly.
+
+   The capacity figures are computed here from the loaded dataset rather than
+   typed in, so they cannot drift out of step with the model. That costs about
+   280 ms, so it is deferred to idle time and injected into a placeholder rather
+   than blocking first paint. */
+
+const CAP_LADDER = [0.05, 0.1, 0.2, 0.4, 0.9];   // L/s per chamber, dry weather
+
 function assumptions(ctx) {
   const { DATA, VALID, META, C, buildGraph } = ctx;
   const A = VALID.leg_a, B = VALID.leg_b, Cg = VALID.leg_c, ID = VALID.identity;
@@ -34,15 +56,36 @@ function assumptions(ctx) {
 
   return `
   <h2>Assumptions and limitations</h2>
-  <p class="lede">Every figure below is read from the dataset currently loaded in this page, so
-  it cannot fall out of step with the model. Built ${esc(META.built || "unknown")}.</p>
+  <p class="lede">This page is the canonical register. Every assumption the sandbox rests on is
+  listed here, each with what it would take to remove it, and every figure is read from the dataset
+  currently loaded in this page rather than typed in, so it cannot fall out of step with the model.
+  Built ${esc(META.built || "unknown")}.</p>
 
   <div class="card good">
     <h4>The short version</h4>
     <p>The two substitutions the first version of this tool rested on are gone. Nodes are now real
     maintenance holes from the network operator's own asset register, and chamber depth is measured rather than
-    stood in for by pipe diameter. What remains assumed is listed below, each with what it would
-    take to remove it.</p>
+    stood in for by pipe diameter. What was added since is a second model, for capacity and growth,
+    and it is far less measured than the first: its geometry is real, its <i>demand</i> is a
+    setting you choose. That distinction is the most important thing on this page and it is
+    spelled out in part B.</p>
+  </div>
+
+  <div class="card">
+    <h4>Two models, because they answer two different questions</h4>
+    <p><b>Blockage</b> is the published method this sandbox implements. A chamber chokes, flow
+    stops, water backs up behind it to a ceiling, and the question is whether a sensor somewhere
+    upstream can see that rise. A blockage can happen almost anywhere, so the geography of the
+    problem is the whole network weighted by condition.</p>
+    <p><b>Overcapacity</b> is what the agreed scope actually asks about. Nothing is obstructed:
+    flow accumulates downhill and at some reach it exceeds what that pipe was sized to carry, so
+    water backs up behind the bottleneck. Bottlenecks are few, predictable and fixed by geometry,
+    and they are what growth causes.</p>
+    <p>Both end the same way, water rising in a chamber and escaping at the lowest opening, so once
+    a chamber surcharges the <i>cause</i> no longer matters to whether a sensor can see it, and the
+    same observability machinery serves both. But the sets of chambers at risk are different, so
+    <b>a placement optimised for one is not optimised for the other</b>. Do not conflate them in
+    writing, and read every number below as belonging to one model or the other.</p>
   </div>
 
   <h3>What the loaded regions actually contain</h3>
@@ -60,37 +103,38 @@ function assumptions(ctx) {
     <tbody>${regionTable}</tbody>
   </table>
 
-  <h3>The register</h3>
+  <h3>Part A. The network and the blockage model</h3>
+  <p>These are the assumptions the first version of the tool rested on, and what each became.</p>
   <table>
     <thead><tr><th>#</th><th>Was</th><th>Is now</th><th>Status</th></tr></thead>
     <tbody>
-      <tr><td>1</td><td>Nodes were snapped pipe endpoints</td>
+      <tr><td>A1</td><td>Nodes were snapped pipe endpoints</td>
         <td>Real published manhole points, matched within 1.0 m. Sensors can only be placed in
             chambers, because that is the only place one physically fits.</td>
         <td><b style="color:var(--good)">Resolved</b> for Walkerville. No manhole layer exists
             publicly for the other regions.</td></tr>
-      <tr><td>2</td><td>Node elevation was the lowest invert at a snapped point</td>
+      <tr><td>A2</td><td>Node elevation was the lowest invert at a snapped point</td>
         <td>Invert taken as the chamber floor, with incoming and outgoing inverts checked against
             each other.</td>
         <td><b style="color:var(--good)">Resolved.</b> Violations fell from 462 to
             ${rows[0] ? rows[0].st.invert_violations : "n/a"} once the invert fields were read
             correctly (see Method tab).</td></tr>
-      <tr><td>3</td><td>MaxDepth was pipe diameter, 0.15 m</td>
+      <tr><td>A3</td><td>MaxDepth was pipe diameter, 0.15 m</td>
         <td>Depth is cover level minus invert. Median
             ${rows[0] ? m(rows[0].ds.median) : "n/a"} on Walkerville.</td>
         <td><b style="color:var(--good)">Measured</b>, and validated three ways below.</td></tr>
-      <tr><td>4</td><td>A single global coefficient c = 0.70</td>
+      <tr><td>A4</td><td>A single global coefficient c = 0.70</td>
         <td>A per-node ceiling, computed by flood fill over real cover levels.</td>
         <td><b style="color:var(--good)">Removed.</b> c survives only in the comparison mode.</td></tr>
-      <tr><td>5</td><td>The escape point was folded into c</td>
+      <tr><td>A5</td><td>The escape point was folded into c</td>
         <td>Optional property relief gully proxy: ground at the property inspection point plus
             ${META.org_above_ground_m} m.</td>
         <td><b style="color:var(--warn)">Still assumed.</b> Gully levels are published nowhere.</td></tr>
-      <tr><td>6</td><td>No detection threshold at all</td>
+      <tr><td>A6</td><td>No detection threshold at all</td>
         <td>An explicit threshold a rise must exceed before it counts.</td>
         <td><b style="color:var(--warn)">Declared, not calibrated.</b> No South Australian
             wastewater sensor readings are public.</td></tr>
-      <tr><td>7</td><td>Flow direction taken from a drafting field</td>
+      <tr><td>A7</td><td>Flow direction taken from a drafting field</td>
         <td>Direction from the flow-direction code, with inverts read as flow-anchored.</td>
         <td><b style="color:var(--good)">Resolved</b>, and the reading was verified by measurement
             rather than assumed.</td></tr>
@@ -128,34 +172,71 @@ function assumptions(ctx) {
   <b>${ID.mean_abs} m</b>. That is not our result, it is the publisher's own consistency, and it is
   what makes those records trustworthy enough to validate against.</p></div>` : ""}
 
-  <h3>What is still assumed, stated plainly</h3>
+  <h3>Part B. The capacity and growth model</h3>
+  <div id="cap-register"><p class="lede">Computing capacity for every loaded region, one moment.</p></div>
+
+  <h3>Part C. What is still assumed, stated plainly</h3>
+  <div class="card bad">
+    <h4>C1. Demand is a setting, not a measurement, and it drives the headline number</h4>
+    <p>This is the largest assumption in the tool and the first thing a reader who models sewers
+    will test. Load per chamber and peak factor are sliders. Nothing in the public data says what
+    either should be, so the count of surcharging chambers is a property of where you left the
+    sliders, not a finding about the suburb. The ladder in part B shows how far it moves. Quote
+    surcharge counts <b>with the demand case attached</b>, never on their own, and treat the
+    ranking of reaches as the result rather than the absolute count.</p>
+    <p>Removing it needs billed consumption or dwelling counts joined to the network, or a
+    calibrated dry weather flow per connection from the network operator's own model. That is an ask.</p>
+  </div>
+  <div class="card bad">
+    <h4>C2. Nothing here has been validated against an actual blockage or overflow</h4>
+    <p>Both models are structural and topological results throughout. No historical choke or
+    overflow record was available, so the tool can say which chambers <i>would</i> see an event
+    under each model, and cannot yet say whether they did. Obtaining incident history is the single
+    highest-value thing that would change that, for either half.</p>
+  </div>
   <div class="card warn">
-    <h4>1. Property relief gully levels are not public anywhere</h4>
+    <h4>C3. Administrative boundaries cut the catchment, and this hurts capacity twice</h4>
+    <p>Every region here is clipped to a council area or a bounding box, not to a drainage
+    catchment. Pipes that continue in reality appear to end, so a mid-network chamber can look like
+    the bottom of the system and the downstream consequences of a blockage there cannot be seen.</p>
+    <p>For the capacity model the same cut does something worse and less obvious: flow that would
+    have entered from outside the boundary is never counted, so reaches near a cut edge carry
+    <b>too little</b> flow and will look healthier than they are. Anything near an edge is wrong in
+    a known direction, and in the capacity view that direction is the unsafe one.</p>
+  </div>
+  <div class="card warn">
+    <h4>C4. Property relief gully levels are not public anywhere</h4>
     <p>The gully is designed to be the lowest opening, so it usually controls where water escapes,
     and it sits on private land. The proxy here puts it at ground level plus
     ${META.org_above_ground_m} m at the property inspection point. It is reasoned from the plumbing
     standard, not measured. Toggle it on and off in the sandbox to see how much it moves the answer.</p>
   </div>
   <div class="card warn">
-    <h4>2. The detection threshold cannot be calibrated from public data</h4>
+    <h4>C5. The detection threshold cannot be calibrated from public data</h4>
     <p>Setting it properly needs baseline level traces from deployed sensors, and none are published
     for South Australia. It is a slider with a declared default rather than a result. Do et al.
     (2023) show the shape the calibration would take: chokes were identified by how long the level
     stayed irregularly high, not by the peak alone.</p>
   </div>
   <div class="card warn">
-    <h4>3. Administrative boundaries cut the catchment</h4>
-    <p>Every region here is clipped to a council area or a bounding box, not to a drainage
-    catchment. Pipes that continue in reality appear to end, so a mid-network chamber can look like
-    the bottom of the system and the downstream consequences of a blockage there cannot be seen.
-    Anything near an edge is wrong in a known direction.</p>
+    <h4>C6. Everything is treated as gravity, so pumped assets are not represented</h4>
+    <p>The whole method rests on the network being a directed acyclic graph, which is what makes
+    "everything upstream of here" cheap to compute. A rising main breaks that: it runs full, under
+    pressure, and uphill. Pump stations are also storage, which a steady calculation has no way to
+    represent, and they are where a real utility already has data. Whether pump stations are in
+    scope is an <b>open question for the network operator</b>, and the answer changes the methodology rather
+    than adding to it.</p>
   </div>
-  <div class="card bad">
-    <h4>4. Nothing here has been validated against an actual blockage</h4>
-    <p>This is a structural and topological result throughout. No historical choke or overflow
-    record was available, so the tool can say which chambers would see a blockage under this model,
-    and cannot yet say whether they did. Obtaining incident history is the single highest-value
-    thing that would change that.</p>
+  <div class="card warn">
+    <h4>C7. The real network deviates from the idealised one in ways this does not model</h4>
+    <p>The standing objection to any idealised gravity model, and it is a fair one. Ground movement alters invert levels over
+    time, so a surveyed gradient is not a current gradient. Infiltration and inflow put stormwater
+    and groundwater into a sewer that was sized for neither, which is exactly when capacity
+    matters. Tree roots reduce an effective diameter without changing the recorded one. None of the
+    three is in either model. The tractable answer is not to measure them but to <b>perturb and
+    report</b>: jitter the inverts by a plausible drift and show how far the recommendation moves.
+    A placement that is stable under perturbation is a stronger claim than one that is merely
+    optimal. That is planned work, not done work.</p>
   </div>
 
   <h3>Routes probed and rejected, so they are not retried</h3>
@@ -168,7 +249,163 @@ function assumptions(ctx) {
       500, so per-point sampling is not available.</li>
     <li>No manhole or maintenance-hole point layer exists anywhere on the statewide utilities
       service. It publishes pipes and unrelated assets only.</li>
+    <li>The statewide layer publishes a <code>roughness</code> field, which would have removed the
+      Manning assumption in B1. It is populated on 0.8% of records, so it cannot be used.</li>
   </ul>`;
+}
+
+/* Part B is computed rather than written, and it is the slow part of this pane, so
+   it is filled in after first paint. Everything it needs is global by then. */
+function capacityRegister(ctx) {
+  const { DATA, C, buildGraph } = ctx;
+  const K = window.OSPCapacity;
+  if (!K) return `<div class="card bad"><h4>Capacity model not loaded</h4>
+    <p>osp_capacity.js did not load, so part B cannot be computed. The figures here are never
+    typed in, so nothing is shown rather than something stale.</p></div>`;
+
+  const R = Object.keys(DATA).map(k => {
+    const g = buildGraph(k);
+    const base = K.capacityState(g, C, { perNode: CAP_LADDER[0], peakFactor: 1 });
+    let split = 0, sinks = 0;
+    for (let v = 0; v < g.n; v++) {
+      const d = g.outPtr[v + 1] - g.outPtr[v];
+      if (d > 1) split++;
+      if (d === 0) sinks++;
+    }
+    /* geo is reused across the ladder: diameter, slope and length do not depend on
+       load, and recomputing them per rung would triple the cost for nothing. */
+    const ladder = CAP_LADDER.map(l =>
+      K.capacityState(g, C, { perNode: l, peakFactor: 1, geo: base.geo }).summary.nodesSurcharged);
+    return { g, base, split, sinks, ladder };
+  });
+
+  const pct = (a, b) => b ? (100 * a / b).toFixed(1) + "%" : "n/a";
+
+  const facts = R.map(r => `
+    <tr>
+      <td><b>${esc(r.g.label)}</b></td>
+      <td class="num">${r.base.summary.edges}</td>
+      <td class="num">${r.base.summary.slopeClamped} (${pct(r.base.summary.slopeClamped, r.base.summary.edges)})</td>
+      <td class="num">${r.split}</td>
+      <td class="num">${r.sinks}</td>
+      <td class="num">${r.g.stats.components ?? "n/a"}</td>
+    </tr>`).join("");
+
+  const ladderRows = R.map(r => `
+    <tr><td><b>${esc(r.g.label)}</b></td>${r.ladder.map(v =>
+      `<td class="num">${v}</td>`).join("")}</tr>`).join("");
+
+  return `
+  <p>Overcapacity needs a quantity the blockage model never had to compute: <b>how much flow
+  arrives at each reach</b>. Load is accumulated down the graph in topological order, one pass and
+  exact, and each reach is then solved for the depth that flow would run at, using Manning's
+  equation for a circular channel running part full. A reach whose flow exceeds its greatest
+  passable flow is over capacity, and the chamber above it surcharges.</p>
+
+  <div class="card bad">
+    <h4>What this is not</h4>
+    <p><b>It is not a hydraulic model and must never be presented as one.</b> It is steady,
+    uniform and normal-depth: each reach is solved on its own, at one instant, as though flow had
+    been constant forever. There is no backwater, so a bottleneck does not raise the level in the
+    reach behind it. There is no routing and no storage, so nothing attenuates and nothing is held.
+    There is no time, so there is no storm, no diurnal peak and no first flush.</p>
+    <p>What it is, is the same screening-level depth-to-diameter calculation that utility capacity
+    assessments use to flag a capacity-deficient sewer. That is defensible for <b>ranking</b>
+    reaches against each other, which is all the placement objective needs. It is not SWMM and will
+    not reproduce SWMM. The network operator's own team does real modelling and will spot the difference
+    immediately, so say so first.</p>
+  </div>
+
+  <h4>The register</h4>
+  <table>
+    <thead><tr><th>#</th><th>Assumption</th><th>Why it is there</th><th>What removes it</th></tr></thead>
+    <tbody>
+      <tr><td>B1</td><td><b>Manning's n = ${K.DEFAULT_N}</b> everywhere</td>
+        <td>Sewer pipe runs about 0.010 to 0.015 depending on material and age.
+            ${K.DEFAULT_N} is the conventional design value for concrete and vitrified clay.</td>
+        <td>The published <code>roughness</code> field, populated on 0.8% of records, is unusable.
+            <code>material</code> is public at 99.9%, so a per-material table is the obvious
+            refinement once material reaches the demo data.</td></tr>
+      <tr><td>B2</td><td><b>Reach diameter is the smaller of the two chamber diameters</b></td>
+        <td>Diameter is held per chamber in the current data, as the largest pipe touching it. A
+            reach is limited by its narrowest section, so the minimum of the pair is the safe
+            reading of a proxy.</td>
+        <td>Real per-pipe diameter already exists upstream in <code>build_demo_data.py</code>. Emit
+            it as a <code>diams</code> array, pass it as <code>opt.diams</code>, and the proxy
+            falls away.</td></tr>
+      <tr><td>B3</td><td><b>Load is uniform per chamber</b>, set by a slider</td>
+        <td>Without dwelling counts or billed consumption joined to the network there is nothing
+            better to assume, and a flat number that is visibly a setting is more honest than an
+            invented distribution that looks like data.</td>
+        <td>Dwelling counts per chamber, or a calibrated dry weather flow per connection. See C1:
+            this is the assumption that moves the answer most.</td></tr>
+      <tr><td>B4</td><td><b>Peak factor is a multiplier</b>, applied uniformly</td>
+        <td>Capacity is judged at peak, not at average. One multiplier stands in for diurnal peak,
+            wet weather and infiltration together, because none of the three can be separated from
+            public data.</td>
+        <td>Rainfall-derived infiltration needs gauged flow. This is properly a modelling input
+            from the network operator, not something to derive here.</td></tr>
+      <tr><td>B5</td><td><b>Adverse or flat reaches are clamped</b> to a slope of ${K.MIN_SLOPE}
+            and flagged</td>
+        <td>Manning cannot solve a reach with no fall. Some of these are genuinely flat, some are
+            invert data errors. Clamping keeps them visible as a data-quality finding instead of
+            letting them silently disappear from the network.</td>
+        <td>A surveyed check on the flagged reaches. The counts are in the table below and they are
+            small, so this changes rankings locally at worst.</td></tr>
+      <tr><td>B6</td><td><b>A chamber with two outgoing pipes splits its flow evenly</b></td>
+        <td>A real split depends on the relative hydraulics of the two branches, which a steady
+            reach-by-reach calculation cannot compute. Even splitting is an assumption, but it is a
+            <b>conserving</b> one, and the tests assert mass balance. Sending the full flow down
+            both would create water from nothing, and would do it invisibly.</td>
+        <td>A hydraulic model, or field measurement. The counts below show how few chambers this
+            touches.</td></tr>
+      <tr><td>B7</td><td><b>Once a chamber surcharges, the cause stops mattering</b></td>
+        <td>This is what lets the capacity model reuse the blockage model's observability
+            machinery unchanged. Water rising in a chamber looks the same to a level sensor
+            whichever mechanism put it there.</td>
+        <td>Nothing needs to remove it. It is a modelling choice, stated so it is not mistaken for
+            a claim that the two problems are the same. They are not: see the two-models card
+            above.</td></tr>
+    </tbody>
+  </table>
+
+  <h4>What the capacity model is running on</h4>
+  <p>All computed from the loaded data. <b>Clamped reaches</b> is B5, <b>splitting chambers</b> is
+  B6, and both are small enough that a wrong call cannot distort the picture. <b>Outlets</b> counts
+  chambers with nothing downstream: a real network has very few, so a high count is the boundary
+  cut of C3 showing up, and every one of those is a reach whose real downstream flow is missing.
+  <b>Components</b> is the same story from the other side, the number of separate pieces the
+  clipped network falls into.</p>
+  <table>
+    <thead><tr><th>Region</th><th>Reaches</th><th>Clamped reaches (B5)</th>
+      <th>Splitting chambers (B6)</th><th>Outlets</th><th>Components</th></tr></thead>
+    <tbody>${facts}</tbody>
+  </table>
+
+  <h4>How far the demand setting moves the answer</h4>
+  <p>Chambers surcharging at a peak factor of 1, as load per chamber is raised. This is the
+  evidence for C1, and it is the table to put in front of anyone who quotes a surcharge count
+  without saying what demand case produced it.</p>
+  <table>
+    <thead><tr><th>Region</th>${CAP_LADDER.map(l =>
+      `<th class="num">${l} L/s</th>`).join("")}</tr></thead>
+    <tbody>${ladderRows}</tbody>
+  </table>
+  <p>The default, ${CAP_LADDER[0]} L/s, is roughly one chamber's share of ordinary dry weather
+  household flow, and at that setting most of the network is comfortably under capacity, which is
+  what a working sewer should look like. Everything above it is a stress case, and the top of the
+  ladder is well beyond any plausible dry weather load. Use the ladder to find <b>which</b> reaches
+  give way first and in what order, because that ordering is stable and is what a placement needs.
+  Do not read a row of it as a prediction of how many chambers will surcharge.</p>
+
+  <div class="card warn">
+    <h4>Growth: the tipped set is the answer, not the after state</h4>
+    <p>A growth scenario adds load at chambers you choose and recomputes. Reaches that were already
+    over capacity were already a problem and a sensor rollout aimed at growth is not aimed at them.
+    The reaches that <b>tip</b>, from under capacity to over, are what growth actually caused, and
+    those are what the placement has to see. The same caution as C1 applies twice over here, since
+    both the base load and the added load are chosen.</p>
+  </div>`;
 }
 
 /* -------------------------------------------------------------------- Q&A */
@@ -457,6 +694,15 @@ function glossary() {
     ["Inflow and infiltration (I&I)", "Rainwater and groundwater entering the sewer through cracks, bad joints or illegal stormwater connections. The usual reason flows spike during rain, and the reason a detection threshold has to account for rainfall."],
     ["CWMS", "Community Wastewater Management Scheme: a council-owned system serving a town, as distinct from the state utility's metropolitan network. Because the council owns the asset, the data is often published openly."],
     ["SWMM", "Storm Water Management Model, the standard open-source simulator for part-full gravity systems. The right tool for sewers. EPANET models pressurised drinking-water networks and does not represent gravity sewers correctly."],
+    ["Overcapacity", "The condition where the flow arriving at a reach is more than the pipe was sized to carry, with nothing obstructing it. Distinct from a blockage: it happens at fixed, predictable bottlenecks rather than anywhere, and it is what growth causes. Same consequence, different geography."],
+    ["Reach", "One pipe between two chambers, the unit the capacity calculation works on. Flow, gradient, diameter and capacity are all properties of a reach, not of a chamber."],
+    ["Manning's equation", "The standard formula for flow in an open channel, relating flow to cross-sectional area, hydraulic radius, gradient and a roughness coefficient n. Used here reach by reach to work out how full each pipe runs."],
+    ["Manning's n", "The roughness coefficient in Manning's equation. Sewer pipe runs about 0.010 to 0.015 depending on material and age. Higher n means rougher pipe and less flow for the same gradient."],
+    ["Normal depth", "The depth flow settles at in a long uniform channel, where gravity and friction balance. Assuming it lets each reach be solved on its own, which is what makes a screening calculation cheap, and it is also why there is no backwater in this model."],
+    ["d/D, depth to diameter ratio", "How full a pipe is running, as a fraction of its diameter. The standard screening measure of capacity: utilities flag a sewer as capacity-deficient above a threshold d/D at the design storm."],
+    ["Flow accumulation", "Adding up all the load that drains to each point, walking the network downhill. On a DAG this is one pass in topological order and it is exact."],
+    ["Peak factor", "The multiplier from average dry weather flow to the peak condition capacity is judged at. Stands in for the daily peak, wet weather and infiltration together."],
+    ["Tipped reach", "A reach that was under capacity before a growth scenario and over capacity after it. The set of tipped reaches is what growth caused, as distinct from what was already a problem."],
   ];
   return `
   <h2>Glossary</h2>
@@ -471,6 +717,16 @@ function render(ctx) {
   document.getElementById("doc-qa").innerHTML = qa();
   document.getElementById("doc-method").innerHTML = method(ctx);
   document.getElementById("doc-glossary").innerHTML = glossary();
+
+  /* Part B costs a few hundred ms across all loaded regions, and the tab it lands
+     on is not the one the page opens on, so it is filled after first paint rather
+     than blocking it. Idle callback where available, a timeout where not. */
+  const fillB = () => {
+    const slot = document.getElementById("cap-register");
+    if (slot) slot.innerHTML = capacityRegister(ctx);
+  };
+  if (typeof requestIdleCallback === "function") requestIdleCallback(fillB, { timeout: 2000 });
+  else setTimeout(fillB, 0);
 }
 
 return { render };

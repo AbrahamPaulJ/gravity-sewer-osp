@@ -94,6 +94,9 @@ button.go:hover{filter:brightness(1.12)}
   border-radius:8px;font-size:11.5px;white-space:pre-wrap;margin-top:8px}
 .warnbox{background:#3a2c07;border:1px solid #7c5c10;color:#fde68a;padding:7px 9px;
   border-radius:8px;font-size:11.5px;margin-top:8px}
+.mini{background:var(--panel);color:var(--ink-dim);border:1px solid var(--line);
+  border-radius:6px;padding:3px 9px;font:inherit;font-size:11px;cursor:pointer}
+.mini:hover{color:var(--ink);border-color:var(--accent)}
 hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 
 #busy{position:absolute;inset:0;display:none;place-items:center;background:rgba(11,18,32,.72);
@@ -103,9 +106,9 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
   border-radius:9px;padding:8px 11px;font-family:ui-monospace,Menlo,Consolas,monospace;
   font-size:11.5px;display:none;pointer-events:none;line-height:1.6;max-width:260px}
 #hud.on{display:block}
-#legend{position:absolute;right:12px;bottom:12px;background:rgba(17,28,47,.95);
+#legend,#legend-cap{position:absolute;right:12px;bottom:12px;background:rgba(17,28,47,.95);
   border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:11.5px}
-#legend div{display:flex;align-items:center;gap:7px;margin:3px 0;color:var(--ink-dim)}
+#legend div,#legend-cap div{display:flex;align-items:center;gap:7px;margin:3px 0;color:var(--ink-dim)}
 .sw{width:16px;height:3px;border-radius:2px;display:inline-block}
 .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
 .badge{display:inline-block;padding:1px 7px;border-radius:999px;font-size:10.5px;
@@ -232,7 +235,11 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
       <select id="objective">
         <option value="nodes">Maximise nodes observed</option>
         <option value="length">Maximise pipe length observed</option>
+        <option value="surcharge">Maximise surcharging chambers observed</option>
       </select>
+      <p class="hint" id="obj-hint" hidden>Targets the chambers that overcapacity
+        actually threatens, taken from the capacity model, rather than treating
+        every chamber as an equally likely blockage.</p>
       <label>Algorithm</label>
       <select id="algo">
         <option value="greedy">Greedy set cover (CELF)</option>
@@ -265,7 +272,31 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
         <option value="coverage">Coverage</option>
         <option value="elevation">Invert level</option>
         <option value="depth">Chamber depth</option>
+        <option value="capacity">Capacity, d/D</option>
       </select>
+      <p class="hint" id="cap-hint" hidden></p>
+      <div class="row" id="p-capacity" hidden>
+        <label for="load">Load per chamber
+          <span class="val" id="load-val">0.05</span> L/s</label>
+        <input type="range" id="load" min="0.01" max="2" step="0.01" value="0.05">
+        <label for="peak">Peak factor <span class="val" id="peak-val">1.0</span></label>
+        <input type="range" id="peak" min="1" max="6" step="0.1" value="1">
+      </div>
+    </div>
+
+    <div class="grp collapsed" id="grp-growth">
+      <h3>Growth scenario</h3>
+      <p class="hint">New development connects to a main that was sized before it.
+        Click chambers on the map to connect it, then see which reaches tip from
+        under capacity to over. Needs the capacity colouring above.</p>
+      <label for="addload">Added load per connection
+        <span class="val" id="addload-val">2.0</span> L/s</label>
+      <input type="range" id="addload" min="0.1" max="20" step="0.1" value="2">
+      <div class="row" style="margin-top:8px">
+        <span class="hint"><b id="growth-count">0</b> connection point(s)</span>
+        <button id="growth-clear" class="mini">Clear</button>
+      </div>
+      <div id="growth-out"></div>
     </div>
 
     <div class="grp collapsed">
@@ -306,6 +337,15 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
         <div><span class="sw" style="background:#38bdf8"></span>covered</div>
         <div><span class="dot" style="background:#f43f5e"></span>sensor</div>
         <div><span class="dot" style="background:#fbbf24"></span>anchor</div>
+      </div>
+      <div id="legend-cap" hidden>
+        <div><span class="sw" style="background:#334155"></span>d/D low</div>
+        <div><span class="sw" style="background:#38bdf8"></span>half full</div>
+        <div><span class="sw" style="background:#facc15"></span>approaching capacity</div>
+        <div><span class="sw" style="background:#f43f5e"></span>over capacity</div>
+        <div><span class="sw" style="background:#e879f9"></span>tipped over by growth</div>
+        <div><span class="dot" style="background:#a3e635"></span>new connection</div>
+        <div><span class="dot" style="background:#f8fafc"></span>sensor</div>
       </div>
     </div>
     <div id="pane3d">
@@ -356,6 +396,7 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
 
 <script src="osp_data.js"></script>
 <script src="osp_core.js"></script>
+<script src="osp_capacity.js"></script>
 <script src="osp_docs.js"></script>
 <script src="osp_3d.js"></script>
 <script src="osp_ui.js"></script>

@@ -18,6 +18,8 @@ const S = {
   budget: 40, objective: "nodes", algo: "greedy",
   kup: 2, kdown: 2,
   colourBy: "coverage",
+  perNodeLoad: 0.05, peakFactor: 1,
+  growthPoints: [], addedLoad: 2,
   anchor: null, sensors: [], covered: null, lastResult: null,
   view: "2d", exaggeration: 30,
 };
@@ -206,6 +208,12 @@ const wy = p => (view.oy - p) / view.scale;
    like genuinely different colours, not a blur through a muddy midpoint. */
 const ELEV_STOPS = [[0, [37, 99, 235]], [0.33, [45, 212, 191]], [0.66, [250, 204, 21]], [1, [220, 38, 38]]];
 const DEPTH_STOPS = [[0, [186, 230, 253]], [0.5, [59, 130, 246]], [1, [190, 24, 93]]];
+/* Capacity ramp. Deliberately calm until it is not: quiet slate through to amber
+   only as d/D approaches the design limit, because a reach at 0.3 full is not news.
+   Anything actually over capacity is drawn in a separate alarm colour, not from
+   this ramp, so it cannot be confused with a merely busy reach. */
+const CAP_STOPS = [[0, [51, 65, 85]], [0.5, [56, 189, 248]],
+                   [0.75, [250, 204, 21]], [1, [249, 115, 22]]];
 function rampN(t, stops) {
   t = Math.max(0, Math.min(1, t));
   for (let i = 0; i < stops.length - 1; i++) {
@@ -227,6 +235,52 @@ function draw() {
   ctx.scale(dpr, dpr);
 
   const cov = S.covered, obs = G.obs;
+
+  /* Capacity is a per-EDGE quantity, unlike elevation and depth which are per node,
+     so it takes its own pass rather than being squeezed into the node ramp below.
+     Reaches over capacity are drawn last and thick, because they are the answer:
+     they are where growth causes an overflow, and the whole point of the mode is
+     that they should be legible at a glance without hunting. */
+  if (S.colourBy === "capacity") {
+    const cap = capacityState();
+    const gr = growthState();          // null when no growth points are placed
+    const tipped = gr ? gr.tippedSet : null;
+
+    /* Three passes so the important thing is never painted over by the
+       unimportant: under capacity, then already over, then tipped by growth.
+       Tipped is the answer to the question, so it is drawn last,
+       thickest, and in a colour used nowhere else on the canvas. */
+    for (const pass of [0, 1, 2]) {
+      for (let ei = 0; ei < G.edges.length; ei++) {
+        const isTipped = tipped ? tipped[ei] === 1 : false;
+        const isOver = cap.over[ei] === 1 && !isTipped;
+        const lvl = isTipped ? 2 : (isOver ? 1 : 0);
+        if (lvl !== pass) continue;
+        const t = Math.max(0, Math.min(1, cap.dOverD[ei]));
+        const style = lvl === 2 ? "#e879f9" : lvl === 1 ? "#f43f5e" : rampN(t, CAP_STOPS);
+        const pl = G.polylines[ei];
+        ctx.beginPath();
+        ctx.moveTo(sx(pl[0][0]), sy(pl[0][1]));
+        for (let k = 1; k < pl.length; k++) ctx.lineTo(sx(pl[k][0]), sy(pl[k][1]));
+        ctx.strokeStyle = style;
+        ctx.lineWidth = lvl === 2 ? 3.1 : lvl === 1 ? 2.6 : 1.3;
+        ctx.lineCap = "round";
+        ctx.stroke();
+      }
+    }
+
+    // Where the new development connects.
+    const gr2 = Math.max(3, Math.min(8, 4 * Math.sqrt(view.scale)));
+    ctx.fillStyle = "#a3e635"; ctx.strokeStyle = "#1a2e05"; ctx.lineWidth = 1.5;
+    for (const i of S.growthPoints) {
+      ctx.beginPath();
+      ctx.arc(sx(G.x[i]), sy(G.y[i]), gr2, 0, 6.284);
+      ctx.fill(); ctx.stroke();
+    }
+    drawSensors();
+    return;
+  }
+
   let lo = Infinity, hi = -Infinity;
   const scalar = S.colourBy === "elevation" ? G.inv
                : S.colourBy === "depth" ? null : null;
@@ -271,8 +325,18 @@ function draw() {
     }
   }
 
+  drawSensors();
+}
+
+function drawSensors() {
   const r = Math.max(2.5, Math.min(6, 3.2 * Math.sqrt(view.scale)));
-  ctx.fillStyle = "#f43f5e"; ctx.strokeStyle = "#4c0519"; ctx.lineWidth = 1;
+  // Sensors are drawn white-cored in capacity mode: the alarm red is taken by
+  // over-capacity reaches there, and two different meanings for one colour on the
+  // same canvas is how a map starts lying to you.
+  const capMode = S.colourBy === "capacity";
+  ctx.fillStyle = capMode ? "#f8fafc" : "#f43f5e";
+  ctx.strokeStyle = capMode ? "#0f172a" : "#4c0519";
+  ctx.lineWidth = capMode ? 1.6 : 1;
   for (const s of S.sensors) {
     if (s == null || s < 0 || s >= G.n) continue;
     ctx.beginPath(); ctx.arc(sx(G.x[s]), sy(G.y[s]), r, 0, 6.284); ctx.fill(); ctx.stroke();
@@ -282,6 +346,92 @@ function draw() {
     ctx.beginPath(); ctx.arc(sx(G.x[S.anchor]), sy(G.y[S.anchor]), r + 2.5, 0, 6.284);
     ctx.fill(); ctx.stroke();
   }
+}
+
+/* Capacity state, cached on the inputs that change it. Recomputing on every pan
+   and zoom would be wasteful: the solver bisects per reach, so this is the one
+   part of the draw path worth memoising. */
+let _capCache = null, _capKey = null;
+function capacityState() {
+  const key = [S.region, S.perNodeLoad, S.peakFactor].join("|");
+  if (_capCache && _capKey === key) return _capCache;
+  _capCache = OSPCapacity.capacityState(G, OSPCore, {
+    perNode: S.perNodeLoad, peakFactor: S.peakFactor,
+  });
+  _capKey = key;
+  updateCapHint(_capCache);
+  return _capCache;
+}
+
+/* Growth scenario, cached alongside the base capacity state.
+   Returns null when nothing has been placed, so the draw path can skip it. */
+let _growthCache = null, _growthKey = null;
+function growthState() {
+  if (!S.growthPoints.length) return null;
+  const key = [S.region, S.perNodeLoad, S.peakFactor, S.addedLoad,
+               S.growthPoints.join(",")].join("|");
+  if (_growthCache && _growthKey === key) return _growthCache;
+
+  const base = capacityState();
+  const additions = {};
+  for (const i of S.growthPoints) additions[i] = (additions[i] || 0) + S.addedLoad;
+  const g = OSPCapacity.growth(G, OSPCore, base, additions,
+    { perNode: S.perNodeLoad, peakFactor: S.peakFactor });
+
+  const tippedSet = new Uint8Array(G.edges.length);
+  for (const e of g.tipped) tippedSet[e] = 1;
+  g.tippedSet = tippedSet;
+
+  _growthCache = g; _growthKey = key;
+  updateGrowthOut(g);
+  return g;
+}
+
+function clearGrowth() {
+  S.growthPoints = [];
+  _growthCache = null; _growthKey = null;
+  $("growth-count").textContent = "0";
+  $("growth-out").innerHTML = "";
+  draw();
+}
+
+function updateGrowthOut(g) {
+  const el = $("growth-out");
+  if (!el) return;
+  const s = g.summary;
+  if (!s.edgesTipped) {
+    el.innerHTML = `<div class="warnbox">Adding ${s.addedLoad} L/s tips nothing.
+      The network absorbs it. Raise the added load, the peak factor, or connect
+      further up a branch that is already close to capacity.</div>`;
+    return;
+  }
+  el.innerHTML =
+    `<div class="card bad" style="margin:10px 0 0">
+       <div class="big">${s.edgesTipped}</div>
+       <div class="bigsub">reaches tip from under capacity to over,
+         ${fmtM(s.lengthTipped)} of pipe</div>
+       <div class="stat"><span>Added load</span><span>${s.addedLoad} L/s</span></div>
+       <div class="stat"><span>Reaches over, before</span><span>${s.edgesOverBefore}</span></div>
+       <div class="stat"><span>Reaches over, after</span><span>${s.edgesOverAfter}</span></div>
+       <div class="stat"><span>Chambers surcharging</span>
+         <span>${s.nodesSurchargedBefore} to ${s.nodesSurchargedAfter}</span></div>
+     </div>`;
+}
+
+function updateCapHint(cap) {
+  const el = $("cap-hint");
+  if (!el) return;
+  const s = cap.summary;
+  const pct = (100 * s.shareOver).toFixed(1);
+  el.innerHTML =
+    `<b>${s.edgesOver}</b> of ${s.edges} reaches over capacity (${pct}%), ` +
+    `<b>${fmtM(s.lengthOver)}</b> of pipe, ${s.nodesSurcharged} chambers surcharging. ` +
+    `<span class="warn">Screening estimate only: Manning normal depth, no backwater, ` +
+    `not a hydraulic model.</span>` +
+    (s.diameterProxied
+      ? ` Reach diameter is the smaller of the two chamber values, a proxy.` : "") +
+    (s.slopeClamped
+      ? ` ${s.slopeClamped} reach(es) had no usable fall and were clamped.` : "");
 }
 
 /* pan / zoom / pick */
@@ -344,8 +494,26 @@ cv.addEventListener("mousemove", e => {
       : '<span style="color:#64748b">not observable</span>');
 });
 cv.addEventListener("click", e => {
-  if (moved > 4 || S.mode !== "anchor" || !G) return;
+  if (moved > 4 || !G) return;
   const r = cv.getBoundingClientRect();
+
+  /* In capacity colouring a click places or removes a growth connection, which is
+     a different act from choosing a sensor anchor. Any node can take a new
+     connection: a development connects to the main, it does not need a chamber
+     you could stand a sensor in. */
+  if (S.colourBy === "capacity") {
+    const j = pickNode(e.clientX - r.left, e.clientY - r.top);
+    if (j < 0) return;
+    const at = S.growthPoints.indexOf(j);
+    if (at >= 0) S.growthPoints.splice(at, 1); else S.growthPoints.push(j);
+    _growthCache = null; _growthKey = null;
+    $("growth-count").textContent = String(S.growthPoints.length);
+    if (!S.growthPoints.length) $("growth-out").innerHTML = "";
+    draw();
+    return;
+  }
+
+  if (S.mode !== "anchor") return;
   const i = pickNode(e.clientX - r.left, e.clientY - r.top);
   if (i < 0) return;
   if (!G.candidate[i]) {
@@ -367,14 +535,36 @@ async function run() {
   await new Promise(r => setTimeout(r, 10));
   try {
     ensureObs();
+
+    /* The overcapacity objective is a per-node weight vector, not a string: 1 on
+       chambers the capacity model says surcharge, 0 elsewhere. Everything routes
+       through weightOf, so passing this makes every algorithm target overcapacity
+       without any of them knowing what overcapacity is. When growth points are
+       placed, the chambers growth NEWLY surcharges are the target, because those
+       are the ones a future rollout has to catch; otherwise it is the ones already
+       surcharging today. */
+    let objective = S.objective, marked = null;
+    if (S.objective === "surcharge") {
+      const gr = growthState();
+      marked = gr ? gr.after.surcharged : capacityState().surcharged;
+      const w = new Float64Array(G.n);
+      let anyMarked = 0;
+      for (let i = 0; i < G.n; i++) if (marked[i]) { w[i] = 1; anyMarked++; }
+      if (!anyMarked) throw new Error(
+        "No chamber is surcharging at this load, so there is nothing for the " +
+        "overcapacity objective to target. Raise the load per chamber or the peak " +
+        "factor under Colour by, or place growth connections.");
+      objective = { w };
+    }
+
     let sensors = [], extra = {};
     switch (S.algo) {
-      case "greedy": sensors = C.greedy(G, S.budget, S.objective); break;
+      case "greedy": sensors = C.greedy(G, S.budget, objective); break;
       case "upstream": { const u = C.upstreamSize(G); sensors = C.topBy(G, S.budget, i => u[i]); break; }
       case "outdeg": sensors = C.topBy(G, S.budget, i => G.outDeg[i]); break;
       case "indeg": sensors = C.topBy(G, S.budget, i => G.inDeg[i]); break;
       case "between": { const b = C.betweenness(G); sensors = C.topBy(G, S.budget, i => b[i]); break; }
-      case "random": { const r = C.randomPlace(G, S.budget, S.objective); sensors = r.sensors; extra.mean = r.mean; break; }
+      case "random": { const r = C.randomPlace(G, S.budget, objective); sensors = r.sensors; extra.mean = r.mean; break; }
       case "twoupdown": { const r = C.twoUpTwoDown(G, S.budget, S.kup, S.kdown); sensors = r.sensors; extra.anchors = r.anchors.length; break; }
       case "custom": {
         const r = await runCustom(G, $("code").value, S.budget);
@@ -389,6 +579,9 @@ async function run() {
     S.sensors = sensors;
     const res = C.score(G, sensors);
     S.covered = res.covered;
+    // Coverage of all nodes is not the headline when the objective is overcapacity:
+    // "24 of 183 surcharging chambers" is the number that means something.
+    if (marked) extra.marked = C.scoreMarked(G, sensors, marked);
     S.lastResult = { ...res, sensors: sensors.length, extra };
     renderResult(); saveScore(); draw(); render3D();
   } catch (err) {
@@ -428,14 +621,28 @@ function runAnchor() {
 
 function renderResult() {
   const r = S.lastResult, o = G.obs;
-  const main = S.objective === "length"
-    ? (o.universeLen ? 100 * r.len / o.universeLen : 0)
-    : (o.universeSize ? 100 * r.nodes / o.universeSize : 0);
   const e = r.extra || {};
+
+  /* The headline has to be the quantity that was actually optimised. Reporting
+     "21% of all observable nodes" after optimising for surcharging chambers would
+     understate the result and answer a question nobody asked: most of the network
+     is not at risk of overcapacity, and deliberately not covering it is the point. */
+  const marked = e.marked;
+  const main = marked ? (marked.total ? 100 * marked.hit / marked.total : 0)
+    : S.objective === "length"
+      ? (o.universeLen ? 100 * r.len / o.universeLen : 0)
+      : (o.universeSize ? 100 * r.nodes / o.universeSize : 0);
+  const sub = marked
+    ? `of the ${marked.total} surcharging chamber${marked.total === 1 ? "" : "s"} observed,
+       using ${r.sensors} sensor${r.sensors === 1 ? "" : "s"}`
+    : `of the observable ${S.objective === "length" ? "pipe length" : "nodes"} covered,
+       using ${r.sensors} sensor${r.sensors === 1 ? "" : "s"}`;
+
   $("result").innerHTML = `
     <div class="big">${main.toFixed(1)}%</div>
-    <div class="bigsub">of the observable ${S.objective === "length" ? "pipe length" : "nodes"} covered,
-      using ${r.sensors} sensor${r.sensors === 1 ? "" : "s"}</div>
+    <div class="bigsub">${sub}</div>
+    ${marked ? `<div class="stat"><span>Surcharging chambers seen</span>
+      <span>${marked.hit} / ${marked.total}</span></div>` : ""}
     <div class="stat"><span>Nodes covered</span><span>${r.nodes} / ${o.universeSize}</span></div>
     <div class="stat"><span>Length covered</span><span>${fmtM(r.len)} / ${fmtM(o.universeLen)}</span></div>
     <div class="stat"><span>Per sensor</span><span>${r.sensors ? (r.nodes / r.sensors).toFixed(2) : "0"} nodes</span></div>
@@ -493,6 +700,8 @@ function renderLB() {
 /* ------------------------------------------------------------ UI wiring */
 function setRegion(k) {
   S.region = k; G = buildGraph(k);
+  _capCache = null; _capKey = null;      // capacity is per region, never carry it over
+  _growthCache = null; _growthKey = null; S.growthPoints = [];
   S.sensors = []; S.covered = null; S.anchor = null; S.lastResult = null;
   const st = G.stats;
   const measured = G.role === "measured";
@@ -590,7 +799,36 @@ function init() {
   $("model").addEventListener("change", e => { S.model = e.target.value; syncParamUI(); ensureObs(); draw(); render3D(); });
   $("objective").addEventListener("change", e => { S.objective = e.target.value; renderLB(); });
   $("algo").addEventListener("change", e => { S.algo = e.target.value; syncParamUI(); });
-  $("colourby").addEventListener("change", e => { S.colourBy = e.target.value; draw(); render3D(); });
+  $("colourby").addEventListener("change", e => {
+    S.colourBy = e.target.value;
+    const on = S.colourBy === "capacity";
+    $("p-capacity").hidden = !on;
+    $("cap-hint").hidden = !on;
+    $("legend").hidden = on;          // the coverage legend means nothing here
+    $("legend-cap").hidden = !on;
+    $("grp-growth").classList.toggle("collapsed", !on);
+    draw(); render3D();
+  });
+  $("addload").addEventListener("input", e => {
+    S.addedLoad = +e.target.value;
+    $("addload-val").textContent = S.addedLoad.toFixed(1);
+    _growthCache = null; _growthKey = null;
+    draw();
+  });
+  $("growth-clear").addEventListener("click", clearGrowth);
+  $("objective").addEventListener("change", () => {
+    $("obj-hint").hidden = S.objective !== "surcharge";
+  });
+  $("load").addEventListener("input", e => {
+    S.perNodeLoad = +e.target.value;
+    $("load-val").textContent = S.perNodeLoad.toFixed(2);
+    draw();
+  });
+  $("peak").addEventListener("input", e => {
+    S.peakFactor = +e.target.value;
+    $("peak-val").textContent = S.peakFactor.toFixed(1);
+    draw();
+  });
   $("useorg").addEventListener("change", e => { S.useOrg = e.target.checked; ensureObs(); draw(); render3D(); });
   bindRange("c", "c", () => { ensureObs(); draw(); render3D(); });
   bindRange("drop", "drop", () => { ensureObs(); draw(); render3D(); });
