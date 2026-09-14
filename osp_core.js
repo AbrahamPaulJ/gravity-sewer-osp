@@ -43,7 +43,17 @@
 /* ------------------------------------------------------------------ graph */
 /* Accepts the parallel-array node format written by tools/build_demo_data.py:
      nodes: {x, y, inv, cover, coverSrc, dia, mh, org}
-   coverSrc: 1 surveyed, 2 contour-interpolated, 3 transferred constant. */
+   coverSrc: 1 surveyed, 2 contour-interpolated, 3 transferred constant.
+
+   pipes is optional and PER EDGE, parallel to edges/lengths/polylines, written by
+   tools/build_demo_data.py from the same harvest as the geometry:
+     pipes: {dia, idia, mat, year, grade, joint}
+   dia and idia are metres (idia 0 where the publisher does not carry it), mat and
+   joint are indices into raw payload `codes`, year is a four-digit construction
+   year (0 where absent), grade is the publisher's own gradient in percent.
+
+   Everything downstream must tolerate its absence: only regions harvested since
+   the attribute fetch carry it, and the statewide layer may never. */
 function buildGraph(raw) {
   const nd = raw.nodes;
   const n = nd.x.length;
@@ -86,10 +96,24 @@ function buildGraph(raw) {
   const candidate = new Uint8Array(n);
   for (let i = 0; i < n; i++) candidate[i] = anyMh ? mh[i] : 1;
 
+  // Per-edge pipe attributes, typed for the same reason the node arrays are. Null
+  // when the region was harvested before the attribute fetch existed, so callers
+  // test for it rather than assuming it.
+  const m = raw.edges.length;
+  const okLen = a => Array.isArray(a) && a.length === m;
+  const pipes = raw.pipes && okLen(raw.pipes.dia) ? {
+    dia: Float64Array.from(raw.pipes.dia),
+    idia: okLen(raw.pipes.idia) ? Float64Array.from(raw.pipes.idia) : null,
+    mat: okLen(raw.pipes.mat) ? Int8Array.from(raw.pipes.mat) : null,
+    year: okLen(raw.pipes.year) ? Int16Array.from(raw.pipes.year) : null,
+    grade: okLen(raw.pipes.grade) ? Float64Array.from(raw.pipes.grade) : null,
+    joint: okLen(raw.pipes.joint) ? Int8Array.from(raw.pipes.joint) : null,
+  } : null;
+
   return {
     key: raw.key, label: raw.label, note: raw.note, role: raw.role, stats: raw.stats,
     n, x, y, inv, cover, coverSrc, dia, org, mh, candidate, hasManholes: anyMh,
-    outPtr, outIdx, inPtr, inIdx, outDeg, inDeg, lenIn,
+    outPtr, outIdx, inPtr, inIdx, outDeg, inDeg, lenIn, pipes,
     edges: raw.edges, polylines: raw.polylines, lengths: raw.lengths,
     bounds: { minx, maxx, miny, maxy },
     obs: null, obsKey: null, ceil: null, ceilKey: null,
@@ -359,6 +383,28 @@ const weightOf = (g, i, obj) =>
   : obj === "length" ? g.lenIn[i]
   : 1;
 
+/* The objective as a plain per-node weight vector.
+
+   weightOf answers one node at a time, which is what the coverage loops want.
+   The topology heuristics want the whole vector, because they aggregate weight
+   over a neighbourhood rather than over a covered set. Same numbers either way,
+   so both read from here and there is one definition of what an objective means.
+
+   This is what makes every algorithm weightable rather than only greedy: a
+   heuristic that used to count nodes now sums weight over the same set, which is
+   the same statement with the multiplicity that the objective asks for. Under the
+   default objective every weight is 1 and each of them reduces exactly to the
+   counting version it replaced. */
+function weightVector(g, obj) {
+  const w = new Float64Array(g.n);
+  for (let i = 0; i < g.n; i++) w[i] = weightOf(g, i, obj);
+  return w;
+}
+
+/* True when the objective is the plain node count, so callers can skip the
+   weighted path and reuse the cached unweighted result. */
+const isUnweighted = obj => !obj || obj === "nodes";
+
 /* ------------------------------------------------------------ algorithms */
 /* Lazy (CELF) greedy. Coverage is submodular, so a cached marginal gain can only
    overstate the true gain; re-checking the top entry before taking it is therefore
@@ -430,21 +476,41 @@ function topoOrder(g) {
   g._topo = order; return order;
 }
 
-function upstreamSize(g) {
-  if (g._up) return g._up;
-  const size = new Int32Array(g.n);
+/* Total weight strictly upstream of each node.
+
+   With no objective this is the node count and is cached, which is what the
+   starved-flow term and the rule-of-thumb anchor order have always used. Given a
+   weight vector it accumulates weight instead, so "largest upstream catchment"
+   becomes "largest upstream risk" without changing the traversal: one pass in
+   topological order, each node adding its own weight plus everything above it. */
+function upstreamSize(g, w) {
+  if (!w && g._up) return g._up;
+  const acc = new Float64Array(g.n);
   for (const v of topoOrder(g))
-    for (let p = g.inPtr[v]; p < g.inPtr[v + 1]; p++) size[v] += size[g.inIdx[p]] + 1;
-  g._up = size; return size;
+    for (let p = g.inPtr[v]; p < g.inPtr[v + 1]; p++) {
+      const u = g.inIdx[p];
+      acc[v] += acc[u] + (w ? w[u] : 1);
+    }
+  if (!w) { g._up = acc; }
+  return acc;
 }
 
 /* Brandes betweenness, unweighted. */
-function betweenness(g) {
-  if (g._btw) return g._btw;
+/* Brandes betweenness, unweighted edges, optionally VERTEX weighted.
+
+   Each source contributes its dependency scaled by its own weight, so a path is
+   worth what its origin is worth. That is the standard vertex-weighted reading of
+   betweenness and it keeps the meaning intact: a chamber scores for being on the
+   way out of places that matter, rather than for being on the way out of many
+   places. With no weights every source contributes 1 and this is the original. */
+function betweenness(g, w) {
+  if (!w && g._btw) return g._btw;
   const n = g.n, CB = new Float64Array(n);
   const sigma = new Float64Array(n), dist = new Int32Array(n), delta = new Float64Array(n);
   const preds = new Array(n);
   for (let s = 0; s < n; s++) {
+    const ws = w ? w[s] : 1;
+    if (ws === 0) continue;            // a source worth nothing contributes nothing
     const stack = [], queue = [s];
     sigma.fill(0); dist.fill(-1); delta.fill(0);
     for (let i = 0; i < n; i++) preds[i] = null;
@@ -461,10 +527,30 @@ function betweenness(g) {
     while (stack.length) {
       const w = stack.pop();
       if (preds[w]) for (const v of preds[w]) delta[v] += (sigma[v] / sigma[w]) * (1 + delta[w]);
-      if (w !== s) CB[w] += delta[w];
+      if (w !== s) CB[w] += delta[w] * ws;
     }
   }
-  g._btw = CB; return CB;
+  if (!w) { g._btw = CB; }
+  return CB;
+}
+
+/* Degree, weighted.
+
+   Plain in and out degree count the pipes at a chamber. Weighted, they sum what
+   the chambers on the other end of those pipes are worth, so a chamber taking
+   three pipes off worthless ground scores below one taking two off the oldest
+   small-bore clay in the network. Under the default objective every neighbour is
+   worth 1 and this is the degree again. */
+function degreeWeight(g, w, dir) {
+  const out = new Float64Array(g.n);
+  const ptr = dir === "in" ? g.inPtr : g.outPtr;
+  const idx = dir === "in" ? g.inIdx : g.outIdx;
+  for (let v = 0; v < g.n; v++) {
+    let a = 0;
+    for (let p = ptr[v]; p < ptr[v + 1]; p++) a += w ? w[idx[p]] : 1;
+    out[v] = a;
+  }
+  return out;
 }
 
 /* The anchor plus k manholes upstream and k downstream, breadth-first. */
@@ -500,10 +586,16 @@ function collectUpDown(g, anchor, kup, kdown) {
    k-up and k-down manholes are taken as the rule dictates, feasible or not, because that
    is exactly what the rule says to do and where its cost shows up. Chambers only: a rule
    that named a spot with no manhole could not be followed on site. */
-function twoUpTwoDown(g, budget, kup, kdown) {
+/* The rule of thumb, network wide. Anchors are taken in order of upstream worth,
+   which under the default objective is upstream node count exactly as before.
+   The RULE itself is not weighted and must not be: it says two up and two down
+   whether or not those chambers are worth anything, and the cost of that is
+   precisely what the comparison is for. Only the choice of anchor follows the
+   objective. */
+function twoUpTwoDown(g, budget, kup, kdown, obj) {
   const per = 1 + kup + kdown;
   const nAnchors = Math.max(1, Math.floor(budget / per));
-  const up = upstreamSize(g);
+  const up = upstreamSize(g, isUnweighted(obj) ? null : weightVector(g, obj));
   const cand = feasible(g);
   cand.sort((a, b) => up[b] - up[a]);
 
@@ -531,8 +623,13 @@ function randomPlace(g, budget, obj, trials, rnd) {
     const pick = [], copy = pool.slice();
     for (let i = 0; i < budget && copy.length; i++)
       pick.push(copy.splice(Math.floor(rnd() * copy.length), 1)[0]);
+    /* Scored through weightOf like everything else. This used to read
+         val = obj === "length" ? r.len : r.nodes
+       which silently ignored a weight vector and fell back to the node count, so
+       the random baseline was never competing on the stated objective at all. */
     const r = score(g, pick);
-    const val = obj === "length" ? r.len : r.nodes;
+    let val = 0;
+    for (let i = 0; i < g.n; i++) if (r.covered[i]) val += weightOf(g, i, obj);
     sum += val;
     if (val > bestVal) { bestVal = val; best = pick; }
   }
@@ -562,7 +659,7 @@ function greedyForced(g, forced, budget, obj) {
 
 return {
   buildGraph, ceilings, computeObservable, obsOf, depthStats,
-  score, scoreMarked, weightOf, feasible,
+  score, scoreMarked, weightOf, weightVector, isUnweighted, feasible, degreeWeight,
   greedy, greedyForced, topBy, topoOrder, upstreamSize, betweenness,
   collectUpDown, twoUpTwoDown, randomPlace,
 };
