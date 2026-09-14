@@ -69,7 +69,9 @@
 
 <div class="tabs" id="tabs">
   <button data-tab="anatomy" aria-selected="true">1. Anatomy of one manhole</button>
-  <button data-tab="block" aria-selected="false">2. Where it backs up, where it spills</button>
+  <button data-tab="chain" aria-selected="false">2. A run of manholes</button>
+  <button data-tab="junc" aria-selected="false">3. A chamber with several pipes in</button>
+  <button data-tab="block" aria-selected="false">4. Where it backs up, where it spills</button>
 </div>
 
 <div id="wrap">
@@ -90,6 +92,33 @@
       <input type="range" id="flow" min="0" max="290" step="5" value="60">
     </div>
 
+    <div class="grp t-junc hide">
+      <span class="lab">How many pipes arrive</span>
+      <div class="seg" id="jin">
+        <button data-j="1" aria-pressed="false">1 in</button>
+        <button data-j="2" aria-pressed="false">2 in</button>
+        <button data-j="3" aria-pressed="true">3 in</button>
+      </div>
+      <div style="font-size:11.5px;color:var(--ink-faint);margin-top:9px" id="jin-hint"></div>
+    </div>
+
+    <div class="grp t-junc hide">
+      <span class="lab">The pipe out</span>
+      <div class="seg" id="jout">
+        <button data-o="0" aria-pressed="true">Same size</button>
+        <button data-o="1" aria-pressed="false">One size up</button>
+      </div>
+      <div style="font-size:11.5px;color:var(--ink-faint);margin-top:9px" id="jout-hint"></div>
+    </div>
+
+    <div class="grp t-junc hide">
+      <span class="lab">Geometry</span>
+      <div class="row"><span>Chamber depth</span><span class="val" id="v-jdep">2.60 m</span></div>
+      <input type="range" id="jdep" min="1.2" max="4" step="0.05" value="2.6">
+      <div class="row"><span>Inlets above the outlet</span><span class="val" id="v-jrise">0.12 m</span></div>
+      <input type="range" id="jrise" min="0" max="0.6" step="0.01" value="0.12">
+    </div>
+
     <div class="grp t-block hide">
       <span class="lab">Where is the blockage</span>
       <div class="seg" id="bloc">
@@ -97,6 +126,23 @@
         <button data-b="chamber" aria-pressed="false">At chamber B</button>
       </div>
       <div style="font-size:11.5px;color:var(--ink-faint);margin-top:9px" id="bloc-hint"></div>
+    </div>
+
+    <div class="grp t-chain hide">
+      <span class="lab">The run</span>
+      <div class="row"><span>Chambers</span><span class="val" id="v-n">5</span></div>
+      <input type="range" id="nmh" min="3" max="7" step="1" value="5">
+      <div class="row"><span>Spacing</span><span class="val" id="v-sp">60 m</span></div>
+      <input type="range" id="sp" min="20" max="120" step="5" value="60">
+    </div>
+
+    <div class="grp t-chain hide">
+      <span class="lab">The two slopes</span>
+      <div class="row"><span>Pipe gradient</span><span class="val" id="v-pg">1.00%</span></div>
+      <input type="range" id="pg" min="0.2" max="4" step="0.05" value="1">
+      <div class="row"><span>Ground slope</span><span class="val" id="v-gs">0.60%</span></div>
+      <input type="range" id="gs" min="-0.5" max="4" step="0.05" value="0.6">
+      <div style="font-size:11.5px;color:var(--ink-faint);margin-top:9px" id="chain-hint"></div>
     </div>
 
     <div class="grp t-block hide">
@@ -121,6 +167,28 @@
     </div>
 
     <div class="note t-block hide" id="verdict"></div>
+
+    <div class="cards t-chain hide">
+      <div class="card" id="k-up"><div class="k">Depth, first chamber</div>
+        <div class="v">-</div><div class="s">lid to invert</div></div>
+      <div class="card" id="k-dn"><div class="k">Depth, last chamber</div>
+        <div class="v">-</div><div class="s">lid to invert</div></div>
+      <div class="card" id="k-fall"><div class="k">Over the run</div>
+        <div class="v">-</div><div class="s">length, and what depth did</div></div>
+    </div>
+
+    <div class="note t-chain hide" id="chain-verdict"></div>
+
+    <div class="cards t-junc hide">
+      <div class="card" id="j-in"><div class="k">Pipes arriving</div>
+        <div class="v">-</div><div class="s">plus one leaving</div></div>
+      <div class="card" id="j-head"><div class="k">Branch floods above</div>
+        <div class="v">-</div><div class="s">rise from the invert</div></div>
+      <div class="card" id="j-lost"><div class="k">Invert step across</div>
+        <div class="v">-</div><div class="s">inlet against outlet</div></div>
+    </div>
+
+    <div class="note t-junc hide" id="junc-verdict"></div>
 
     <div class="prose t-anatomy">
       <h2>So is a manhole just an open pipe end?</h2>
@@ -164,8 +232,140 @@
          That is the 5 to 6 times cost difference in the project scope.</p>
     </div>
 
+    <div class="prose t-chain hide">
+      <h2>Question 2: why is every manhole a different depth?</h2>
+      <p>The first tab draws one chamber and lets you set its depth with a slider, which quietly
+      implies depth is something a chamber <i>has</i>. It is not. A chamber is just the vertical
+      distance between two lines that were drawn for unrelated reasons:</p>
+      <ul>
+        <li>the <b>ground surface</b>, which falls at whatever the street happens to fall at, and</li>
+        <li>the <b>pipe</b>, which falls at whatever gradient keeps sewage moving fast enough not
+        to drop its solids &mdash; roughly 1% for a 150&nbsp;mm main, and not negotiable.</li>
+      </ul>
+      <p>Nobody reconciles the two. Set the ground slope below the pipe gradient and the run
+      buries itself deeper with every reach; set it above and the pipe climbs toward the surface
+      until the designer has to give up and start again with a drop structure. Drag the two
+      sliders against each other and watch the dimension lines on each chamber.</p>
+
+      <h3>Why this is the reason the sandbox exists in the shape it does</h3>
+      <p>Chamber depth is the single most important number in the placement model, because the
+      water backing up behind a blockage has to rise <i>within the chamber</i> far enough for a
+      sensor to tell it apart from a normal day. A two metre chamber gives you two metres of
+      headroom to detect in. A one metre chamber gives you one, and it spills sooner.</p>
+      <p>And depth is published almost nowhere. Because it drifts along every run for the reason
+      above, there is no single figure that stands in for a network: in the demonstration data it
+      runs from about 1.9&nbsp;m at the tenth percentile to 3.9&nbsp;m at the ninetieth, in one
+      small suburb. That is why the tool reconstructs it as cover level minus invert level for
+      every chamber, and why it reports the error of that reconstruction rather than asserting
+      a number.</p>
+
+      <h3>Spacing, and what it costs you</h3>
+      <p>Chambers exist so that a person and a jetting hose can reach the pipe, so their spacing
+      is set by hose length and by the rule that you must be able to see from one to the next, not
+      by anything to do with sensing. Typical runs sit around 50 to 80&nbsp;m.</p>
+      <p>That spacing is also the resolution limit of a level-sensor network. Published work on
+      identifying blockages from level alone finds detection degrading with distance from the
+      obstruction and recommends spacing <b>no more than about 100&nbsp;m</b> if you want to
+      locate the problem rather than merely notice it. Push the spacing slider past that and the
+      run still works as a sewer; it stops working as an instrument.</p>
+
+    </div>
+
+    <div class="prose t-junc hide">
+      <h2>Question 3: what happens when several pipes arrive at once?</h2>
+      <p>The first two tabs assume one pipe in and one out, which is most chambers but not all. In
+      the demonstration network <b>136 of 1,010 chambers take two incoming pipes and 21 take
+      three</b>. This is a detail view of one of them, drawn at true proportions with the soil
+      taken away, because at the squashed scale of a street run the branches would be shorter than
+      the chamber is wide.</p>
+
+      <h3>Why a junction is the first place you would put a sensor</h3>
+      <p>Everything arriving down any of these pipes passes through this one chamber. A sensor
+      here covers several upstream lines at once, for the price of one installation, one battery
+      and one site visit. That is a genuinely better deal than the same sensor on a plain through
+      chamber, and it is the intuition behind every centrality-based placement heuristic in the
+      sandbox: chambers that many paths run through are worth more.</p>
+
+      <h3>What it costs you in return</h3>
+      <p>A rise here says something is wrong <i>upstream</i>. On a through chamber that is one
+      direction. Here it is two or three, and the sensor cannot tell you which. You have bought
+      coverage and spent precision. Whether that is the right trade depends on whether the job is
+      to <i>notice</i> a problem or to <i>find</i> it &mdash; and the honest answer is that a
+      level sensor was always better at noticing.</p>
+
+      <h3>Do the inlets sit above the outlet, and is the outlet bigger?</h3>
+      <p>Both are reasonable expectations and both were worth checking rather than assuming, so
+      they were tested against every pipe in the demonstration network, reading each pipe's own
+      upstream and downstream invert and nominal diameter from the publisher's mains layer.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;margin:12px 0">
+        <thead><tr>
+          <th style="text-align:left;padding:5px 8px;border:1px solid #22314d">Inlet against outlet invert</th>
+          <th style="text-align:left;padding:5px 8px;border:1px solid #22314d">All chambers</th>
+          <th style="text-align:left;padding:5px 8px;border:1px solid #22314d">Junctions only</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="padding:5px 8px;border:1px solid #22314d">inlet <b>above</b> the outlet</td>
+            <td style="padding:5px 8px;border:1px solid #22314d">17.9%</td>
+            <td style="padding:5px 8px;border:1px solid #22314d"><b>46.2%</b></td></tr>
+          <tr><td style="padding:5px 8px;border:1px solid #22314d">exactly level</td>
+            <td style="padding:5px 8px;border:1px solid #22314d">81.7%</td>
+            <td style="padding:5px 8px;border:1px solid #22314d">53.2%</td></tr>
+          <tr><td style="padding:5px 8px;border:1px solid #22314d">inlet below the outlet</td>
+            <td style="padding:5px 8px;border:1px solid #22314d">0.4%</td>
+            <td style="padding:5px 8px;border:1px solid #22314d">0.6%</td></tr>
+        </tbody>
+      </table>
+      <p>So the answer splits. A <b>through</b> chamber is usually built level, which is why the
+      through pipe here is drawn that way. At a <b>junction</b> it is close to a coin toss: 46% of
+      arriving pipes come in above the outlet, by a median of nothing but a ninetieth percentile
+      of 153&nbsp;mm. The default branch soffit on the slider sits inside that range.</p>
+      <p>On diameter the expectation does <i>not</i> hold. The pipe out is the same nominal size
+      as the largest pipe in at <b>96.9%</b> of chambers, larger at only 2.7%, and smaller at 0.4%
+      &mdash; three records that all look like errors. A sewer steps up a size at intervals along
+      a trunk, not at every chamber, so drawing the outlet the same size is the honest default.</p>
+      <p>Switch the outlet to one size up and watch the pipes in rise. Sizes are matched at the
+      <b>soffit</b>, not the invert: the tops align, so a larger pipe out has to be met by pipes
+      arriving higher above its invert. <b>That is one of the two mechanisms that puts an inlet
+      above an outlet</b>, and it is forced by geometry rather than chosen. The slider is the
+      other: whatever further fall the designer allowed across the chamber.</p>
+      <p>The outgoing invert is the datum throughout. It is the floor of the chamber, the lowest
+      thing in it, and the level everything drains to, so it is what the depth is measured to and
+      what the arriving pipes are set above. Nothing here moves it.</p>
+
+      <h3>Why the measurement literature cares about this</h3>
+      <p>Alshami et al. (2023) instrumented twelve Hong Kong manholes for a year and recorded, for
+      each, the cover level, the invert level, and the diameter and invert of every inlet and
+      outlet pipe. Ten of the twelve had two or three inlets. Their finding is that the standard
+      reading of a flow sensor &mdash; that it is valid while the sewage level stays within the
+      diameter of the outlet pipe &mdash; <i>"only holds true for manholes with one inlet and
+      outlet pipe and reasonable flow velocities"</i>, and that manholes with multiple inlets show
+      <i>"increased inconsistency in flow direction"</i>, sometimes reporting negative velocity.</p>
+      <p>Which is the sharper version of this tab's point. A junction is the best place to put a
+      sensor by coverage and one of the worst by signal quality, and nothing in the topology tells
+      you that. Note also what is <b>not</b> in the library: no paper here discusses soffit or
+      obvert matching at all, so the convention above is drawn from the data rather than cited
+      from the corpus.</p>
+
+      <h3>And it changes where a spill can come out</h3>
+      <p>Look at where the branches meet the chamber. They arrive <b>above</b> the through invert,
+      benched down into the main channel so their flow joins without ponding &mdash; a branch laid
+      lower than the main it joins would simply back up.</p>
+      <p>It is tempting to read that as a cap on how high the water can climb. It is not. Water
+      backing up behind a blockage keeps rising past every soffit it meets; what changes at the
+      branch soffit is <b>the set of places the water can reach</b>. Above that line the branch is
+      flooded too, so every opening along it &mdash; another chamber lid, a property relief gully
+      in someone's back garden &mdash; becomes a candidate escape point.</p>
+      <p>Drag the soffit slider and watch the dashed ring move. A blockage <i>below</i> this
+      chamber can therefore surface on a street nobody was watching, several branches away from
+      the pipe that actually caused it.</p>
+      <p>This is exactly why the sandbox does not read a level off one chamber. It floods the
+      whole region upstream of the blockage and takes the lowest opening anywhere in it, which is
+      the only way to get the answer right when the flooded region keeps growing sideways at
+      every junction.</p>
+    </div>
+
     <div class="prose t-block hide">
-      <h2>Question 2: does the overflow have to be at a manhole?</h2>
+      <h2>Question 3: does the overflow have to be at a manhole?</h2>
       <p>No, and in Australia it usually is not.</p>
       <p>When the sewer surcharges, water rises to the same level everywhere in the backed-up reach,
          because it is one connected body of water. It then escapes at whichever opening is
@@ -196,7 +396,7 @@
          defensible. The coefficient <code>c = 0.70</code> rather than 1.00 is doing exactly this
          job: acknowledging that something spills a bit before the shaft is full.</p>
 
-      <h2>Question 3: what if the blockage is at a manhole?</h2>
+      <h2>Question 4: what if the blockage is at a manhole?</h2>
       <p>Then yes, the sensor in that chamber is standing in the water and detects it immediately.
          Set the blockage to "At chamber B" and you can see it: both sensors go wet.</p>
       <p>Three things worth separating out.</p>
@@ -238,11 +438,24 @@ const cv=$("cv"), ctx=cv.getContext("2d");
 let dpr=1, W=0, H=0;
 
 const V={yaw:-38*D2R, pitch:24*D2R, s:1, ox:0, oy:0};
-const S={tab:"anatomy", mhd:2.6, flow:0.06, bloc:"barrel", lvl:-1.60};
-(function(q){                       // ?tab=block&bloc=chamber&lvl=-0.05 opens a given state
-  if(q.get("tab")==="block") S.tab="block";
+const S={tab:"anatomy", mhd:2.6, flow:0.06, bloc:"barrel", lvl:-1.60,
+         nmh:5, sp:60, pg:1.0, gs:0.6,
+         jIn:3, jDep:2.60, jRise:0.12, jOut:0};
+(function(q){        // ?tab=block&bloc=chamber&lvl=-0.05 opens a given state
+  const num=(k,lo,hi,cur)=>{const v=parseFloat(q.get(k));
+    return isFinite(v)?Math.max(lo,Math.min(hi,v)):cur;};
+  const t=q.get("tab");
+  if(t==="block"||t==="chain"||t==="junc") S.tab=t;
   if(q.get("bloc")==="chamber") S.bloc="chamber";
-  const l=parseFloat(q.get("lvl")); if(isFinite(l)) S.lvl=Math.max(-3.10,Math.min(0.15,l));
+  S.lvl=num("lvl",-3.10,0.15,S.lvl);
+  S.nmh=Math.round(num("n",3,7,S.nmh));
+  S.sp=Math.round(num("sp",20,120,S.sp));
+  S.pg=num("pg",0.2,4,S.pg);
+  S.gs=num("gs",-0.5,4,S.gs);
+  S.jIn=Math.round(num("in",1,3,S.jIn));
+  S.jDep=num("jd",1.2,4,S.jDep);
+  S.jRise=num("jr",0,0.6,S.jRise);
+  S.jOut=Math.round(num("out",0,1,S.jOut));
 })(new URLSearchParams(location.search));
 
 /* ============================== 3D core ============================== */
@@ -370,6 +583,31 @@ function halfCylZ(xc,r,z0,z1,o,nt,nz){
   }
 }
 /* Half annulus / disc lying flat at height z, y >= 0. */
+/* Full tube between two arbitrary 3D points.
+
+   halfTubeX assumes a run along X drawn against the y=0 cut plane, so it only
+   ever renders the half facing the viewer. A tributary arrives at an angle in
+   plan, is not cut by that plane, and so has to be a closed cylinder. Frame is
+   built by taking any vector not parallel to the axis and crossing twice. */
+function tube3(a,b,r,o,nt){
+  nt=nt||10;
+  const d=[b[0]-a[0],b[1]-a[1],b[2]-a[2]];
+  const L=Math.hypot(d[0],d[1],d[2]); if(L<1e-6) return;
+  const u=[d[0]/L,d[1]/L,d[2]/L];
+  const w=Math.abs(u[2])<0.9?[0,0,1]:[1,0,0];
+  const cross=(p,q)=>[p[1]*q[2]-p[2]*q[1], p[2]*q[0]-p[0]*q[2], p[0]*q[1]-p[1]*q[0]];
+  let n1=cross(u,w); const m=Math.hypot(n1[0],n1[1],n1[2]); n1=n1.map(c=>c/m);
+  const n2=cross(u,n1);
+  const p=(sv,t)=>[
+    a[0]+d[0]*sv + r*(Math.cos(t)*n1[0]+Math.sin(t)*n2[0]),
+    a[1]+d[1]*sv + r*(Math.cos(t)*n1[1]+Math.sin(t)*n2[1]),
+    a[2]+d[2]*sv + r*(Math.cos(t)*n1[2]+Math.sin(t)*n2[2])];
+  for(let j=0;j<nt;j++){
+    const t0=2*Math.PI*j/nt, t1=2*Math.PI*(j+1)/nt;
+    face([p(0,t0),p(1,t0),p(1,t1),p(0,t1)],o);
+  }
+}
+
 function halfDisc(xc,z,r0,r1,o,nt){
   nt=nt||16;
   for(let j=0;j<nt;j++){
@@ -622,6 +860,279 @@ function sceneBlock(){
   label([6,0,g.inv(6)-0.45],-30,34,"real spacing about 53 m, compressed here","#64748b","right");
 }
 
+/* ================ scene 3: a run of chambers down a street ================ */
+/* The point of this scene is one fact that the single-chamber view cannot show:
+   CHAMBER DEPTH IS NOT A PROPERTY OF THE CHAMBER. It is the gap between two
+   independent lines, the ground surface and the pipe, and it grows or shrinks
+   along a run depending on which of the two falls faster. That is why the depth
+   figures behind the sandbox had to be reconstructed as cover minus invert rather
+   than read off a field, and why they range from under two metres to nearly four
+   in the same small network.
+
+   Horizontal is compressed 12x against vertical, as in scene 2, because a real
+   run of 60 m spacings against a 0.6 m chamber cannot be drawn to one scale and
+   still show a chamber. Real distances are labelled so the compression cannot be
+   mistaken for the geometry. */
+const G3={ SQUASH:12, R:0.60, pr:0.15, d0:1.80, minCover:0.90 };
+
+function chainGeom(){
+  const g=G3, n=S.nmh;
+  const dx=S.sp/g.SQUASH;                       // drawn spacing
+  const pg=S.pg/100, gs=S.gs/100;
+  const real=x=>x*g.SQUASH;                     // drawn x back to metres
+  const gnd=x=>-real(x)*gs;
+  const inv=x=>-g.d0-real(x)*pg;
+  const xs=[]; for(let i=0;i<n;i++) xs.push(i*dx);
+  const depth=x=>gnd(x)-inv(x);
+  return {g,n,dx,pg,gs,real,gnd,inv,xs,depth,runLen:real(xs[n-1])};
+}
+
+function sceneChain(){
+  const q=chainGeom(), g=G3;
+  const RO=g.R+0.10, po=g.pr+0.035;
+  const x0=q.xs[0]-q.dx*0.55, x1=q.xs[q.n-1]+q.dx*0.55;
+  const zcp=x=>q.inv(x)+g.pr;
+  const yBack=1.9;
+  const zBase=Math.min(q.inv(x1),q.gnd(x1)-0.20)-0.75;
+
+  // ground box, then the surface, which falls at its own rate
+  const so={fill:C.soil,stroke:"rgba(0,0,0,.3)",lw:1};
+  face([[x0,0,q.gnd(x0)],[x0,yBack,q.gnd(x0)],[x0,yBack,zBase],[x0,0,zBase]],so);
+  face([[x1,0,q.gnd(x1)],[x1,0,zBase],[x1,yBack,zBase],[x1,yBack,q.gnd(x1)]],so);
+  face([[x0,yBack,q.gnd(x0)],[x1,yBack,q.gnd(x1)],[x1,yBack,zBase],[x0,yBack,zBase]],so);
+  face([[x0,0,zBase],[x1,0,zBase],[x1,yBack,zBase],[x0,yBack,zBase]],so);
+  face([[x0,0,q.gnd(x0)],[x1,0,q.gnd(x1)],[x1,yBack,q.gnd(x1)],[x0,yBack,q.gnd(x0)]],
+       {fill:C.grass,stroke:"rgba(0,0,0,.25)",bias:-0.002});
+  face([[x0,0,q.gnd(x0)],[x1,0,q.gnd(x1)],[x1,1.4,q.gnd(x1)],[x0,1.4,q.gnd(x0)]],
+       {fill:C.road,stroke:null,bias:-0.004});
+
+  // one cut face with every shaft and every pipe length opened through it
+  const shaftHole=xc=>[[xc-RO,0,q.inv(xc)-0.05],[xc+RO,0,q.inv(xc)-0.05],
+                       [xc+RO,0,q.gnd(xc)],[xc-RO,0,q.gnd(xc)]];
+  const pipeHole=(a,b)=>[[a,0,zcp(a)-po],[b,0,zcp(b)-po],[b,0,zcp(b)+po],[a,0,zcp(a)+po]];
+  const segs=[];
+  segs.push([x0,q.xs[0]-RO]);
+  for(let i=0;i<q.n-1;i++) segs.push([q.xs[i]+RO,q.xs[i+1]-RO]);
+  segs.push([q.xs[q.n-1]+RO,x1]);
+  cutFace([[x0,0,zBase],[x1,0,zBase],[x1,0,q.gnd(x1)],[x0,0,q.gnd(x0)]],
+          q.xs.map(shaftHole).concat(segs.map(t=>pipeHole(t[0],t[1]))),
+          {fill:C.soilCut,flat:true,hatch:true,stroke:"rgba(200,214,235,.5)",lw:1.3,bias:-0.30});
+
+  for(const seg of segs){
+    halfTubeX(seg[0],seg[1],g.pr,zcp,{fill:C.pipeIn,stroke:null},8,10);
+    halfTubeX(seg[0],seg[1],po,zcp,{fill:C.pipe,stroke:null,bias:0.02},8,10);
+    for(const sgn of [1,-1]){
+      const za=x=>zcp(x)+sgn*g.pr, zb=x=>zcp(x)+sgn*po;
+      face([[seg[0],0,za(seg[0])],[seg[1],0,za(seg[1])],
+            [seg[1],0,zb(seg[1])],[seg[0],0,zb(seg[0])]],
+           {fill:C.conc,flat:true,stroke:"rgba(0,0,0,.35)",bias:-0.28});
+    }
+  }
+
+  /* Tributaries. Drawn as real pipes rather than the dashed line the house
+     lateral uses in scene 2, because the whole point here is that they ARE pipes
+     of the same kind as the main and arrive at their own invert.
+
+     They sit inside the soil, off the y=0 cut plane, so they cannot be shown by
+     cutting. They are biased forward instead, which reads as "seen through the
+     ground" — the same licence scene 2 takes, and the label says so. */
+  // the chambers
+  for(let i=0;i<q.n;i++){
+    const xc=q.xs[i], gz=q.gnd(xc), d=q.depth(xc);
+    const shallow=d<g.minCover+g.pr*2;
+    /* Once the ground falls faster than the pipe, the invert eventually rises
+       above the surface and the true depth goes negative. That is a real outcome
+       and the verdict says so, but a shaft drawn from a floor above its own lid
+       is just a rendering artefact. So the drawing is floored at a token height
+       while the dimension label keeps reporting the real number, negative and in
+       red. The picture stays honest because the two disagree visibly. */
+    const iv=Math.min(q.inv(xc),gz-0.20);
+    halfCylZ(xc,g.R,iv,gz,{fill:shallow?"#8a6a52":C.conc,stroke:null},14,4);
+    halfCylZ(xc,RO,iv,gz,{fill:C.concDark,stroke:null,bias:0.10},14,4);
+    for(const sx of [g.R,-g.R]){
+      const s2=sx>0?RO:-RO;
+      face([[xc+sx,0,iv],[xc+s2,0,iv],[xc+s2,0,gz],[xc+sx,0,gz]],
+           {fill:shallow?"#8a6a52":C.conc,flat:true,stroke:"rgba(0,0,0,.35)",bias:-0.29});
+    }
+    halfTubeX(xc-RO,xc+RO,g.pr,zcp,{fill:C.pipeIn,stroke:null,bias:0.04},4,10);
+    face([[xc-RO,g.pr,zcp(xc-RO)],[xc+RO,g.pr,zcp(xc+RO)],
+          [xc+RO,g.R,zcp(xc+RO)+0.26],[xc-RO,g.R,zcp(xc-RO)+0.26]],
+         {fill:C.concDark,stroke:"rgba(0,0,0,.3)",bias:0.02});
+    halfDisc(xc,gz+0.03,0,RO,{fill:"#6e7a94",flat:true,bias:-0.34});
+
+    // depth dimension, drawn on the cut face so it reads against the section
+    line3([xc-RO-0.06,0,gz],[xc-RO-0.06,0,iv],
+          {stroke:shallow?"rgba(248,113,113,.9)":"rgba(56,189,248,.75)",lw:1.4,bias:-2.4});
+    label([xc-RO-0.06,0,(gz+iv)/2],0,i%2?-16:14,
+          d<0?"pipe is above ground":d.toFixed(2)+" m",
+          shallow?"#f87171":"#38bdf8","center");
+  }
+
+  // one sensor, so the run connects to the rest of the tool
+  const xs0=q.xs[0], gz0=q.gnd(xs0);
+  box(xs0-0.10,xs0+0.10,0.16,0.36,gz0-0.30,gz0-0.14,{fill:C.sensor,stroke:null,bias:-0.4});
+
+  label([xs0,0.26,gz0-0.22],-58,-30,"a sensor sits in one of these","#fb7185","right");
+  label([(q.xs[0]+q.xs[1])/2,0,q.gnd((q.xs[0]+q.xs[1])/2)+0.06],0,-30,
+        S.sp+" m apart","#c8d3e6","center");
+  label([q.xs[q.n-1],0,q.gnd(q.xs[q.n-1])+0.05],46,-34,"ground falls at "+S.gs.toFixed(2)+"%","#8aa0c0");
+  label([q.xs[q.n-1],0,zcp(q.xs[q.n-1])],46,26,"pipe falls at "+S.pg.toFixed(2)+"%","#8aa0c0");
+}
+
+/* ============ scene 4: one chamber, several pipes arriving ============ */
+/* Drawn as a DETAIL rather than a section through the street. The run in scene 2
+   squashes x by twelve, which is fine for showing depth drift along a line but
+   useless for a junction: the tributaries end up shorter than the chamber is
+   wide. Here nothing is squashed, there is no soil block, and the ground is a
+   thin slab the shaft passes through. Everything is therefore visible on its own
+   merits, with no bias tricks and no "shown through the ground" apology.
+
+   The point it makes: a junction chamber sees more than a through chamber, and
+   it has less usable headroom than its depth suggests, because the branches meet
+   it above the through invert and water backing up escapes into them first. */
+const G4={R:0.75, wall:0.10, pr:0.15, pw:0.035, reach:2.5};
+
+/* Plan bearings of the arriving pipes, measured from the outgoing direction.
+   One pipe in is a straight through chamber; two and three fan the extra
+   branches into the visible half so they do not hide behind the shaft. */
+const J_BEARINGS={1:[180], 2:[180,116], 3:[180,128,74]};
+
+function juncGeom(){
+  const g=G4, gz=0;
+  /* The outgoing invert is the reference, because it is the true floor of the
+     chamber: it is the lowest thing in it and the level everything drains to.
+     Depth is measured to it, and every arriving pipe is placed ABOVE it.
+
+     Two separate things lift the inlets, and they add:
+
+       the size step   when the sewer steps up a diameter the pipes are matched
+                       at the SOFFIT, not the invert, so the larger outgoing pipe
+                       sits lower by the difference. This part is forced by the
+                       geometry, not chosen.
+       the slider      whatever further fall the designer allowed across the
+                       chamber, applied to every inlet alike.
+
+     Every inlet moves together. Measured on the demonstration network, 46.2% of
+     pipes arriving at a junction come in above the outlet and 53.2% arrive level,
+     so both ends of the slider are real; what does not happen is one inlet high
+     and another low for no reason, which is why there is one control and not
+     one per pipe. */
+  const rOut = S.jOut ? g.pr*1.5 : g.pr;
+  const invOut = -S.jDep;
+  const soffitStep = 2*(rOut-g.pr);
+  const lift = soffitStep + S.jRise;
+  const inv = invOut + lift;                       // every inlet invert
+
+  const bear=J_BEARINGS[S.jIn]||J_BEARINGS[1];
+  const arms=bear.map((deg,i)=>{
+    const a=deg*Math.PI/180;
+    return {deg, a, i, z:inv,
+            x:g.reach*Math.cos(a), y:Math.max(0,g.reach*Math.sin(a))};
+  });
+
+  /* The level at which the incoming lines start to back up.
+
+     Not a cap on how high the water can climb: the level keeps rising past it
+     regardless. What changes here is the SET OF PLACES THE WATER CAN REACH.
+     Above this, every line arriving at this chamber is filling too, so the
+     lowest opening anywhere on any of them becomes a candidate escape point. */
+  return {g, inv, invOut, rOut, gz, arms, lift, soffitStep,
+          backsUpAt: inv,
+          floodRise: lift,
+          depth: gz-invOut};
+}
+
+function sceneJunction(){
+  const q=juncGeom(), g=G4;
+  const RO=g.R+g.wall, po=g.pr+g.pw, out=g.reach;
+  const zc=()=>q.invOut+q.rOut;            // centreline of the pipe out
+
+  // a slab of ground the shaft passes through, instead of a whole soil block
+  const slabR=g.reach*0.92;
+  halfDisc(0,q.gz,RO,slabR,{fill:C.road,stroke:"rgba(0,0,0,.3)",bias:-0.02});
+  halfDisc(0,q.gz-0.22,RO,slabR,{fill:C.soil,flat:true,bias:0.30});
+  for(let j=0;j<20;j++){
+    const t0=Math.PI*j/20,t1=Math.PI*(j+1)/20;
+    face([[slabR*Math.cos(t0),slabR*Math.sin(t0),q.gz],
+          [slabR*Math.cos(t1),slabR*Math.sin(t1),q.gz],
+          [slabR*Math.cos(t1),slabR*Math.sin(t1),q.gz-0.22],
+          [slabR*Math.cos(t0),slabR*Math.sin(t0),q.gz-0.22]],
+         {fill:C.soilCut,stroke:"rgba(0,0,0,.3)"});
+  }
+
+  // the outgoing pipe, downhill, along +x
+  const oEnd=[out,0,zc()-0.05];
+  tube3([RO*0.9,0,zc()],oEnd,q.rOut+g.pw,{fill:C.pipe,stroke:"rgba(0,0,0,.35)",lw:1},14);
+  tube3([RO*0.9,0,zc()],oEnd,q.rOut,{fill:C.pipeIn,stroke:null,bias:0.05},14);
+
+  // every arriving pipe
+  for(const m of q.arms){
+    const a=[m.x,m.y,m.z+g.pr], b=[RO*0.9*Math.cos(m.a),Math.max(0,RO*0.9*Math.sin(m.a)),m.z+g.pr];
+    tube3(a,b,po,{fill:C.pipe,stroke:"rgba(0,0,0,.35)",lw:1},14);
+    tube3(a,b,g.pr,{fill:C.pipeIn,stroke:null,bias:0.05},14);
+  }
+
+  // the chamber: inner face, wall, then the benching that steers each flow out
+  /* The shaft runs down to the OUTGOING invert, which is the floor. Anchoring it
+     to the inlet invert instead left the outgoing pipe hanging below the chamber
+     it leaves, which is what happens when the reference level moves and the
+     drawing is not moved with it. */
+  halfCylZ(0,g.R,q.invOut,q.gz,{fill:C.conc,stroke:null},20,5);
+  halfCylZ(0,RO,q.invOut,q.gz,{fill:C.concDark,stroke:null,bias:0.10},20,5);
+  for(const sx of [g.R,-g.R]){
+    const s2=sx>0?RO:-RO;
+    face([[sx,0,q.invOut],[s2,0,q.invOut],[s2,0,q.gz],[sx,0,q.gz]],
+         {fill:C.conc,flat:true,stroke:"rgba(0,0,0,.4)",bias:-0.29});
+  }
+  halfDisc(0,q.invOut+0.30,0,g.R,{fill:C.concDark,flat:true,bias:0.16});
+
+  halfDisc(0,q.gz+0.04,g.R-0.10,RO,{fill:C.concDark,flat:true,bias:-0.40});
+  halfDisc(0,q.gz+0.07,0,g.R-0.10,{fill:"#6e7a94",flat:true,bias:-0.42});
+
+  // sensor under the lid, and the level it would first see water escape at
+  box(-0.10,0.10,0.16,0.36,q.gz-0.30,q.gz-0.14,{fill:C.sensor,stroke:null,bias:-0.5});
+  if(q.lift>0.005 && q.backsUpAt<q.gz){
+    for(let j=0;j<20;j++){
+      const t0=Math.PI*j/20,t1=Math.PI*(j+1)/20;
+      line3([g.R*Math.cos(t0),g.R*Math.sin(t0),q.backsUpAt],
+            [g.R*Math.cos(t1),g.R*Math.sin(t1),q.backsUpAt],
+            {stroke:"rgba(56,189,248,.75)",lw:1.3,dash:[5,4],bias:-0.6});
+    }
+  }
+
+  label([0,0.24,q.gz-0.22],62,-6,"one sensor, all of it","#fb7185");
+  label([out*0.86,0,zc()-0.04],54,26,
+        S.jOut?"the one pipe out, a size up":"the one pipe out","#c8d3e6");
+  /* Dimension the lift as the inlets standing ABOVE a fixed outlet, which is how
+     it is drawn and how it is built: the outgoing invert is the datum the chamber
+     is set out from, and the arriving pipes are brought in above it. Describing
+     the same geometry as the outlet dropping would contradict the picture, in
+     which the floor never moves. */
+  if(q.lift>0.005){
+    const dx=out*0.52;
+    line3([g.R*0.2,0,q.invOut],[dx+0.12,0,q.invOut],
+          {stroke:"rgba(125,211,252,.4)",lw:1,dash:[4,3],bias:-0.62});
+    line3([g.R*0.2,0,q.inv],[dx+0.12,0,q.inv],
+          {stroke:"rgba(125,211,252,.4)",lw:1,dash:[4,3],bias:-0.62});
+    line3([dx,0,q.invOut],[dx,0,q.inv],{stroke:"rgba(125,211,252,.9)",lw:1.5,bias:-0.64});
+    label([dx,0,(q.invOut+q.inv)/2],54,-4,
+          "every pipe in sits "+Math.round(q.lift*1000)+" mm above the outlet"
+            +(q.soffitStep>0.005?", "+Math.round(q.soffitStep*1000)+" of it from the size step":""),
+          "#7dd3fc");
+  }
+  q.arms.forEach((m,i)=>{
+    const isThrough=Math.abs(m.deg-180)<1;
+    label([m.x*0.86,m.y*0.86,m.z+g.pr],m.y>0.6?46:-46,m.y>0.6?-12:24,
+      (isThrough?"through pipe in":"branch in")
+        + (i===0 && q.lift>0.005 ? ", +"+Math.round(q.lift*1000)+" mm" : ""),
+      isThrough?"#c8d3e6":"#7dd3fc", m.y>0.6?"left":"right");
+  });
+  if(q.lift>0.005 && q.backsUpAt<q.gz)
+    label([-g.R*0.7,g.R*0.7,q.backsUpAt],-56,-10,
+          "above here every line in backs up too","#38bdf8","right");
+  label([g.R*0.6,g.R*0.6,q.invOut+0.30],48,20,"benching","#c8d3e6");
+}
+
 /* ============================== driver ============================== */
 /* Fit by projecting the scene's corner points at unit scale, then solving for the scale
    and offset that centre that box inside the canvas. Reserving pixel margins rather than
@@ -631,6 +1142,15 @@ function fit(){
   const push=(x,y,z)=>B.push([x,y,z]);
   if(S.tab==="anatomy"){
     for(const x of [-2.7,2.7]) for(const y of [0,1.7]) for(const z of [-S.mhd-0.55,0.1]) push(x,y,z);
+  }else if(S.tab==="junc"){
+    const q=juncGeom(), r=G4.reach;
+    for(const x of [-r,r]) for(const y of [0,r])
+      for(const z of [q.invOut-0.4,q.gz+0.25]) push(x,y,z);
+  }else if(S.tab==="chain"){
+    const q=chainGeom();
+    const a=q.xs[0]-q.dx*0.55, b=q.xs[q.n-1]+q.dx*0.55;
+    for(const x of [a,b]) for(const y of [0,1.9])
+      for(const z of [q.inv(b)-0.75,Math.max(q.gnd(a),q.gnd(b))+0.15]) push(x,y,z);
   }else{
     for(const x of [-2.6,14.6]) for(const y of [0,4.6])
       for(const z of [G2.inv(14.6)-0.7,0.1]) push(x,y,z);
@@ -640,7 +1160,8 @@ function fit(){
   let a=1e9,b=-1e9,c=1e9,d=-1e9;
   for(const p of B){ const q=proj(p);
     a=Math.min(a,q[0]); b=Math.max(b,q[0]); c=Math.min(c,q[1]); d=Math.max(d,q[1]); }
-  const mx=S.tab==="anatomy"?168:150, my=34;
+  const mx=S.tab==="anatomy"?168:S.tab==="chain"?128:S.tab==="junc"?150:150,
+        my=S.tab==="chain"?46:34;
   V.s=Math.min((W-2*mx)/(b-a||1),(H-2*my)/(d-c||1));
   V.ox=W/2-(a+b)/2*V.s;
   V.oy=H/2-(c+d)/2*V.s;
@@ -649,7 +1170,10 @@ function render(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,W,H);
   fit();
-  if(S.tab==="anatomy") sceneAnatomy(); else sceneBlock();
+  if(S.tab==="anatomy") sceneAnatomy();
+  else if(S.tab==="chain") sceneChain();
+  else if(S.tab==="junc") sceneJunction();
+  else sceneBlock();
   flush(); drawLabels();
 }
 function resize(){
@@ -659,7 +1183,110 @@ function resize(){
   cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
 }
 
+function chainReadouts(){
+  const q=chainGeom(), g=G3;
+  const dUp=q.depth(q.xs[0]), dDn=q.depth(q.xs[q.n-1]);
+  const diff=dDn-dUp, delta=(S.pg-S.gs);
+  const min=Math.min(dUp,dDn), tooShallow=min<g.minCover+g.pr*2;
+  const setCard=(id,val,sub,cls)=>{
+    const el=$(id); el.className="card "+cls;
+    el.querySelector(".v").textContent=val; el.querySelector(".s").textContent=sub;
+  };
+  setCard("k-up", dUp.toFixed(2)+" m", "set by the design, not by the run", "no");
+  setCard("k-dn", dDn.toFixed(2)+" m",
+    Math.abs(diff)<0.02?"unchanged, the two slopes match"
+      :(diff>0?"deeper by "+diff.toFixed(2)+" m":"shallower by "+(-diff).toFixed(2)+" m"),
+    tooShallow?"bad":(diff>0?"ok":"no"));
+  setCard("k-fall", Math.round(q.runLen)+" m",
+    (q.n-1)+" reaches, depth "+(Math.abs(diff)<0.02?"flat":(diff>0?"growing":"shrinking")),
+    "no");
+
+  $("chain-hint").innerHTML = Math.abs(delta)<0.02
+    ? "The two slopes are equal, so every chamber is the same depth. That is the exception, not the rule."
+    : (delta>0
+        ? "The pipe falls faster than the ground, so the run gets <b>deeper</b> downstream at "
+          + (delta*10).toFixed(2) + " m per 100 m."
+        : "The ground falls faster than the pipe, so the run gets <b>shallower</b> downstream at "
+          + (-delta*10).toFixed(2) + " m per 100 m.");
+
+  $("chain-verdict").innerHTML = tooShallow
+    ? "<b>This run does not survive.</b> The shallowest chamber is only " + min.toFixed(2) +
+      " m deep, which leaves too little cover over the pipe to carry traffic, and too little " +
+      "standing height for water to back up into before it reaches the lid. In practice the " +
+      "designer breaks the run here with a drop structure and starts again deeper. " +
+      "<b>Note what that does to observability</b>: a shallow chamber has almost no headroom, " +
+      "so a blockage downstream of it reaches the lid and spills before the level rises far " +
+      "enough to be worth alarming on."
+    : "<b>Depth is the gap between two independent lines.</b> The ground falls at whatever the " +
+      "street does; the pipe falls at whatever gradient keeps the flow self-cleansing. Neither " +
+      "is chosen with the other in mind, so depth drifts along the run &mdash; here from " +
+      dUp.toFixed(2) + " m to " + dDn.toFixed(2) + " m. That is why chamber depth cannot be " +
+      "guessed from one figure for a network, and why it had to be reconstructed as cover level " +
+      "minus invert for every chamber in the sandbox rather than assumed.";
+}
+
+function juncReadouts(){
+  const q=juncGeom();
+  const nb=S.jIn-1;                      // arms that are branches rather than the through line
+  const lifted=q.lift>0.005;
+  const setCard=(id,val,sub,cls)=>{
+    const el=$(id); el.className="card "+cls;
+    el.querySelector(".v").textContent=val; el.querySelector(".s").textContent=sub;
+  };
+  setCard("j-in", S.jIn+"", nb?nb+" of them branches":"a plain through chamber", "no");
+  setCard("j-head", lifted?Math.round(q.lift*1000)+" mm":"level",
+    lifted?"every inlet, above the outlet invert":"inlets share the outlet invert",
+    lifted?"bad":"no");
+  setCard("j-lost", q.soffitStep>0.005?Math.round(q.soffitStep*1000)+" mm":"none",
+    q.soffitStep>0.005?"of that, forced by the size step":"no size change to force one","no");
+
+  $("jin-hint").innerHTML = nb
+    ? "In the demonstration network <b>136 of 1,010 chambers take two incoming pipes and 21 take "
+      + "three</b>. Rotate the view to see how they fan in."
+    : "One in, one out. That is most chambers, and the case the first tab draws.";
+
+  $("jout-hint").innerHTML = S.jOut
+    ? "Sizes are matched at the <b>soffit</b>: the tops align, so a bigger pipe out means the "
+      + "pipes in have to arrive " + Math.round(q.soffitStep*1000) + " mm higher above its "
+      + "invert. That part of the step is forced by the geometry; the slider adds whatever "
+      + "else the designer allowed."
+    : "Measured on the demonstration network: across 802 chambers the pipe out is the <b>same "
+      + "nominal size</b> as the largest pipe in on 96.9%, larger on 2.7%, smaller on 0.4%. "
+      + "Diameter steps up at intervals along a trunk, not at every chamber.";
+
+  const coverage = nb
+    ? "<b>A junction sees more and tells you less.</b> Everything arriving down any of these "
+      + S.jIn + " pipes passes this one chamber, so a single sensor covers several upstream "
+      + "lines for one installation, one battery and one site visit. That is the intuition "
+      + "behind every centrality heuristic in the sandbox. The price is that a rise here says "
+      + "something is wrong upstream, and upstream is now " + S.jIn + " directions."
+    : "<b>A through chamber.</b> One pipe in, one out. A sensor here watches one upstream line, "
+      + "and a rise means the trouble is somewhere along it.";
+
+  $("junc-verdict").innerHTML = coverage + "<br><br>"
+    + (lifted
+      ? "<b>Every pipe in sits " + Math.round(q.lift*1000) + " mm above the outgoing invert</b>"
+        + (q.soffitStep>0.005
+          ? ", " + Math.round(q.soffitStep*1000) + " mm of it forced by matching soffits across "
+            + "the size change and the rest allowed as fall across the chamber. "
+          : ", allowed as fall across the chamber. ")
+        + "So the bottom " + Math.round(q.lift*1000) + " mm of this chamber is below everything "
+        + "that arrives. Water backing up from a blockage downstream fills that first, and only "
+        + "then starts backing up the incoming lines &mdash; all of them at once, since they "
+        + "share a level. Above that ring, every line into this chamber is filling too, and the "
+        + "lowest opening on any of them becomes a candidate escape point. "
+        + "<b>That is why the sandbox floods the whole upstream region and takes the lowest "
+        + "opening in it, rather than reading a level off one chamber.</b>"
+      : "<b>The inlets share the outgoing invert</b>, which is how 53.2% of junction pipes in "
+        + "this network are actually built and 81.7% of all chamber connections. There is no "
+        + "step for water to fill before it starts backing up the incoming lines: it is in them "
+        + "from the moment it is in the chamber. Raise the slider, or step the outgoing pipe up "
+        + "a size, to see a step appear.");
+}
+
 function readouts(){
+  if(S.tab==="chain") return chainReadouts();
+  if(S.tab==="junc") return juncReadouts();
   if(S.tab!=="block") return;
   const g=G2, L=S.lvl, chamber=S.bloc==="chamber";
   const xStop=chamber?g.xB:g.xBlk;
@@ -715,6 +1342,12 @@ function update(){
   $("v-mhd").textContent=S.mhd.toFixed(2)+" m";
   $("v-flow").textContent=Math.round(S.flow*1000)+" mm";
   $("v-lvl").textContent=S.lvl.toFixed(2)+" m";
+  $("v-n").textContent=S.nmh;
+  $("v-sp").textContent=S.sp+" m";
+  $("v-pg").textContent=S.pg.toFixed(2)+"%";
+  $("v-gs").textContent=S.gs.toFixed(2)+"%";
+  $("v-jdep").textContent=S.jDep.toFixed(2)+" m";
+  $("v-jrise").textContent=S.jRise.toFixed(2)+" m";
   readouts(); render();
 }
 
@@ -724,6 +1357,24 @@ $("pitch").oninput=e=>{V.pitch=+e.target.value*D2R;update()};
 $("mhd").oninput=e=>{S.mhd=+e.target.value;update()};
 $("flow").oninput=e=>{S.flow=+e.target.value/1000;update()};
 $("lvl").oninput=e=>{S.lvl=+e.target.value;update()};
+$("nmh").oninput=e=>{S.nmh=+e.target.value;update()};
+$("sp").oninput=e=>{S.sp=+e.target.value;update()};
+$("pg").oninput=e=>{S.pg=+e.target.value;update()};
+$("gs").oninput=e=>{S.gs=+e.target.value;update()};
+$("jdep").oninput=e=>{S.jDep=+e.target.value;update()};
+$("jrise").oninput=e=>{S.jRise=+e.target.value;update()};
+$("jout").onclick=e=>{
+  const b=e.target.closest("button[data-o]"); if(!b) return;
+  S.jOut=+b.dataset.o;
+  [...$("jout").children].forEach(x=>x.setAttribute("aria-pressed",x===b));
+  update();
+};
+$("jin").onclick=e=>{
+  const b=e.target.closest("button[data-j]"); if(!b) return;
+  S.jIn=+b.dataset.j;
+  [...$("jin").children].forEach(x=>x.setAttribute("aria-pressed",x===b));
+  update();
+};
 
 $("bloc").onclick=e=>{
   const b=e.target.closest("button[data-b]"); if(!b) return;
@@ -735,8 +1386,8 @@ $("tabs").onclick=e=>{
   const b=e.target.closest("button[data-tab]"); if(!b) return;
   S.tab=b.dataset.tab;
   [...$("tabs").children].forEach(x=>x.setAttribute("aria-selected",x===b));
-  document.querySelectorAll(".t-anatomy").forEach(el=>el.classList.toggle("hide",S.tab!=="anatomy"));
-  document.querySelectorAll(".t-block").forEach(el=>el.classList.toggle("hide",S.tab!=="block"));
+  for(const t of ["anatomy","chain","junc","block"])
+    document.querySelectorAll(".t-"+t).forEach(el=>el.classList.toggle("hide",t!==S.tab));
   update();
 };
 
@@ -754,11 +1405,15 @@ window.addEventListener("mouseup",()=>{drag=null});
 window.addEventListener("resize",()=>{resize();update()});
 
 resize();
-if(S.tab==="block"){
-  [...$("tabs").children].forEach(x=>x.setAttribute("aria-selected",x.dataset.tab==="block"));
-  document.querySelectorAll(".t-anatomy").forEach(el=>el.classList.add("hide"));
-  document.querySelectorAll(".t-block").forEach(el=>el.classList.remove("hide"));
-}
+/* Apply whichever tab the state ended up on. Written against the tab list rather
+   than against one named tab, so a fourth tab needs no change here. */
+[...$("tabs").children].forEach(x=>x.setAttribute("aria-selected",x.dataset.tab===S.tab));
+for(const t of ["anatomy","chain","junc","block"])
+  document.querySelectorAll(".t-"+t).forEach(el=>el.classList.toggle("hide",t!==S.tab));
+$("nmh").value=S.nmh; $("sp").value=S.sp; $("pg").value=S.pg; $("gs").value=S.gs;
+$("jdep").value=S.jDep; $("jrise").value=S.jRise;
+[...$("jin").children].forEach(x=>x.setAttribute("aria-pressed",+x.dataset.j===S.jIn));
+[...$("jout").children].forEach(x=>x.setAttribute("aria-pressed",+x.dataset.o===S.jOut));
 [...$("bloc").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.b===S.bloc));
 $("lvl").value=S.lvl;
 update();

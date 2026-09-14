@@ -92,8 +92,9 @@ This is a working tool for exploring that, running on a real network rather than
   <a class="card" href="#anatomy" data-tab="anatomy">
     <span class="tag">Explainer</span>
     <h3>What a maintenance hole is</h3>
-    <p>A rotatable 3D half section. What the chamber looks like inside, where the sensor sits, and
-    what happens when a blockage forms. Start here if the vocabulary is new.</p>
+    <p>Three rotatable 3D sections. What one chamber looks like inside and where the sensor sits;
+    why every chamber along a run is a different depth; and where the water goes when a blockage
+    forms. Start here if the vocabulary is new.</p>
   </a>
   <a class="card" href="#observability" data-tab="observability">
     <span class="tag">Explainer</span>
@@ -163,9 +164,14 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 </div>
 </div>
 
-<div class="pane" id="pane-sandbox" hidden><iframe data-src="osp_sandbox.html#sandbox" title="OSP Sandbox"></iframe></div>
-<div class="pane" id="pane-anatomy" hidden><iframe data-src="manhole_anatomy.html" title="What a maintenance hole is"></iframe></div>
-<div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html" title="Why observability is limited"></iframe></div>
+<!-- The ?v= on each embedded page is a cache key, not a parameter the page reads.
+     These are loaded in iframes, and a browser will happily reuse a cached iframe
+     document across a normal reload of this page, so a visitor who saw an earlier
+     version keeps seeing it after a deploy. Changing the number is what forces the
+     refetch. Bump it whenever an embedded page changes. -->
+<div class="pane" id="pane-sandbox" hidden><iframe data-src="osp_sandbox.html?v=15#sandbox" title="OSP Sandbox"></iframe></div>
+<div class="pane" id="pane-anatomy" hidden><iframe data-src="manhole_anatomy.html?v=15" title="What a maintenance hole is"></iframe></div>
+<div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html?v=15" title="Why observability is limited"></iframe></div>
 
 </div>
 
