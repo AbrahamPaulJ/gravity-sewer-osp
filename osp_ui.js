@@ -8,6 +8,7 @@ const PAYLOAD = window.OSP_DATA || {};
 const DATA = PAYLOAD.regions || {};
 const VALID = PAYLOAD.validation || {};
 const META = PAYLOAD.meta || {};
+const CODES = PAYLOAD.codes || {};
 const REGION_KEYS = Object.keys(DATA);
 
 const S = {
@@ -19,6 +20,7 @@ const S = {
   kup: 2, kdown: 2,
   colourBy: "coverage",
   perNodeLoad: 0.05, peakFactor: 1,
+  riskBlend: "blend", riskAgg: "intensity",
   growthPoints: [], addedLoad: 2,
   anchor: null, sensors: [], covered: null, lastResult: null,
   view: "2d", exaggeration: 30,
@@ -60,7 +62,12 @@ self.onmessage = function(e){
     var nodes = [];
     for (var i=0;i<n;i++) nodes.push({id:i, x:d.x[i], y:d.y[i], invert:d.inv[i],
                                       cover:d.cover[i], depth:d.cover[i]-d.inv[i],
-                                      isChamber: d.cand[i]===1});
+                                      isChamber: d.cand[i]===1,
+                                      weight: d.w ? d.w[i] : 1});
+    // reverse index so a chamber can be asked what arrives at it
+    var inEdges = [];
+    for (var i=0;i<n;i++) inEdges.push([]);
+    if (d.edges) for (var e=0;e<d.edges.length;e++) inEdges[d.edges[e][1]].push(e);
     var edges = [];
     for (var v=0; v<n; v++)
       for (var p=outPtr[v]; p<outPtr[v+1]; p++) edges.push([v, outIdx[p]]);
@@ -80,6 +87,21 @@ self.onmessage = function(e){
         return Array.prototype.slice.call(obsIdx.subarray(obsPtr[id], obsPtr[id+1]));
       },
       pipeLength: function(id){ return lenIn[id]; },
+      /* What the objective currently says this chamber is worth. 1 everywhere
+         under "maximise nodes", so an algorithm written against it degrades to
+         the unweighted version rather than breaking. */
+      weight: function(id){ return d.w ? d.w[id] : 1; },
+      /* The pipes arriving at a chamber, with the publisher's own attributes.
+         Empty where the region carries none, so test before relying on them. */
+      pipesInto: function(id){
+        return inEdges[id].map(function(e){
+          return { edge:e, from:d.edges[e][0], length:d.lengths[e],
+                   diameter: d.pdia ? d.pdia[e] : null,
+                   material: d.pmat && d.pmat[e]>=0 ? d.mats[d.pmat[e]] : null,
+                   year: d.pyear && d.pyear[e] ? d.pyear[e] : null,
+                   gradient: d.pgrade && d.pgrade[e] ? d.pgrade[e] : null };
+        });
+      },
       candidates: function(){
         var out=[]; for (var i=0;i<n;i++) if (d.cand[i]===1) out.push(i); return out;
       }
@@ -94,12 +116,16 @@ self.onmessage = function(e){
   }
 };`;
 
-function runCustom(g, code, budget) {
+function runCustom(g, code, budget, weights) {
   return new Promise((resolve, reject) => {
+    const P = g.pipes || {};
     const payload = {
       code, budget, n: g.n, x: g.x, y: g.y, inv: g.inv, cover: g.cover, cand: g.candidate,
       outPtr: g.outPtr, outIdx: g.outIdx,
       obsPtr: g.obs.ptr, obsIdx: g.obs.idx, lenIn: g.lenIn,
+      edges: g.edges, lengths: g.lengths, w: weights || null,
+      pdia: P.dia || null, pmat: P.mat || null, pyear: P.year || null, pgrade: P.grade || null,
+      mats: CODES.mat || [],
     };
     let worker = null, timer = null;
     try {
@@ -113,7 +139,8 @@ function runCustom(g, code, budget) {
         const nodes = [];
         for (let i = 0; i < g.n; i++)
           nodes.push({ id: i, x: g.x[i], y: g.y[i], invert: g.inv[i], cover: g.cover[i],
-                       depth: g.cover[i] - g.inv[i], isChamber: g.candidate[i] === 1 });
+                       depth: g.cover[i] - g.inv[i], isChamber: g.candidate[i] === 1,
+                       weight: weights ? weights[i] : 1 });
         const api = {
           downstream: id => {
             const seen = new Set(), st = [id], out = [];
@@ -128,6 +155,19 @@ function runCustom(g, code, budget) {
           },
           observableFrom: id => Array.from(C.obsOf(g, id)),
           pipeLength: id => g.lenIn[id],
+          weight: id => weights ? weights[id] : 1,
+          pipesInto: id => {
+            const P = g.pipes, out = [];
+            for (let e = 0; e < g.edges.length; e++) {
+              if (g.edges[e][1] !== id) continue;
+              out.push({ edge: e, from: g.edges[e][0], length: g.lengths[e],
+                diameter: P ? P.dia[e] : null,
+                material: P && P.mat[e] >= 0 ? (CODES.mat || [])[P.mat[e]] : null,
+                year: P && P.year[e] ? P.year[e] : null,
+                gradient: P && P.grade[e] ? P.grade[e] : null });
+            }
+            return out;
+          },
           candidates: () => { const o = []; for (let i = 0; i < g.n; i++) if (g.candidate[i]) o.push(i); return o; },
         };
         const fn = new Function("graph", "budget", "api", code + "\nreturn place(graph,budget,api);");
@@ -155,13 +195,17 @@ function runCustom(g, code, budget) {
 }
 
 const DEFAULT_CODE = `// Return an array of node ids. Beat greedy if you can.
-// api.candidates() gives the chambers you are allowed to use.
+// api.candidates()      chambers you are allowed to use
+// api.observableFrom(id) what a sensor there would see
+// api.weight(id)        what the active objective says a chamber is worth
+// api.pipesInto(id)     the pipes arriving: diameter, material, year, gradient
 function place(graph, budget, api) {
-  const scored = api.candidates().map(id => ({
-    id: id,
-    n: api.observableFrom(id).length
-  }));
-  scored.sort((a, b) => b.n - a.n);
+  const scored = api.candidates().map(id => {
+    let val = 0;
+    for (const v of api.observableFrom(id)) val += api.weight(v);
+    return { id: id, val: val };
+  });
+  scored.sort((a, b) => b.val - a.val);
   return scored.slice(0, budget).map(s => s.id);
 }`;
 
@@ -214,6 +258,48 @@ const DEPTH_STOPS = [[0, [186, 230, 253]], [0.5, [59, 130, 246]], [1, [190, 24, 
    this ramp, so it cannot be confused with a merely busy reach. */
 const CAP_STOPS = [[0, [51, 65, 85]], [0.5, [56, 189, 248]],
                    [0.75, [250, 204, 21]], [1, [249, 115, 22]]];
+/* Diameter ramp. Kept clear of both the coverage blues and the capacity
+   amber/red so a glance never confuses "big pipe" with "pipe in trouble". The
+   small end stays a readable slate rather than fading out: three quarters of this
+   network by length is 150 mm, and a mode that renders three quarters of the map
+   as background is not showing you the network. */
+const DIA_STOPS = [[0, [100, 116, 139]], [0.5, [45, 212, 191]], [1, [167, 243, 208]]];
+let _diaOrder = null, _diaOrderKey = null;
+let _pipeW = null, _pipeWKey = null;
+
+/* Line width as pipe diameter, cached per region.
+
+   Width and colour are independent channels, so diameter can ride along with
+   whatever a mode is colouring by instead of competing with it: colour carries
+   the analysis, width carries the physical fact. That is worth doing by default
+   rather than hiding behind a dedicated mode, because "which of these is a trunk
+   main" is a question you have while looking at every other view.
+
+   Width goes as sqrt(d), so it tracks flow area rather than bore, and it is
+   normalised over the region's own range: this network runs 150 mm to 450 mm and
+   would be unreadable at true relative scale. Regions with no pipe data fall back
+   to a constant, which is what every view used to do everywhere. */
+function pipeWidths(scale) {
+  const key = S.region + "|" + scale;
+  if (_pipeW && _pipeWKey === key) return _pipeW;
+  const m = G.edges.length, w = new Float64Array(m);
+  const d = G.pipes && G.pipes.dia;
+  if (!d) { w.fill(1.3); _pipeW = w; _pipeWKey = key; return w; }
+  let lo = Infinity, hi = -Infinity;
+  for (let e = 0; e < m; e++) {
+    if (!(d[e] > 0)) continue;
+    if (d[e] < lo) lo = d[e]; if (d[e] > hi) hi = d[e];
+  }
+  const rlo = Math.sqrt(lo), rspan = Math.max(1e-6, Math.sqrt(hi) - rlo);
+  for (let e = 0; e < m; e++)
+    w[e] = d[e] > 0 ? scale[0] + (scale[1] - scale[0]) * ((Math.sqrt(d[e]) - rlo) / rspan)
+                    : scale[0] * 0.8;
+  _pipeW = w; _pipeWKey = key;
+  return w;
+}
+/* Likelihood ramp. Quiet through the bulk of the distribution, warming only at the
+   top, with the top decile lifted out of the ramp entirely into the alarm red. */
+const RISK_STOPS = [[0, [51, 65, 85]], [0.55, [56, 189, 248]], [1, [251, 146, 60]]];
 function rampN(t, stops) {
   t = Math.max(0, Math.min(1, t));
   for (let i = 0; i < stops.length - 1; i++) {
@@ -281,6 +367,75 @@ function draw() {
     return;
   }
 
+  /* Blockage likelihood. Per edge again, and drawn lowest-first so the reaches
+     that matter finish on top rather than being overpainted by the quiet ones.
+
+     The top decile gets its own colour and weight rather than sitting at the end
+     of the ramp. That is the same rule the capacity view uses: a ramp shows you
+     the distribution, a separate alarm colour shows you the answer, and mixing
+     the two makes the answer negotiable. */
+  if (S.colourBy === "risk" && G.pipes && window.OSPRisk) {
+    const rs = riskState();
+    if (rs) {
+      const a = rs.edge;
+      const sorted = Array.from(a).sort((p, q) => p - q);
+      const cut = sorted[Math.floor(sorted.length * 0.9)];
+      const lo0 = sorted[0], hi0 = sorted[sorted.length - 1];
+      const span = Math.max(1e-9, hi0 - lo0);
+      const order = Array.from(a.keys()).sort((p, q) => a[p] - a[q]);
+      for (const ei of order) {
+        const top = a[ei] >= cut;
+        const pl = G.polylines[ei];
+        ctx.beginPath();
+        ctx.moveTo(sx(pl[0][0]), sy(pl[0][1]));
+        for (let k = 1; k < pl.length; k++) ctx.lineTo(sx(pl[k][0]), sy(pl[k][1]));
+        ctx.strokeStyle = top ? "#f43f5e" : rampN((a[ei] - lo0) / span, RISK_STOPS);
+        ctx.lineWidth = top ? 2.8 : 1.3;
+        ctx.lineCap = "round";
+        ctx.stroke();
+      }
+      drawSensors();
+      return;
+    }
+  }
+
+  /* Pipe diameter, like capacity, is a per-EDGE attribute and gets its own pass.
+     Width carries the value as well as colour, because a pipe's width IS its
+     diameter: this is the one attribute with a literal visual encoding, and
+     reading it that way makes the trunk skeleton legible without a legend.
+     Width goes as sqrt(d) so it tracks flow area rather than bore.
+
+     Drawn smallest first so the trunk lines land on top of the reticulation they
+     collect, which is the order they exist in physically. */
+  if (S.colourBy === "diameter" && G.pipes) {
+    const d = G.pipes.dia;
+    let dlo = Infinity, dhi = -Infinity;
+    for (let e = 0; e < d.length; e++) {
+      if (!(d[e] > 0)) continue;
+      if (d[e] < dlo) dlo = d[e]; if (d[e] > dhi) dhi = d[e];
+    }
+    const rlo = Math.sqrt(dlo), rspan = Math.max(1e-6, Math.sqrt(dhi) - rlo);
+    const DW = pipeWidths([1, 4.2]);
+    if (_diaOrderKey !== S.region) {
+      _diaOrder = Array.from(d.keys()).sort((a, b) => d[a] - d[b]);
+      _diaOrderKey = S.region;          // sorted once per region, not per frame
+    }
+    for (const ei of _diaOrder) {
+      const v = d[ei];
+      const t = v > 0 ? (Math.sqrt(v) - rlo) / rspan : 0;
+      const pl = G.polylines[ei];
+      ctx.beginPath();
+      ctx.moveTo(sx(pl[0][0]), sy(pl[0][1]));
+      for (let k = 1; k < pl.length; k++) ctx.lineTo(sx(pl[k][0]), sy(pl[k][1]));
+      ctx.strokeStyle = v > 0 ? rampN(t, DIA_STOPS) : "#3a4257";
+      ctx.lineWidth = DW[ei];
+      ctx.lineCap = "round";
+      ctx.stroke();
+    }
+    drawSensors();
+    return;
+  }
+
   let lo = Infinity, hi = -Infinity;
   const scalar = S.colourBy === "elevation" ? G.inv
                : S.colourBy === "depth" ? null : null;
@@ -296,6 +451,7 @@ function draw() {
     if (v < lo) lo = v; if (v > hi) hi = v;
   }
 
+  const PW = pipeWidths([0.9, 4.0]);
   const passes = field ? [0] : [0, 1, 2];
   for (const pass of passes) {
     for (let ei = 0; ei < G.edges.length; ei++) {
@@ -303,11 +459,11 @@ function draw() {
       let style, width;
       if (field) {
         const v = field[b];
-        if (!isFinite(v)) { style = "#3a4257"; width = 1; }
+        if (!isFinite(v)) { style = "#3a4257"; width = PW[ei] * 0.8; }
         else {
           const t = (v - lo) / Math.max(1e-6, hi - lo);
           style = rampN(t, S.colourBy === "depth" ? DEPTH_STOPS : ELEV_STOPS);
-          width = 1.3;
+          width = PW[ei];
         }
       } else {
         const isCov = cov && (cov[a] || cov[b]);
@@ -315,7 +471,10 @@ function draw() {
         const lvl = isCov ? 2 : (isObs ? 1 : 0);
         if (lvl !== pass) continue;
         style = lvl === 2 ? "#38bdf8" : lvl === 1 ? "#1d4ed8" : "#2b3a55";
-        width = lvl === 2 ? 1.9 : lvl === 1 ? 1.3 : 0.8;
+        /* Colour already separates the three coverage levels, so width is free to
+           carry diameter. The small taper on uncovered pipe keeps the background
+           from crowding the result without losing the trunk lines in it. */
+        width = PW[ei] * (lvl === 2 ? 1 : lvl === 1 ? 0.85 : 0.65);
       }
       const pl = G.polylines[ei];
       ctx.beginPath();
@@ -333,7 +492,7 @@ function drawSensors() {
   // Sensors are drawn white-cored in capacity mode: the alarm red is taken by
   // over-capacity reaches there, and two different meanings for one colour on the
   // same canvas is how a map starts lying to you.
-  const capMode = S.colourBy === "capacity";
+  const capMode = S.colourBy === "capacity" || S.colourBy === "risk";
   ctx.fillStyle = capMode ? "#f8fafc" : "#f43f5e";
   ctx.strokeStyle = capMode ? "#0f172a" : "#4c0519";
   ctx.lineWidth = capMode ? 1.6 : 1;
@@ -356,11 +515,52 @@ function capacityState() {
   const key = [S.region, S.perNodeLoad, S.peakFactor].join("|");
   if (_capCache && _capKey === key) return _capCache;
   _capCache = OSPCapacity.capacityState(G, OSPCore, {
-    perNode: S.perNodeLoad, peakFactor: S.peakFactor,
+    perNode: S.perNodeLoad, peakFactor: S.peakFactor, matCodes: CODES.mat,
   });
   _capKey = key;
   updateCapHint(_capCache);
   return _capCache;
+}
+
+/* Blockage likelihood, cached on the region and the chosen blend. Same reasoning
+   as the capacity cache: the factor pass is cheap but it is on the draw path, and
+   nothing about it changes while the map is being panned. */
+let _riskCache = null, _riskKey = null;
+function riskState() {
+  if (!G.pipes || !window.OSPRisk) return null;
+  const key = S.region + "|" + S.riskBlend + "|" + S.riskAgg;
+  if (_riskCache && _riskKey === key) return _riskCache;
+  const solo = S.riskBlend !== "blend";
+  const weights = solo
+    ? Object.keys(OSPRisk.DEFAULT_WEIGHTS).reduce(
+        (o, k) => (o[k] = k === S.riskBlend ? 1 : 0, o), {})
+    : null;
+  _riskCache = OSPRisk.likelihood(G, {
+    matCodes: CODES.mat, jointCodes: CODES.joint,
+    weights: weights || undefined, aggregate: S.riskAgg,
+  });
+  _riskKey = key;
+  updateRiskHint(_riskCache);
+  return _riskCache;
+}
+
+function updateRiskHint(r) {
+  const el = $("risk-hint");
+  if (!el) return;
+  const p = r.summary.published, m = r.summary.edges;
+  const solo = S.riskBlend !== "blend";
+  el.innerHTML = solo
+    ? `One factor only, which is how you see what the blend is doing. Compare the map
+       against the blended view: where they disagree, the weighting is deciding the answer,
+       not the data.`
+    : `Weights are <b>declared, not calibrated</b> &mdash; no public source lists chokes for
+       this network, so this ranks reaches and does not predict them. Age is published on
+       ${p.age} of ${m} reaches, joint type on only ${p.joint}. The Assumptions tab carries
+       the full weighting and how far each factor moves it.`;
+  if (r.summary.aggregate === "exposure") el.innerHTML +=
+    `<br><span class="warn">Exposure multiplies by reach length, which spans a far wider range
+     than likelihood does, so this ranking sits close to plain pipe length. Switch to intensity
+     to see condition on its own.</span>`;
 }
 
 /* Growth scenario, cached alongside the base capacity state.
@@ -376,7 +576,7 @@ function growthState() {
   const additions = {};
   for (const i of S.growthPoints) additions[i] = (additions[i] || 0) + S.addedLoad;
   const g = OSPCapacity.growth(G, OSPCore, base, additions,
-    { perNode: S.perNodeLoad, peakFactor: S.peakFactor });
+    { perNode: S.perNodeLoad, peakFactor: S.peakFactor, matCodes: CODES.mat });
 
   const tippedSet = new Uint8Array(G.edges.length);
   for (const e of g.tipped) tippedSet[e] = 1;
@@ -429,7 +629,10 @@ function updateCapHint(cap) {
     `<span class="warn">Screening estimate only: Manning normal depth, no backwater, ` +
     `not a hydraulic model.</span>` +
     (s.diameterProxied
-      ? ` Reach diameter is the smaller of the two chamber values, a proxy.` : "") +
+      ? ` Reach diameter is proxied as the smaller of the two chamber values on
+          ${s.diameterProxied} of ${s.edges} reaches; the rest use the published
+          per-pipe diameter.`
+      : ` Reach diameter is the publisher's own per-pipe value on every reach.`) +
     (s.slopeClamped
       ? ` ${s.slopeClamped} reach(es) had no usable fall and were clamped.` : "");
 }
@@ -473,6 +676,72 @@ function pickNode(px, py) {
 
 const COVER_SRC = { 0: "unknown", 1: "surveyed", 2: "contour", 3: "transferred" };
 
+/* Pipes entering a chamber, for the hover readout.
+
+   The attributes are per EDGE but the map picks NODES, so until there is a
+   pick-a-pipe interaction the honest place to surface them is the chamber they
+   arrive at: a blockage at this chamber is a blockage in one of these pipes, and
+   their diameter, material and age are what decides which. inPtr/inIdx carry
+   upstream node ids rather than edge ids, so the reverse index is built once per
+   region. */
+let _inEdges = null, _inEdgesKey = null;
+function inEdgesOf(i) {
+  if (_inEdgesKey !== S.region) {
+    _inEdges = Array.from({ length: G.n }, () => []);
+    for (let e = 0; e < G.edges.length; e++) _inEdges[G.edges[e][1]].push(e);
+    _inEdgesKey = S.region;
+  }
+  return _inEdges[i];
+}
+
+/* Publisher material codes, expanded for the readout. The codes are what the
+   register and the glossary use, because they are what the source carries; the
+   words are what someone reading a map can act on without a lookup. */
+const MAT_LABEL = { VC: "clay", PVCU: "uPVC", RC: "concrete" };
+
+function incomingPipes(i) {
+  if (!G.pipes) return "";
+  const es = inEdgesOf(i);
+  if (!es.length) return '<span style="color:#6f81a3">head of line, no pipe in</span><br>';
+  const P = G.pipes, mats = CODES.mat || [];
+  const now = new Date().getFullYear();
+
+  /* One field per line, values aligned in a column.
+
+     Four values on a shared line read as a puzzle even when labelled, and they
+     wrap unpredictably at narrow widths. Stacking them costs vertical space the
+     HUD has and buys a readout that can be scanned down the value column. The
+     label is a fixed-width inline-block rather than padded text, so the values
+     align regardless of font metrics.
+
+     An unpublished value still prints a dash: visibly absent beats quietly
+     missing, which is the whole reason the columns are not collapsed. */
+  const row = (k, v) =>
+    '<div><span style="color:#6f81a3;display:inline-block;width:66px">' + k
+    + ':</span>' + v + "</div>";
+
+  const blocks = es.slice(0, 3).map((e, n) => {
+    const mm = P.dia[e] > 0 ? Math.round(P.dia[e] * 1000) + " mm" : "&ndash;";
+    const code = P.mat && P.mat[e] >= 0 ? mats[P.mat[e]] : null;
+    const mt = code ? (MAT_LABEL[code] || code) : "&ndash;";
+    const y = P.year && P.year[e] ? P.year[e] : 0;
+    const yr = y ? y + ' <span style="color:#6f81a3">(' + (now - y) + 'y)</span>' : "&ndash;";
+    const gr = P.grade && P.grade[e] ? P.grade[e].toFixed(2) + "%" : "&ndash;";
+    // A rule between blocks, so several pipes never read as one long list.
+    const sep = n ? "border-top:1px solid #22314d;margin-top:4px;padding-top:4px;" : "";
+    return '<div style="padding-left:10px;' + sep + '">'
+      + row("diameter", mm) + row("material", mt) + row("built", yr) + row("grade", gr)
+      + "</div>";
+  });
+  if (es.length > 3)
+    blocks.push('<div style="padding-left:10px">and ' + (es.length - 3) + " more</div>");
+
+  const n = es.length;
+  return '<span style="color:#6f81a3">in: ' + n + " pipe" + (n === 1 ? "" : "s")
+    + "</span>" + blocks.join("")
+    + '<div style="color:#6f81a3;margin-top:3px">small, old, flat = likelier to block</div>';
+}
+
 cv.addEventListener("mousemove", e => {
   if (dragging || !G) return;
   const r = cv.getBoundingClientRect();
@@ -489,6 +758,7 @@ cv.addEventListener("mousemove", e => {
     (depth != null ? `depth ${depth.toFixed(2)} m <span style="color:#6f81a3">(${COVER_SRC[G.coverSrc[i]]})</span><br>` : `depth unknown<br>`) +
     (ceil != null && isFinite(ceil) ? `ceiling ${ceil.toFixed(2)} m, headroom ${(ceil - G.inv[i]).toFixed(2)} m<br>` : "") +
     `observes ${nObs}<br>` +
+    incomingPipes(i) +
     (S.covered && S.covered[i] ? '<span style="color:#38bdf8">covered</span>'
       : G.obs.inUniverse[i] ? '<span style="color:#93a4c4">observable</span>'
       : '<span style="color:#64748b">not observable</span>');
@@ -544,6 +814,21 @@ async function run() {
        are the ones a future rollout has to catch; otherwise it is the ones already
        surcharging today. */
     let objective = S.objective, marked = null;
+    if (S.objective === "risk") {
+      /* Expected-blockage exposure per chamber, straight into weightOf. No
+         algorithm changes: every one of them scores through that function, so
+         handing it a weight vector is the whole integration.
+
+         Reported as a share of total exposure rather than a count, because the
+         quantity has no natural unit: it is metres of pipe times a declared
+         likelihood, and pretending it is anything more precise than a ranking
+         would be the exact overreach osp_risk.js exists to avoid. */
+      const rs = riskState();
+      if (!rs) throw new Error(
+        "This region carries no per-pipe attributes, so blockage likelihood cannot be " +
+        "computed. Pick a region with published pipe data, or choose another objective.");
+      objective = { w: rs.node };
+    }
     if (S.objective === "surcharge") {
       const gr = growthState();
       marked = gr ? gr.after.surcharged : capacityState().surcharged;
@@ -557,17 +842,24 @@ async function run() {
       objective = { w };
     }
 
-    let sensors = [], extra = {};
+    const extra = {};
+    /* The weight vector the topology heuristics aggregate over. Null under the
+       plain node objective, which lets them reuse their cached unweighted results
+       and reduce exactly to the counting versions they have always been. */
+    const wv = C.isUnweighted(objective) ? null : C.weightVector(G, objective);
+    if (wv) extra.weighted = true;
+
+    let sensors = [];
     switch (S.algo) {
       case "greedy": sensors = C.greedy(G, S.budget, objective); break;
-      case "upstream": { const u = C.upstreamSize(G); sensors = C.topBy(G, S.budget, i => u[i]); break; }
-      case "outdeg": sensors = C.topBy(G, S.budget, i => G.outDeg[i]); break;
-      case "indeg": sensors = C.topBy(G, S.budget, i => G.inDeg[i]); break;
-      case "between": { const b = C.betweenness(G); sensors = C.topBy(G, S.budget, i => b[i]); break; }
+      case "upstream": { const u = C.upstreamSize(G, wv); sensors = C.topBy(G, S.budget, i => u[i]); break; }
+      case "outdeg": { const d = C.degreeWeight(G, wv, "out"); sensors = C.topBy(G, S.budget, i => d[i]); break; }
+      case "indeg": { const d = C.degreeWeight(G, wv, "in"); sensors = C.topBy(G, S.budget, i => d[i]); break; }
+      case "between": { const b = C.betweenness(G, wv); sensors = C.topBy(G, S.budget, i => b[i]); break; }
       case "random": { const r = C.randomPlace(G, S.budget, objective); sensors = r.sensors; extra.mean = r.mean; break; }
-      case "twoupdown": { const r = C.twoUpTwoDown(G, S.budget, S.kup, S.kdown); sensors = r.sensors; extra.anchors = r.anchors.length; break; }
+      case "twoupdown": { const r = C.twoUpTwoDown(G, S.budget, S.kup, S.kdown, objective); sensors = r.sensors; extra.anchors = r.anchors.length; break; }
       case "custom": {
-        const r = await runCustom(G, $("code").value, S.budget);
+        const r = await runCustom(G, $("code").value, S.budget, wv);
         sensors = r.sensors.filter(v => Number.isInteger(v) && v >= 0 && v < G.n);
         const nonChamber = sensors.filter(v => !G.candidate[v]).length;
         if (nonChamber) extra.nonChamber = nonChamber;
@@ -582,6 +874,12 @@ async function run() {
     // Coverage of all nodes is not the headline when the objective is overcapacity:
     // "24 of 183 surcharging chambers" is the number that means something.
     if (marked) extra.marked = C.scoreMarked(G, sensors, marked);
+    if (S.objective === "risk") {
+      const rs = riskState();
+      let hit = 0, tot = 0;
+      for (let i = 0; i < G.n; i++) { tot += rs.node[i]; if (res.covered[i]) hit += rs.node[i]; }
+      extra.risk = { hit, tot, share: tot > 0 ? hit / tot : 0 };
+    }
     S.lastResult = { ...res, sensors: sensors.length, extra };
     renderResult(); saveScore(); draw(); render3D();
   } catch (err) {
@@ -628,11 +926,15 @@ function renderResult() {
      understate the result and answer a question nobody asked: most of the network
      is not at risk of overcapacity, and deliberately not covering it is the point. */
   const marked = e.marked;
-  const main = marked ? (marked.total ? 100 * marked.hit / marked.total : 0)
+  const main = e.risk ? 100 * e.risk.share
+    : marked ? (marked.total ? 100 * marked.hit / marked.total : 0)
     : S.objective === "length"
       ? (o.universeLen ? 100 * r.len / o.universeLen : 0)
       : (o.universeSize ? 100 * r.nodes / o.universeSize : 0);
-  const sub = marked
+  const sub = e.risk
+    ? `of the network's blockage exposure observed, using ${r.sensors}
+       sensor${r.sensors === 1 ? "" : "s"}`
+    : marked
     ? `of the ${marked.total} surcharging chamber${marked.total === 1 ? "" : "s"} observed,
        using ${r.sensors} sensor${r.sensors === 1 ? "" : "s"}`
     : `of the observable ${S.objective === "length" ? "pipe length" : "nodes"} covered,
@@ -643,8 +945,14 @@ function renderResult() {
     <div class="bigsub">${sub}</div>
     ${marked ? `<div class="stat"><span>Surcharging chambers seen</span>
       <span>${marked.hit} / ${marked.total}</span></div>` : ""}
+    ${e.risk ? `<div class="stat"><span>Blockage exposure covered</span>
+      <span>${Math.round(e.risk.hit)} / ${Math.round(e.risk.tot)}</span></div>
+      <div class="hint" style="margin-top:2px">Exposure is metres of pipe weighted by a
+      <b>declared</b> likelihood, so the share is a ranking statement, not a prediction.</div>` : ""}
     <div class="stat"><span>Nodes covered</span><span>${r.nodes} / ${o.universeSize}</span></div>
     <div class="stat"><span>Length covered</span><span>${fmtM(r.len)} / ${fmtM(o.universeLen)}</span></div>
+    ${e.weighted ? `<div class="stat"><span>Objective weighting</span>
+      <span style="color:var(--good)">applied</span></div>` : ""}
     <div class="stat"><span>Per sensor</span><span>${r.sensors ? (r.nodes / r.sensors).toFixed(2) : "0"} nodes</span></div>
     <div class="stat"><span>Observable universe</span><span>${o.universeSize} / ${G.n} nodes</span></div>
     <div class="stat"><span>Candidate chambers</span><span>${C.feasible(G).length}</span></div>
@@ -698,10 +1006,65 @@ function renderLB() {
 }
 
 /* ------------------------------------------------------------ UI wiring */
+/* Completeness of the per-pipe attributes, reported per region because it varies
+   per region: the publisher carries them on the utility layer and may not on the
+   statewide one. Percentages come from the dataset, never typed in.
+
+   Material earns its own line. The publisher's MATERIAL field reads UNKN on the
+   oldest 456 records, but MATERIALUN carries the value on every one of them and
+   the two agree on all 43 records where both are populated, so reading the pair
+   takes material from 54.5% to 100% with no assumption. That is worth stating
+   where someone can check it against the source. */
+function pipeDQ(st) {
+  const p = st.pipe_attrs;
+  if (!p) return "";
+  // A stat the build did not emit reads as "not reported", never as a crash.
+  const row = (label, v, extra) => v == null
+    ? `<div class="stat"><span>${label}</span><span style="color:var(--ink-faint)">not reported</span></div>`
+    : `<div class="stat"><span>${label}</span><span${v < 100 ? ' style="color:var(--warn)"' : ""}>` +
+      `${v.toFixed(1)}%${extra || ""}</span></div>`;
+  return `<hr>
+    ${row("Pipe diameter published", p.diameter_pct)}
+    ${row("Material published", p.material_pct)}
+    ${p.material_from_fallback ? `<div class="hint" style="margin-top:-2px;margin-bottom:6px">
+      ${p.material_from_fallback} of those read <code>UNKN</code> in the primary field and were
+      resolved from the publisher's second material field, which agrees with the first on every
+      record where both are populated.</div>` : ""}
+    ${row("Construction year published", p.const_year_pct)}
+    ${row("Gradient published", p.grade_pct)}
+    ${row("Internal diameter published", p.internal_dia_pct)}
+    ${row("Joint type published", p.jointtype_pct)}
+    ${row("Roughness published", p.roughness_pct)}
+    <div class="hint" style="margin-top:6px">Roughness is carried as a field but populated on no
+      record here, so Manning's n stays a declared constant. Internal diameter is the bore Manning
+      actually wants but is published on barely half the records, and mixing it with nominal would
+      compute capacity on a different basis for old and new pipe, so nominal is used throughout.</div>`;
+}
+
 function setRegion(k) {
   S.region = k; G = buildGraph(k);
   _capCache = null; _capKey = null;      // capacity is per region, never carry it over
   _growthCache = null; _growthKey = null; S.growthPoints = [];
+  _diaOrder = null; _diaOrderKey = null;
+  _pipeW = null; _pipeWKey = null;
+  _riskCache = null; _riskKey = null;
+
+  // Only regions harvested since the pipe-attribute fetch carry per-pipe data, so
+  // the mode is offered where it means something and withdrawn where it does not,
+  // rather than silently drawing a blank map.
+  const hasPipes = !!G.pipes;
+  $("opt-diameter").disabled = !hasPipes;
+  $("opt-diameter").textContent = hasPipes ? "Pipe diameter" : "Pipe diameter (not published)";
+  $("opt-risk").disabled = !hasPipes;
+  $("opt-risk").textContent = hasPipes ? "Blockage likelihood" : "Blockage likelihood (no pipe data)";
+  $("obj-risk").disabled = !hasPipes;
+  if (!hasPipes && (S.colourBy === "diameter" || S.colourBy === "risk")) {
+    S.colourBy = "coverage"; $("colourby").value = "coverage";
+  }
+  if (!hasPipes && S.objective === "risk") {
+    S.objective = "nodes"; $("objective").value = "nodes";
+  }
+  syncColourUI();
   S.sensors = []; S.covered = null; S.anchor = null; S.lastResult = null;
   const st = G.stats;
   const measured = G.role === "measured";
@@ -729,6 +1092,7 @@ function setRegion(k) {
     <div class="stat"><span>Cover from contours</span><span>${ds.contour}</span></div>
     ${ds.transferred ? `<div class="stat"><span>Cover transferred</span><span>${ds.transferred}</span></div>` : ""}
     ${ds.unknown ? `<div class="stat"><span>Cover unusable, discarded</span><span>${ds.unknown}</span></div>` : ""}
+    ${pipeDQ(st)}
     <div class="hint" style="margin-top:8px">${measured && legA
       ? `Cover levels are interpolated from the 1 m contour layer. Measured against ${legA.n}
          surveyed covers in this same area the error is ${legA.mean_abs} m mean,
@@ -746,6 +1110,23 @@ function setRegion(k) {
   $("budget").max = Math.max(10, Math.min(400, pool || 50));
   if (S.budget > +$("budget").max) { S.budget = +$("budget").max; $("budget").value = S.budget; }
   fitView(); syncParamUI(); renderLB(); render3D(true);
+}
+
+/* One place decides which controls and which legend belong to the active colour
+   mode. It was two inline toggles while capacity was the only per-edge mode;
+   adding a third made a single owner cheaper than a third set of flags. */
+function syncColourUI() {
+  const mode = S.colourBy;
+  const cap = mode === "capacity", dia = mode === "diameter", risk = mode === "risk";
+  $("p-capacity").hidden = !cap;
+  $("cap-hint").hidden = !cap;
+  $("p-risk").hidden = !risk;
+  $("grp-growth").classList.toggle("collapsed", !cap);
+  $("legend").hidden = cap || dia || risk;   // the coverage legend means nothing here
+  $("legend-cap").hidden = !cap;
+  $("legend-dia").hidden = !dia;
+  $("legend-risk").hidden = !risk;
+  if (risk) riskState();                     // fills the hint on first switch
 }
 
 function syncParamUI() {
@@ -801,12 +1182,17 @@ function init() {
   $("algo").addEventListener("change", e => { S.algo = e.target.value; syncParamUI(); });
   $("colourby").addEventListener("change", e => {
     S.colourBy = e.target.value;
-    const on = S.colourBy === "capacity";
-    $("p-capacity").hidden = !on;
-    $("cap-hint").hidden = !on;
-    $("legend").hidden = on;          // the coverage legend means nothing here
-    $("legend-cap").hidden = !on;
-    $("grp-growth").classList.toggle("collapsed", !on);
+    syncColourUI();
+    draw(); render3D();
+  });
+  $("riskagg").addEventListener("change", e => {
+    S.riskAgg = e.target.value;
+    _riskCache = null; _riskKey = null;
+    draw(); render3D();
+  });
+  $("riskblend").addEventListener("change", e => {
+    S.riskBlend = e.target.value;
+    _riskCache = null; _riskKey = null;
     draw(); render3D();
   });
   $("addload").addEventListener("input", e => {
@@ -817,7 +1203,14 @@ function init() {
   });
   $("growth-clear").addEventListener("click", clearGrowth);
   $("objective").addEventListener("change", () => {
-    $("obj-hint").hidden = S.objective !== "surcharge";
+    const sur = S.objective === "surcharge", risk = S.objective === "risk";
+    $("obj-hint").hidden = !sur && !risk;
+    $("obj-hint").textContent = risk
+      ? "Weights coverage by how likely each chamber's incoming pipes are to block, from " +
+        "published bore, age, gradient, material and joint type. The weighting is declared, " +
+        "not calibrated: see the Assumptions tab."
+      : "Targets the chambers that overcapacity actually threatens, taken from the capacity " +
+        "model, rather than treating every chamber as an equally likely blockage.";
   });
   $("load").addEventListener("input", e => {
     S.perNodeLoad = +e.target.value;
@@ -899,7 +1292,7 @@ function init() {
   setRegion(REGION_KEYS[0]);
   resize();
   if (location.hash.length > 1) showTab(location.hash.slice(1));
-  if (window.OSPDocs) window.OSPDocs.render({ DATA, VALID, META, C, buildGraph });
+  if (window.OSPDocs) window.OSPDocs.render({ DATA, VALID, META, CODES, C, buildGraph });
 }
 
 init();
