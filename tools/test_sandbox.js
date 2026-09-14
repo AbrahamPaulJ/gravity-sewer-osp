@@ -15,10 +15,10 @@
 const path = require("path");
 const ROOT = path.join(__dirname, "..");
 global.window = {};
-require(path.join(ROOT, "osp_data.js"));
-const C = require(path.join(ROOT, "osp_core.js"));
-const K = require(path.join(ROOT, "osp_capacity.js"));
-const R = require(path.join(ROOT, "osp_risk.js"));
+require(path.join(ROOT, "data/osp_data.js"));
+const C = require(path.join(ROOT, "src/model/osp_core.js"));
+const K = require(path.join(ROOT, "src/model/osp_capacity.js"));
+const R = require(path.join(ROOT, "src/model/osp_risk.js"));
 const D = window.OSP_DATA;
 
 let pass = 0, fail = 0;
@@ -111,7 +111,7 @@ window.OSPCore = C; window.OSPCapacity = K; window.OSPRisk = R;
 const slots = {};
 global.document = { getElementById: id => (slots[id] = slots[id] || { innerHTML: "" }) };
 global.requestIdleCallback = fn => fn();
-require(path.join(ROOT, "osp_docs.js"));
+require(path.join(ROOT, "src/docs/osp_docs.js"));
 window.OSPDocs.render({ DATA: D.regions, VALID: D.validation, META: D.meta, CODES: D.codes, C,
                         buildGraph: k => C.buildGraph(D.regions[k]) });
 const all = Object.values(slots).map(s => s.innerHTML).join("");

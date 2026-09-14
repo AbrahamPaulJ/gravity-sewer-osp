@@ -16,7 +16,11 @@ Everything runs in the browser. No server, no build step, no tracking.
 | `osp_sandbox.html` | The tool. Place a sensor budget on a real network, compare seven algorithms against four objectives, inspect the assumptions. |
 | `manhole_anatomy.html` | Four rotatable 3D sections: one chamber inside, why every chamber on a run is a different depth, a chamber taking several pipes, and where a blockage sends the water. |
 | `why_observability.html` | Draggable long section: the backwater wedge, and the arithmetic that limits how far a sensor can see. |
-| `tools/` | `build_demo_data.py` harvests the network and its per-pipe attributes from the live endpoints; `build_public_demo.py` sanitises it for publication and audits its own output; `format_data.py` rewrites `osp_data.js` as readable JSON. |
+| `src/model/` | The models, pure and DOM-free: `osp_core.js` (graph, observability, placement), `osp_capacity.js`, `osp_risk.js`. Run from Node by the tests. |
+| `src/ui/` | `osp_ui.js`, the sandbox page's state, canvas and controls; `osp_3d.js`, the optional relief view. |
+| `src/docs/` | `osp_docs.js`, the assumptions register, method, Q&A and illustrated glossary, generated from the loaded data. |
+| `data/` | `osp_data.js`, the generated dataset. Never edited by hand. |
+| `tools/` | `test_sandbox.js` regression suite (`node tools/test_sandbox.js`); `format_data.py` rewrites the data readable. The harvester and sanitiser live in the private repository. See `ARCHITECTURE.md`. |
 
 Both explainers are standalone and need no data file. If the vocabulary is new, start with
 `manhole_anatomy.html`.

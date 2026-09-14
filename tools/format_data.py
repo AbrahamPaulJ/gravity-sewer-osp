@@ -25,7 +25,7 @@ Usage:  python3 tools/format_data.py [--check]
 import argparse, json, os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATA = os.path.join(os.path.dirname(HERE), "osp_data.js")
+DATA = os.path.join(os.path.dirname(HERE), "data", "osp_data.js")
 
 WRAP = 96          # target column for wrapped numeric arrays
 INDENT = "  "
