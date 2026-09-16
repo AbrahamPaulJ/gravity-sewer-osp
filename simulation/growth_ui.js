@@ -164,10 +164,11 @@ window.GrowthUI = (function () {
     Growth3D.build($("#stage"), nd => select(nd.name)).then(() => {
       const rows = buildList();
       renderSensors();
-      $("#scale").textContent = "Elevation is the pipe invert, exaggerated x" +
-        Growth3D.ZEXAG + ". " + geom().nPipes + " pipes, " + geom().nChambers +
-        " chambers, " + geom().baseDwellings + " properties. Click a chamber to move the " +
-        "growth there.";
+      $("#scale").textContent = geom().nPipes + " pipes, " + geom().nChambers +
+        " manholes, " + (geom().nHouses || geom().baseDwellings) + " connected properties" +
+        ", plus " + geom().nodes.filter(n => n.kind !== "chamber").length +
+        " pipe ends with no manhole on record. Elevation is the pipe invert, exaggerated x" +
+        Growth3D.ZEXAG + ". Click a manhole to move the growth there.";
       select(rows[0].site);
     });
     $("#btn-info").onclick = showModal;

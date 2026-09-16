@@ -20,13 +20,20 @@ window.Growth3D = (function () {
   let pipeGeo = null, pipeColours = null, chamberMeshes = [], labelLayer = null;
   let built = false, onPick = null, focusRing = null;
   const ZEXAG = 22.0;
+  /* DARK, and saturated. The first version drew grey pipes and beige markers on a cream
+     background and was unreadable: every state looked like every other state. On a dark
+     ground a saturated colour carries, so the three pipe states separate at a glance and
+     the markers stop competing with the pipes for attention. */
   const COL = {
-    bg: 0xf4f1ea,
-    ok: [0x9a, 0xa3, 0xad],        // grey, has room
-    was: [0xe8, 0x91, 0x2d],       // amber, surcharged already
-    tip: [0xe0, 0x31, 0x2b],       // red, tipped by this growth
-    site: 0x2f7fd1,                // blue, where the houses go
-    sensor: 0x1f6f3f,              // green, a proposed sensor
+    bg: 0x0d1117,
+    ok: [0x4c, 0x8b, 0xf5],        // blue, has room
+    was: [0xff, 0xa5, 0x00],       // orange, surcharged before any growth
+    tip: [0xff, 0x2d, 0x55],       // hot red, tipped by this growth
+    house: 0xd9a066,               // warm, so 643 of them read as dwellings not noise
+    junction: 0x30363d,            // a pipe end the record does not call a chamber
+    chamber: 0xc9d1d9,             // a real, published manhole: a candidate sensor site
+    site: 0x00d4ff,                // cyan, where the new dwellings connect
+    sensor: 0x3fb950,              // green, a proposed sensor
   };
 
   function ensureThree() {
@@ -72,10 +79,43 @@ window.Growth3D = (function () {
     }
     if (built) { resize(container); return; }
     scene.background = new THREE.Color(COL.bg);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-    const sun = new THREE.DirectionalLight(0xffffff, 0.4);
+    scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+    const sun = new THREE.DirectionalLight(0xffffff, 0.35);
     sun.position.set(-100, 300, 200);
     scene.add(sun);
+
+    // The connected properties, drawn at the ground rather than at pipe level so they read
+    // as a layer above the network instead of merging into it.
+    if (g.hx && g.hx.length) {
+      const hp = [];
+      for (let i = 0; i < g.hx.length; i++) {
+        // Its own main's elevation plus a couple of metres, so the properties sit just
+        // above the street they drain into rather than on one shared plane.
+        const v = P(g.hx[i], g.hy[i], (g.hz ? g.hz[i] : 0) + 200);
+        hp.push(v.x, v.y, v.z);
+      }
+      const hg = new THREE.BufferGeometry();
+      hg.setAttribute("position", new THREE.Float32BufferAttribute(hp, 3));
+      scene.add(new THREE.Points(hg, new THREE.PointsMaterial({
+        color: COL.house, size: 4.5, sizeAttenuation: true,
+        transparent: true, opacity: 0.9 })));
+    }
+
+    // Pipe ends the manhole record does not cover. Drawn small and dark so the question
+    // "what are all these dots" has a visible answer: the bright ones are chambers you
+    // could put a sensor in, these are not.
+    const jp = [];
+    g.nodes.forEach(nd => {
+      if (nd.kind === "chamber") return;
+      const v = P(nd.x, nd.y, nd.inv);
+      jp.push(v.x, v.y, v.z);
+    });
+    if (jp.length) {
+      const jg = new THREE.BufferGeometry();
+      jg.setAttribute("position", new THREE.Float32BufferAttribute(jp, 3));
+      scene.add(new THREE.Points(jg, new THREE.PointsMaterial({
+        color: COL.junction, size: 6, sizeAttenuation: true })));
+    }
 
     // One LineSegments for every pipe, with a colour attribute so recolouring a scenario
     // is an array write rather than a scene rebuild.
@@ -103,11 +143,11 @@ window.Growth3D = (function () {
 
     // Chambers. Spheres rather than points so they can be picked and so their size means
     // something at any zoom.
-    const sphere = new THREE.SphereGeometry(4.2, 12, 9);
+    const sphere = new THREE.SphereGeometry(5.6, 14, 10);
     chamberMeshes = [];
     g.nodes.forEach((nd, i) => {
       if (nd.kind !== "chamber") return;
-      const m = new THREE.Mesh(sphere, new THREE.MeshLambertMaterial({ color: 0x9aa3ad }));
+      const m = new THREE.Mesh(sphere, new THREE.MeshBasicMaterial({ color: COL.chamber }));
       m.position.copy(P(nd.x, nd.y, nd.inv));
       m.userData = { node: nd, index: i };
       scene.add(m);
@@ -181,9 +221,9 @@ window.Growth3D = (function () {
       const nm = m.userData.node.name;
       const st = nodeState(nm);
       const c = sensorSet.has(nm) ? COL.sensor
-        : st === "tip" ? 0xe0312b : st === "was" ? 0xe8912d : 0x9aa3ad;
-      m.material.color.setHex(typeof c === "number" ? c : 0x9aa3ad);
-      m.scale.setScalar(sensorSet.has(nm) ? 1.9 : st === "ok" ? 1 : 1.45);
+        : st === "tip" ? 0xff2d55 : st === "was" ? 0xffa500 : COL.chamber;
+      m.material.color.setHex(c);
+      m.scale.setScalar(sensorSet.has(nm) ? 2.1 : st === "ok" ? 1 : 1.6);
       if (nm === siteName) {
         focusRing.position.copy(m.position);
         focusRing.visible = true;
@@ -201,7 +241,7 @@ window.Growth3D = (function () {
       const m = chamberMeshes.find(x => x.userData.node.name === tightOn);
       if (m) { centre = m.position.clone(); span = 420; }
     }
-    const r = span / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)) * 0.95;
+    const r = span / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)) * 0.72;
     controls.target.copy(centre);
     camera.position.set(centre.x + r * 0.62, centre.y + r * 0.48, centre.z + r * 0.62);
     camera.updateProjectionMatrix();

@@ -63,12 +63,15 @@ nav button.info:hover{background:var(--accent); color:#fff}
 #stage{flex:1; min-height:0; position:relative}
 #stage canvas{display:block; width:100%; height:100%}
 .labels{position:absolute; inset:0; pointer-events:none}
-.legend{padding:8px 14px; border-top:1px solid var(--line); background:var(--panel);
-  font-size:11.5px; color:var(--dim); display:flex; gap:16px; flex-wrap:wrap; align-items:center}
-.legend .k{display:inline-block; width:10px; height:10px; border-radius:50%;
-  vertical-align:-1px; margin-right:5px}
-#scale{padding:5px 14px 9px; font-size:10.5px; color:var(--dim);
-  border-top:1px solid var(--line); background:var(--panel)}
+.legend{padding:10px 14px 4px; background:#0d1117; color:#8b949e;
+  font-size:11.5px; display:flex; gap:7px 18px; flex-wrap:wrap; align-items:center}
+.legend b{color:#c9d1d9; font-weight:600; margin-right:2px}
+.legend .grp{display:flex; gap:14px; align-items:center; flex-wrap:wrap}
+.legend .k{display:inline-block; width:11px; height:11px; border-radius:50%;
+  vertical-align:-2px; margin-right:6px}
+.legend .kl{display:inline-block; width:16px; height:3px; border-radius:2px;
+  vertical-align:3px; margin-right:6px}
+#scale{padding:2px 14px 10px; font-size:10.5px; color:#6e7681; background:#0d1117}
 #modal{position:fixed; inset:0; background:rgba(31,35,40,.45); display:flex;
   align-items:center; justify-content:center; padding:24px; z-index:50}
 #modal[hidden]{display:none}
@@ -140,11 +143,18 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   </nav>
   <div id="stage"></div>
   <div class="legend">
-    <span><span class="k" style="background:#9aa3ad"></span>room to spare</span>
-    <span><span class="k" style="background:#e8912d"></span>already surcharged, not caused by growth</span>
-    <span><span class="k" style="background:#e0312b"></span>tipped by this growth</span>
-    <span><span class="k" style="background:#2f7fd1"></span>where the houses go</span>
-    <span><span class="k" style="background:#1f6f3f"></span>proposed sensor</span>
+    <div class="grp"><b>Pipes</b>
+      <span><span class="kl" style="background:#4c8bf5"></span>room to spare</span>
+      <span><span class="kl" style="background:#ffa500"></span>already surcharged, not growth</span>
+      <span><span class="kl" style="background:#ff2d55"></span>tipped by this growth</span>
+    </div>
+    <div class="grp"><b>Points</b>
+      <span><span class="k" style="background:#c9d1d9"></span>manhole, a sensor could go here</span>
+      <span><span class="k" style="background:#30363d"></span>pipe end, no manhole recorded</span>
+      <span><span class="k" style="background:#d9a066"></span>connected property</span>
+      <span><span class="k" style="background:#00d4ff"></span>where the new dwellings connect</span>
+      <span><span class="k" style="background:#3fb950"></span>proposed sensor</span>
+    </div>
   </div>
   <div id="scale"></div>
 </main>
