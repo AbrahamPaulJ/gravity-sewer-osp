@@ -256,8 +256,11 @@ nav button.info:hover{background:var(--accent); color:#fff}
     <div class="transport">
       <div class="trow">
         <button id="play" class="primary">Play</button>
+        <button id="stepBack" title="Back one frame (left arrow)">&#8249;</button>
+        <button id="stepFwd" title="Forward one frame (right arrow)">&#8250;</button>
         <button id="skip">Skip to event</button>
         <div id="track"><div id="marks"></div><input id="time" type="range" min="0" max="1" value="0" step="1"></div>
+        <span id="frameNo"></span>
         <button id="reset">Reset view</button>
       </div>
       <div class="legend">
@@ -268,7 +271,7 @@ nav button.info:hover{background:var(--accent); color:#fff}
       <div class="scale-note">
         Vertical &times;8, pipe bore &times;8, shaft width &times;2.5, so a 225 mm pipe is
         visible against a 100 m reach. Panel readings are unscaled. Drag to orbit, scroll to
-        zoom, space plays, R resets.
+        zoom, space plays, left and right arrows step one frame, R resets.
       </div>
     </div>
   </section>

@@ -110,6 +110,7 @@ window.SimUI = (function () {
     $("#time").value = String(st.frame);
     Sim3D.draw(st.frame, run, st.s);
     paint(st.frame);
+    $("#frameNo").textContent = "frame " + (st.frame + 1) + " / " + run.steps;
   }
 
   function paint(k) {
@@ -335,6 +336,15 @@ window.SimUI = (function () {
   }
   function setPlaying(p) { st.playing = p; $("#play").textContent = p ? "Pause" : "Play"; }
 
+  /* One frame at a time, wrapping at both ends so stepping back from 0 lands on the last
+     frame rather than sticking. Pauses, because a step you cannot see is not a step. */
+  function step(d) {
+    if (!st.run) return;
+    setPlaying(false);
+    const n = st.run.steps;
+    setFrame(((st.frame + d) % n + n) % n);
+  }
+
   function setTab(tab) {
     st.tab = tab;
     ["sim", "net", "ref"].forEach(t => {
@@ -385,15 +395,21 @@ window.SimUI = (function () {
   function init() {
     buildSizes();
     initGrip();
-    $("#time").oninput = e => { setPlaying(false); setFrame(+e.target.value); };
+    // Seeking does NOT pause. Dragging the slider to look at a moment and then having to
+    // press play again is the wrong default when the run is only 75 seconds long.
+    $("#time").oninput = e => setFrame(+e.target.value);
     $("#play").onclick = () => setPlaying(!st.playing);
     $("#reset").onclick = () => Sim3D.resetCamera();
     $("#skip").onclick = () => {
-      // Land a little before the event so the change is visible rather than already begun.
+      // A seek like any other, so it leaves playback alone. Lands a little before the event
+      // so the change is visible rather than already under way.
       const w = st.run.scenario.warmup;
-      setPlaying(false);
       setFrame(Math.max(0, Math.round(((w - 2) * 60 - st.run.t0) / st.run.dt)));
     };
+    // Stepping DOES pause, unlike seeking. At 16 frames a second a single step would be
+    // overwritten in 60 ms and the button would appear to do nothing.
+    $("#stepBack").onclick = () => step(-1);
+    $("#stepFwd").onclick = () => step(1);
     $("#tab-sim").onclick = () => setTab("sim");
     $("#tab-net").onclick = () => setTab("net");
     $("#tab-ref").onclick = () => setTab("ref");
@@ -412,8 +428,8 @@ window.SimUI = (function () {
       if (/^(INPUT|SELECT|BUTTON)$/.test(e.target.tagName)) return;
       if (e.code === "Space") { e.preventDefault(); setPlaying(!st.playing); }
       else if (e.key === "r" || e.key === "R") Sim3D.resetCamera();
-      else if (e.key === "ArrowLeft") { setPlaying(false); setFrame(st.frame - 1); }
-      else if (e.key === "ArrowRight") { setPlaying(false); setFrame(st.frame + 1); }
+      else if (e.key === "ArrowLeft") step(-1);
+      else if (e.key === "ArrowRight") step(1);
     });
     window.addEventListener("resize", () => Sim3D.resize($("#stage")));
     setTab("sim");
