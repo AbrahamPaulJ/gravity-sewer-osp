@@ -75,6 +75,29 @@ table.live td.moved{background:#e4f0fb}      /* changed since the previous frame
 .lead{font-size:11.5px; color:var(--dim); margin-top:8px; line-height:1.45}
 .lead b{color:var(--ink)}
 
+/* Sensor trigger lights. Grey = quiet, amber = level alarm, red = float tripped. */
+.dot{display:inline-block; width:10px; height:10px; border-radius:50%; background:#cfc8b8;
+  border:1px solid #b8b0a0; vertical-align:-1px}
+.dot.lit{background:var(--amber); border-color:#b9700f}
+.dot.float.lit{background:var(--warn); border-color:#a8231e}
+table.live th.s,table.live td.s{text-align:center; width:34px}
+
+/* Which sensor did better */
+#cmp{margin-top:16px; border:1px solid var(--line); border-radius:8px; background:#fff;
+  padding:10px 11px}
+#cmp h4{margin:0 0 7px; font-size:11px; text-transform:uppercase; letter-spacing:.05em;
+  color:var(--dim); font-weight:600}
+#cmp table{width:100%; border-collapse:collapse; font-size:11.5px}
+#cmp th{text-align:right; font-size:10px; color:var(--dim); font-weight:600; padding:2px 3px;
+  text-transform:uppercase}
+#cmp th:first-child{text-align:left}
+#cmp td{text-align:right; padding:3px; font-variant-numeric:tabular-nums;
+  border-top:1px solid #eee7da}
+#cmp td:first-child{text-align:left; font-weight:600}
+#cmp td.gain{color:#1f6f3f}
+#cmp .verdict{margin-top:8px; font-size:11.5px; color:var(--dim); line-height:1.45}
+#cmp .verdict b{color:var(--ink)}
+
 /* ---- main ---- */
 main{display:flex; flex-direction:column; min-width:0; overflow:hidden}
 nav{display:flex; gap:5px; align-items:center; padding:8px 13px;
@@ -85,7 +108,9 @@ nav button.active{background:var(--accent); border-color:var(--accent); color:#f
 nav button.info{margin-left:auto; border-color:var(--accent); color:var(--accent); font-weight:600}
 nav button.info:hover{background:var(--accent); color:#fff}
 .pane{flex:1; min-height:0; position:relative}
-.pane[hidden]{display:none}
+/* !important because #pane-sim and #pane-net set display on an ID selector, which
+   outranks this attribute selector and left both panes visible at once. */
+.pane[hidden]{display:none!important}
 #pane-sim{display:flex; flex-direction:column}
 #stage{flex:1; min-height:0; position:relative}
 #stage canvas{display:block; width:100%; height:100%}
@@ -115,6 +140,18 @@ nav button.info:hover{background:var(--accent); color:#fff}
 .scale-note{font-size:10.5px; color:var(--dim); margin-top:4px}
 
 /* ---- reference pane ---- */
+#pane-net{display:flex; flex-direction:column}
+#netStage{flex:1; min-height:0; position:relative}
+#netStage canvas{display:block; width:100%; height:100%}
+.netbar{padding:9px 14px; border-top:1px solid var(--line); background:var(--panel);
+  display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.netbar button{font:inherit; padding:5px 13px; border:1px solid var(--line); background:#fff;
+  border-radius:6px; cursor:pointer; color:inherit}
+.netbar button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+.netbar .note{font-size:11px; color:var(--dim)}
+.netbar .k{display:inline-block; width:10px; height:3px; border-radius:2px;
+  vertical-align:2px; margin:0 3px 0 10px}
+
 .doc{padding:20px 28px; overflow-y:auto; height:100%; max-width:900px}
 .doc pre{background:#fff; border:1px solid var(--line); border-radius:7px; padding:13px;
   font:11.5px/1.5 ui-monospace,Consolas,monospace; white-space:pre-wrap; overflow-x:auto}
@@ -151,6 +188,18 @@ nav button.info:hover{background:var(--accent); color:#fff}
 #modal .tag{font-size:10px; text-transform:uppercase; letter-spacing:.04em; padding:1px 6px;
   border-radius:999px; background:#efe9dc; color:var(--dim); white-space:nowrap}
 #modal .tag.assumed{background:#fdf0dc; color:#8a5a12}
+#modal .qa{border:1px solid var(--line); border-radius:9px; margin-bottom:10px;
+  background:#fff; overflow:hidden}
+#modal .qa>summary{cursor:pointer; padding:11px 13px; font-weight:600; font-size:13px;
+  list-style:none; display:flex; gap:8px; align-items:baseline}
+#modal .qa>summary::-webkit-details-marker{display:none}
+#modal .qa>summary::before{content:"?"; color:var(--accent); font-weight:700}
+#modal .qa[open]>summary{border-bottom:1px solid var(--line); background:#f7f3ea}
+#modal .qa .body{padding:12px 13px}
+#modal .qa .body p{margin:0 0 9px; font-size:13px}
+#modal .qa .body p:last-child{margin-bottom:0}
+#modal .qa .ev{margin-top:10px; padding-top:9px; border-top:1px dashed var(--line);
+  font-size:11.5px; color:var(--dim)}
 #modal .caveat{background:#fbe3e2; border:1px solid var(--warn); color:#8d1c18;
   border-radius:8px; padding:11px 13px; margin-top:18px; font-size:12.5px}
 #modal .close{float:right; font:inherit; border:1px solid var(--line); background:#fff;
@@ -176,10 +225,20 @@ nav button.info:hover{background:var(--accent); color:#fff}
   <div id="phase"></div>
 
   <table class="live">
-    <thead><tr><th>Chamber</th><th>Inflow</th><th>Water</th><th>Shaft</th></tr></thead>
+    <thead><tr><th>Chamber</th><th>Inflow</th><th>Water</th><th>Shaft</th>
+      <th class="s" title="Level sensor alarm">Lvl</th>
+      <th class="s" title="Float switch trip">Flt</th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
   <div class="lead" id="leadNote"></div>
+
+  <div id="cmp">
+    <h4>Which sensor did better</h4>
+    <table><thead><tr><th>Chamber</th><th>Level</th><th>Float</th><th>Gain</th>
+      <th title="Distance between the level alarm and the float trip">Gap</th>
+    </tr></thead><tbody id="cmpRows"></tbody></table>
+    <div class="verdict" id="cmpVerdict"></div>
+  </div>
 </aside>
 
 <div id="grip" title="Drag to resize"></div>
@@ -187,6 +246,7 @@ nav button.info:hover{background:var(--accent); color:#fff}
 <main>
   <nav>
     <button id="tab-sim" class="active">Simulation</button>
+    <button id="tab-net">Whole network</button>
     <button id="tab-ref">Reference</button>
     <button id="btn-info" class="info">About this scenario</button>
   </nav>
@@ -213,6 +273,19 @@ nav button.info:hover{background:var(--accent); color:#fff}
     </div>
   </section>
 
+  <section class="pane" id="pane-net" hidden>
+    <div id="netStage"></div>
+    <div class="netbar">
+      <button id="netAll" class="primary">Whole network</button>
+      <button id="netZoom">Zoom to the modelled junction</button>
+      <span class="note">
+        <span class="k" style="background:#9aa3ad"></span>the 998 mains this network publishes
+        <span class="k" style="background:#e0312b"></span>the 4 this simulation models
+      </span>
+      <span class="note" id="netNote"></span>
+    </div>
+  </section>
+
   <section class="pane doc" id="pane-ref" hidden><div id="ref"></div></section>
 </main>
 
@@ -223,6 +296,7 @@ nav button.info:hover{background:var(--accent); color:#fff}
 <script src="data/run_warning_along.js"></script>
 <script src="sim_data.js"></script>
 <script src="sim_3d.js"></script>
+<script src="sim_overview.js"></script>
 <script src="sim_ui.js"></script>
 <script type="module">
   /* The importmap only resolves inside a module, and sim_3d.js imports three lazily

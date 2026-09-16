@@ -65,6 +65,7 @@ window.SimUI = (function () {
     buildRows();
     setFrame(0);
     renderLeads();
+    renderCompare();
   }
 
   /* Ticks on the slider track: event start, every level alarm, the first spill. Without
@@ -97,7 +98,9 @@ window.SimUI = (function () {
     const g = SIM_GEOM.geoms[st.run.geom];
     $("#rows").innerHTML = g.chambers.map(c =>
       '<tr data-c="' + c + '"><td>' + c + '</td><td class="q"></td>' +
-      '<td class="d"></td><td class="p"></td></tr>').join("");
+      '<td class="d"></td><td class="p"></td>' +
+      '<td class="s"><span class="dot level"></span></td>' +
+      '<td class="s"><span class="dot float"></span></td></tr>').join("");
   }
 
   function setFrame(k) {
@@ -133,6 +136,21 @@ window.SimUI = (function () {
       const v = { q: q.toFixed(2), d: d.toFixed(2), p: pct.toFixed(0) };
       cur[c] = v;
       tr.classList.toggle("spill", s.flood.at(k, i) > 1e-6);
+      // Sensor state at this instant. The alarm times come from the experiment's own
+      // analysis, so a lit dot and the lead table can never disagree.
+      const ch = (st.size.chambers || {})[c] || {};
+      const tAbs = SimData.timeAt(st.run, k) / 60;
+      const lvlOn = ch.level_alarm != null && tAbs >= ch.level_alarm;
+      const fltOn = ch.float_alarm != null && tAbs >= ch.float_alarm;
+      const dl = tr.querySelector(".dot.level"), df = tr.querySelector(".dot.float");
+      dl.classList.toggle("lit", lvlOn);
+      df.classList.toggle("lit", fltOn);
+      dl.title = ch.level_alarm != null
+        ? "Level alarm at " + ch.level_alarm.toFixed(1) + " min" + (lvlOn ? " (alarming)" : "")
+        : "no level alarm in this run";
+      df.title = ch.float_alarm != null
+        ? "Float trips at " + ch.float_alarm.toFixed(1) + " min" + (fltOn ? " (tripped)" : "")
+        : "no float trip in this run";
       ["q", "d", "p"].forEach(key => {
         const td = tr.querySelector("." + key);
         const txt = key === "p"
@@ -155,6 +173,44 @@ window.SimUI = (function () {
       "<b>Warning a level sensor would give, minutes before the first spill:</b><br>" +
       rows.map(r => r.c + " <b>" + r.lead.toFixed(1) + "</b>").join(" &nbsp;/&nbsp; ") +
       "<br>Best is " + rows[0].c + ", worst is " + rows[rows.length - 1].c + ".";
+  }
+
+  /* Level against float, per chamber. The interesting column is Gap: how far apart the
+     two thresholds actually sit, which is what decides whether this is a fair contest at
+     all. See the Q&A in the popup. */
+  function renderCompare() {
+    const sz = st.size, ch = sz.chambers || {}, run = st.run;
+    const lv = SIM_INDEX.scenario.numbers.levelDelta;
+    const names = Object.keys(ch);
+    if (!names.length) { $("#cmp").hidden = true; return; }
+    $("#cmp").hidden = false;
+    let best = null, gapMin = Infinity, gapAt = "";
+    $("#cmpRows").innerHTML = names.map(c => {
+      const a = ch[c], sl = (run.stageLevels || {})[c] || {};
+      const gain = (a.level_lead != null && a.float_lead != null)
+        ? a.level_lead - a.float_lead : null;
+      // How far the level alarm sits below the float, in metres of water.
+      const gap = (a.base_depth != null && sl.surcharge != null)
+        ? sl.surcharge - (a.base_depth + lv) : null;
+      if (gap != null && gap < gapMin) { gapMin = gap; gapAt = c; }
+      if (a.level_lead != null && (!best || a.level_lead > best.lead)) {
+        best = { c: c, lead: a.level_lead };
+      }
+      return "<tr><td>" + c + "</td><td>" +
+        (a.level_lead != null ? a.level_lead.toFixed(1) : "-") + "</td><td>" +
+        (a.float_lead != null ? a.float_lead.toFixed(1) : "-") + "</td>" +
+        '<td class="gain">' + (gain != null ? "+" + gain.toFixed(1) : "-") + "</td><td>" +
+        (gap != null ? (gap * 1000).toFixed(0) + " mm" : "-") + "</td></tr>";
+    }).join("");
+    const gains = names.map(c => (ch[c].level_lead != null && ch[c].float_lead != null)
+      ? ch[c].level_lead - ch[c].float_lead : null).filter(v => v != null);
+    const avg = gains.length ? gains.reduce((a, b) => a + b, 0) / gains.length : null;
+    $("#cmpVerdict").innerHTML = avg == null ? "" :
+      "The level sensor buys <b>" + avg.toFixed(1) + " min</b> on average here, for 5 to 6 " +
+      "times the price. That is a verdict on the <b>threshold</b>, not the hardware: at " +
+      gapAt + " the alarm sits only <b>" + (gapMin * 1000).toFixed(0) + " mm</b> below the " +
+      "float, so both fire at nearly the same moment. See the Q&amp;A for why a lower " +
+      "threshold is not free.";
   }
 
   /* ------------------------------------------------------------------- popup */
@@ -186,6 +242,14 @@ window.SimUI = (function () {
         '<br><span class="tag ' + (a.status === "A" ? "assumed" : "") + '">' +
         esc(a.statusWord) + "</span></td></tr>").join("") +
       "</tbody></table>" +
+      (SIM_INDEX.qa && SIM_INDEX.qa.length
+        ? "<h3>Questions asked about this model</h3>" +
+          SIM_INDEX.qa.map(q =>
+            '<details class="qa"><summary>' + esc(q.short) + "</summary>" +
+            '<div class="body"><p><strong>' + esc(q.q) + "</strong></p>" +
+            q.a.map(x => "<p>" + esc(x) + "</p>").join("") +
+            '<div class="ev">' + esc(q.evidence) + "</div></div></details>").join("")
+        : "") +
       '<div class="caveat">' + esc(sc.caveat) + "</div>";
     $("#modal").hidden = false;
     $("#modalClose").onclick = hideModal;
@@ -273,12 +337,19 @@ window.SimUI = (function () {
 
   function setTab(tab) {
     st.tab = tab;
-    $("#pane-sim").hidden = tab !== "sim";
-    $("#pane-ref").hidden = tab !== "ref";
-    $("#tab-sim").classList.toggle("active", tab === "sim");
-    $("#tab-ref").classList.toggle("active", tab === "ref");
-    if (tab === "ref") { setPlaying(false); renderRef(); }
-    else Sim3D.resize($("#stage"));
+    ["sim", "net", "ref"].forEach(t => {
+      $("#pane-" + t).hidden = t !== tab;
+      $("#tab-" + t).classList.toggle("active", t === tab);
+    });
+    if (tab !== "sim") setPlaying(false);
+    if (tab === "ref") renderRef();
+    else if (tab === "net") {
+      const ov = SIM_INDEX.overview;
+      $("#netNote").textContent = "Elevation is the pipe invert, exaggerated x" + SimOverview.ZEXAG +
+        " against a 3.3 km plan, so a 1% grade is visible. " + ov.nPipes + " mains, " + ov.nNodes +
+        " chambers. No water is simulated here.";
+      SimOverview.build($("#netStage"));
+    } else Sim3D.resize($("#stage"));
   }
 
   /* ---- sidebar width, dragged. Persisted so it survives a reload. ---- */
@@ -324,7 +395,16 @@ window.SimUI = (function () {
       setFrame(Math.max(0, Math.round(((w - 2) * 60 - st.run.t0) / st.run.dt)));
     };
     $("#tab-sim").onclick = () => setTab("sim");
+    $("#tab-net").onclick = () => setTab("net");
     $("#tab-ref").onclick = () => setTab("ref");
+    $("#netAll").onclick = () => {
+      SimOverview.frame(false);
+      $("#netAll").classList.add("primary"); $("#netZoom").classList.remove("primary");
+    };
+    $("#netZoom").onclick = () => {
+      SimOverview.frame(true);
+      $("#netZoom").classList.add("primary"); $("#netAll").classList.remove("primary");
+    };
     $("#btn-info").onclick = showModal;
     $("#modal").onclick = e => { if (e.target.id === "modal") hideModal(); };
     document.addEventListener("keydown", e => {
