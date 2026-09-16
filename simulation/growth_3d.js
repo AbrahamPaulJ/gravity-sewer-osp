@@ -18,7 +18,7 @@ window.Growth3D = (function () {
   let THREE = null, OrbitControls = null, loadPromise = null;
   let renderer, scene, camera, controls, ray, pointer;
   let pipeGeo = null, pipeColours = null, chamberMeshes = [], labelLayer = null;
-  let built = false, onPick = null, focusRing = null;
+  let built = false, onPick = null, focusRing = null, outletLabel = null;
   const ZEXAG = 22.0;
   /* DARK, and saturated. The first version drew grey pipes and beige markers on a cream
      background and was unreadable: every state looked like every other state. On a dark
@@ -33,6 +33,7 @@ window.Growth3D = (function () {
     junction: 0x30363d,            // a pipe end the record does not call a chamber
     chamber: 0xc9d1d9,             // a real, published manhole: a candidate sensor site
     site: 0x00d4ff,                // cyan, where the new dwellings connect
+    outlet: 0xa371f7,              // violet, the chamber everything drains through
     sensor: 0x3fb950,              // green, a proposed sensor
   };
 
@@ -75,6 +76,13 @@ window.Growth3D = (function () {
         requestAnimationFrame(loop);
         controls.update();
         renderer.render(scene, camera);
+        if (outletLabel) {
+          const v = outletLabel.at.clone().project(camera);
+          const el = renderer.domElement;
+          outletLabel.el.style.display = v.z < 1 ? "block" : "none";
+          outletLabel.el.style.left = ((v.x * 0.5 + 0.5) * el.clientWidth) + "px";
+          outletLabel.el.style.top = ((-v.y * 0.5 + 0.5) * el.clientHeight) + "px";
+        }
       })();
     }
     if (built) { resize(container); return; }
@@ -157,6 +165,24 @@ window.Growth3D = (function () {
     // A ring on the ground plus a stalk above it. One chamber among 71, in a view you can
     // orbit, is genuinely hard to find from its colour alone; the stalk is what makes the
     // growth site locatable without hunting for it.
+    // The outlet. Everything on screen drains through this one chamber, so it gets a
+    // marker of its own rather than being one white dot among 71.
+    if (g.outletName) {
+      const on = g.nodes.find(n => n.name === g.outletName);
+      if (on) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(26, 2.6, 8, 40),
+          new THREE.MeshBasicMaterial({ color: COL.outlet }));
+        ring.rotation.x = Math.PI / 2;
+        ring.position.copy(P(on.x, on.y, on.inv));
+        scene.add(ring);
+        const lbl = document.createElement("div");
+        lbl.className = "lbl outlet";
+        lbl.textContent = "outlet, MH " + on.mh;
+        labelLayer.appendChild(lbl);
+        outletLabel = { el: lbl, at: P(on.x, on.y, on.inv) };
+      }
+    }
+
     focusRing = new THREE.Group();
     const ring = new THREE.Mesh(new THREE.TorusGeometry(22, 2.4, 8, 36),
       new THREE.MeshBasicMaterial({ color: COL.site }));
