@@ -175,88 +175,6 @@ function assumptions(ctx) {
   <h3>Part B. The capacity and growth model</h3>
   <div id="cap-register"><p class="lede">Computing capacity for every loaded region, one moment.</p></div>
 
-  <h3>Part D. The dynamic model and the long-section</h3>
-  <p>Part B solves steady uniform flow, which has no time axis and cannot show water backing up.
-  The long-section can draw either that steady solution or a precomputed <b>EPA SWMM</b> run, and
-  it always names which one is on screen. These are the assumptions the SWMM half rests on. Part C
-  below closes the register across all three models.</p>
-
-  <table>
-    <thead><tr><th>#</th><th>Assumption</th><th>Why it is defensible</th><th>What would remove it</th></tr></thead>
-    <tbody>
-      <tr><td>D1</td><td><b>The dynamic physics is SWMM's, not ours</b></td>
-        <td>The routing is EPA SWMM solving the full St Venant equations in dynamic wave mode.
-            <code>tools/build_swmm.py</code> translates the network into SWMM's input format, runs
-            it, and quantises the answer for the browser. It models nothing itself. That is the
-            point: a hydraulic solver written for this project would have to be defended, and
-            SWMM does not.</td>
-        <td>Nothing to remove. Note only that using a trusted solver does not make the INPUTS
-            trusted, and the inputs are D3 and D4.</td></tr>
-
-      <tr><td>D2</td><td><b>The SWMM result is precomputed, so the sliders cannot reach it</b></td>
-        <td>The solve runs offline in Python and ships as fixed scenarios. A browser cannot run
-            SWMM, and a dynamic solve of 1,010 chambers is not an interactive operation in any
-            case. The steady model stays live on the sliders, so the tool keeps one model you can
-            interrogate and one you can trust.</td>
-        <td>Nothing, short of a server. Scenarios are cheap to add: rerun
-            <code>tools/build_swmm.py</code> with different load, roughness or growth points.</td></tr>
-
-      <tr><td>D3</td><td><b>Inflow is an assumed per-chamber load on a conventional diurnal
-            pattern</b></td>
-        <td>Nothing public says how much sewage enters each chamber, which is C1 again and is the
-            largest assumption in the whole tool. The hourly pattern is the conventional domestic
-            shape, low overnight with a sharp morning peak and a broader evening one. It is not a
-            measurement of this catchment: no diurnal curve is published for Walkerville.</td>
-        <td>Pump station run hours and treatment plant inflow, both requested from the network operator.
-            Those give a real catchment diurnal curve directly, and they are the same data the
-            growth-identification work needs.</td></tr>
-
-      <tr><td>D4</td><td><b>The infiltration and inflow hydrograph is a shape, not an event</b></td>
-        <td>The wet weather scenario adds a single-peaked hydrograph on top of dry weather flow:
-            a fast rise and a slow recession, which is how infiltration behaves. It exists because
-            the network operator's own objection was that the idealised model will not survive real
-            groundwater and stormwater. It is an illustration of that objection, not a design
-            storm for this catchment.</td>
-        <td>Rainfall records joined to measured flow response, which is how a real I&amp;I
-            assessment is done. Until then, read the wet weather scenario as "something like this
-            happens", never as "this happens".</td></tr>
-
-      <tr><td>D5</td><td><b>Each terminus is given a synthetic free outfall</b></td>
-        <td>SWMM requires an outfall to have exactly one inlet link, and several of our termini
-            are junctions of two reaches. So every terminus stays a real junction and gets a short,
-            slightly falling dummy reach to its own outfall, sized generously so it never becomes
-            the constraint. This is the conventional way to terminate a SWMM extract.</td>
-        <td>The real downstream network. Every terminus is an artefact of the extract boundary
-            (C3), and nothing about what happens below it is being claimed.</td></tr>
-
-      <tr><td>D6</td><td><b>SWMM does not clamp adverse slopes, and Manning does</b></td>
-        <td>B5 clamps zero and adverse falls to a token grade because Manning has no solution at
-            zero fall. Dynamic wave routing does, so the clamp is dropped for SWMM and flat reaches
-            are modelled flat. This is a real improvement, and it is the reason a reach count can
-            legitimately differ between the two models at the same load.</td>
-        <td>Nothing. It is a difference to be aware of when comparing the two, not a defect.
-            Where the two disagree, SWMM is the better answer.</td></tr>
-
-      <tr><td>D7</td><td><b>The long-section shows one route through a branching network</b></td>
-        <td>A sewer is a tree and a long-section is a single chain, so a route has to be chosen.
-            At every branch the trace follows the largest contributing tributary, which is the
-            trunk and the route a bottleneck sits on. Following the first-stored branch instead
-            would pick an arbitrary short spur.</td>
-        <td>Nothing to remove, but read it for what it is: the chambers either side of the drawn
-            route also drain into it, and their flow appears without being drawn.</td></tr>
-
-      <tr><td>D8</td><td><b>The route window and the vertical exaggeration are drawing choices</b></td>
-        <td>The vertical scale is the horizontal scale times the exaggeration, so a long route
-            squashes everything: trace the full four kilometres through Walkerville and a 300 mm
-            pipe is a quarter of a pixel tall, with the water invisible inside it and every number
-            still correct. The default is therefore a short window around the chosen chamber at a
-            high exaggeration, which is why a real long-section covers a few hundred metres. Both
-            factors are printed on the drawing.</td>
-        <td>Nothing. A long-section without its exaggeration stated is a misleading drawing, which
-            is the only reason this is registered at all.</td></tr>
-    </tbody>
-  </table>
-
   <h3>Part C. What is still assumed, stated plainly</h3>
   <div class="card bad">
     <h4>C1. Demand is a setting, not a measurement, and it drives the headline number</h4>
@@ -402,13 +320,9 @@ function capacityRegister(ctx) {
   <table>
     <thead><tr><th>#</th><th>Assumption</th><th>Why it is there</th><th>What removes it</th></tr></thead>
     <tbody>
-      <tr><td>B1</td><td><b>Manning's n is uniform</b> across the network, ${K.DEFAULT_N} by
-            default and adjustable on the slider</td>
+      <tr><td>B1</td><td><b>Manning's n = ${K.DEFAULT_N}</b> everywhere</td>
         <td>Sewer pipe runs about 0.010 to 0.015 depending on material and age.
-            ${K.DEFAULT_N} is the conventional design value for concrete and vitrified clay.
-            It is the one term in Manning's equation that cannot be looked up anywhere, so it
-            is a slider rather than a constant: a reader can see what it is worth instead of
-            taking it on trust. Moving it across its plausible range is not a small effect.</td>
+            ${K.DEFAULT_N} is the conventional design value for concrete and vitrified clay.</td>
         <td>The published <code>roughness</code> field, populated on 0.8% of records, is unusable.
             <code>material</code> is public at 99.9%, so a per-material table is the obvious
             refinement once material reaches the demo data.</td></tr>
@@ -452,32 +366,6 @@ function capacityRegister(ctx) {
         <td>Nothing needs to remove it. It is a modelling choice, stated so it is not mistaken for
             a claim that the two problems are the same. They are not: see the two-models card
             above.</td></tr>
-      <tr><td>B8</td><td><b>The 3D water surface is to scale in fill, not in bore</b></td>
-        <td>The 3D view draws the water as the circular segment Manning solved for, swept along
-            the reach at the wetted angle the depth ratio implies, so the <b>fraction full</b>
-            on screen is the computed d/D. Two things are stretched to make that visible: the
-            pipe bore, because a 300 mm pipe is a few pixels across a 1 km wide region, and the
-            vertical axis, which the relief view already exaggerates. The section is therefore a
-            true circle in the stretched space rather than in metres. Both multipliers are on
-            screen as sliders.</td>
-        <td>Nothing. It is a drawing choice, declared here so the picture is not read as a scale
-            drawing of a pipe. The quantity it communicates, how full the pipe is, is not
-            distorted by either stretch.</td></tr>
-      <tr><td>B9</td><td><b>The animation speed is Q/A from the same solution</b></td>
-        <td>The travelling bands scroll at the reach's mean section velocity, flow divided by the
-            wetted area that same normal-depth solution implies. It is continuity, not a second
-            model and not an animation constant, so a steep reach visibly runs faster than a flat
-            one for exactly the reason the arithmetic gives.</td>
-        <td>Nothing to remove, but note what it is not. A mean section velocity is not a particle
-            path: nothing in the view tracks a parcel of water, and the bands are a rate made
-            visible rather than a trajectory. The steady-flow caveat above still applies, so the
-            bands are not a flood wave travelling down the network.</td></tr>
-      <tr><td>B10</td><td><b>A surcharge column marks which chamber fills, not how far</b></td>
-        <td>Chambers the capacity model says surcharge are drawn as a column standing to the
-            chamber depth. That height is the chamber, not a computed water level. How far water
-            actually rises, and therefore whether a sensor could see it, is part A's
-            observability question, answered by the escape-ceiling flood fill and not here.</td>
-        <td>Nothing. Read the column as "this one fills", and read part A for how far.</td></tr>
     </tbody>
   </table>
 

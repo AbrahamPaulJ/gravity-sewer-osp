@@ -18,13 +18,10 @@ const S = {
   budget: 40, objective: "nodes", algo: "greedy",
   kup: 2, kdown: 2,
   colourBy: "coverage",
-  perNodeLoad: 0.05, peakFactor: 1, manningN: 0.013,
+  perNodeLoad: 0.05, peakFactor: 1,
   growthPoints: [], addedLoad: 2,
   anchor: null, sensors: [], covered: null, lastResult: null,
   view: "2d", exaggeration: 30,
-  water3d: true, waterAnim: true, boreExagg: 70,
-  profNode: null, profExagg: 45, profBore: 1, profSpan: 12,
-  profSrc: "manning", profScn: null, profStep: 0, profPlaying: false,
 };
 
 let G = null;
@@ -180,8 +177,7 @@ function resize() {
     cv.height = Math.round(r.height * dpr);
     draw();
   }
-  if (S.view === "3d" || S.view === "split") window.OSP3D.resize($("view3d"));
-  if (S.view === "profile") renderProfile();
+  if (S.view !== "2d") window.OSP3D.resize($("view3d"));
 }
 
 /* Rebuilds the 3D scene from current state, whenever a 3D-showing view (3d or split) is
@@ -190,13 +186,7 @@ let threeReady = null;
 function render3D(reframe) {
   if (S.view === "2d" || !G) return;
   if (!threeReady) threeReady = window.OSP3D.ensureThree().then(() => window.OSP3D.initScene($("view3d")));
-  const wantWater = S.colourBy === "capacity" && S.water3d;
-  const cap = wantWater ? capacityState() : null;
-  const gr = wantWater ? growthState() : null;
-  threeReady.then(() => window.OSP3D.build(G, S, {
-    exaggeration: S.exaggeration, reframe: !!reframe,
-    capacity: cap, growth: gr, boreExagg: S.boreExagg, animate: S.waterAnim,
-  }));
+  threeReady.then(() => window.OSP3D.build(G, S, { exaggeration: S.exaggeration, reframe: !!reframe }));
 }
 function fitView() {
   if (!G) return;
@@ -363,10 +353,10 @@ function drawSensors() {
    part of the draw path worth memoising. */
 let _capCache = null, _capKey = null;
 function capacityState() {
-  const key = [S.region, S.perNodeLoad, S.peakFactor, S.manningN].join("|");
+  const key = [S.region, S.perNodeLoad, S.peakFactor].join("|");
   if (_capCache && _capKey === key) return _capCache;
   _capCache = OSPCapacity.capacityState(G, OSPCore, {
-    perNode: S.perNodeLoad, peakFactor: S.peakFactor, n: S.manningN,
+    perNode: S.perNodeLoad, peakFactor: S.peakFactor,
   });
   _capKey = key;
   updateCapHint(_capCache);
@@ -378,7 +368,7 @@ function capacityState() {
 let _growthCache = null, _growthKey = null;
 function growthState() {
   if (!S.growthPoints.length) return null;
-  const key = [S.region, S.perNodeLoad, S.peakFactor, S.manningN, S.addedLoad,
+  const key = [S.region, S.perNodeLoad, S.peakFactor, S.addedLoad,
                S.growthPoints.join(",")].join("|");
   if (_growthCache && _growthKey === key) return _growthCache;
 
@@ -386,7 +376,7 @@ function growthState() {
   const additions = {};
   for (const i of S.growthPoints) additions[i] = (additions[i] || 0) + S.addedLoad;
   const g = OSPCapacity.growth(G, OSPCore, base, additions,
-    { perNode: S.perNodeLoad, peakFactor: S.peakFactor, n: S.manningN });
+    { perNode: S.perNodeLoad, peakFactor: S.peakFactor });
 
   const tippedSet = new Uint8Array(G.edges.length);
   for (const e of g.tipped) tippedSet[e] = 1;
@@ -514,7 +504,6 @@ cv.addEventListener("click", e => {
   if (S.colourBy === "capacity") {
     const j = pickNode(e.clientX - r.left, e.clientY - r.top);
     if (j < 0) return;
-    S.profNode = j; renderProfile();
     const at = S.growthPoints.indexOf(j);
     if (at >= 0) S.growthPoints.splice(at, 1); else S.growthPoints.push(j);
     _growthCache = null; _growthKey = null;
@@ -522,15 +511,6 @@ cv.addEventListener("click", e => {
     if (!S.growthPoints.length) $("growth-out").innerHTML = "";
     draw();
     return;
-  }
-
-  /* A map click always re-cuts the long-section through the clicked chamber. The
-     section is a read-only view, so this never competes with anchor or growth
-     selection: it is the natural way to choose the route, and it is what you would
-     expect a side view to do. */
-  {
-    const k = pickNode(e.clientX - r.left, e.clientY - r.top);
-    if (k >= 0) { S.profNode = k; renderProfile(); }
   }
 
   if (S.mode !== "anchor") return;
@@ -603,7 +583,7 @@ async function run() {
     // "24 of 183 surcharging chambers" is the number that means something.
     if (marked) extra.marked = C.scoreMarked(G, sensors, marked);
     S.lastResult = { ...res, sensors: sensors.length, extra };
-    renderResult(); saveScore(); draw(); render3D(); renderProfile();
+    renderResult(); saveScore(); draw(); render3D();
   } catch (err) {
     $("run-err").innerHTML = `<div class="err">${escapeHtml(err.message || String(err))}</div>`;
   } finally { busy(false); }
@@ -765,12 +745,7 @@ function setRegion(k) {
   const pool = C.feasible(G).length;
   $("budget").max = Math.max(10, Math.min(400, pool || 50));
   if (S.budget > +$("budget").max) { S.budget = +$("budget").max; $("budget").value = S.budget; }
-  // The long-section route is per region: a node id means a different chamber in a
-  // different network, so carrying it over would silently draw the wrong section.
-  S.profNode = null; _swmmScn = null; stopPlay();
-  if (S.profSrc === "swmm" && !swmmData()) S.profSrc = "manning";
   fitView(); syncParamUI(); renderLB(); render3D(true);
-  if (S.view === "profile") { setProfSource(S.profSrc); }
 }
 
 function syncParamUI() {
@@ -788,11 +763,6 @@ function syncParamUI() {
   $("anchor-grp").style.display = S.mode === "anchor" ? "" : "none";
   $("algo-hint").textContent = ALGO_HINTS[S.algo] || "";
   $("exagg-val").textContent = S.exaggeration + "x";
-  $("bore-val").textContent = S.boreExagg + "x";
-  $("pexagg-val").textContent = S.profExagg.toFixed(0) + "x";
-  $("pbore-val").textContent = S.profBore.toFixed(1) + "x";
-  $("pspan-val").textContent = S.profSpan >= 80 ? "whole route"
-    : S.profSpan + " each way";
 }
 
 const ALGO_HINTS = {
@@ -815,201 +785,6 @@ function bindRange(id, key, after) {
     if (after) after();
   });
 }
-
-/* ------------------------------------------------------- the long-section view */
-/* A side elevation down one route through the network. Everything about how it is
-   drawn lives in osp_profile.js; this is only the wiring: which route, which water
-   model, and the playback clock when the water is coming from SWMM. */
-const P = window.OSPProfile;
-let PROF = null, _swmmScn = null, _playRAF = null, _playLast = 0;
-
-/* SWMM is precomputed and shipped per region. It is legitimately absent: the file is
-   generated by tools/build_swmm.py and only for regions that have been run. Rather
-   than fail, the control reports why it is unavailable, because "SWMM has not been
-   run for the steep catchment" is a useful thing to learn from the UI. */
-function swmmData() {
-  const d = window.OSP_SWMM;
-  if (!d || !G) return null;
-  if (d.region !== S.region) return null;
-  if (d.nNodes !== G.n || d.nEdges !== G.edges.length) return null;
-  return d;
-}
-function swmmWhyNot() {
-  const d = window.OSP_SWMM;
-  if (!d) return "No SWMM results are loaded. Generate them with tools/build_swmm.py.";
-  if (d.region !== S.region)
-    return "SWMM has only been run for " + escapeHtml(d.label || d.region) +
-           ". Run tools/build_swmm.py --region " + escapeHtml(S.region) + " to add this one.";
-  if (G && (d.nNodes !== G.n || d.nEdges !== G.edges.length))
-    return "The SWMM results and the network data are out of step. Rebuild with " +
-           "tools/build_swmm.py after any change to osp_data.js.";
-  return "SWMM results unavailable.";
-}
-
-function ensureProfile() {
-  if (!PROF) {
-    PROF = P.makeView($("profile"));
-    PROF.st.onPick = nd => { S.profNode = nd; renderProfile(); draw(); };
-    PROF.st.onHover = (nd, k) => {
-      const hud = $("prof-hud");
-      if (nd < 0 || !PROF.st.ch.length) { hud.classList.remove("on"); return; }
-      hud.classList.add("on");
-      const inv = G.inv[nd], cov = G.cover[nd];
-      const lvl = PROF.st.nodeLevel ? PROF.st.nodeLevel[k] : null;
-      const depth = (isFinite(cov) && cov > inv) ? cov - inv : null;
-      const rows = [
-        "node " + nd + (G.candidate[nd] ? "" : "  (no manhole)"),
-        "chainage " + Math.round(PROF.st.ch[k]) + " m",
-        "invert   " + inv.toFixed(2) + " m",
-        depth != null ? "lid      " + cov.toFixed(2) + " m  (" + depth.toFixed(2) + " m deep)"
-                      : "lid unknown",
-      ];
-      if (lvl != null && isFinite(lvl)) {
-        rows.push("water    " + lvl.toFixed(2) + " m");
-        rows.push("         " + (lvl - inv).toFixed(2) + " m above the invert");
-        if (depth != null) {
-          const free = cov - lvl;
-          rows.push(free <= 0.001 ? "         AT THE LID"
-                                  : "         " + free.toFixed(2) + " m to the lid");
-        }
-      }
-      if (PROF.st.spill && PROF.st.spill[k]) rows.push("SPILLING");
-      hud.textContent = rows.join("\n");
-    };
-  }
-  return PROF;
-}
-
-/* The water levels, from whichever model is selected. Both paths end at the same
-   thing, an elevation per path node, so the renderer never needs to know which. */
-function profileLevels(path, pe) {
-  if (S.profSrc === "swmm" && _swmmScn) {
-    const r = P.swmmLevels(G, path, _swmmScn, S.profStep);
-    return { lvl: r.lvl, spill: r.spill,
-             label: "SWMM dynamic wave, " + _swmmScn.label,
-             sub: _swmmScn.perNode + " L/s per chamber" +
-                  (_swmmScn.rain ? ", plus infiltration and inflow" : ", dry weather") };
-  }
-  const cap = capacityState();
-  const lvl = P.manningLevels(G, path, pe, cap.dOverD);
-  /* Manning cannot say how high water climbs a shaft, so a surcharged reach is left
-     at the soffit rather than drawn with an invented level, and nothing is flagged as
-     spilling. Flagging it would be a lie: the steady model does not know whether it
-     spills, only that it has run out of pipe. */
-  const spill = new Array(path.length).fill(0);
-  return { lvl, spill,
-           label: "Manning, steady uniform flow",
-           sub: S.perNodeLoad + " L/s per chamber, peak x" + S.peakFactor +
-                ", n = " + S.manningN + "  |  no backwater, no storage, no time" };
-}
-
-function renderProfile() {
-  if (S.view !== "profile" || !G) return;
-  const v = ensureProfile();
-  if (S.profNode == null || S.profNode >= G.n) {
-    v.st.g = G; v.st.path = []; v.st.ch = []; v.draw();
-    return;
-  }
-  const up = C.upstreamSize(G);
-  const path = P.tracePath(G, S.profNode, up, S.profSpan, S.profSpan);
-  const pe = P.pathEdges(G, path);
-  const ch = P.chainage(G, path, pe);
-  const w = profileLevels(path, pe);
-
-  Object.assign(v.st, {
-    g: G, path, pe, ch,
-    exagg: S.profExagg, boreScale: S.profBore,
-    source: S.profSrc,
-    nodeLevel: w.lvl, spill: w.spill,
-    sensors: new Set(S.sensors),
-    selected: S.profNode,
-    label: w.label, subLabel: w.sub,
-  });
-  v.draw();
-  updateProfBar(path);
-}
-
-function updateProfBar(path) {
-  const isSwmm = S.profSrc === "swmm" && !!_swmmScn;
-  $("prof-play").style.display = isSwmm ? "" : "none";
-  $("prof-t").style.display = isSwmm ? "" : "none";
-  $("prof-clock").style.display = isSwmm ? "" : "none";
-  $("prof-scn").style.display = isSwmm ? "" : "none";
-  if (isSwmm) {
-    const h = _swmmScn.t[S.profStep] || 0;
-    $("prof-clock").textContent =
-      String(Math.floor(h)).padStart(2, "0") + ":" +
-      String(Math.round((h % 1) * 60)).padStart(2, "0");
-    const spilling = PROF.st.spill ? PROF.st.spill.reduce((a, b) => a + b, 0) : 0;
-    $("prof-note").textContent = path.length + " chambers on this route" +
-      (spilling ? ", " + spilling + " spilling now" : "");
-  } else {
-    $("prof-note").textContent = path.length + " chambers, " +
-      Math.round(PROF.st.ch[PROF.st.ch.length - 1]) + " m of sewer";
-  }
-}
-
-function setProfSource(src) {
-  if (src === "swmm") {
-    const d = swmmData();
-    if (!d) {
-      $("prof-src-hint").innerHTML = '<div class="warnbox">' + swmmWhyNot() + "</div>";
-      document.querySelectorAll("#prof-src button").forEach(
-        x => x.classList.toggle("on", x.dataset.src === S.profSrc));
-      return;
-    }
-    const keys = Object.keys(d.scenarios);
-    if (!S.profScn || !d.scenarios[S.profScn]) S.profScn = keys[0];
-    $("prof-scn").innerHTML = keys.map(
-      k => '<option value="' + k + '">' + escapeHtml(d.scenarios[k].label) + "</option>").join("");
-    $("prof-scn").value = S.profScn;
-    _swmmScn = P.loadScenario(d, S.profScn);
-    S.profStep = Math.min(S.profStep, _swmmScn.steps - 1);
-    $("prof-t").max = String(_swmmScn.steps - 1);
-    $("prof-t").value = String(S.profStep);
-  } else {
-    stopPlay();
-  }
-  S.profSrc = src;
-  document.querySelectorAll("#prof-src button").forEach(
-    x => x.classList.toggle("on", x.dataset.src === src));
-  $("prof-src-hint").innerHTML = src === "swmm"
-    ? '<div class="hint">' + escapeHtml(_swmmScn ? _swmmScn.note : "") +
-      "<br><br>Precomputed by EPA SWMM with dynamic wave routing, so it shows backwater, " +
-      "storage and surcharge on a real clock. It cannot respond to the sliders above: " +
-      "the solve happens offline. Rebuild with <code>tools/build_swmm.py</code>.</div>"
-    : '<div class="hint">Steady uniform normal depth from the capacity model, so it ' +
-      "responds live to the load and roughness sliders. The water surface it draws is " +
-      "parallel to the pipe by construction, so it can never show water backing up. " +
-      "Switch to SWMM to see a failure develop.</div>";
-  renderProfile();
-}
-
-function stepPlay(ts) {
-  if (!S.profPlaying || !_swmmScn) return;
-  if (!_playLast) _playLast = ts;
-  if (ts - _playLast > 110) {                 // about nine steps a second
-    _playLast = ts;
-    S.profStep = (S.profStep + 1) % _swmmScn.steps;
-    $("prof-t").value = String(S.profStep);
-    renderProfile();
-  }
-  _playRAF = requestAnimationFrame(stepPlay);
-}
-function startPlay() {
-  if (!_swmmScn) return;
-  S.profPlaying = true; _playLast = 0;
-  $("prof-play").textContent = "Pause";
-  _playRAF = requestAnimationFrame(stepPlay);
-}
-function stopPlay() {
-  S.profPlaying = false;
-  if (_playRAF) cancelAnimationFrame(_playRAF);
-  _playRAF = null;
-  const b = $("prof-play");
-  if (b) b.textContent = "Play";
-}
-
 
 function init() {
   if (!REGION_KEYS.length) {
@@ -1047,24 +822,13 @@ function init() {
   $("load").addEventListener("input", e => {
     S.perNodeLoad = +e.target.value;
     $("load-val").textContent = S.perNodeLoad.toFixed(2);
-    draw(); render3D(); renderProfile();
+    draw();
   });
   $("peak").addEventListener("input", e => {
     S.peakFactor = +e.target.value;
     $("peak-val").textContent = S.peakFactor.toFixed(1);
-    draw(); render3D(); renderProfile();
+    draw();
   });
-  $("mann").addEventListener("input", e => {
-    S.manningN = +e.target.value;
-    $("mann-val").textContent = S.manningN.toFixed(4);
-    draw(); render3D(); renderProfile();
-  });
-  $("water3d").addEventListener("change", e => { S.water3d = e.target.checked; render3D(); });
-  $("wateranim").addEventListener("change", e => {
-    S.waterAnim = e.target.checked;
-    window.OSP3D.setAnimate(S.waterAnim);
-  });
-  bindRange("bore", "boreExagg", () => render3D());
   $("useorg").addEventListener("change", e => { S.useOrg = e.target.checked; ensureObs(); draw(); render3D(); });
   bindRange("c", "c", () => { ensureObs(); draw(); render3D(); });
   bindRange("drop", "drop", () => { ensureObs(); draw(); render3D(); });
@@ -1074,21 +838,6 @@ function init() {
   bindRange("budget", "budget", renderLB);
   bindRange("kup", "kup");
   bindRange("kdown", "kdown");
-  bindRange("pexagg", "profExagg", () => renderProfile());
-  bindRange("pbore", "profBore", () => renderProfile());
-  bindRange("pspan", "profSpan", () => renderProfile());
-  document.querySelectorAll("#prof-src button").forEach(b => {
-    b.addEventListener("click", () => setProfSource(b.dataset.src));
-  });
-  $("prof-scn").addEventListener("change", e => {
-    S.profScn = e.target.value; S.profStep = 0; setProfSource("swmm");
-  });
-  $("prof-t").addEventListener("input", e => {
-    stopPlay(); S.profStep = +e.target.value; renderProfile();
-  });
-  $("prof-play").addEventListener("click", () => {
-    if (S.profPlaying) { stopPlay(); renderProfile(); } else { startPlay(); }
-  });
   $("run").addEventListener("click", run);
 
   document.querySelectorAll("#side-scroll .grp > h3").forEach(h => {
@@ -1117,27 +866,11 @@ function init() {
       document.querySelectorAll("#view-seg button").forEach(x => x.classList.remove("on"));
       b.classList.add("on");
       S.view = b.dataset.view;
-      const wants3D = S.view === "3d" || S.view === "split";
-      $("p-3d").style.display = wants3D ? "" : "none";
-      $("grp-prof").classList.toggle("collapsed", S.view !== "profile");
+      $("p-3d").style.display = S.view === "2d" ? "none" : "";
       $("pane2d").style.display = S.view === "3d" ? "none" : "";
-      $("pane3d").style.display = wants3D ? "block" : "none";
-      $("paneprof").classList.toggle("on", S.view === "profile");
-      if (S.view !== "profile") stopPlay();
+      $("pane3d").style.display = S.view === "2d" ? "none" : "block";
       resize(); draw();
-      if (wants3D) render3D(true);
-      if (S.view === "profile") {
-        // Default the route to the busiest chamber, so the view is never empty on
-        // arrival: the largest upstream catchment is the trunk, which is the most
-        // informative section to open on.
-        if (S.profNode == null && G) {
-          const up = C.upstreamSize(G);
-          let best = 0;
-          for (let i = 1; i < G.n; i++) if (up[i] > up[best]) best = i;
-          S.profNode = best;
-        }
-        renderProfile();
-      }
+      if (S.view !== "2d") render3D(true);
     });
   });
 
