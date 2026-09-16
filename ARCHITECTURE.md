@@ -76,6 +76,11 @@ there, computed from the loaded data where it can be, and other documents point 
 rather than restating it. Add or remove an assumption in code and its row changes in
 the same commit.
 
+**Script order is dependency order.** `osp_sandbox.html` loads data, then models,
+then views, then `osp_ui.js` last, because the UI captures `window.OSPProfile` into a
+const at load time and a view loaded after it is simply undefined. The suite checks
+this, since neither parsing nor a 200 from the server can.
+
 **Cache keys move together.** `index.html` loads each page as `page.html?v=N`, and
 `osp_sandbox.html` loads each script as `script.js?v=N`. Browsers refetch the document
 and reuse the scripts behind it, so a key on the page alone is not enough. Bump every

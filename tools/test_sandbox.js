@@ -67,6 +67,31 @@ console.log("repository hygiene");
     catch (e) { return true; }
   });
   check("every src/ script parses", broken, []);
+
+  /* Script order is dependency order. osp_ui.js captures window.OSPProfile into a
+     const at load time, so a page that loads the UI before the view gives
+     "Cannot read properties of undefined (reading 'makeView')" and nothing renders.
+     Parsing cannot catch that and neither can a 200 from the server, so the order
+     is checked here: whatever a script reads from window at the top level must be
+     defined by a script the page loads earlier. */
+  const page = fs.readFileSync(path.join(ROOT, "osp_sandbox.html"), "utf8");
+  const order = [...page.matchAll(/<script src="([^"?]+)/g)].map(m => m[1]);
+  const definedBy = new Map();
+  order.forEach((f, i) => {
+    const t = fs.readFileSync(path.join(ROOT, f), "utf8");
+    for (const m of t.matchAll(/(?:window|root)\.(OSP[A-Za-z_]*)\s*=/g))
+      if (!definedBy.has(m[1])) definedBy.set(m[1], i);
+  });
+  const misordered = [];
+  order.forEach((f, i) => {
+    const t = fs.readFileSync(path.join(ROOT, f), "utf8");
+    // top-level capture only: `const X = window.OSPFoo;` at column 0
+    for (const m of t.matchAll(/^const\s+\w+\s*=\s*window\.(OSP[A-Za-z_]*)\s*;/gm)) {
+      const at = definedBy.get(m[1]);
+      if (at === undefined || at > i) misordered.push(`${f} reads ${m[1]} too early`);
+    }
+  });
+  check("scripts load in dependency order", misordered, []);
 }
 
 console.log("graph");
