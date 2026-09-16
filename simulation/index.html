@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sewer Neighbourhood Simulation</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+:root{
+  --bg:#f4f1ea; --panel:#fbf9f4; --ink:#1f2328; --dim:#555b63;
+  --line:#ddd6c8; --accent:#2f7fd1;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg); color:var(--ink);
+  font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;
+  display:grid; grid-template-columns:288px 1fr; height:100vh; overflow:hidden;
+}
+aside{
+  border-right:1px solid var(--line); background:var(--panel);
+  padding:16px; overflow-y:auto;
+}
+h1{font-size:16px; margin:0 0 4px}
+.sub{color:var(--dim); font-size:12px; margin:0 0 16px}
+.menu-item{
+  display:block; width:100%; text-align:left; margin-bottom:6px; padding:9px 11px;
+  background:#fff; border:1px solid var(--line); border-radius:7px; cursor:pointer;
+  font:inherit; color:inherit;
+}
+.menu-item:hover{border-color:var(--accent)}
+.menu-item.active{border-color:var(--accent); box-shadow:inset 3px 0 0 var(--accent)}
+.menu-item b{display:block; font-size:13px}
+.menu-item span{display:block; color:var(--dim); font-size:11.5px; margin-top:2px}
+label.fld{display:block; margin:14px 0 4px; font-size:11.5px; color:var(--dim);
+  text-transform:uppercase; letter-spacing:.04em}
+select{width:100%; padding:6px; font:inherit; border:1px solid var(--line);
+  border-radius:6px; background:#fff}
+#readout{
+  margin-top:14px; padding:11px; background:#fff; border:1px solid var(--line);
+  border-radius:7px; font:11.5px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;
+  white-space:pre; overflow-x:auto;
+}
+main{display:flex; flex-direction:column; min-width:0; overflow:hidden}
+nav{
+  display:flex; gap:4px; align-items:center; padding:9px 14px;
+  border-bottom:1px solid var(--line); background:var(--panel);
+}
+nav button{
+  font:inherit; padding:6px 13px; border:1px solid var(--line); background:#fff;
+  border-radius:6px; cursor:pointer; color:inherit;
+}
+nav button.active{background:var(--accent); border-color:var(--accent); color:#fff}
+#status{margin-left:auto; color:var(--dim); font-size:12px}
+.pane{flex:1; min-height:0; position:relative}
+.pane[hidden]{display:none}
+#pane-sim{display:flex; flex-direction:column}
+#stage{flex:1; min-height:0; position:relative}
+#stage canvas{display:block; width:100%; height:100%}
+.labels{position:absolute; inset:0; pointer-events:none}
+.labels .lbl{
+  position:absolute; transform:translate(-50%,-100%); white-space:nowrap;
+  font-size:11.5px; color:var(--ink); text-shadow:0 0 3px var(--bg),0 0 3px var(--bg);
+}
+/* Pipe labels hang BELOW their anchor while chamber labels sit above theirs, so a pipe
+   meeting a chamber does not stack the two on top of each other. */
+.labels .pipe{font-size:10.5px; color:var(--dim); transform:translate(-50%,6px)}
+.transport{
+  display:flex; gap:11px; align-items:center; padding:9px 14px;
+  border-top:1px solid var(--line); background:var(--panel);
+}
+.transport input[type=range]{flex:1}
+.transport button{font:inherit; padding:5px 15px; border:1px solid var(--line);
+  background:#fff; border-radius:6px; cursor:pointer; color:inherit}
+.scale-note{padding:5px 14px; font-size:11px; color:var(--dim);
+  border-top:1px solid var(--line); background:var(--panel)}
+.doc{padding:22px 30px; overflow-y:auto; height:100%; max-width:920px}
+.doc pre{background:#fff; border:1px solid var(--line); border-radius:7px; padding:14px;
+  font:11.5px/1.5 ui-monospace,Consolas,monospace; white-space:pre-wrap; overflow-x:auto}
+.doc table{border-collapse:collapse; margin:12px 0; font-size:12.5px}
+.doc th,.doc td{border:1px solid var(--line); padding:5px 9px; text-align:left;
+  vertical-align:top}
+.doc th{background:#efe9dc}
+.doc h1{font-size:18px; margin-top:22px}
+.doc h2{font-size:15px; margin-top:22px; border-bottom:1px solid var(--line);
+  padding-bottom:4px}
+.doc h3,.doc h4{font-size:13.5px; margin-top:16px}
+.doc code{background:#efe9dc; padding:1px 4px; border-radius:3px; font-size:12px}
+.doc p{margin:7px 0}
+.doc hr{border:0; border-top:1px solid var(--line); margin:18px 0}
+#chart{margin-top:16px; max-width:100%; border:1px solid var(--line); border-radius:7px}
+@media (max-width:820px){
+  body{grid-template-columns:1fr; grid-template-rows:auto 1fr}
+  aside{border-right:0; border-bottom:1px solid var(--line); max-height:42vh}
+}
+</style>
+</head>
+<body>
+
+<aside>
+  <h1>Sewer neighbourhood</h1>
+  <p class="sub">Junction 441. Three pipes, four chambers, EPA SWMM dynamic wave routing.</p>
+  <div id="menu"></div>
+  <label class="fld" for="runPicker">Run</label>
+  <select id="runPicker"></select>
+  <div id="readout"></div>
+</aside>
+
+<main>
+  <nav>
+    <button id="tab-sim" class="active">Simulation</button>
+    <button id="tab-results">Results</button>
+    <button id="tab-built">How it was built</button>
+    <button id="tab-assumptions">Assumptions</button>
+    <span id="status"></span>
+  </nav>
+
+  <section class="pane" id="pane-sim">
+    <div id="stage"></div>
+    <div class="scale-note">
+      Vertical &times;8, pipe bore &times;8, shaft width &times;2.5. Readings in the panel
+      are unscaled. Drag to orbit, scroll to zoom, space plays, R resets the view.
+    </div>
+    <div class="transport">
+      <button id="play">Play</button>
+      <input id="time" type="range" min="0" max="1" value="0" step="1">
+      <button id="reset">Reset view</button>
+    </div>
+  </section>
+
+  <section class="pane doc" id="pane-results" hidden><div id="results"></div></section>
+  <section class="pane doc" id="pane-built" hidden><div id="built"></div></section>
+  <section class="pane doc" id="pane-assumptions" hidden><div id="assumptions"></div></section>
+</main>
+
+<script src="data/geom.js"></script>
+<script src="data/index.js"></script>
+<script src="sim_data.js"></script>
+<script src="sim_3d.js"></script>
+<script src="sim_ui.js"></script>
+<script type="module">
+  /* The importmap only resolves inside a module, and sim_3d.js imports three lazily
+     from it, so start once the module graph is live. */
+  SimUI.init();
+</script>
+</body>
+</html>
