@@ -1,0 +1,12 @@
+# The private build pipeline. These two scripts name the client, a named individual and
+# the candidate pilot areas. They belong in the private repository that produces this
+# one, never here: this repository is the PUBLIC output, hosted on GitHub Pages, and
+# tools/build_public_demo.py is the sanitiser whose whole job is to keep those terms out
+# of it. They are kept on disk for reference and are never to be committed.
+tools/build_demo_data.py
+tools/build_public_demo.py
+
+# Merge leftovers. A committed .orig is 90 KB of dead weight with conflict markers
+# still in it, and it will be served by Pages and found by every grep.
+*.orig
+*.rej

@@ -175,7 +175,10 @@ function assumptions(ctx) {
   <h3>Part B. The capacity and growth model</h3>
   <div id="cap-register"><p class="lede">Computing capacity for every loaded region, one moment.</p></div>
 
-  <h3>Part D. The dynamic model and the long-section</h3>
+  <h3>Part D. The blockage likelihood model</h3>
+  <div id="risk-register"><p class="lede">Scoring blockage likelihood, one moment.</p></div>
+
+  <h3>Part E. The dynamic model and the long-section</h3>
   <p>Part B solves steady uniform flow, which has no time axis and cannot show water backing up.
   The long-section can draw either that steady solution or a precomputed <b>EPA SWMM</b> run, and
   it always names which one is on screen. These are the assumptions the SWMM half rests on. Part C
@@ -184,7 +187,7 @@ function assumptions(ctx) {
   <table>
     <thead><tr><th>#</th><th>Assumption</th><th>Why it is defensible</th><th>What would remove it</th></tr></thead>
     <tbody>
-      <tr><td>D1</td><td><b>The dynamic physics is SWMM's, not ours</b></td>
+      <tr><td>E1</td><td><b>The dynamic physics is SWMM's, not ours</b></td>
         <td>The routing is EPA SWMM solving the full St Venant equations in dynamic wave mode.
             <code>tools/build_swmm.py</code> translates the network into SWMM's input format, runs
             it, and quantises the answer for the browser. It models nothing itself. That is the
@@ -193,7 +196,7 @@ function assumptions(ctx) {
         <td>Nothing to remove. Note only that using a trusted solver does not make the INPUTS
             trusted, and the inputs are D3 and D4.</td></tr>
 
-      <tr><td>D2</td><td><b>The SWMM result is precomputed, so the sliders cannot reach it</b></td>
+      <tr><td>E2</td><td><b>The SWMM result is precomputed, so the sliders cannot reach it</b></td>
         <td>The solve runs offline in Python and ships as fixed scenarios. A browser cannot run
             SWMM, and a dynamic solve of 1,010 chambers is not an interactive operation in any
             case. The steady model stays live on the sliders, so the tool keeps one model you can
@@ -201,7 +204,7 @@ function assumptions(ctx) {
         <td>Nothing, short of a server. Scenarios are cheap to add: rerun
             <code>tools/build_swmm.py</code> with different load, roughness or growth points.</td></tr>
 
-      <tr><td>D3</td><td><b>Inflow is an assumed per-chamber load on a conventional diurnal
+      <tr><td>E3</td><td><b>Inflow is an assumed per-chamber load on a conventional diurnal
             pattern</b></td>
         <td>Nothing public says how much sewage enters each chamber, which is C1 again and is the
             largest assumption in the whole tool. The hourly pattern is the conventional domestic
@@ -211,7 +214,7 @@ function assumptions(ctx) {
             Those give a real catchment diurnal curve directly, and they are the same data the
             growth-identification work needs.</td></tr>
 
-      <tr><td>D4</td><td><b>The infiltration and inflow hydrograph is a shape, not an event</b></td>
+      <tr><td>E4</td><td><b>The infiltration and inflow hydrograph is a shape, not an event</b></td>
         <td>The wet weather scenario adds a single-peaked hydrograph on top of dry weather flow:
             a fast rise and a slow recession, which is how infiltration behaves. It exists because
             the network operator's own objection was that the idealised model will not survive real
@@ -221,7 +224,7 @@ function assumptions(ctx) {
             assessment is done. Until then, read the wet weather scenario as "something like this
             happens", never as "this happens".</td></tr>
 
-      <tr><td>D5</td><td><b>Each terminus is given a synthetic free outfall</b></td>
+      <tr><td>E5</td><td><b>Each terminus is given a synthetic free outfall</b></td>
         <td>SWMM requires an outfall to have exactly one inlet link, and several of our termini
             are junctions of two reaches. So every terminus stays a real junction and gets a short,
             slightly falling dummy reach to its own outfall, sized generously so it never becomes
@@ -229,7 +232,7 @@ function assumptions(ctx) {
         <td>The real downstream network. Every terminus is an artefact of the extract boundary
             (C3), and nothing about what happens below it is being claimed.</td></tr>
 
-      <tr><td>D6</td><td><b>SWMM does not clamp adverse slopes, and Manning does</b></td>
+      <tr><td>E6</td><td><b>SWMM does not clamp adverse slopes, and Manning does</b></td>
         <td>B5 clamps zero and adverse falls to a token grade because Manning has no solution at
             zero fall. Dynamic wave routing does, so the clamp is dropped for SWMM and flat reaches
             are modelled flat. This is a real improvement, and it is the reason a reach count can
@@ -237,7 +240,7 @@ function assumptions(ctx) {
         <td>Nothing. It is a difference to be aware of when comparing the two, not a defect.
             Where the two disagree, SWMM is the better answer.</td></tr>
 
-      <tr><td>D7</td><td><b>The long-section shows one route through a branching network</b></td>
+      <tr><td>E7</td><td><b>The long-section shows one route through a branching network</b></td>
         <td>A sewer is a tree and a long-section is a single chain, so a route has to be chosen.
             At every branch the trace follows the largest contributing tributary, which is the
             trunk and the route a bottleneck sits on. Following the first-stored branch instead
@@ -245,7 +248,7 @@ function assumptions(ctx) {
         <td>Nothing to remove, but read it for what it is: the chambers either side of the drawn
             route also drain into it, and their flow appears without being drawn.</td></tr>
 
-      <tr><td>D8</td><td><b>The route window and the vertical exaggeration are drawing choices</b></td>
+      <tr><td>E8</td><td><b>The route window and the vertical exaggeration are drawing choices</b></td>
         <td>The vertical scale is the horizontal scale times the exaggeration, so a long route
             squashes everything: trace the full four kilometres through Walkerville and a 300 mm
             pipe is a quarter of a pixel tall, with the water invisible inside it and every number
@@ -336,10 +339,139 @@ function assumptions(ctx) {
   </ul>`;
 }
 
+/* Part D, the blockage likelihood register. Computed for the same reason Part B is:
+   the weights live in osp_risk.js and a table typed in here would drift from them
+   the first time one was tuned. The sensitivity table is the point of the section,
+   not an appendix to it. */
+function riskRegister(ctx) {
+  const { DATA, CODES, buildGraph } = ctx;
+  const K = window.OSPRisk;
+  if (!K) return `<div class="card bad"><h4>Likelihood model not loaded</h4>
+    <p>osp_risk.js did not load, so part D cannot be computed. Nothing is shown rather than
+    something stale.</p></div>`;
+
+  const keys = Object.keys(DATA).filter(k => buildGraph(k).pipes);
+  if (!keys.length) return `<div class="card warn"><h4>No region carries pipe attributes</h4>
+    <p>Blockage likelihood needs per-pipe bore, age, gradient and material. No loaded region has
+    them, so this model is unavailable rather than guessed at.</p></div>`;
+
+  const g = buildGraph(keys[0]);
+  const opt = { matCodes: (CODES || {}).mat, jointCodes: (CODES || {}).joint };
+  const A = K.agreement(g, opt);
+  const L = A.blended;
+  const pub = L.summary.published, m = L.summary.edges;
+
+  const wRows = A.rows.map(r => `
+    <tr><td><b>${esc(r.factor)}</b></td>
+      <td class="num">${r.weight.toFixed(2)}</td>
+      <td class="num">${(100 * pub[r.factor] / m).toFixed(1)}%</td>
+      <td class="num">${r.distinct}</td>
+      <td class="num" style="color:${r.rho < 0.2 ? "var(--warn)" : "var(--ink-dim)"}">${r.rho.toFixed(3)}</td>
+    </tr>`).join("");
+
+  const worst = A.rows[A.rows.length - 1];
+
+  return `
+  <p>The two models above treat every chamber as an equally likely place for something to go
+  wrong. Ninh 2025 names that as its own limitation and points at the fix; Crowley 2025 names the
+  same gap. This part scores how likely each reach is to block, from the attributes the publisher
+  carries per pipe, and hands the result to the optimiser as a per-chamber weight.</p>
+
+  <div class="card bad">
+    <h4>D0. The weights are declared, not calibrated. Read this before quoting anything below</h4>
+    <p>Nothing here is fitted to a recorded blockage, because <b>no public source lists chokes for
+    this network</b>. The factors and their directions come from the literature; the numbers on
+    them are settings. That puts this model in exactly the position the demand setting is in
+    (C1), and it gets the same rule: <b>the ranking of reaches is the claim, the score is not</b>.
+    Quote a ranking with its weighting attached or do not quote it.</p>
+    <p>Removing this needs choke and overflow history joined to the asset register. It is the same
+    ask as C2 and it would convert this part from a declared model into a fitted one.</p>
+  </div>
+
+  <h4>The weighting, and how much of the answer each factor is actually deciding</h4>
+  <p><b>Published</b> is the share of reaches carrying that attribute. <b>Distinct values</b>
+  matters more than it looks: a factor with seven values across a thousand reaches cannot order
+  them finely no matter what weight it carries. <b>Rank correlation</b> is Spearman's, between
+  that factor scored alone and the blended result &mdash; how much of the final ordering that one
+  factor reproduces by itself.</p>
+  <table>
+    <thead><tr><th>Factor</th><th>Weight</th><th>Published</th><th>Distinct values</th>
+      <th>Rank corr. with blend</th></tr></thead>
+    <tbody>${wRows}</tbody>
+  </table>
+
+  <div class="card warn">
+    <h4>What that table says, and it is not comfortable</h4>
+    <p>No single factor reproduces the blended ranking. The strongest,
+    <b>${esc(A.rows[0].factor)}</b>, reaches only ${A.rows[0].rho.toFixed(2)}, and the weakest,
+    <b>${esc(worst.factor)}</b>, sits at ${worst.rho.toFixed(2)}. <b>The blend is doing the
+    ranking</b>, which means the weighting in the left column is not a detail of the method, it
+    <i>is</i> the method, and a result quoted without it is not reproducible.</p>
+    <p>The reason shows up in the data. In this network the original 1896 sewers are the
+    <b>trunk</b> mains and the small-bore reticulation was infilled later, so the age factor and
+    the bore factor pull against each other &mdash; they rank-correlate at about &minus;0.32. A
+    condition model built elsewhere, where small pipe is also old pipe, would not behave this way.
+    That is Malek Mohammadi's central finding arriving in our own data: these relationships are
+    local, and thresholds do not travel.</p>
+  </div>
+
+  <h4>The register</h4>
+  <table>
+    <thead><tr><th>#</th><th>Assumption</th><th>Why it is there</th><th>What removes it</th></tr></thead>
+    <tbody>
+      <tr><td>D1</td><td><b>Blockage likelihood is a weighted sum of normalised factors</b></td>
+        <td>An additive blend is the most explainable form available, and explainability was
+            weighted heavily when the method was chosen. It assumes the factors act independently
+            and additively, which is certainly false in detail.</td>
+        <td>A model fitted to incident history, most plausibly the Bayesian network of Ma 2025,
+            which represents dependence between factors instead of assuming it away.</td></tr>
+      <tr><td>D2</td><td><b>Factors normalise over this network's own range</b></td>
+        <td>The oldest pipe here scores 1 on age, the smallest scores 1 on bore. It avoids
+            importing an absolute cutoff from another city, which Malek Mohammadi 2020 shows is
+            how condition models end up contradicting each other.</td>
+        <td>Nothing needs to. It is a deliberate choice, and its consequence is stated:
+            <b>scores are not comparable between regions</b>, only within one.</td></tr>
+      <tr><td>D3</td><td><b>Material and joint propensity are table lookups</b>
+            (${esc(Object.keys(K.MATERIAL_RISK).join(", "))})</td>
+        <td>Vitrified clay is jointed and root-prone, uPVC is smooth with fewer joints, concrete
+            sits between. The ordering is well supported; the spacing between the numbers is not.</td>
+        <td>Root-intrusion or CCTV defect records by material. The network operator names root
+            intrusion as the dominant mechanism in these suburbs, so this is the factor most worth
+            measuring.</td></tr>
+      <tr><td>D4</td><td><b>A gradient at or above ${K.GRADE_REF}% scores zero</b></td>
+        <td>Near the slope at which a 150 mm sewer reaches self-cleansing velocity, so flatter
+            reaches accumulate deposits. A design convention, not a measurement.</td>
+        <td>Velocity from the capacity model at a calibrated demand, rather than gradient as a
+            stand-in for it.</td></tr>
+      <tr><td>D5</td><td><b>Unpublished attributes score ${0.5} rather than being dropped</b></td>
+        <td>Joint type is published on only ${(100 * pub.joint / m).toFixed(0)}% of reaches.
+            Dropping those reaches would bias the ranking toward the better-documented parts of
+            the network, which are also the newer parts.</td>
+        <td>Complete attribution. Until then the neutral score is the least-worst option and its
+            weight is deliberately small.</td></tr>
+      <tr><td>D6</td><td><b>A chamber's score aggregates its incoming pipes, two ways, and the
+            choice changes the answer</b></td>
+        <td>A blockage happens in a pipe and backs up to the chamber that pipe arrives at, so a
+            chamber inherits its incoming reaches. <b>Exposure</b> sums length &times; likelihood
+            and is proportional to expected blockage count. <b>Intensity</b> divides that by the
+            incoming length and measures how bad the pipe is, independent of how much of it there
+            is.</td>
+        <td>Nothing removes it; it is a choice that has to be declared with any result. The trap
+            worth knowing: reach length spans a factor of 262 here while likelihood spans 2.8, so
+            exposure is dominated by the length term and <b>rank-correlates 0.98 with plain
+            incoming pipe length</b> &mdash; optimising it lands close to the existing
+            length objective. Intensity correlates 0.47 with length and is the one that isolates
+            condition, which is why it is the default. Head-of-line chambers score zero by
+            construction under both.</td></tr>
+    </tbody>
+  </table>`;
+}
+
 /* Part B is computed rather than written, and it is the slow part of this pane, so
    it is filled in after first paint. Everything it needs is global by then. */
 function capacityRegister(ctx) {
-  const { DATA, C, buildGraph } = ctx;
+  const { DATA, CODES, C, buildGraph } = ctx;
+  const matCodes = (CODES || {}).mat;
   const K = window.OSPCapacity;
   if (!K) return `<div class="card bad"><h4>Capacity model not loaded</h4>
     <p>osp_capacity.js did not load, so part B cannot be computed. The figures here are never
@@ -347,7 +479,7 @@ function capacityRegister(ctx) {
 
   const R = Object.keys(DATA).map(k => {
     const g = buildGraph(k);
-    const base = K.capacityState(g, C, { perNode: CAP_LADDER[0], peakFactor: 1 });
+    const base = K.capacityState(g, C, { perNode: CAP_LADDER[0], peakFactor: 1, matCodes });
     let split = 0, sinks = 0;
     for (let v = 0; v < g.n; v++) {
       const d = g.outPtr[v + 1] - g.outPtr[v];
@@ -367,6 +499,8 @@ function capacityRegister(ctx) {
     <tr>
       <td><b>${esc(r.g.label)}</b></td>
       <td class="num">${r.base.summary.edges}</td>
+      <td class="num">${r.base.summary.diameterProxied === 0 ? "100%"
+        : pct(r.base.summary.edges - r.base.summary.diameterProxied, r.base.summary.edges)}</td>
       <td class="num">${r.base.summary.slopeClamped} (${pct(r.base.summary.slopeClamped, r.base.summary.edges)})</td>
       <td class="num">${r.split}</td>
       <td class="num">${r.sinks}</td>
@@ -402,23 +536,30 @@ function capacityRegister(ctx) {
   <table>
     <thead><tr><th>#</th><th>Assumption</th><th>Why it is there</th><th>What removes it</th></tr></thead>
     <tbody>
-      <tr><td>B1</td><td><b>Manning's n is uniform</b> across the network, ${K.DEFAULT_N} by
-            default and adjustable on the slider</td>
+      <tr><td>B1</td><td><b>Manning's n comes from each pipe's material</b> by default, and the
+            slider overrides it with one value across the network</td>
         <td>Sewer pipe runs about 0.010 to 0.015 depending on material and age.
-            ${K.DEFAULT_N} is the conventional design value for concrete and vitrified clay.
-            It is the one term in Manning's equation that cannot be looked up anywhere, so it
-            is a slider rather than a constant: a reader can see what it is worth instead of
-            taking it on trust. Moving it across its plausible range is not a small effect.</td>
-        <td>The published <code>roughness</code> field, populated on 0.8% of records, is unusable.
-            <code>material</code> is public at 99.9%, so a per-material table is the obvious
-            refinement once material reaches the demo data.</td></tr>
-      <tr><td>B2</td><td><b>Reach diameter is the smaller of the two chamber diameters</b></td>
-        <td>Diameter is held per chamber in the current data, as the largest pipe touching it. A
-            reach is limited by its narrowest section, so the minimum of the pair is the safe
-            reading of a proxy.</td>
-        <td>Real per-pipe diameter already exists upstream in <code>build_demo_data.py</code>. Emit
-            it as a <code>diams</code> array, pass it as <code>opt.diams</code>, and the proxy
-            falls away.</td></tr>
+            ${K.DEFAULT_N} is the conventional design value for concrete and vitrified clay,
+            and 0.010 the value for uPVC. It is the one term in Manning's equation that cannot
+            be looked up anywhere, so the default is the per-material table and the slider
+            overrides it with a single value: a reader can see what it is worth instead of
+            taking it on trust, and moving it across its plausible range is not a small
+            effect.</td>
+        <td>The published <code>roughness</code> field is carried on this layer but populated on
+            <b>no record at all</b> in this area, so it cannot remove the assumption. Material now
+            <i>is</i> in the data, at 100%, so a per-material table is the remaining step and the
+            only thing standing between this row and deletion.</td></tr>
+      <tr><td><s>B2</s></td>
+        <td><b>Retired.</b> Reach diameter was the smaller of the two chamber diameters; it is now
+            the publisher's own per-pipe value.</td>
+        <td>Diameter used to be held per chamber, as the largest pipe touching it, so a reach took
+            the minimum of the pair on the argument that a reach is limited by its narrowest
+            section.</td>
+        <td>Removed by carrying <code>NOMINALDIA</code> per edge through
+            <code>tools/build_demo_data.py</code>, from the same harvest the geometry comes from.
+            <b>The proxy turned out to be exact</b>: it reproduces the published diameter on
+            1,001 of 1,001 reaches, so no capacity figure moved. The assumption is gone because the
+            value is now measured and checked, not because it was wrong.</td></tr>
       <tr><td>B3</td><td><b>Load is uniform per chamber</b>, set by a slider</td>
         <td>Without dwelling counts or billed consumption joined to the network there is nothing
             better to assume, and a flat number that is visibly a setting is more honest than an
@@ -482,14 +623,17 @@ function capacityRegister(ctx) {
   </table>
 
   <h4>What the capacity model is running on</h4>
-  <p>All computed from the loaded data. <b>Clamped reaches</b> is B5, <b>splitting chambers</b> is
-  B6, and both are small enough that a wrong call cannot distort the picture. <b>Outlets</b> counts
+  <p>All computed from the loaded data. <b>Diameter published</b> is the share of reaches carrying
+  the publisher's own per-pipe diameter rather than the retired B2 proxy; anything under 100% is a
+  region harvested before the attribute fetch. <b>Clamped reaches</b> is B5, <b>splitting
+  chambers</b> is B6, and both are small enough that a wrong call cannot distort the picture. <b>Outlets</b> counts
   chambers with nothing downstream: a real network has very few, so a high count is the boundary
   cut of C3 showing up, and every one of those is a reach whose real downstream flow is missing.
   <b>Components</b> is the same story from the other side, the number of separate pieces the
   clipped network falls into.</p>
   <table>
-    <thead><tr><th>Region</th><th>Reaches</th><th>Clamped reaches (B5)</th>
+    <thead><tr><th>Region</th><th>Reaches</th><th>Diameter published</th>
+      <th>Clamped reaches (B5)</th>
       <th>Splitting chambers (B6)</th><th>Outlets</th><th>Components</th></tr></thead>
     <tbody>${facts}</tbody>
   </table>
@@ -755,11 +899,42 @@ function method(ctx) {
       <tr><td>Validation nodes, surveyed surface + invert + depth</td><td><code>${esc(src.barossa || "")}</code></td></tr>
       <tr><td>Validation contours, 5 m</td><td><code>${esc(src.barossa_contours || "")}</code></td></tr>
       <tr><td>Statewide gravity mains</td><td><code>${esc(src.statewide || "")}</code></td></tr>
+      ${src.walkerville_mains_attrs ? `<tr><td>Per-pipe attributes: diameter, material, construction
+        year, gradient, joint type</td><td><code>${esc(src.walkerville_mains_attrs)}</code></td></tr>` : ""}
     </tbody>
   </table>
   <p>All layers are requested with <code>outSR=${esc(META.out_sr || "")}</code> so the server does
   every reprojection and distances are true metres. The sources disagree natively, with manholes in
   one projection and contours in another, and getting that wrong fails silently.</p>
+
+  <h3>Three things the pipe attributes turned up</h3>
+  <p>The per-pipe attributes come from the same mains layer the geometry came from, matched back to
+  each reach by geometry rather than by any id, so the join can be re-checked. Three findings came
+  out of that fetch and all three are worth knowing before anyone reads a field at face value.</p>
+  <div class="card">
+    <h4>1. The material field says <code>UNKN</code> where the answer is in the next column</h4>
+    <p><code>MATERIAL</code> reads <code>UNKN</code> on 456 of 1,002 records, which reads as
+    material being published on barely half the network. It is not. <code>MATERIALUN</code> carries
+    a value on <b>every one</b> of those 456, and on the 43 records where both fields are populated
+    the two <b>agree every time</b>. Reading the pair rather than the first field takes material
+    from 54.5% to 100% with no assumption. Same shape as the invert finding below: the field that
+    looks empty is not the only field.</p>
+  </div>
+  <div class="card">
+    <h4>2. <code>GRADE</code> is an independent check on the inverts, and it passes</h4>
+    <p>The layer publishes its own gradient in percent. Compared against fall over length computed
+    from the invert fields, the median ratio is <b>1.0000</b> across 1,001 reaches, with 796 inside
+    &plusmn;5%. That is a second, independently maintained field agreeing with the flow-anchored
+    reading of the inverts, which is the strongest confirmation of that reading available here
+    without a site visit.</p>
+  </div>
+  <div class="card warn">
+    <h4>3. The published length field is stale on 28 records</h4>
+    <p><code>SHAPE_STLe</code> disagrees with the geometry it belongs to on 28 of 1,002 records,
+    sometimes badly: one stores 163.8 m for a line that measures 48.3 m. Lengths here are computed
+    from the geometry and always were, so nothing downstream is affected, but the stored field
+    should not be adopted by anyone extending this work.</p>
+  </div>
 
   <h3>Algorithms offered, and what each is for</h3>
   <ul>
@@ -769,9 +944,20 @@ function method(ctx) {
       else. Its anchors are drawn from the same candidate pool; its supporting chambers are taken as
       the rule dictates whether or not they observe anything, because that is what the rule says and
       it is where its cost legitimately shows up.</li>
-    <li><b>Upstream catchment, betweenness, in and out degree</b>, standard network heuristics.</li>
-    <li><b>Random, best of 20</b>, the floor any method must clear.</li>
-    <li><b>Custom JavaScript</b>, run in a worker with an 8 s kill.</li>
+    <li><b>Upstream catchment, betweenness, in and out degree</b>, standard network heuristics,
+      all four now <b>weighted by the objective</b> rather than counting nodes. Upstream catchment
+      sums the worth of everything above a chamber; degree sums the worth of the chambers on the
+      other end of its pipes; betweenness scales each source's dependency by that source's weight,
+      which is the standard vertex-weighted reading. Under the default objective every weight is 1
+      and each reduces exactly to the counting version it replaced, so the unweighted comparison is
+      unchanged.</li>
+    <li><b>Random, best of 20</b>, the floor any method must clear. It picks the best of its
+      twenty draws <i>on the stated objective</i>; it previously scored them on node count
+      whatever the objective said, which quietly flattered it on weighted runs.</li>
+    <li><b>Custom JavaScript</b>, run in a worker with an 8 s kill. The API exposes
+      <code>weight(id)</code> for the active objective and <code>pipesInto(id)</code> for the
+      publisher's per-pipe diameter, material, construction year and gradient, so an algorithm
+      written here can use the same evidence the built-in ones do.</li>
   </ul>
   <p>Every algorithm draws from the same candidate pool. An earlier version did not, and it cost that
   rule of thumb more than half its score, so there is now a regression test asserting it.</p>
@@ -782,6 +968,241 @@ function method(ctx) {
   which must pass before any score here is trusted. Live services change as their publishers update
   them, so re-measure before quoting any figure formally.</p>`;
 }
+
+/* ------------------------------------------------------- glossary figures */
+/* One small inline SVG per term where a picture shows the MECHANISM. Built from a
+   handful of shared primitives so the chamber, pipe, water and dimension lines look
+   the same in every figure and a reader learns the visual language once.
+
+   Terms with no drawable mechanism (CWMS, SWMM) get no figure: a decoration next to
+   a definition is worse than no figure, because it teaches the reader that the
+   pictures here can be skipped. Palette follows the explainer pages. */
+const GF = {
+  soil: "#2a2333", road: "#414b60", wall: "#818da6", inner: "#333c52", lid: "#9aa6bd",
+  water: "#38bdf8", dim: "#7dd3fc", ink: "#93a4c4", faint: "#4b5a78",
+  bad: "#f87171", good: "#34d399", warn: "#fbbf24", sensor: "#f43f5e", root: "#8a6a52",
+};
+const gsvg = (title, inner) =>
+  `<svg viewBox="0 0 160 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${title}">`
+  + `<title>${title}</title>${inner}</svg>`;
+const gt = (x, y, t, o = {}) =>
+  `<text x="${x}" y="${y}" font-size="${o.s || 7.5}" fill="${o.c || GF.ink}"`
+  + ` text-anchor="${o.a || "start"}" font-family="ui-sans-serif,system-ui,sans-serif">${t}</text>`;
+const gln = (x1, y1, x2, y2, c = GF.ink, w = 1, dash = "") =>
+  `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${w}"`
+  + (dash ? ` stroke-dasharray="${dash}"` : "") + "/>";
+/* vertical dimension with end ticks; label sits on the side given */
+const gdim = (x, y1, y2, t, side = 1, c = GF.dim) =>
+  gln(x, y1, x, y2, c) + gln(x - 3, y1, x + 3, y1, c) + gln(x - 3, y2, x + 3, y2, c)
+  + gt(x + 4 * side, (y1 + y2) / 2 + 2.5, t, { c, a: side < 0 ? "end" : "start" });
+const gdatum = () => gln(0, 94, 160, 94, GF.faint, 1, "3 3") + gt(158, 91, "datum", { a: "end", c: GF.faint, s: 6.5 });
+/* the standard chamber section: soil, shaft, lid, pipe in and out at invert y=78 */
+function gchamber(extra = "", water = 0) {
+  const wz = 78 - water;
+  return `<rect x="0" y="18" width="160" height="82" fill="${GF.soil}"/>`
+    + `<rect x="0" y="12" width="160" height="6" fill="${GF.road}"/>`
+    + `<rect x="0" y="66" width="62" height="12" fill="${GF.inner}" stroke="${GF.wall}" stroke-width="1.2"/>`
+    + `<rect x="98" y="66" width="62" height="12" fill="${GF.inner}" stroke="${GF.wall}" stroke-width="1.2"/>`
+    + `<rect x="62" y="18" width="36" height="60" fill="${GF.inner}" stroke="${GF.wall}" stroke-width="1.2"/>`
+    + `<rect x="58" y="14" width="44" height="4" fill="${GF.lid}"/>`
+    + (water > 0 ? `<rect x="1" y="${Math.max(wz, 67)}" width="158" height="${78 - Math.max(wz, 67)}" fill="${GF.water}" opacity=".7"/>` : "")
+    + (water > 12 ? `<rect x="63" y="${wz}" width="34" height="${78 - wz}" fill="${GF.water}" opacity=".7"/>` : "")
+    + extra;
+}
+/* a long section: ground sloping gently, pipe below it, optional chambers */
+function glong(opts = {}) {
+  const sl = opts.slope == null ? 0.1 : opts.slope;
+  const g = x => 22 + sl * x, inv = x => 60 + sl * x;
+  let o = `<polygon points="0,${g(0)} 160,${g(160)} 160,100 0,100" fill="${GF.soil}"/>`
+        + `<polygon points="0,${inv(0) - 5} 160,${inv(160) - 5} 160,${inv(160) + 5} 0,${inv(0) + 5}" fill="${GF.inner}" stroke="${GF.wall}"/>`;
+  for (const cx of opts.chambers || [])
+    o += `<rect x="${cx - 6}" y="${g(cx)}" width="12" height="${inv(cx) + 5 - g(cx)}" fill="${GF.inner}" stroke="${GF.wall}"/>`
+       + `<rect x="${cx - 8}" y="${g(cx) - 3}" width="16" height="3" fill="${GF.lid}"/>`;
+  return { o, g, inv };
+}
+const gsensor = (x, y) => `<rect x="${x - 3}" y="${y}" width="6" height="4" fill="${GF.sensor}"/>`;
+const gnode = (x, y, c = GF.ink, r = 4) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`;
+const garrow = (x1, y1, x2, y2, c = GF.ink) =>
+  gln(x1, y1, x2, y2, c, 1.2) + `<polygon points="${x2},${y2} ${x2 - 4},${y2 - 2.5} ${x2 - 4},${y2 + 2.5}" fill="${c}" transform="rotate(${Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI} ${x2} ${y2})"/>`;
+/* pipe cross-section: outer wall, bore, optional fill to depth ratio dd */
+const gcircle = (dd = 0, extra = "") => {
+  const cx = 80, cy = 52, R = 34, r = 28;
+  let o = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="${GF.wall}"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="${GF.inner}"/>`;
+  if (dd > 0) {
+    const yw = cy + r - 2 * r * dd;
+    o += `<clipPath id="gc${Math.round(dd * 100)}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath>`
+       + `<rect x="${cx - r}" y="${yw}" width="${2 * r}" height="${cy + r - yw}" fill="${GF.water}" opacity=".75" clip-path="url(#gc${Math.round(dd * 100)})"/>`;
+  }
+  return o + extra;
+};
+
+const GLOSS_FIGS = {
+  "Invert level": gsvg("Invert level: the inside bottom of the pipe, as a height above datum",
+    gchamber(gdatum() + gdim(30, 78, 94, "invert", -1) + gln(0, 78, 62, 78, GF.dim, 1.2), 3)),
+  "Cover level / surface level": gsvg("Cover level: the height of the lid above datum",
+    gchamber(gdatum() + gdim(30, 14, 94, "cover", -1) + gln(0, 14, 58, 14, GF.dim, 1.2), 3)),
+  "Depth": gsvg("Depth: cover level minus invert level, a length not a height",
+    gchamber(gdim(118, 14, 78, "depth", 1) + gln(102, 14, 118, 14, GF.faint, 1, "2 2") + gln(98, 78, 118, 78, GF.faint, 1, "2 2"), 3)),
+  "Soffit": gsvg("Soffit: the inside top of the pipe; invert is the inside bottom",
+    `<rect x="10" y="30" width="140" height="44" fill="${GF.wall}"/><rect x="10" y="36" width="140" height="32" fill="${GF.inner}"/>`
+    + `<rect x="10" y="60" width="140" height="8" fill="${GF.water}" opacity=".7"/>`
+    + gln(10, 36, 150, 36, GF.dim, 1.2) + gt(80, 46, "soffit", { c: GF.dim, a: "middle" })
+    + gln(10, 68, 150, 68, GF.dim, 1.2) + gt(80, 80, "invert", { c: GF.dim, a: "middle" })),
+  "Benching": gsvg("Benching: sloped shoulders either side of the channel on the chamber floor",
+    `<rect x="0" y="0" width="160" height="100" fill="${GF.inner}"/>`
+    + `<path d="M0,55 L55,55 Q60,58 62,70 Q80,84 98,70 Q100,58 105,55 L160,55 L160,100 L0,100 Z" fill="${GF.wall}"/>`
+    + `<path d="M62,70 Q80,84 98,70 L98,78 Q80,90 62,78 Z" fill="${GF.water}" opacity=".7"/>`
+    + garrow(30, 40, 50, 60, GF.dim) + gt(8, 36, "spill drains back", { c: GF.dim })
+    + gt(80, 96, "channel", { a: "middle", c: GF.dim })),
+  "Surcharge": gsvg("Surcharge: water backs up above the soffit and rises into the shaft",
+    gchamber(gln(0, 66, 160, 66, GF.faint, 1, "3 3") + gt(4, 63, "soffit", { s: 6.5, c: GF.faint })
+      + garrow(80, 60, 80, 34, GF.bad) + gt(84, 40, "rising", { c: GF.bad }), 40)),
+  "Overflow relief gully (ORG)": gsvg("Overflow relief gully: the lowest opening, in the garden, on private land",
+    (() => { const L = glong({ chambers: [130] });
+      return L.o + `<rect x="18" y="8" width="30" height="16" fill="#5d6a8c"/><polygon points="14,8 33,0 52,8" fill="#8a5150"/>`
+        + `<rect x="62" y="${L.g(62) - 2}" width="10" height="4" fill="${GF.lid}"/>`
+        + gln(67, L.g(67) + 2, 67, L.inv(67) - 5, GF.wall, 3) + gln(48, 14, 67, L.g(67) + 2, GF.wall, 2)
+        + `<path d="M62,${L.g(62) - 2} q5,-12 10,0" fill="none" stroke="${GF.bad}" stroke-width="1.5"/>`
+        + gt(84, L.g(84) - 6, "escapes here", { c: GF.bad }) + gt(10, 34, "house", { c: GF.ink, s: 6.5 }); })()),
+  "Backwater wedge": gsvg("Backwater wedge: a horizontal surface behind a blockage, meeting the rising invert upstream",
+    (() => { const sl = 0.16, L = glong({ slope: sl }), xb = 138;
+      /* Water stands well above the soffit at the blockage, as a real surcharge does,
+         and its surface stays level going upstream while the invert climbs to meet
+         it. The wedge is that level clipped to the pipe: full bore from the blockage
+         back to x1, where the soffit rises through the surface, then thinning to
+         nothing at x0, where the invert does. */
+      const yw = L.inv(20) + 5;                              // meets the invert at x0 = 20
+      const x0 = 20, x1 = (yw + 5 - 60) / sl;                // soffit meets the surface
+      return L.o
+        + `<polygon points="${x0},${yw} ${x1},${yw} ${xb},${L.inv(xb) - 5} ${xb},${L.inv(xb) + 5} ${x0},${L.inv(x0) + 5}" fill="${GF.water}" opacity=".75"/>`
+        + `<rect x="${xb}" y="${L.inv(xb) - 5}" width="5" height="10" fill="${GF.bad}"/>`
+        + gln(0, yw, xb, yw, GF.dim, 1, "3 2") + gt(24, yw - 4, "surface stays level", { c: GF.dim })
+        + gt(4, 95, "level meets invert here", { c: GF.ink, s: 6.5 })
+        + garrow(30, 90, x0 + 2, yw + 3, GF.ink)
+        + gt(xb - 2, L.inv(xb) + 17, "blockage", { c: GF.bad, a: "end" }); })()),
+  "Headroom": gsvg("Headroom: how far water can rise at a node before it escapes",
+    gchamber(gln(62, 34, 98, 34, GF.dim, 1, "3 2") + gt(100, 37, "ceiling", { c: GF.dim, s: 6.5 })
+      + gdim(50, 34, 78, "headroom", -1), 3)),
+  "Ceiling": gsvg("Ceiling: the lowest opening anywhere in the region that floods",
+    (() => { const L = glong({ chambers: [40, 120] });
+      const yw = L.g(40) + 1;
+      return L.o
+        + `<polygon points="0,${L.inv(0) - 5} 150,${L.inv(150) - 5} 150,${L.inv(150) + 5} 0,${L.inv(0) + 5}" fill="${GF.water}" opacity=".7"/>`
+        + `<rect x="35" y="${yw}" width="10" height="${L.inv(40) - yw}" fill="${GF.water}" opacity=".7"/>`
+        + `<rect x="115" y="${yw}" width="10" height="${L.inv(120) - yw}" fill="${GF.water}" opacity=".7"/>`
+        + `<rect x="150" y="${L.inv(150) - 5}" width="5" height="10" fill="${GF.bad}"/>`
+        + `<path d="M34,${yw - 2} q6,-10 12,0" fill="none" stroke="${GF.bad}" stroke-width="1.5"/>`
+        + gln(0, yw, 160, yw, GF.dim, 1, "3 2") + gt(60, yw - 5, "lowest lid sets the ceiling", { c: GF.dim, s: 6.5 }); })()),
+  "Downstream-dependent (DD) node": gsvg("A blockage downstream raises the level back at the sensor upstream",
+    (() => { const L = glong({ slope: 0.14, chambers: [30, 130] });
+      const yw = L.inv(130) - 2;
+      return L.o + `<polygon points="${(yw - 60) / 0.14},${yw} 128,${yw} 128,${L.inv(128) + 5} ${Math.max(0, (yw - 60) / 0.14 - 40)},${L.inv(Math.max(0, (yw - 60) / 0.14 - 40)) + 5}" fill="${GF.water}" opacity=".6"/>`
+        + `<rect x="130" y="${L.inv(130) - 5}" width="5" height="10" fill="${GF.bad}"/>`
+        + gsensor(30, L.g(30) + 2) + gt(30, L.g(30) - 6, "sensor", { a: "middle", c: GF.sensor })
+        + gt(130, L.g(130) - 6, "DD node blocks", { a: "middle", c: GF.bad, s: 6.5 })
+        + garrow(60, yw - 14, 34, L.inv(30) - 2, GF.dim); })()),
+  "Directed acyclic graph (DAG)": gsvg("Every edge points downhill and nothing loops back",
+    gnode(20, 20) + gnode(60, 20) + gnode(120, 25) + gnode(45, 50) + gnode(95, 55) + gnode(75, 85, GF.water, 5)
+    + garrow(24, 24, 41, 46) + garrow(58, 24, 48, 46) + garrow(117, 29, 99, 51) + garrow(49, 54, 71, 81) + garrow(92, 59, 79, 81)
+    + gt(84, 92, "outlet", { c: GF.water, s: 6.5 })),
+  "Set cover": gsvg("Choose the fewest sensors whose observed sets together cover the network",
+    `<ellipse cx="55" cy="50" rx="42" ry="30" fill="${GF.water}" opacity=".18"/><ellipse cx="110" cy="52" rx="40" ry="28" fill="${GF.good}" opacity=".18"/>`
+    + [[30,40],[55,30],[70,60],[45,70],[90,45],[120,35],[130,65],[105,72],[80,45]].map(([x,y]) => gnode(x, y, GF.ink, 3)).join("")
+    + gsensor(55, 24) + gsensor(112, 26)),
+  "Submodular": gsvg("Diminishing returns: each added sensor helps less than the last",
+    gln(20, 85, 150, 85, GF.faint) + gln(20, 85, 20, 10, GF.faint)
+    + `<path d="M20,85 L45,45 L70,30 L95,23 L120,19 L145,17" fill="none" stroke="${GF.water}" stroke-width="2"/>`
+    + gdim(50, 45, 85, "+40", 1, GF.good) + gdim(125, 19, 30, "+4", 1, GF.warn)
+    + gt(85, 96, "sensors added", { a: "middle", s: 6.5 }) + gt(24, 16, "covered", { s: 6.5, c: GF.ink })),
+  "Choke": gsvg("A choke: roots, fat or wipes obstructing the pipe",
+    `<rect x="0" y="36" width="160" height="32" fill="${GF.wall}"/><rect x="0" y="41" width="160" height="22" fill="${GF.inner}"/>`
+    + `<rect x="0" y="56" width="80" height="7" fill="${GF.water}" opacity=".7"/>`
+    + `<path d="M84,42 q8,4 6,10 q6,2 2,9 q-8,3 -12,-2 q-6,-4 -2,-9 q-1,-6 6,-8z" fill="${GF.root}"/>`
+    + `<path d="M84,44 q-10,-12 -22,-4 M90,46 q4,-14 16,-10" fill="none" stroke="${GF.root}" stroke-width="1.5"/>`
+    + garrow(20, 50, 60, 50, GF.water) + gt(120, 82, "flow stops here", { c: GF.bad, a: "middle" })),
+  "Gravity main": gsvg("Gravity main: part-full, always flowing downhill",
+    (() => { const L = glong({ slope: 0.18 });
+      return L.o + `<polygon points="0,${L.inv(0) + 1} 160,${L.inv(160) + 1} 160,${L.inv(160) + 5} 0,${L.inv(0) + 5}" fill="${GF.water}" opacity=".7"/>`
+        + garrow(40, L.inv(40) - 14, 110, L.inv(110) - 14, GF.water) + gt(40, L.inv(40) - 18, "downhill, part full", { c: GF.water }); })()),
+  "Rising main": gsvg("Rising main: pumped uphill, running full and under pressure",
+    (() => { const L = glong({ slope: -0.18 });
+      return L.o + `<polygon points="0,${L.inv(0) - 5} 160,${L.inv(160) - 5} 160,${L.inv(160) + 5} 0,${L.inv(0) + 5}" fill="${GF.water}" opacity=".7"/>`
+        + `<circle cx="18" cy="${L.inv(18)}" r="9" fill="${GF.warn}"/>` + gt(18, L.inv(18) + 3, "P", { a: "middle", c: "#1a1200", s: 9 })
+        + garrow(50, L.inv(50) - 14, 120, L.inv(120) - 14, GF.warn) + gt(50, L.inv(50) - 26, "pumped, full bore", { c: GF.warn }); })()),
+  "Inflow and infiltration (I&I)": gsvg("Rain and groundwater entering through cracks and bad joints",
+    `<rect x="0" y="0" width="160" height="100" fill="${GF.soil}"/>`
+    + `<rect x="0" y="40" width="160" height="30" fill="${GF.wall}"/><rect x="0" y="45" width="160" height="20" fill="${GF.inner}"/>`
+    + gln(60, 40, 63, 45, GF.bad, 1.5) + gln(110, 40, 108, 45, GF.bad, 1.5) + gln(80, 45, 80, 40, GF.faint, 2)
+    + [[58,28],[62,22],[108,30],[112,24],[80,26],[30,30],[130,32]].map(([x,y]) => `<path d="M${x},${y} q-3,5 0,7 q3,-2 0,-7z" fill="${GF.water}"/>`).join("")
+    + gt(80, 88, "groundwater and rain get in", { a: "middle", c: GF.water, s: 6.5 })),
+  "Nominal diameter": gsvg("Nominal size versus the internal bore inside the wall",
+    gcircle(0, gln(46, 52, 114, 52, GF.dim, 1.2) + gt(80, 48, "nominal", { a: "middle", c: GF.dim, s: 6.5 })
+      + gln(52, 60, 108, 60, GF.good, 1.2) + gt(80, 70, "internal bore", { a: "middle", c: GF.good, s: 6.5 })
+      + gt(80, 96, "the wall is the difference", { a: "middle", s: 6.5 }))),
+  "Vitrified clay": gsvg("Clay pipe: short fired sections, joints every couple of metres, roots at the joints",
+    `<rect x="0" y="0" width="160" height="100" fill="${GF.soil}"/>`
+    + [0, 52, 104].map(x => `<rect x="${x}" y="40" width="50" height="26" fill="${GF.wall}" rx="1"/><rect x="${x}" y="45" width="50" height="16" fill="${GF.inner}"/>`).join("")
+    + [50, 102].map(x => `<rect x="${x}" y="37" width="6" height="32" fill="${GF.lid}"/>`).join("")
+    + `<path d="M53,37 q-6,-14 -14,-18 M53,37 q4,-16 12,-20" fill="none" stroke="${GF.root}" stroke-width="1.5"/>`
+    + gt(80, 88, "strong pipe, weak joints", { a: "middle", s: 6.5 })),
+  "Gradient": gsvg("Gradient: fall over length, as a percentage",
+    (() => { const L = glong({ slope: 0.2 });
+      return L.o + gln(20, L.inv(20), 140, L.inv(20), GF.dim, 1, "3 2") + gln(140, L.inv(20), 140, L.inv(140), GF.dim, 1.2)
+        + gt(80, L.inv(20) - 4, "length", { a: "middle", c: GF.dim }) + gt(144, (L.inv(20) + L.inv(140)) / 2 + 3, "fall", { c: GF.dim })
+        + gt(30, 92, "gradient = fall / length", { c: GF.ink, s: 6.5 }); })()),
+  "Joint type": gsvg("A socket joint: where two sections meet, and where roots and water get in",
+    `<rect x="0" y="0" width="160" height="100" fill="${GF.soil}"/>`
+    + `<rect x="0" y="42" width="78" height="22" fill="${GF.wall}"/><rect x="0" y="47" width="78" height="12" fill="${GF.inner}"/>`
+    + `<rect x="70" y="36" width="90" height="34" fill="${GF.wall}"/><rect x="78" y="42" width="82" height="22" fill="${GF.wall}" opacity=".6"/><rect x="78" y="47" width="82" height="12" fill="${GF.inner}"/>`
+    + `<rect x="72" y="42" width="5" height="22" fill="${GF.lid}"/>`
+    + `<path d="M75,36 q-8,-16 -20,-20 M75,36 q6,-18 16,-22" fill="none" stroke="${GF.root}" stroke-width="1.5"/>`
+    + gt(30, 82, "spigot", { s: 6.5 }) + gt(110, 82, "socket", { s: 6.5 }) + gt(75, 92, "roots enter at the seal", { a: "middle", c: GF.root, s: 6.5 })),
+  "Overcapacity": gsvg("Overcapacity: nothing obstructed, just more flow than the pipe was sized for",
+    (() => { const L = glong({ slope: 0.06, chambers: [90] });
+      return L.o + `<polygon points="0,${L.inv(0) - 5} 90,${L.inv(90) - 5} 90,${L.inv(90) + 5} 0,${L.inv(0) + 5}" fill="${GF.water}" opacity=".7"/>`
+        + `<rect x="85" y="${L.g(90) + 8}" width="10" height="${L.inv(90) - L.g(90) - 3}" fill="${GF.water}" opacity=".7"/>`
+        + garrow(10, L.inv(10) - 14, 40, L.inv(40) - 14, GF.water) + garrow(10, L.inv(10) - 22, 40, L.inv(40) - 22, GF.water) + garrow(10, L.inv(10) - 30, 40, L.inv(40) - 30, GF.water)
+        + gt(90, L.g(90) - 6, "surcharges", { a: "middle", c: GF.bad, s: 6.5 }) + gt(125, L.inv(125) + 16, "no blockage", { a: "middle", s: 6.5 }); })()),
+  "Reach": gsvg("A reach: one pipe between two chambers",
+    (() => { const L = glong({ chambers: [30, 130] });
+      return L.o + `<polygon points="36,${L.inv(36) - 5} 124,${L.inv(124) - 5} 124,${L.inv(124) + 5} 36,${L.inv(36) + 5}" fill="${GF.water}" opacity=".45"/>`
+        + gln(36, L.inv(36) + 14, 124, L.inv(124) + 14, GF.dim, 1.2) + gt(80, L.inv(80) + 24, "one reach", { a: "middle", c: GF.dim }); })()),
+  "Manning's equation": gsvg("Manning: flow from area A, wetted perimeter P and hydraulic radius R = A/P",
+    gcircle(0.45, `<path d="M52.7,60.8 A28,28 0 0,0 107.3,60.8" fill="none" stroke="${GF.warn}" stroke-width="3"/>`
+      + gt(80, 66, "A", { a: "middle", c: "#06121f", s: 9 }) + gt(80, 92, "P, the wetted wall", { a: "middle", c: GF.warn, s: 6.5 })
+      + gt(150, 20, "R = A / P", { a: "end", c: GF.ink }))),
+  "Manning's n": gsvg("Roughness: a rough wall slows the same flow on the same gradient",
+    `<rect x="0" y="14" width="160" height="30" fill="${GF.wall}"/><rect x="0" y="19" width="160" height="20" fill="${GF.inner}"/>`
+    + garrow(20, 29, 130, 29, GF.water) + gt(155, 32, "low n", { a: "end", c: GF.good, s: 6.5 })
+    + `<rect x="0" y="56" width="160" height="30" fill="${GF.wall}"/>`
+    + `<path d="M0,61 ${Array.from({length:32},(_, i)=>`L${(i+1)*5},${i%2?61:64}`).join(" ")} L160,81 ${Array.from({length:32},(_, i)=>`L${160-(i+1)*5},${i%2?81:78}`).join(" ")} Z" fill="${GF.inner}"/>`
+    + garrow(20, 71, 80, 71, GF.water) + gt(155, 74, "high n", { a: "end", c: GF.bad, s: 6.5 })),
+  "Normal depth": gsvg("Normal depth: gravity and friction balance, so the surface runs parallel to the bed",
+    (() => { const L = glong({ slope: 0.14 });
+      return L.o + `<polygon points="0,${L.inv(0) - 1} 160,${L.inv(160) - 1} 160,${L.inv(160) + 5} 0,${L.inv(0) + 5}" fill="${GF.water}" opacity=".7"/>`
+        + garrow(60, L.inv(60) - 20, 60, L.inv(60) - 6, GF.dim) + gt(64, L.inv(60) - 12, "gravity", { c: GF.dim, s: 6.5 })
+        + garrow(110, L.inv(110) + 12, 90, L.inv(90) + 12, GF.warn) + gt(112, L.inv(110) + 15, "friction", { c: GF.warn, s: 6.5 })
+        + gt(6, 92, "same depth all along", { s: 6.5 }); })()),
+  "d/D, depth to diameter ratio": gsvg("d over D: how full the pipe is running",
+    gcircle(0.6, gdim(124, 24, 80, "D", 1) + gdim(36, 46, 80, "d", -1, GF.water))),
+  "Flow accumulation": gsvg("Flow accumulation: each node passes on everything that reached it",
+    gnode(25, 20, GF.ink, 3) + gnode(65, 20, GF.ink, 3) + gnode(125, 22, GF.ink, 3) + gnode(45, 50, GF.ink, 4) + gnode(100, 55, GF.ink, 4) + gnode(75, 85, GF.water, 6)
+    + garrow(28, 24, 42, 46) + garrow(62, 24, 48, 46) + garrow(122, 26, 103, 51) + garrow(49, 54, 70, 80) + garrow(97, 59, 80, 80)
+    + gt(25, 12, "1", { a: "middle" }) + gt(65, 12, "1", { a: "middle" }) + gt(125, 14, "1", { a: "middle" })
+    + gt(34, 53, "3", { a: "end", c: GF.dim }) + gt(110, 58, "2", { c: GF.dim }) + gt(88, 90, "6", { c: GF.water, s: 9 })),
+  "Peak factor": gsvg("Peak factor: the peak of the day against the dry-weather average",
+    gln(15, 85, 150, 85, GF.faint) + gln(15, 85, 15, 10, GF.faint)
+    + `<path d="M15,70 C30,72 35,40 50,32 S70,60 85,58 S105,25 120,30 S140,66 150,68" fill="none" stroke="${GF.water}" stroke-width="2"/>`
+    + gln(15, 52, 150, 52, GF.dim, 1, "3 2") + gt(18, 49, "average", { c: GF.dim, s: 6.5 })
+    + gdim(120, 29, 52, "", -1, GF.warn) + gt(116, 24, "peak / avg", { a: "end", c: GF.warn })
+    + gt(82, 96, "time of day", { a: "middle", s: 6.5 })),
+  "Tipped reach": gsvg("Tipped: under capacity before growth, over capacity after it",
+    (() => { const L = glong({ slope: 0.05, chambers: [20, 80, 140] });
+      return L.o + `<polygon points="26,${L.inv(26) - 5} 74,${L.inv(74) - 5} 74,${L.inv(74) + 5} 26,${L.inv(26) + 5}" fill="${GF.water}" opacity=".4"/>`
+        + `<polygon points="86,${L.inv(86) - 5} 134,${L.inv(134) - 5} 134,${L.inv(134) + 5} 86,${L.inv(86) + 5}" fill="#e879f9" opacity=".75"/>`
+        + gt(50, L.inv(50) + 18, "was fine", { a: "middle", s: 6.5 }) + gt(110, L.inv(110) + 18, "tipped by growth", { a: "middle", c: "#e879f9", s: 6.5 })
+        + garrow(60, 12, 90, 12, GF.warn) + gt(75, 9, "new connections", { a: "middle", c: GF.warn, s: 6.5 }); })()),
+};
 
 /* --------------------------------------------------------------- glossary */
 function glossary() {
@@ -806,6 +1227,10 @@ function glossary() {
     ["Inflow and infiltration (I&I)", "Rainwater and groundwater entering the sewer through cracks, bad joints or illegal stormwater connections. The usual reason flows spike during rain, and the reason a detection threshold has to account for rainfall."],
     ["CWMS", "Community Wastewater Management Scheme: a council-owned system serving a town, as distinct from the state utility's metropolitan network. Because the council owns the asset, the data is often published openly."],
     ["SWMM", "Storm Water Management Model, the standard open-source simulator for part-full gravity systems. The right tool for sewers. EPANET models pressurised drinking-water networks and does not represent gravity sewers correctly."],
+    ["Nominal diameter", "The pipe's named size, and what the asset register carries on every record. Distinct from internal diameter, the actual bore, which is smaller once wall thickness is counted and is published on only about half the records here. Manning wants the internal figure; consistency across the whole network wants the nominal one, and this tool takes consistency."],
+    ["Vitrified clay", "Fired clay pipe, abbreviated VC, and the material of 906 of the 1,001 reaches in this network. Resists the acids a sewer generates and lasts a century or more, which is why a network whose median pipe was laid in 1912 is still in service. Its weakness is joints and cracks, which is where roots get in."],
+    ["Gradient", "The fall of a pipe along its length, published here as a percentage. Steeper pipe runs faster and carries more, so gradient enters both the capacity calculation and, through the velocity needed to keep solids moving, the likelihood of a blockage forming at all."],
+    ["Joint type", "How two pipe sections are connected. Joints are where a pipe is weakest: they are the usual entry point for tree roots and for groundwater infiltration, so joint type is a condition factor rather than a hydraulic one."],
     ["Overcapacity", "The condition where the flow arriving at a reach is more than the pipe was sized to carry, with nothing obstructing it. Distinct from a blockage: it happens at fixed, predictable bottlenecks rather than anywhere, and it is what growth causes. Same consequence, different geography."],
     ["Reach", "One pipe between two chambers, the unit the capacity calculation works on. Flow, gradient, diameter and capacity are all properties of a reach, not of a chamber."],
     ["Manning's equation", "The standard formula for flow in an open channel, relating flow to cross-sectional area, hydraulic radius, gradient and a roughness coefficient n. Used here reach by reach to work out how full each pipe runs."],
@@ -820,7 +1245,12 @@ function glossary() {
   <h2>Glossary</h2>
   <p class="lede">Terms used in this tool and in the surrounding documents, in plain language.</p>
   <dl class="gloss">
-    ${items.map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join("")}
+    ${items.map(([t, d]) => {
+      const fig = GLOSS_FIGS[t];
+      return `<dt>${esc(t)}</dt><dd class="gl-row">`
+        + `<div class="gl-txt">${esc(d)}</div>`
+        + (fig ? `<figure class="gl-fig">${fig}</figure>` : "") + `</dd>`;
+    }).join("")}
   </dl>`;
 }
 
@@ -836,6 +1266,8 @@ function render(ctx) {
   const fillB = () => {
     const slot = document.getElementById("cap-register");
     if (slot) slot.innerHTML = capacityRegister(ctx);
+    const rslot = document.getElementById("risk-register");
+    if (rslot) rslot.innerHTML = riskRegister(ctx);
   };
   if (typeof requestIdleCallback === "function") requestIdleCallback(fillB, { timeout: 2000 });
   else setTimeout(fillB, 0);

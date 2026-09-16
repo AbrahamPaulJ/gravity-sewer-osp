@@ -126,11 +126,13 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 #busy.on{display:grid}
 #hud{position:absolute;left:12px;top:12px;background:rgba(17,28,47,.95);border:1px solid var(--line);
   border-radius:9px;padding:8px 11px;font-family:ui-monospace,Menlo,Consolas,monospace;
-  font-size:11.5px;display:none;pointer-events:none;line-height:1.6;max-width:260px}
+  font-size:11.5px;display:none;pointer-events:none;line-height:1.6;max-width:330px}
 #hud.on{display:block}
-#legend,#legend-cap{position:absolute;right:12px;bottom:12px;background:rgba(17,28,47,.95);
+#legend,#legend-cap,#legend-dia,#legend-risk{position:absolute;right:12px;bottom:12px;
+  background:rgba(17,28,47,.95);
   border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:11.5px}
-#legend div,#legend-cap div{display:flex;align-items:center;gap:7px;margin:3px 0;color:var(--ink-dim)}
+#legend div,#legend-cap div,#legend-dia div,#legend-risk div{display:flex;align-items:center;
+  gap:7px;margin:3px 0;color:var(--ink-dim)}
 .sw{width:16px;height:3px;border-radius:2px;display:inline-block}
 .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
 .badge{display:inline-block;padding:1px 7px;border-radius:999px;font-size:10.5px;
@@ -166,6 +168,13 @@ details{margin:8px 0}
 summary{cursor:pointer;color:var(--accent);font-size:12.5px}
 .gloss dt{font-weight:620;color:var(--ink);margin-top:13px;font-size:13px}
 .gloss dd{margin:3px 0 0;color:var(--ink-dim);line-height:1.6}
+/* definition first, figure beneath it. The SVG viewBox is 160x100, so width sets the
+   scale of everything in it: at 360px the 7.5-unit labels render near 17px. */
+.gl-row{display:flex;flex-direction:column;gap:10px}
+.gl-fig{width:360px;max-width:100%;margin:2px 0 4px;background:var(--panel);
+  border:1px solid var(--line);border-radius:10px;padding:8px;box-sizing:border-box}
+.gl-fig svg{width:100%;height:auto;display:block}
+.gl-txt{min-width:0}
 .tag{font-size:10.5px;color:var(--ink-faint);border:1px solid var(--line);border-radius:4px;
   padding:0 5px;margin-left:6px;vertical-align:middle}
 </style>
@@ -258,6 +267,7 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
         <option value="nodes">Maximise nodes observed</option>
         <option value="length">Maximise pipe length observed</option>
         <option value="surcharge">Maximise surcharging chambers observed</option>
+        <option value="risk" id="obj-risk">Maximise blockage risk observed</option>
       </select>
       <p class="hint" id="obj-hint" hidden>Targets the chambers that overcapacity
         actually threatens, taken from the capacity model, rather than treating
@@ -295,7 +305,25 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
         <option value="elevation">Invert level</option>
         <option value="depth">Chamber depth</option>
         <option value="capacity">Capacity, d/D</option>
+        <option value="diameter" id="opt-diameter">Pipe diameter</option>
+        <option value="risk" id="opt-risk">Blockage likelihood</option>
       </select>
+      <div class="row" id="p-risk" hidden>
+        <label for="riskblend">Likelihood weighting</label>
+        <select id="riskblend">
+          <option value="blend">Blended (age, bore, grade, material)</option>
+          <option value="age">Age only</option>
+          <option value="diameter">Bore only, small is worse</option>
+          <option value="gradient">Gradient only, flat is worse</option>
+          <option value="material">Material only</option>
+        </select>
+        <label for="riskagg" style="margin-top:9px">Chamber score</label>
+        <select id="riskagg">
+          <option value="intensity">Intensity &mdash; how bad this chamber's pipes are</option>
+          <option value="exposure">Exposure &mdash; expected blockage count</option>
+        </select>
+        <p class="hint" id="risk-hint" style="margin-top:7px"></p>
+      </div>
       <p class="hint" id="cap-hint" hidden></p>
       <!-- NOT class="row". This was a flex row, which laid the three sliders and the
            hint out as columns: the sliders collapsed to zero width and could not be
@@ -308,13 +336,18 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
         <input type="range" id="load" min="0.01" max="2" step="0.01" value="0.05">
         <div class="row"><span>Peak factor</span><span class="val" id="peak-val">1.0</span></div>
         <input type="range" id="peak" min="1" max="6" step="0.1" value="1">
-        <div class="row"><span>Manning's n</span><span class="val" id="mann-val">0.013</span></div>
+        <div class="row"><span>Manning's n</span>
+          <span><span class="val" id="mann-val">per material</span>
+          <button id="mann-auto" class="mini" hidden>auto</button></span></div>
         <input type="range" id="mann" min="0.009" max="0.018" step="0.0005" value="0.013">
         <p class="hint">Pipe roughness. 0.010 to 0.011 is new PVC, 0.013 the design value for
           concrete and vitrified clay, 0.015 and above is old or root-affected pipe. It is the
           only term in Manning's equation we cannot look up: the statewide layer publishes a
-          roughness field on 0.8% of records. Drag it and watch the water level move, because
-          that sensitivity is the argument for asking the network operator what n they design to.</p>
+          roughness field on this network on no record at all. By default n comes from each
+          pipe's published material, 0.010 for uPVC against 0.013 for clay; drag the slider to
+          override that with one value everywhere, and press auto to go back. Watch the water
+          level move, because that sensitivity is the argument for asking the network operator
+          what n they design to.</p>
       </div>
     </div>
 
@@ -418,6 +451,23 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
         <div><span class="sw" style="background:#38bdf8"></span>covered</div>
         <div><span class="dot" style="background:#f43f5e"></span>sensor</div>
         <div><span class="dot" style="background:#fbbf24"></span>anchor</div>
+        <div style="border-top:1px solid var(--line);margin-top:5px;padding-top:5px">
+          <span class="sw" style="background:#93a4c4;height:1px"></span>
+          <span class="sw" style="background:#93a4c4;height:4px;margin-left:-3px"></span>
+          &nbsp;width = pipe diameter</div>
+      </div>
+      <div id="legend-risk" hidden>
+        <div><span class="sw" style="background:#334155"></span>lower likelihood</div>
+        <div><span class="sw" style="background:#38bdf8"></span>mid</div>
+        <div><span class="sw" style="background:#fb923c"></span>higher</div>
+        <div><span class="sw" style="background:#f43f5e;height:4px"></span>top decile</div>
+        <div><span class="dot" style="background:#f8fafc"></span>sensor</div>
+      </div>
+      <div id="legend-dia" hidden>
+        <div><span class="sw" style="background:#64748b;height:1px"></span>150 mm</div>
+        <div><span class="sw" style="background:#2dd4bf;height:2px"></span>225 to 300 mm</div>
+        <div><span class="sw" style="background:#a7f3d0;height:4px"></span>375 mm and over</div>
+        <div><span class="dot" style="background:#f43f5e"></span>sensor</div>
       </div>
       <div id="legend-cap" hidden>
         <div><span class="sw" style="background:#334155"></span>d/D low</div>
@@ -487,13 +537,19 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
 </div>
 </div>
 
-<script src="osp_data.js"></script>
-<script src="osp_swmm.js"></script>
-<script src="osp_core.js"></script>
-<script src="osp_capacity.js"></script>
-<script src="osp_docs.js"></script>
-<script src="osp_3d.js"></script>
-<script src="osp_profile.js"></script>
-<script src="osp_ui.js"></script>
+<!-- Same cache key as the iframe carries in index.html. The key on the page alone is
+     not enough: a browser refetches the document and happily reuses every script it
+     loads, so a changed osp_docs.js can sit behind a fresh osp_sandbox.html. Bump all
+     of them together; tools/build_public_demo.py checks they agree. -->
+<script src="data/osp_data.js?v=18"></script>
+<script src="data/osp_swmm.js?v=18"></script>
+<script src="src/model/osp_core.js?v=18"></script>
+<script src="src/model/osp_capacity.js?v=18"></script>
+<script src="src/model/osp_risk.js?v=18"></script>
+<script src="src/docs/osp_docs.js?v=18"></script>
+<script src="src/ui/osp_3d.js?v=18"></script>
+<script src="src/ui/osp_profile.js?v=18"></script>
+<script src="src/ui/osp_ui.js?v=18"></script>
+
 </body>
 </html>

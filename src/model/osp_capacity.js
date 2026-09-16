@@ -38,48 +38,91 @@
 
 /* Manning roughness. Sewer pipe is 0.010 to 0.015 depending on material and age;
    0.013 is the conventional design value for concrete and vitrified clay and is
-   what we default to. The statewide layer publishes a `roughness` field but it is
-   populated on 0.8% of records, so it cannot be used and this stays an assumption.
-   Material IS published at 99.9%, so a per-material table is the obvious refinement
-   once material reaches the demo data. */
+   what we fall back to where material is not carried.
+
+   The layer publishes a `roughness` field, which would have settled this from
+   measurement. It is populated on no record at all in the demo area, so it is
+   unusable. Material is carried on 100%, so roughness is taken from a per-material
+   table instead: still a declared value per material, but no longer one value for
+   a network that is nine parts clay to one part plastic.
+
+   Values are conventional design figures, not measurements. Clay and concrete sit
+   at 0.013; uPVC is smoother and sits at 0.010. Keyed by the material strings the
+   publisher uses, so an unrecognised code falls back rather than guessing. */
 const DEFAULT_N = 0.013;
+const MATERIAL_N = { VC: 0.013, PVCU: 0.010, RC: 0.013 };
 
 /* A reach with no fall cannot be solved by Manning. Some are genuinely flat, some
    are data error: the invert fields are flow-anchored and a mis-set record can read
-   as adverse. Rather than drop them, clamp to a token grade and flag them, so they
-   stay visible as a data-quality finding instead of silently disappearing. */
+   as adverse.
+
+   The publisher carries its own GRADE, in percent, on essentially every record, and
+   it agrees with fall-over-length at a median ratio of 1.0000 across the network. So
+   where the inverts give nothing usable, the answer is not to clamp but to read the
+   other field, and only clamp when that is missing too. Reaches recovered that way
+   are flagged separately from clamped ones, because they are a different claim:
+   one is a measurement from a second source, the other is an admission. */
 const MIN_SLOPE = 1e-4;
 
 /* --------------------------------------------------------------- geometry */
 /* Per-edge diameter, slope and length.
 
-   Diameter is per NODE in the current data, holding the max diameter of the pipes
-   touching that node. The reach between two nodes is taken as min(dia[u], dia[v]),
-   because a reach is limited by its narrowest section. That is a proxy. The real
-   per-pipe diameter exists upstream in build_demo_data.py and should be emitted as
-   a `diams` array; when it is, pass it in as opt.diams and this falls away. */
+   Diameter is the publisher's own NOMINALDIA for that pipe, carried per edge in
+   g.pipes.dia. Where a region predates the attribute fetch, or an individual
+   record has no diameter, it falls back to min(dia[u], dia[v]) — the old proxy,
+   a reach being limited by its narrowest section — and the count of records that
+   needed it is reported, so a mixed region cannot hide.
+
+   Nominal, not internal, deliberately. The publisher also carries INTERNALDI,
+   which is the hydraulically correct bore and is what Manning actually wants, but
+   it is populated on only 54% of records: the newer half. Mixing the two would
+   compute capacity on a different basis for old and new pipe, and since Q scales
+   with roughly D^(8/3), that systematically favours whichever cohort got the
+   nominal figure. This module's claim is a RANKING of reaches, so a uniform basis
+   is worth more than a more accurate one applied unevenly. Pass opt.diams to
+   override. */
 function edgeGeometry(g, opt) {
   opt = opt || {};
   const m = g.edges.length;
   const dia = new Float64Array(m), slope = new Float64Array(m), len = new Float64Array(m);
-  const flags = new Uint8Array(m);          // 1 = slope clamped
-  let clamped = 0, diaProxied = 0;
+  const nMan = new Float64Array(m);
+  const flags = new Uint8Array(m);   // 1 = slope clamped, 2 = slope from published grade
+  let clamped = 0, fromGrade = 0, diaProxied = 0, nProxied = 0;
+  const P = g.pipes;
+  const pub = opt.diams || (P && P.dia && P.dia.length === m ? P.dia : null);
+  const grade = P && P.grade && P.grade.length === m ? P.grade : null;
+  const codes = opt.matCodes || null;      // index -> publisher's material string
+  const fixedN = opt.n == null ? null : opt.n;
 
   for (let e = 0; e < m; e++) {
     const u = g.edges[e][0], v = g.edges[e][1];
     const L = Math.max(g.lengths[e], 0.1);
     len[e] = L;
 
-    if (opt.diams) dia[e] = opt.diams[e];
+    if (pub && pub[e] > 0) dia[e] = pub[e];
     else { dia[e] = Math.min(g.dia[u], g.dia[v]); diaProxied++; }
 
+    // Roughness by material where the publisher carries it, one declared constant
+    // where it does not. An explicit opt.n overrides both, so the single-value
+    // behaviour is still available for comparison.
+    if (fixedN != null) nMan[e] = fixedN;
+    else {
+      const key = codes && P && P.mat && P.mat[e] >= 0 ? codes[P.mat[e]] : null;
+      const nv = key ? MATERIAL_N[key] : undefined;
+      if (nv == null) { nMan[e] = DEFAULT_N; nProxied++; } else nMan[e] = nv;
+    }
+
     // Fall is upstream invert minus downstream invert. The graph is already
-    // oriented by flow, so u is upstream of v by construction.
+    // oriented by flow, so u is upstream of v by construction. Where that gives
+    // nothing usable the publisher's own gradient is read instead, and only a
+    // reach with neither is clamped.
     const s = (g.inv[u] - g.inv[v]) / L;
-    if (s < MIN_SLOPE) { slope[e] = MIN_SLOPE; flags[e] = 1; clamped++; }
-    else slope[e] = s;
+    if (s >= MIN_SLOPE) slope[e] = s;
+    else if (grade && grade[e] / 100 >= MIN_SLOPE) {
+      slope[e] = grade[e] / 100; flags[e] = 2; fromGrade++;
+    } else { slope[e] = MIN_SLOPE; flags[e] = 1; clamped++; }
   }
-  return { dia, slope, len, flags, clamped, diaProxied, m };
+  return { dia, slope, len, n: nMan, flags, clamped, fromGrade, diaProxied, nProxied, m };
 }
 
 /* ------------------------------------------------------- partial-flow solver */
@@ -229,6 +272,15 @@ function accumulate(g, core, opt) {
   return { own, acc, edgeQ };
 }
 
+/* Roughness in play, for reporting. A single number where every reach agrees,
+   otherwise the span, because "n = 0.013" would be false on a mixed network. */
+function nRange(a) {
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < a.length; i++) { if (a[i] < lo) lo = a[i]; if (a[i] > hi) hi = a[i]; }
+  if (!isFinite(lo)) return DEFAULT_N;
+  return lo === hi ? lo : { lo, hi };
+}
+
 /* --------------------------------------------------------------- the state */
 /* Flow, capacity and utilisation for every reach, plus the nodes that surcharge.
 
@@ -237,9 +289,11 @@ function accumulate(g, core, opt) {
    capacity: the water has nowhere to go and backs up into the chamber. */
 function capacityState(g, core, opt) {
   opt = opt || {};
-  const nMan = opt.n == null ? DEFAULT_N : opt.n;
   const peak = opt.peakFactor == null ? 1 : opt.peakFactor;   // dry weather -> peak
   const geo = opt.geo || edgeGeometry(g, opt);
+  // Roughness is per reach now, carried on geo. A geo built before this change,
+  // or handed in by a caller, still works: fall back to the single constant.
+  const nOf = geo.n ? (e => geo.n[e]) : (() => opt.n == null ? DEFAULT_N : opt.n);
   const { own, acc, edgeQ } = accumulate(g, core, opt);
 
   const m = g.edges.length;
@@ -254,10 +308,10 @@ function capacityState(g, core, opt) {
     // edgeQ, not acc[u], so a chamber with two outgoing pipes splits rather than
     // sending its whole flow down both.
     const Q = (edgeQ[e] * peak) / 1000;
-    const D = geo.dia[e], S = geo.slope[e];
-    const cap = capacityOf(D, S, nMan);
+    const D = geo.dia[e], S = geo.slope[e], nE = nOf(e);
+    const cap = capacityOf(D, S, nE);
     q[e] = Q; qCap[e] = cap.qMax;
-    dOverD[e] = depthRatio(Q, D, S, nMan);
+    dOverD[e] = depthRatio(Q, D, S, nE);
     lenTot += geo.len[e];
     if (Q >= cap.qMax) {
       over[e] = 1; nOver++; lenOver += geo.len[e];
@@ -276,8 +330,11 @@ function capacityState(g, core, opt) {
       shareOver: m ? nOver / m : 0,
       nodesSurcharged: nSur,
       slopeClamped: geo.clamped,
-      diameterProxied: geo.diaProxied > 0,
-      manningN: nMan, peakFactor: peak,
+      slopeFromGrade: geo.fromGrade || 0,   // recovered from the published gradient
+      diameterProxied: geo.diaProxied,      // count, 0 when every reach is published
+      roughnessProxied: geo.nProxied || 0,  // reaches with no material to key on
+      manningN: geo.n ? nRange(geo.n) : (opt.n == null ? DEFAULT_N : opt.n),
+      peakFactor: peak,
       perNodeLoad: opt.loads ? null : (opt.perNode == null ? 0.05 : opt.perNode),
     },
   };
@@ -338,7 +395,7 @@ function surchargeNodes(state) {
 }
 
 return {
-  DEFAULT_N, MIN_SLOPE, THETA_QMAX,
+  DEFAULT_N, MATERIAL_N, MIN_SLOPE, THETA_QMAX,
   edgeGeometry, qOfTheta, capacityOf, depthRatio,
   thetaOfRatio, areaOfTheta, velocityOf, arcSegments,
   accumulate, capacityState, growth, surchargeNodes,
