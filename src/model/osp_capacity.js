@@ -153,6 +153,56 @@ function capacityOf(D, S, n) {
   };
 }
 
+/* Inverse of the depth-ratio relation, and the wetted area and mean velocity that
+   follow from it. The renderer needs these: to DRAW the water surface inside a pipe
+   you need the wetted angle back out of d/D, and to animate it at a believable speed
+   you need v = Q/A rather than a made-up constant. Keeping them here means the
+   picture and the number come from the same equation, which is the whole point.
+
+     d/D = (1 - cos(theta/2)) / 2   =>   theta = 2 acos(1 - 2 d/D)
+
+   Checks: d/D = 0.5 gives theta = pi, half full. d/D = 1 gives theta = 2pi, full bore. */
+function thetaOfRatio(r) {
+  r = Math.max(0, Math.min(1, r));
+  return 2 * Math.acos(1 - 2 * r);
+}
+
+function areaOfTheta(theta, D) {
+  return (D * D / 8) * (theta - Math.sin(theta));
+}
+
+/* Mean section velocity, m/s. Not a separate model: it is the continuity partner of
+   the same normal-depth solution, Q divided by the area that solution implies. */
+function velocityOf(Q, D, r) {
+  const A = areaOfTheta(thetaOfRatio(r), D);
+  return A > 1e-9 ? Q / A : 0;
+}
+
+/* How finely to sample the wetted arc when DRAWING it.
+
+   A fixed segment count fails at the top end. The arc spans 2 acos(1 - 2 d/D), so a
+   nearly full pipe sweeps almost the whole circle and a chord across each step cuts a
+   visible corner: at 10 segments the drawn water under-reads the true wetted area by
+   6.5% at full bore, while a quarter-full pipe is fine at 1%. The picture would be
+   understating the very reaches that matter most, and every NUMBER on screen would
+   still be correct, so nothing else would catch it.
+
+   Chord truncation falls off as pi^2 / (3 k^2) for k segments over a full circle, so
+   holding segments per unit of arc constant holds the error constant. 32 over a full
+   circle puts it near 0.3%, and a shallow reach still costs only the floor.
+
+   Shared with tools/test_capacity.js deliberately: the assertion and the geometry it
+   checks must come from one definition, or they drift apart silently. */
+function arcSegments(ratio) {
+  const span = 2 * Math.PI - 2 * Math.acos(Math.max(-1, Math.min(1, 2 * ratio - 1)));
+  const k = Math.max(14, Math.ceil((span / (2 * Math.PI)) * 32));
+  /* Forced EVEN. The arc is symmetric about phi = pi, which is the pipe invert, and an
+     odd step count straddles that point instead of landing on it: the drawn water then
+     floats a millimetre or two clear of the pipe floor, at every fill, in a way that
+     looks like a rendering artefact rather than the geometry error it is. */
+  return k + (k % 2);
+}
+
 /* Depth ratio for a given flow. Returns 1 when the reach is surcharged. */
 function depthRatio(Q, D, S, n) {
   if (Q <= 0) return 0;
@@ -347,6 +397,7 @@ function surchargeNodes(state) {
 return {
   DEFAULT_N, MATERIAL_N, MIN_SLOPE, THETA_QMAX,
   edgeGeometry, qOfTheta, capacityOf, depthRatio,
+  thetaOfRatio, areaOfTheta, velocityOf, arcSegments,
   accumulate, capacityState, growth, surchargeNodes,
 };
 });

@@ -8,7 +8,11 @@ window.OSP3D = (function () {
   let THREE = null, OrbitControls = null;
   let renderer = null, scene = null, camera = null, controls = null;
   let edgeLines = null, sensorMarkers = null, anchorMarker = null, groundMesh = null;
+  let barrelMesh = null, waterMesh = null, surchargeMesh = null, waterMat = null;
   let loadPromise = null;
+  const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+  let clock0 = now();
+  let animate = true;
 
   function ensureThree() {
     if (loadPromise) return loadPromise;
@@ -32,7 +36,15 @@ window.OSP3D = (function () {
     container.appendChild(renderer.domElement);
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+    (function loop() {
+      requestAnimationFrame(loop);
+      controls.update();
+      if (waterMat) {
+        waterMat.uniforms.uTime.value = (now() - clock0) / 1000;
+        waterMat.uniforms.uAnimate.value = animate ? 1 : 0;
+      }
+      renderer.render(scene, camera);
+    })();
   }
 
   /* Same three-level palette as the 2D canvas: not observable, observable, covered. */
@@ -43,6 +55,14 @@ window.OSP3D = (function () {
   /* Multi-stop ramps, shared in spirit with the 2D canvas's continuous colour-by modes,
      with enough stops that a small elevation change is a visibly different colour rather
      than a blur in the middle of a two-colour gradient. */
+  /* Same ramp and the same two alarm colours as the 2D capacity mode, so switching
+     views never recolours the same reach. Over capacity and tipped-by-growth sit
+     deliberately OUTSIDE the ramp: a reach that is merely busy must not be able to
+     borrow the colour of one that has failed. */
+  const CAP_STOPS = [[0, [51, 65, 85]], [0.5, [56, 189, 248]],
+                     [0.75, [250, 204, 21]], [1, [249, 115, 22]]];
+  const COL_OVER = [244, 63, 94], COL_TIPPED = [232, 121, 249];
+
   const ELEV_STOPS = [[0, [37, 99, 235]], [0.33, [45, 212, 191]], [0.66, [250, 204, 21]], [1, [220, 38, 38]]];
   const DEPTH_STOPS = [[0, [186, 230, 253]], [0.5, [59, 130, 246]], [1, [190, 24, 93]]];
   function rampN(t, stops) {
@@ -55,6 +75,216 @@ window.OSP3D = (function () {
       }
     }
     return stops[stops.length - 1][1];
+  }
+
+  /* Water drawn as the circular segment Manning actually solved for.
+
+     osp_capacity gives d/D per reach. Turning that back into a picture needs the
+     wetted angle back out of it, theta = 2 acos(1 - 2 d/D), which osp_capacity now
+     exports so the drawing and the number cannot drift apart. The wetted arc is
+     swept along the reach and closed with the chord at the free surface.
+
+     The section is built in the frame of the reach: `right` is horizontal and square
+     to the pipe, `up` is square to both and therefore near vertical. Filling from the
+     invert along `up` is what makes the surface read as horizontal.
+
+       point(phi) = centre + R (cos phi * up + sin phi * right)
+
+     phi = pi is the invert. The reach is wet for phi in [phi0, 2pi - phi0] where
+     phi0 = acos(2 d/D - 1), the same theta reached a different way.
+
+     Two deliberate distortions, both declared in the panel. The bore is exaggerated,
+     because a 300 mm pipe is invisible across a 1 km wide region. The scene's vertical
+     axis is already exaggerated, so the section is a true circle in the STRETCHED
+     space rather than in metres. The fill FRACTION, which is the quantity being
+     communicated, is exact either way.
+
+     The arc is sampled at OSPCapacity.arcSegments(d/D), not at a fixed count: a nearly
+     full pipe sweeps almost the whole circle and needs more steps to stop the chords
+     cutting the corners off the very reaches that matter most. */
+
+  function disposeMesh(m) {
+    if (!m) return;
+    scene.remove(m);
+    if (m.geometry) m.geometry.dispose();
+    if (m.material && m.material !== waterMat) m.material.dispose();
+  }
+
+  function makeWaterMaterial() {
+    if (waterMat) return waterMat;
+    waterMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 }, uAnimate: { value: 1 },
+        /* One band per 6 m of real pipe. Reaches run 40 to 100 m, so a reach carries a
+           readable handful of bands rather than a strobe or a single slab. */
+        uWave: { value: 1 / 6 },
+      },
+      vertexShader: [
+        "attribute vec3 aColour;",
+        "attribute float aU;",      // metres along the reach, true length not stretched
+        "attribute float aSpeed;",  // v = Q/A, from the same normal-depth solution
+        "varying vec3 vColour; varying float vU; varying float vSpeed;",
+        "void main() {",
+        "  vColour = aColour; vU = aU; vSpeed = aSpeed;",
+        "  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);",
+        "}",
+      ].join("\n"),
+      fragmentShader: [
+        "precision mediump float;",
+        "uniform float uTime; uniform float uAnimate; uniform float uWave;",
+        "varying vec3 vColour; varying float vU; varying float vSpeed;",
+        "void main() {",
+        /* Travelling band. Phase advances at the reach's own velocity, so a steep
+           reach visibly runs faster than a flat one. That contrast is the point:
+           it is continuity, not decoration. */
+        "  float band = 0.5 + 0.5 * cos(6.28318 * (vU - uTime * vSpeed) * uWave);",
+        "  float lift = mix(1.0, 0.74 + 0.52 * band, uAnimate);",
+        "  gl_FragColor = vec4(vColour * lift, 0.93);",
+        "}",
+      ].join("\n"),
+      transparent: true, side: THREE.DoubleSide, depthWrite: true,
+    });
+    return waterMat;
+  }
+
+  function buildFlow(G, S, opts, pos) {
+    const cap = opts.capacity, gr = opts.growth;
+    const geo = cap.geo, bore = opts.boreExagg || 10;
+    const m = G.edges.length;
+    const tipped = gr ? new Set(gr.tipped) : null;
+
+    const P = [], COL = [], U = [], SP = [], IDX = [], inst = [];
+
+    for (let e = 0; e < m; e++) {
+      const a = G.edges[e][0], b = G.edges[e][1];
+      const pa = pos(a), pb = pos(b);
+      let ax = pb[0] - pa[0], ay = pb[1] - pa[1], az = pb[2] - pa[2];
+      const alen = Math.hypot(ax, ay, az);
+      if (alen < 1e-6) continue;
+      ax /= alen; ay /= alen; az /= alen;
+
+      // right = normalise(axis x worldUp): horizontal, square to the pipe.
+      let rx = az, ry = 0, rz = -ax;
+      const rlen = Math.hypot(rx, ry, rz);
+      if (rlen < 1e-9) continue;             // a truly vertical reach; sewers have none
+      rx /= rlen; ry /= rlen; rz /= rlen;
+      // up = right x axis: square to both, near vertical.
+      const ux = ry * az - rz * ay, uy = rz * ax - rx * az, uz = rx * ay - ry * ax;
+
+      const R = Math.max(1e-3, (geo.dia[e] / 2) * bore);
+      const L = geo.len[e];
+
+      inst.push([(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2, (pa[2] + pb[2]) / 2,
+                 ax, ay, az, alen, R]);
+
+      let ratio = cap.dOverD[e];
+      if (!isFinite(ratio) || ratio <= 0) continue;
+      ratio = Math.min(1, ratio);
+
+      let rgb;
+      if (tipped && tipped.has(e)) rgb = COL_TIPPED;
+      else if (cap.over[e]) rgb = COL_OVER;
+      else rgb = rampN(ratio, CAP_STOPS);
+      const cr = rgb[0] / 255, cg = rgb[1] / 255, cb = rgb[2] / 255;
+
+      const vel = OSPCapacity.velocityOf(cap.q[e], geo.dia[e], ratio);
+      const phi0 = Math.acos(Math.max(-1, Math.min(1, 2 * ratio - 1)));
+      const span = 2 * Math.PI - 2 * phi0;
+      const seg = OSPCapacity.arcSegments(ratio);
+      const base = P.length / 3;
+
+      for (let end = 0; end < 2; end++) {
+        const c = end === 0 ? pa : pb;
+        const uu = end === 0 ? 0 : L;
+        for (let i = 0; i <= seg; i++) {
+          const phi = phi0 + span * (i / seg);
+          const cp = Math.cos(phi), sp = Math.sin(phi);
+          P.push(c[0] + R * (cp * ux + sp * rx),
+                 c[1] + R * (cp * uy + sp * ry),
+                 c[2] + R * (cp * uz + sp * rz));
+          COL.push(cr, cg, cb); U.push(uu); SP.push(vel);
+        }
+      }
+      const A0 = base, B0 = base + seg + 1;
+      for (let i = 0; i < seg; i++) {
+        IDX.push(A0 + i, B0 + i, A0 + i + 1, A0 + i + 1, B0 + i, B0 + i + 1);
+      }
+      /* The free surface: the chord closing the wetted arc, swept along the reach.
+         This is the face read from above, and the one that moves. */
+      IDX.push(A0, B0, B0 + seg, A0, B0 + seg, A0 + seg);
+    }
+
+    disposeMesh(waterMesh); waterMesh = null;
+    if (IDX.length) {
+      const wg = new THREE.BufferGeometry();
+      wg.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
+      wg.setAttribute("aColour", new THREE.Float32BufferAttribute(COL, 3));
+      wg.setAttribute("aU", new THREE.Float32BufferAttribute(U, 1));
+      wg.setAttribute("aSpeed", new THREE.Float32BufferAttribute(SP, 1));
+      wg.setIndex(IDX);
+      waterMesh = new THREE.Mesh(wg, makeWaterMaterial());
+      waterMesh.renderOrder = 1;
+      scene.add(waterMesh);
+    }
+
+    /* Barrels after the water, semi-transparent and not writing depth, so the water
+       inside stays visible through the pipe wall from any camera angle. */
+    disposeMesh(barrelMesh); barrelMesh = null;
+    if (inst.length) {
+      const cyl = new THREE.CylinderGeometry(1, 1, 1, 12, 1, true);
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0x94a3b8, transparent: true, opacity: 0.17,
+        side: THREE.DoubleSide, depthWrite: false,
+      });
+      barrelMesh = new THREE.InstancedMesh(cyl, mat, inst.length);
+      const o = new THREE.Object3D(), yAxis = new THREE.Vector3(0, 1, 0);
+      const dir = new THREE.Vector3();
+      for (let k = 0; k < inst.length; k++) {
+        const q = inst[k];
+        dir.set(q[3], q[4], q[5]);
+        o.position.set(q[0], q[1], q[2]);
+        o.quaternion.setFromUnitVectors(yAxis, dir);
+        o.scale.set(q[7], q[6], q[7]);
+        o.updateMatrix();
+        barrelMesh.setMatrixAt(k, o.matrix);
+      }
+      barrelMesh.instanceMatrix.needsUpdate = true;
+      barrelMesh.renderOrder = 2;
+      scene.add(barrelMesh);
+    }
+
+    /* Chambers the capacity model says surcharge, drawn as a column standing in the
+       chamber. It marks WHICH chamber the backed-up water enters. How far up it rises,
+       and therefore whether a sensor can see it, is the observability model's job in
+       osp_core, not this one. The column is drawn to the chamber depth and means
+       "this one fills", not "it fills to exactly here". */
+    disposeMesh(surchargeMesh); surchargeMesh = null;
+    const sur = gr ? gr.after.surcharged : cap.surcharged;
+    const nodes = [];
+    for (let i = 0; i < G.n; i++) if (sur[i]) nodes.push(i);
+    if (nodes.length) {
+      const exagg = opts.exaggeration || 1;
+      const cyl = new THREE.CylinderGeometry(1, 1, 1, 10, 1, false);
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xf43f5e, transparent: true, opacity: 0.45, depthWrite: false,
+      });
+      surchargeMesh = new THREE.InstancedMesh(cyl, mat, nodes.length);
+      const o = new THREE.Object3D();
+      const rad = Math.max(0.4, bore * 0.09);
+      for (let k = 0; k < nodes.length; k++) {
+        const i = nodes[k], p = pos(i);
+        const dep = G.cover[i] > 0 ? Math.max(0.2, G.cover[i] - G.inv[i]) : 1.5;
+        const h = dep * exagg;
+        o.position.set(p[0], p[1] + h / 2, p[2]);
+        o.quaternion.identity();
+        o.scale.set(rad, h, rad);
+        o.updateMatrix();
+        surchargeMesh.setMatrixAt(k, o.matrix);
+      }
+      surchargeMesh.instanceMatrix.needsUpdate = true;
+      surchargeMesh.renderOrder = 3;
+      scene.add(surchargeMesh);
+    }
   }
 
   function build(G, S, opts) {
@@ -85,6 +315,15 @@ window.OSP3D = (function () {
     let flo = Infinity, fhi = -Infinity;
     if (field) for (let i = 0; i < G.n; i++) if (isFinite(field[i])) { if (field[i] < flo) flo = field[i]; if (field[i] > fhi) fhi = field[i]; }
 
+    const flowOn = !!opts.capacity;
+    if (!flowOn) {
+      disposeMesh(waterMesh); waterMesh = null;
+      disposeMesh(barrelMesh); barrelMesh = null;
+      disposeMesh(surchargeMesh); surchargeMesh = null;
+    } else {
+      buildFlow(G, S, opts, pos);
+    }
+
     if (edgeLines) { scene.remove(edgeLines); edgeLines.geometry.dispose(); edgeLines.material.dispose(); }
     const cov = S.covered, obs = G.obs;
     const positions = [], colours = [];
@@ -107,7 +346,9 @@ window.OSP3D = (function () {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
     geo.setAttribute("color", new THREE.Float32BufferAttribute(colours, 3));
-    edgeLines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true }));
+    edgeLines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
+      vertexColors: true, transparent: flowOn, opacity: flowOn ? 0.28 : 1,
+    }));
     scene.add(edgeLines);
 
     if (sensorMarkers) scene.remove(sensorMarkers);
@@ -161,7 +402,10 @@ window.OSP3D = (function () {
       gGeo.computeVertexNormals();
       groundMesh = new THREE.Mesh(gGeo, new THREE.MeshBasicMaterial({
         color: 0x9fb3d9, transparent: true, opacity: 0.16, side: THREE.DoubleSide,
+        depthWrite: false,
       }));
+      // Context, not content: behind the pipes, and never occluding the water.
+      groundMesh.renderOrder = -1;
       scene.add(groundMesh);
     }
 
@@ -193,5 +437,41 @@ window.OSP3D = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { ensureThree, initScene, build, resize };
+  function setAnimate(on) { animate = !!on; }
+
+  /* What is actually in the scene, for tools/verify_flow_view.js.
+     Not a debug leftover: it is the only honest way to assert the picture changed,
+     since the WebGL back buffer is not readable after compositing. */
+  function stats() {
+    const wg = waterMesh && waterMesh.geometry;
+    let uMax = 0, sMax = 0;
+    if (wg) {
+      const sp = wg.getAttribute("aSpeed"), uu = wg.getAttribute("aU");
+      for (let i = 0; i < sp.count; i++) {
+        if (sp.array[i] > sMax) sMax = sp.array[i];
+        if (uu.array[i] > uMax) uMax = uu.array[i];
+      }
+    }
+    return {
+      waterVerts: wg ? wg.getAttribute("position").count : 0,
+      waterTris: wg && wg.index ? wg.index.count / 3 : 0,
+      barrels: barrelMesh ? barrelMesh.count : 0,
+      surcharge: surchargeMesh ? surchargeMesh.count : 0,
+      maxSpeed: sMax, maxReach: uMax,
+      shaderOk: !!(waterMat && waterMat.program !== undefined ? true : !!waterMat),
+    };
+  }
+
+  /* Frame the camera on the densest part of the network rather than the whole
+     region, so a screenshot lands on pipes at a readable size. */
+  function zoomTo(frac) {
+    if (!camera || !controls) return false;
+    const d = camera.position.distanceTo(controls.target);
+    const dir = camera.position.clone().sub(controls.target).normalize();
+    camera.position.copy(controls.target).addScaledVector(dir, d * frac);
+    controls.update();
+    return true;
+  }
+
+  return { ensureThree, initScene, build, resize, setAnimate, stats, zoomTo };
 })();
