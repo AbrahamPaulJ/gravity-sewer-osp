@@ -64,6 +64,8 @@ footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);
     <button data-tab="sandbox">Sandbox</button>
     <button data-tab="anatomy">What a maintenance hole is</button>
     <button data-tab="observability">Why observability is limited</button>
+    <button data-tab="sim1">Simulation 1</button>
+    <button data-tab="sim2">Simulation 2 (latest)</button>
   </nav>
 </header>
 
@@ -89,7 +91,7 @@ This is a working tool for exploring that, running on a real network rather than
     for your own JavaScript. Includes an assumptions register, the method and its sources, and a
     glossary.</p>
   </a>
-  <a class="card big" href="simulation/">
+  <a class="card big" href="#sim2" data-tab="sim2">
     <span class="tag">Interactive</span>
     <h3>Growth and sensor placement</h3>
     <p>A whole drainage catchment in 3D, 157 pipes and 71 chambers, solved in EPA SWMM with
@@ -98,7 +100,7 @@ This is a working tool for exploring that, running on a real network rather than
     fewest sensors that would catch every case. The finding it is built around: growth does
     not surcharge a sewer, it eats the headroom the sewer needs to absorb wet weather.</p>
   </a>
-  <a class="card" href="simulation_legacy/">
+  <a class="card" href="#sim1" data-tab="sim1">
     <span class="tag">Earlier version</span>
     <h3>Warning time, from a wet weather event</h3>
     <p>The question this model asked before it moved to growth: four chambers around one
@@ -190,6 +192,8 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 <div class="pane" id="pane-sandbox" hidden><iframe data-src="osp_sandbox.html?v=18#sandbox" title="OSP Sandbox"></iframe></div>
 <div class="pane" id="pane-anatomy" hidden><iframe data-src="manhole_anatomy.html?v=18" title="What a maintenance hole is"></iframe></div>
 <div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html?v=18" title="Why observability is limited"></iframe></div>
+<div class="pane" id="pane-sim1" hidden><iframe data-src="simulation_legacy/index.html?v=18" title="Simulation 1: warning time"></iframe></div>
+<div class="pane" id="pane-sim2" hidden><iframe data-src="simulation/index.html?v=18" title="Simulation 2: growth and sensor placement"></iframe></div>
 
 </div>
 
