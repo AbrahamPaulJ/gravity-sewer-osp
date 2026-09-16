@@ -21,7 +21,7 @@
                water backing up. Good for ranking reaches, useless for showing a
                failure develop.
 
-     swmm      demo/osp_swmm.js, precomputed by tools/build_swmm.py using EPA SWMM
+     swmm      data/osp_swmm.js, precomputed by tools/build_swmm.py using EPA SWMM
                with dynamic wave routing. Real St Venant, so real backwater, real
                storage, real surcharge, on a real clock. This is the one that shows
                the failure happen. It cannot respond to the sliders, because the
@@ -566,7 +566,7 @@ function manningLevels(g, path, pe, ratio) {
 }
 
 /* ---------------------------------------------------------- water levels, swmm */
-/* demo/osp_swmm.js ships each scenario as base64 uint8 grids, [step][node] and
+/* data/osp_swmm.js ships each scenario as base64 uint8 grids, [step][node] and
    [step][reach] flattened row-major. Unpacking is done once per scenario load, not
    per frame, and the result is kept as typed arrays so playback is a slice rather
    than a decode. */

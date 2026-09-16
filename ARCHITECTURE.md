@@ -12,16 +12,20 @@ osp_sandbox.html         the tool
 manhole_anatomy.html     explainer, standalone, four 3D tabs
 why_observability.html   explainer, standalone
 src/model/               the models: pure JavaScript, no DOM, loadable in Node
-src/ui/                  the sandbox page's state, canvas, controls, worker, 3D view
+src/ui/                  the sandbox page's state, canvas, controls, worker, and the
+                         3D relief and long-section views
 src/docs/                the documentation panes, generated from the loaded data
-data/osp_data.js         the dataset; generated, never edited by hand
+data/                    generated datasets; never edited by hand
 tools/                   tests and the data formatter
 ```
 
 ## Modules and what reads what
 
 ```
-data/osp_data.js ─┐
+data/osp_data.js ─┐    the network: nodes, edges, per-pipe attributes
+data/osp_swmm.js ─┤    EPA SWMM dynamic-wave output, precomputed offline by the
+                  │    private tools/build_swmm.py and quantised. Read directly by
+                  │    the long-section view; no model file touches it.
                   ▼
 src/model/osp_core.js      graph (buildGraph), observability (ceilings,
                            computeObservable), scoring, every placement algorithm
@@ -36,6 +40,10 @@ src/ui/osp_ui.js           owns all page state (S), draws the canvas, wires cont
                            runs the custom-algorithm worker. The only file that
                            touches the DOM for the sandbox tab.
 src/ui/osp_3d.js           optional three.js relief view, loaded lazily
+src/ui/osp_profile.js      the long-section view. Draws water level from either the
+                           Manning model (responds to the sliders, cannot show
+                           backwater) or precomputed SWMM playback, and always says
+                           which. UMD, so osp_ui.js reads it as window.OSPProfile.
 src/docs/osp_docs.js       assumptions register, Q&A, method, glossary (with figures)
 ```
 
@@ -66,9 +74,11 @@ the same commit.
 and reuse the scripts behind it, so a key on the page alone is not enough. Bump every
 `?v=` at once; the sanitiser refuses a page whose scripts disagree.
 
-**The data file is generated.** `data/osp_data.js` is written by the harvester in the
-private repository and formatted by `tools/format_data.py`. Do not edit it by hand,
-and close it in editors that format on save; that has reverted it twice.
+**The data files are generated.** `data/osp_data.js` is written by the harvester in
+the private repository and formatted by `tools/format_data.py`; `data/osp_swmm.js` is
+written by `tools/build_swmm.py`, which runs EPA SWMM offline because the solve cannot
+happen in a browser. Do not edit either by hand, and close them in editors that format
+on save; that has reverted the data file twice.
 
 ## Private and public
 
