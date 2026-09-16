@@ -48,8 +48,30 @@ header{padding:12px 20px 0;border-bottom:1px solid var(--line);background:var(--
 #run-bar{flex:0 0 auto;padding:12px 14px;border-top:1px solid var(--line);background:var(--panel)}
 #run-bar .go{margin-top:0}
 #right{border-left:1px solid var(--line)}
-#stage{position:relative;min-width:0;background:var(--bg);display:flex}
+#stage{position:relative;min-width:0;background:var(--bg);display:flex;flex-direction:column}
+#stage-top{flex:1 1 0;min-height:0;display:flex}
 #pane2d,#pane3d{position:relative;flex:1 1 0;min-width:0;height:100%;overflow:hidden}
+/* The long-section sits BELOW the map, full width, because a long profile is a wide
+   drawing and because you pick its route by clicking the map above it. */
+#paneprof{display:none;flex:0 0 46%;min-height:0;position:relative;overflow:hidden;border-top:1px solid var(--line)}
+#paneprof.on{display:block}
+#profile{width:100%;height:100%;display:block;cursor:ew-resize}
+#prof-bar{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:10px;
+  padding:7px 12px;background:rgba(17,28,47,.94);border-top:1px solid var(--line);font-size:11.5px}
+#prof-bar select{width:auto;flex:0 0 auto;padding:4px 7px;font-size:11.5px}
+#prof-bar input[type=range]{flex:1 1 auto;min-width:80px}
+#prof-bar .clock{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--accent);
+  flex:0 0 auto;min-width:52px}
+#prof-bar .note{color:var(--ink-faint);flex:0 0 auto}
+/* Top RIGHT, clear of the model labels the renderer draws top left, and
+   white-space:pre so the newlines in the readout survive. Without it the rows
+   collapse into one wrapped run-on line, which is unreadable and was the bug. */
+#prof-hud{position:absolute;right:12px;top:10px;background:rgba(17,28,47,.97);
+  border:1px solid var(--line);border-radius:8px;padding:8px 11px;
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;display:none;
+  pointer-events:none;line-height:1.6;white-space:pre;
+  box-shadow:0 4px 14px rgba(0,0,0,.45)}
+#prof-hud.on{display:block}
 #pane3d{display:none;border-left:1px solid var(--line)}
 canvas{width:100%;height:100%;display:block;cursor:crosshair}
 canvas.dragging{cursor:grabbing}
@@ -275,12 +297,24 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
         <option value="capacity">Capacity, d/D</option>
       </select>
       <p class="hint" id="cap-hint" hidden></p>
-      <div class="row" id="p-capacity" hidden>
-        <label for="load">Load per chamber
-          <span class="val" id="load-val">0.05</span> L/s</label>
+      <!-- NOT class="row". This was a flex row, which laid the three sliders and the
+           hint out as columns: the sliders collapsed to zero width and could not be
+           dragged at all, and the hint became a one-word-per-line ribbon. Each
+           label/value pair is its own .row, which is the pattern every other group
+           in this sidebar uses. -->
+      <div id="p-capacity" hidden>
+        <div class="row"><span>Load per chamber</span>
+          <span class="val"><span id="load-val">0.05</span> L/s</span></div>
         <input type="range" id="load" min="0.01" max="2" step="0.01" value="0.05">
-        <label for="peak">Peak factor <span class="val" id="peak-val">1.0</span></label>
+        <div class="row"><span>Peak factor</span><span class="val" id="peak-val">1.0</span></div>
         <input type="range" id="peak" min="1" max="6" step="0.1" value="1">
+        <div class="row"><span>Manning's n</span><span class="val" id="mann-val">0.013</span></div>
+        <input type="range" id="mann" min="0.009" max="0.018" step="0.0005" value="0.013">
+        <p class="hint">Pipe roughness. 0.010 to 0.011 is new PVC, 0.013 the design value for
+          concrete and vitrified clay, 0.015 and above is old or root-affected pipe. It is the
+          only term in Manning's equation we cannot look up: the statewide layer publishes a
+          roughness field on 0.8% of records. Drag it and watch the water level move, because
+          that sensitivity is the argument for asking the network operator what n they design to.</p>
       </div>
     </div>
 
@@ -305,6 +339,7 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
         <button data-view="2d" class="on">2D</button>
         <button data-view="3d">3D</button>
         <button data-view="split">Side by side</button>
+        <button data-view="profile">Long-section</button>
       </div>
       <div id="p-3d" style="margin-top:10px;display:none">
         <div class="row"><span>Elevation exaggeration</span><span class="val" id="exagg-val">30x</span></div>
@@ -312,7 +347,52 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
         <div class="hint">Real elevation change is tiny next to the map's width, so height is
           stretched by this factor to make upstream and downstream visibly different. Drag to
           rotate, scroll to zoom, right-drag to pan.</div>
+        <label style="display:block;margin-top:10px">
+          <input type="checkbox" id="water3d" checked> Show water surface
+        </label>
+        <label style="display:block">
+          <input type="checkbox" id="wateranim" checked> Animate at Manning velocity
+        </label>
+        <div class="row"><span>Pipe bore exaggeration</span><span class="val" id="bore-val">70x</span></div>
+        <input type="range" id="bore" min="5" max="250" step="5" value="70">
+        <div class="hint">Needs the "Capacity, d/D" colouring. A 300 mm pipe is invisible next
+          to a 1 km wide region, so the bore is stretched like the elevation is. The water level
+          inside it is the normal depth Manning gives for the flow that reach carries, drawn as
+          the true circular segment, and the scroll speed is v = Q/A from the same solution.
+          <b>Steady uniform flow only: no backwater, no storage, no time.</b></div>
       </div>
+    </div>
+
+    <div class="grp collapsed" id="grp-prof">
+      <h3>Long-section</h3>
+      <p class="hint">A side view down the sewer: ground level on top, manhole shafts as
+        verticals, the pipe stepping down between them, and the water inside it. Click any
+        chamber on the map to cut a section through it. The route follows the largest
+        tributary upstream and the trunk downstream, which is the way the flow goes.</p>
+      <div class="row"><span>Route length</span><span class="val" id="pspan-val">12 each way</span></div>
+      <input type="range" id="pspan" min="3" max="80" step="1" value="12">
+      <div class="hint">Chambers traced upstream and downstream of the one you clicked.
+        Keep it short. The vertical scale is the horizontal scale times the exaggeration,
+        so a longer route squashes everything: trace the full 4 km through Walkerville and
+        a 300 mm pipe is a quarter of a pixel tall, with the water invisible inside it. A
+        real long-section covers a few hundred metres for the same reason.</div>
+      <div class="row" style="margin-top:8px"><span>Vertical exaggeration</span><span class="val" id="pexagg-val">45x</span></div>
+      <input type="range" id="pexagg" min="1" max="200" step="1" value="45">
+      <div class="hint">A sewer falls a few metres over hundreds, so at true scale the
+        pipe is a flat line. Drawing offices conventionally use 10x, but that assumes a
+        short route on a large sheet: here it needs to be higher to keep the bore visible.
+        The factor is printed on the drawing, because a long-section without it stated is
+        a misleading picture.</div>
+      <div class="row" style="margin-top:8px"><span>Pipe bore exaggeration</span><span class="val" id="pbore-val">1.0x</span></div>
+      <input type="range" id="pbore" min="1" max="8" step="0.5" value="1">
+      <div class="hint">Leave at 1x for a true drawing. Raise it only to make a small
+        pipe's water level readable, and say so if you screenshot it.</div>
+      <label style="margin-top:10px">Water level from</label>
+      <div class="seg" id="prof-src">
+        <button data-src="manning" class="on">Manning</button>
+        <button data-src="swmm">SWMM</button>
+      </div>
+      <div class="hint" id="prof-src-hint"></div>
     </div>
 
     <div class="grp collapsed">
@@ -327,6 +407,7 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
   </div>
 
   <div id="stage">
+   <div id="stage-top">
     <div id="pane2d">
       <canvas id="map"></canvas>
       <div id="busy">Computing…</div>
@@ -351,6 +432,18 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
     <div id="pane3d">
       <div id="view3d" style="position:absolute;inset:0"></div>
     </div>
+   </div>
+   <div id="paneprof">
+     <canvas id="profile"></canvas>
+     <div id="prof-hud"></div>
+     <div id="prof-bar">
+       <select id="prof-scn" title="SWMM scenario"></select>
+       <button class="mini" id="prof-play">Play</button>
+       <input type="range" id="prof-t" min="0" max="0" step="1" value="0">
+       <span class="clock" id="prof-clock">--:--</span>
+       <span class="note" id="prof-note"></span>
+     </div>
+   </div>
   </div>
 
   <div id="right">
@@ -395,10 +488,12 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
 </div>
 
 <script src="osp_data.js"></script>
+<script src="osp_swmm.js"></script>
 <script src="osp_core.js"></script>
 <script src="osp_capacity.js"></script>
 <script src="osp_docs.js"></script>
 <script src="osp_3d.js"></script>
+<script src="osp_profile.js"></script>
 <script src="osp_ui.js"></script>
 </body>
 </html>
