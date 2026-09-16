@@ -37,8 +37,15 @@ window.Sim3D = (function () {
      PyVista's "Blues" with above_color red. Sampled at the same few stops: an empty
      pipe must not read as a slightly-less-full one, and a full pipe must leave the
      ramp entirely rather than sit at its dark end. */
-  const BLUES = [[0, [247, 251, 255]], [0.25, [198, 219, 239]], [0.5, [107, 174, 214]],
-                 [0.75, [33, 113, 181]], [1, [8, 48, 107]]];
+  // NOT PyVista's Blues verbatim. Its low end is [247,251,255], which is white, and the
+  // page background is [244,241,234]. On the desktop that was survivable because VTK's
+  // shading gave the tube a visible form; here an almost empty pipe was the same colour
+  // as the page and the network looked like it had no pipes at all, which is how this was
+  // reported. The run opens at fills of 0.003 to 0.16, so this is the state a visitor sees
+  // first. The ramp now starts at a light steel blue that reads against cream and keeps
+  // the same meaning: darker is fuller, red is full.
+  const BLUES = [[0, [150, 180, 205]], [0.25, [116, 160, 203]], [0.5, [72, 128, 186]],
+                 [0.75, [33, 95, 160]], [1, [8, 48, 107]]];
   function fillColour(t) {
     if (t >= 0.999) return [224, 49, 43];        // full: off the ramp, deliberately
     t = Math.max(0, Math.min(1, t));
@@ -225,7 +232,9 @@ window.Sim3D = (function () {
       const ghost = lk.role !== "study";
       scene.add(tubeAlong(lines[i], lk.dia / 2 * BORE * 1.08,
         new THREE.MeshLambertMaterial({ color: COL.pipe, transparent: true,
-          opacity: ghost ? 0.10 : 0.22, depthWrite: false })));
+          // The outline says "a pipe is here" whatever the water is doing. It was faint
+          // enough to disappear along with the fill colour.
+          opacity: ghost ? 0.18 : 0.40, depthWrite: false })));
     });
 
     geom.pipes.forEach(p => {
