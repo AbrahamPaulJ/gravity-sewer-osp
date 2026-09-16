@@ -5,3 +5,8 @@
 # of it. They are kept on disk for reference and are never to be committed.
 tools/build_demo_data.py
 tools/build_public_demo.py
+
+# Merge leftovers. A committed .orig is 90 KB of dead weight with conflict markers
+# still in it, and it will be served by Pages and found by every grep.
+*.orig
+*.rej

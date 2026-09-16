@@ -19,12 +19,14 @@ const S = {
   budget: 40, objective: "nodes", algo: "greedy",
   kup: 2, kdown: 2,
   colourBy: "coverage",
-<<<<<<< HEAD:src/ui/osp_ui.js
   perNodeLoad: 0.05, peakFactor: 1,
   riskBlend: "blend", riskAgg: "intensity",
-=======
-  perNodeLoad: 0.05, peakFactor: 1, manningN: 0.013,
->>>>>>> origin/main:osp_ui.js
+  /* null means "per material": osp_capacity reads n from MATERIAL_N, which is
+     0.010 for uPVC against 0.013 for clay and concrete. Moving the slider sets a
+     number, which overrides the table with one value for the whole network. Both
+     are worth having and they are not the same claim, so the readout says which
+     is in force rather than showing 0.013 either way. */
+  manningN: null,
   growthPoints: [], addedLoad: 2,
   anchor: null, sensors: [], covered: null, lastResult: null,
   view: "2d", exaggeration: 30,
@@ -529,11 +531,8 @@ function capacityState() {
   const key = [S.region, S.perNodeLoad, S.peakFactor, S.manningN].join("|");
   if (_capCache && _capKey === key) return _capCache;
   _capCache = OSPCapacity.capacityState(G, OSPCore, {
-<<<<<<< HEAD:src/ui/osp_ui.js
-    perNode: S.perNodeLoad, peakFactor: S.peakFactor, matCodes: CODES.mat,
-=======
-    perNode: S.perNodeLoad, peakFactor: S.peakFactor, n: S.manningN,
->>>>>>> origin/main:osp_ui.js
+    perNode: S.perNodeLoad, peakFactor: S.peakFactor,
+    matCodes: CODES.mat, n: S.manningN,
   });
   _capKey = key;
   updateCapHint(_capCache);
@@ -594,11 +593,8 @@ function growthState() {
   const additions = {};
   for (const i of S.growthPoints) additions[i] = (additions[i] || 0) + S.addedLoad;
   const g = OSPCapacity.growth(G, OSPCore, base, additions,
-<<<<<<< HEAD:src/ui/osp_ui.js
-    { perNode: S.perNodeLoad, peakFactor: S.peakFactor, matCodes: CODES.mat });
-=======
-    { perNode: S.perNodeLoad, peakFactor: S.peakFactor, n: S.manningN });
->>>>>>> origin/main:osp_ui.js
+    { perNode: S.perNodeLoad, peakFactor: S.peakFactor,
+      matCodes: CODES.mat, n: S.manningN });
 
   const tippedSet = new Uint8Array(G.edges.length);
   for (const e of g.tipped) tippedSet[e] = 1;
@@ -657,6 +653,14 @@ function updateCapHint(cap) {
       : ` Reach diameter is the publisher's own per-pipe value on every reach.`) +
     (s.slopeClamped
       ? ` ${s.slopeClamped} reach(es) had no usable fall and were clamped.` : "");
+}
+
+/* Manning's n readout. Two modes, and the label is the only thing telling a reader
+   which one is in force, so it says so in words rather than showing a number that
+   would be right for clay and wrong for the uPVC in the same network. */
+function setMannLabel() {
+  $("mann-val").textContent = S.manningN == null ? "per material" : S.manningN.toFixed(4);
+  $("mann-auto").hidden = S.manningN == null;
 }
 
 /* pan / zoom / pick */
@@ -1293,7 +1297,8 @@ function profileLevels(path, pe) {
   return { lvl, spill,
            label: "Manning, steady uniform flow",
            sub: S.perNodeLoad + " L/s per chamber, peak x" + S.peakFactor +
-                ", n = " + S.manningN + "  |  no backwater, no storage, no time" };
+                ", n = " + (S.manningN == null ? "per material" : S.manningN)
+                + "  |  no backwater, no storage, no time" };
 }
 
 function renderProfile() {
@@ -1461,7 +1466,12 @@ function init() {
   });
   $("mann").addEventListener("input", e => {
     S.manningN = +e.target.value;
-    $("mann-val").textContent = S.manningN.toFixed(4);
+    setMannLabel();
+    draw(); render3D(); renderProfile();
+  });
+  $("mann-auto").addEventListener("click", () => {
+    S.manningN = null;                       // back to the per-material table
+    setMannLabel();
     draw(); render3D(); renderProfile();
   });
   $("water3d").addEventListener("change", e => { S.water3d = e.target.checked; render3D(); });

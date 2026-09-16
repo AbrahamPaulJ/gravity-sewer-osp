@@ -64,6 +64,13 @@ which is geometry alone: inverts, cover levels and the flood-fill ceiling.
 
 ## Rules worth knowing before editing
 
+**Merges into this file set need care.** The assumptions register is a lettered
+document and both sides of a merge have added a "Part D" before now, producing two
+sections with colliding row ids; the UI and docs files are the ones that conflict.
+`node tools/test_sandbox.js` refuses a tree with conflict markers, a tracked `.orig`,
+or a `src/` script that does not parse, which is the specific failure that shipped a
+broken sandbox once. Run it before pushing a merge.
+
 **The Assumptions tab is canonical.** Every assumption a model rests on is registered
 there, computed from the loaded data where it can be, and other documents point at it
 rather than restating it. Add or remove an assumption in code and its row changes in

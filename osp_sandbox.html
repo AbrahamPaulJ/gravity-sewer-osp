@@ -336,13 +336,18 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
         <input type="range" id="load" min="0.01" max="2" step="0.01" value="0.05">
         <div class="row"><span>Peak factor</span><span class="val" id="peak-val">1.0</span></div>
         <input type="range" id="peak" min="1" max="6" step="0.1" value="1">
-        <div class="row"><span>Manning's n</span><span class="val" id="mann-val">0.013</span></div>
+        <div class="row"><span>Manning's n</span>
+          <span><span class="val" id="mann-val">per material</span>
+          <button id="mann-auto" class="mini" hidden>auto</button></span></div>
         <input type="range" id="mann" min="0.009" max="0.018" step="0.0005" value="0.013">
         <p class="hint">Pipe roughness. 0.010 to 0.011 is new PVC, 0.013 the design value for
           concrete and vitrified clay, 0.015 and above is old or root-affected pipe. It is the
           only term in Manning's equation we cannot look up: the statewide layer publishes a
-          roughness field on 0.8% of records. Drag it and watch the water level move, because
-          that sensitivity is the argument for asking the network operator what n they design to.</p>
+          roughness field on this network on no record at all. By default n comes from each
+          pipe's published material, 0.010 for uPVC against 0.013 for clay; drag the slider to
+          override that with one value everywhere, and press auto to go back. Watch the water
+          level move, because that sensitivity is the argument for asking the network operator
+          what n they design to.</p>
       </div>
     </div>
 
@@ -536,15 +541,15 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
      not enough: a browser refetches the document and happily reuses every script it
      loads, so a changed osp_docs.js can sit behind a fresh osp_sandbox.html. Bump all
      of them together; tools/build_public_demo.py checks they agree. -->
-<script src="data/osp_data.js?v=16"></script>
-<script src="data/osp_swmm.js?v=16"></script>
-<script src="src/model/osp_core.js?v=16"></script>
-<script src="src/model/osp_capacity.js?v=16"></script>
-<script src="src/model/osp_risk.js?v=16"></script>
-<script src="src/docs/osp_docs.js?v=16"></script>
-<script src="src/ui/osp_3d.js?v=16"></script>
-<script src="src/ui/osp_ui.js?v=16"></script>
-<script src="src/ui/osp_profile.js?v=16"></script>
+<script src="data/osp_data.js?v=17"></script>
+<script src="data/osp_swmm.js?v=17"></script>
+<script src="src/model/osp_core.js?v=17"></script>
+<script src="src/model/osp_capacity.js?v=17"></script>
+<script src="src/model/osp_risk.js?v=17"></script>
+<script src="src/docs/osp_docs.js?v=17"></script>
+<script src="src/ui/osp_3d.js?v=17"></script>
+<script src="src/ui/osp_ui.js?v=17"></script>
+<script src="src/ui/osp_profile.js?v=17"></script>
 
 </body>
 </html>

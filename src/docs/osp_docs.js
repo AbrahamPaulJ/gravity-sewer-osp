@@ -175,11 +175,10 @@ function assumptions(ctx) {
   <h3>Part B. The capacity and growth model</h3>
   <div id="cap-register"><p class="lede">Computing capacity for every loaded region, one moment.</p></div>
 
-<<<<<<< HEAD:src/docs/osp_docs.js
   <h3>Part D. The blockage likelihood model</h3>
   <div id="risk-register"><p class="lede">Scoring blockage likelihood, one moment.</p></div>
-=======
-  <h3>Part D. The dynamic model and the long-section</h3>
+
+  <h3>Part E. The dynamic model and the long-section</h3>
   <p>Part B solves steady uniform flow, which has no time axis and cannot show water backing up.
   The long-section can draw either that steady solution or a precomputed <b>EPA SWMM</b> run, and
   it always names which one is on screen. These are the assumptions the SWMM half rests on. Part C
@@ -188,7 +187,7 @@ function assumptions(ctx) {
   <table>
     <thead><tr><th>#</th><th>Assumption</th><th>Why it is defensible</th><th>What would remove it</th></tr></thead>
     <tbody>
-      <tr><td>D1</td><td><b>The dynamic physics is SWMM's, not ours</b></td>
+      <tr><td>E1</td><td><b>The dynamic physics is SWMM's, not ours</b></td>
         <td>The routing is EPA SWMM solving the full St Venant equations in dynamic wave mode.
             <code>tools/build_swmm.py</code> translates the network into SWMM's input format, runs
             it, and quantises the answer for the browser. It models nothing itself. That is the
@@ -197,7 +196,7 @@ function assumptions(ctx) {
         <td>Nothing to remove. Note only that using a trusted solver does not make the INPUTS
             trusted, and the inputs are D3 and D4.</td></tr>
 
-      <tr><td>D2</td><td><b>The SWMM result is precomputed, so the sliders cannot reach it</b></td>
+      <tr><td>E2</td><td><b>The SWMM result is precomputed, so the sliders cannot reach it</b></td>
         <td>The solve runs offline in Python and ships as fixed scenarios. A browser cannot run
             SWMM, and a dynamic solve of 1,010 chambers is not an interactive operation in any
             case. The steady model stays live on the sliders, so the tool keeps one model you can
@@ -205,7 +204,7 @@ function assumptions(ctx) {
         <td>Nothing, short of a server. Scenarios are cheap to add: rerun
             <code>tools/build_swmm.py</code> with different load, roughness or growth points.</td></tr>
 
-      <tr><td>D3</td><td><b>Inflow is an assumed per-chamber load on a conventional diurnal
+      <tr><td>E3</td><td><b>Inflow is an assumed per-chamber load on a conventional diurnal
             pattern</b></td>
         <td>Nothing public says how much sewage enters each chamber, which is C1 again and is the
             largest assumption in the whole tool. The hourly pattern is the conventional domestic
@@ -215,7 +214,7 @@ function assumptions(ctx) {
             Those give a real catchment diurnal curve directly, and they are the same data the
             growth-identification work needs.</td></tr>
 
-      <tr><td>D4</td><td><b>The infiltration and inflow hydrograph is a shape, not an event</b></td>
+      <tr><td>E4</td><td><b>The infiltration and inflow hydrograph is a shape, not an event</b></td>
         <td>The wet weather scenario adds a single-peaked hydrograph on top of dry weather flow:
             a fast rise and a slow recession, which is how infiltration behaves. It exists because
             the network operator's own objection was that the idealised model will not survive real
@@ -225,7 +224,7 @@ function assumptions(ctx) {
             assessment is done. Until then, read the wet weather scenario as "something like this
             happens", never as "this happens".</td></tr>
 
-      <tr><td>D5</td><td><b>Each terminus is given a synthetic free outfall</b></td>
+      <tr><td>E5</td><td><b>Each terminus is given a synthetic free outfall</b></td>
         <td>SWMM requires an outfall to have exactly one inlet link, and several of our termini
             are junctions of two reaches. So every terminus stays a real junction and gets a short,
             slightly falling dummy reach to its own outfall, sized generously so it never becomes
@@ -233,7 +232,7 @@ function assumptions(ctx) {
         <td>The real downstream network. Every terminus is an artefact of the extract boundary
             (C3), and nothing about what happens below it is being claimed.</td></tr>
 
-      <tr><td>D6</td><td><b>SWMM does not clamp adverse slopes, and Manning does</b></td>
+      <tr><td>E6</td><td><b>SWMM does not clamp adverse slopes, and Manning does</b></td>
         <td>B5 clamps zero and adverse falls to a token grade because Manning has no solution at
             zero fall. Dynamic wave routing does, so the clamp is dropped for SWMM and flat reaches
             are modelled flat. This is a real improvement, and it is the reason a reach count can
@@ -241,7 +240,7 @@ function assumptions(ctx) {
         <td>Nothing. It is a difference to be aware of when comparing the two, not a defect.
             Where the two disagree, SWMM is the better answer.</td></tr>
 
-      <tr><td>D7</td><td><b>The long-section shows one route through a branching network</b></td>
+      <tr><td>E7</td><td><b>The long-section shows one route through a branching network</b></td>
         <td>A sewer is a tree and a long-section is a single chain, so a route has to be chosen.
             At every branch the trace follows the largest contributing tributary, which is the
             trunk and the route a bottleneck sits on. Following the first-stored branch instead
@@ -249,7 +248,7 @@ function assumptions(ctx) {
         <td>Nothing to remove, but read it for what it is: the chambers either side of the drawn
             route also drain into it, and their flow appears without being drawn.</td></tr>
 
-      <tr><td>D8</td><td><b>The route window and the vertical exaggeration are drawing choices</b></td>
+      <tr><td>E8</td><td><b>The route window and the vertical exaggeration are drawing choices</b></td>
         <td>The vertical scale is the horizontal scale times the exaggeration, so a long route
             squashes everything: trace the full four kilometres through Walkerville and a 300 mm
             pipe is a quarter of a pixel tall, with the water invisible inside it and every number
@@ -260,7 +259,6 @@ function assumptions(ctx) {
             is the only reason this is registered at all.</td></tr>
     </tbody>
   </table>
->>>>>>> origin/main:osp_docs.js
 
   <h3>Part C. What is still assumed, stated plainly</h3>
   <div class="card bad">
@@ -538,11 +536,15 @@ function capacityRegister(ctx) {
   <table>
     <thead><tr><th>#</th><th>Assumption</th><th>Why it is there</th><th>What removes it</th></tr></thead>
     <tbody>
-      <tr><td>B1</td><td><b>Manning's n is uniform</b> across the network, ${K.DEFAULT_N} by
-            default and adjustable on the slider</td>
+      <tr><td>B1</td><td><b>Manning's n comes from each pipe's material</b> by default, and the
+            slider overrides it with one value across the network</td>
         <td>Sewer pipe runs about 0.010 to 0.015 depending on material and age.
-<<<<<<< HEAD:src/docs/osp_docs.js
-            ${K.DEFAULT_N} is the conventional design value for concrete and vitrified clay.</td>
+            ${K.DEFAULT_N} is the conventional design value for concrete and vitrified clay,
+            and 0.010 the value for uPVC. It is the one term in Manning's equation that cannot
+            be looked up anywhere, so the default is the per-material table and the slider
+            overrides it with a single value: a reader can see what it is worth instead of
+            taking it on trust, and moving it across its plausible range is not a small
+            effect.</td>
         <td>The published <code>roughness</code> field is carried on this layer but populated on
             <b>no record at all</b> in this area, so it cannot remove the assumption. Material now
             <i>is</i> in the data, at 100%, so a per-material table is the remaining step and the
@@ -558,22 +560,6 @@ function capacityRegister(ctx) {
             <b>The proxy turned out to be exact</b>: it reproduces the published diameter on
             1,001 of 1,001 reaches, so no capacity figure moved. The assumption is gone because the
             value is now measured and checked, not because it was wrong.</td></tr>
-=======
-            ${K.DEFAULT_N} is the conventional design value for concrete and vitrified clay.
-            It is the one term in Manning's equation that cannot be looked up anywhere, so it
-            is a slider rather than a constant: a reader can see what it is worth instead of
-            taking it on trust. Moving it across its plausible range is not a small effect.</td>
-        <td>The published <code>roughness</code> field, populated on 0.8% of records, is unusable.
-            <code>material</code> is public at 99.9%, so a per-material table is the obvious
-            refinement once material reaches the demo data.</td></tr>
-      <tr><td>B2</td><td><b>Reach diameter is the smaller of the two chamber diameters</b></td>
-        <td>Diameter is held per chamber in the current data, as the largest pipe touching it. A
-            reach is limited by its narrowest section, so the minimum of the pair is the safe
-            reading of a proxy.</td>
-        <td>Real per-pipe diameter already exists upstream in <code>build_demo_data.py</code>. Emit
-            it as a <code>diams</code> array, pass it as <code>opt.diams</code>, and the proxy
-            falls away.</td></tr>
->>>>>>> origin/main:osp_docs.js
       <tr><td>B3</td><td><b>Load is uniform per chamber</b>, set by a slider</td>
         <td>Without dwelling counts or billed consumption joined to the network there is nothing
             better to assume, and a flat number that is visibly a setting is more honest than an

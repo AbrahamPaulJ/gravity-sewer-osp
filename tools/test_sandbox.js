@@ -40,6 +40,35 @@ const raw = D.regions.walkerville;
 const g = C.buildGraph(raw);
 const mc = D.codes.mat, jc = D.codes.joint;
 
+/* Repository hygiene, first, because a merge committed with conflicts unresolved is
+   how this suite earned these three checks. The markers survived in osp_docs.js
+   because they landed inside a template literal, so the file still parsed and still
+   rendered; the page simply displayed "<<<<<<< HEAD" to the reader. In osp_ui.js
+   they did not survive, and the sandbox was served broken. Neither was caught,
+   because nothing here loaded the UI or looked at the text. */
+console.log("repository hygiene");
+{
+  const fs = require("fs"), cp = require("child_process");
+  const tracked = cp.execSync("git ls-files", { cwd: ROOT }).toString().trim().split("\n");
+  const code = tracked.filter(f => /\.(js|html|py|md)$/.test(f));
+
+  const conflicted = code.filter(f =>
+    /^(<{7} |={7}$|>{7} )/m.test(fs.readFileSync(path.join(ROOT, f), "utf8")));
+  check("no unresolved conflict markers in tracked files", conflicted, []);
+
+  const leftovers = tracked.filter(f => /\.(orig|rej|bak)$/.test(f));
+  check("no merge leftovers tracked", leftovers, []);
+
+  // Every browser script must parse. The models are require()d below, but the UI and
+  // the views are not, and a syntax error in them breaks the page silently here.
+  const scripts = tracked.filter(f => f.startsWith("src/") && f.endsWith(".js"));
+  const broken = scripts.filter(f => {
+    try { cp.execSync(`node --check "${path.join(ROOT, f)}"`, { stdio: "pipe" }); return false; }
+    catch (e) { return true; }
+  });
+  check("every src/ script parses", broken, []);
+}
+
 console.log("graph");
 check("nodes", g.n, 1010);
 check("edges", g.edges.length, 1001);
