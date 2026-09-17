@@ -12,7 +12,7 @@
 window.GrowthUI = (function () {
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-  const st = { site: 0, showSensors: false, ii: 1, add: 1,     // knob indices
+  const st = { site: 0, showSensors: false, showBottlenecks: false, ii: 1, add: 1,
                hover: null };                                  // a manhole NAME, or null
 
   const runs = () => window.GROWTH_RUNS;
@@ -101,7 +101,7 @@ window.GrowthUI = (function () {
       put("Homes and the proposed sensors",
         row("#3fb950", "<strong>" + r.watched + "</strong> of " + r.total +
             " drain past a sensor (" + pct + "%)"),
-        row("#d9a066", "<strong>" + r.unwatched + "</strong> do not"),
+        row("#ff6f9c", "<strong>" + r.unwatched + "</strong> do not"),
         row("", "&nbsp;"),
         "Green sleeves: pipes feeding a sensor");
       return;
@@ -112,8 +112,8 @@ window.GrowthUI = (function () {
       row("#00d4ff", "<strong>" + r.here + "</strong> reach it first" +
         (r.here > r.direct ? " (" + (r.here - r.direct) + " via unrecorded pipe ends)" : ""),
         true),
-      row("#5fa8c4", "<strong>" + r.through + "</strong> drain through it from further up"),
-      row("#3a3226", "<strong>" + r.elsewhere + "</strong> elsewhere"),
+      row("#7dc4e0", "<strong>" + r.through + "</strong> drain through it from further up"),
+      row("#3a2430", "<strong>" + r.elsewhere + "</strong> elsewhere"),
       st.hover ? "Previewing. Click to move the growth here."
                : "Hover any manhole to preview its homes");
   }
@@ -148,7 +148,8 @@ window.GrowthUI = (function () {
   function buildKnobs() {
     const R = runs();
     $("#iiKnob").innerHTML = R.iiLevels.map((l, i) =>
-      "<button data-i=" + JSON.stringify(String(i)) + " title=" + JSON.stringify(l.note) + ">" + esc(l.label) + "</button>").join("");
+      "<button data-i=" + JSON.stringify(String(i)) + " title=" + JSON.stringify(l.note) + ">" +
+      esc(l.label) + '<span class="knobNum">' + l.ii.toFixed(2) + " L/s/100m</span></button>").join("");
     $("#addKnob").innerHTML = R.growthLevels.map((g, i) =>
       "<button data-i=" + JSON.stringify(String(i)) + ">+" + g + "</button>").join("");
     $("#iiKnob").onclick = e => {
@@ -300,11 +301,115 @@ window.GrowthUI = (function () {
   }
 
   function setTab(tab) {
-    const ref = tab === "ref";
+    const ref = tab === "ref", qa = tab === "qa";
     $("#pane-ref").hidden = !ref;
+    $("#pane-qa").hidden = !qa;
     $("#tab-ref").classList.toggle("primary", ref);
     $("#tab-ref").textContent = ref ? "Back to the map" : "Assumptions";
-    if (ref) renderRef(); else Growth3D.resize($("#stage"));
+    $("#tab-qa").classList.toggle("primary", qa);
+    $("#tab-qa").textContent = qa ? "Back to the map" : "Discussion Q&A";
+    if (ref) renderRef();
+    else if (qa) renderQA();
+    else Growth3D.resize($("#stage"));
+  }
+
+  /* ------------------------------------------------------------------ Q&A tab */
+  /* Not part of the built payload: this is a fixed write-up of questions asked about
+     this model while stress-testing it, kept here because it is the same kind of
+     content as the popup's Q&A and does not depend on any run's numbers. */
+  const DISCUSS_QA = [
+    { short: "Why treat one inspection point as one dwelling?", a: [
+      "An inspection point is where a service line joins the main, not a dwelling count. "
+      + "It could be a single house, an apartment block sharing one connection, or a "
+      + "commercial site with a different load profile entirely.",
+      "The layer carries a TRADEWASTE field flagging non-residential connections, and this "
+      + "model does not use it: every point is charged the same 500 L/day regardless.",
+      "Cross-referencing PARCELID against a land-use or dwelling-count layer would test "
+      + "this directly. Until then, 643 is a count of connections, not a verified count of "
+      + "households." ] },
+    { short: "Where do the three infiltration levels come from?", a: [
+      "0.25, 0.40 and 0.55 L/s per 100 m are round numbers chosen to bracket a dry, a wet "
+      + "and a very wet day. None is calibrated to this catchment.",
+      "The treatment plant publishes 91,993 hourly inflow records from 2009. Paired with "
+      + "Bureau of Meteorology rainfall for the same hours, a real rate can be worked "
+      + "backwards: measured inflow minus calculated sewage.",
+      "The catch is the catchment boundary. That only gives Walkerville's own rate if the "
+      + "plant serves only this catchment; a regional plant serving many suburbs would "
+      + "return a blended figure instead." ] },
+    { short: "What is the peak factor, and can it be checked?", a: [
+      "The ratio of the busiest hour's flow to the daily average, fixed here at 2.0. It "
+      + "describes household usage patterns such as morning showers, not a storm.",
+      "The same treatment plant records that would calibrate infiltration would also give "
+      + "a real peak factor: the ratio of the highest to the average hourly flow on a dry "
+      + "day, when infiltration is close to zero." ] },
+    { short: "Peak factor and infiltration cannot both come from one flow record. "
+             + "What breaks the tie?", a: [
+      "One equation, two unknowns: measured flow = dwellings x peak factor + infiltration. "
+      + "Infinitely many pairs of values fit the same measured number equally well.",
+      "A dry day anchors the peak factor first, since infiltration is near zero then. Wet "
+      + "days can then be solved for infiltration alone, holding the peak factor fixed.",
+      "Without that dry-day anchor, both figures stay assumptions, and fitting one to a "
+      + "wet event just moves the same uncertainty onto the other." ] },
+    { short: "What exactly is being simulated?", a: [
+      "The real 157-pipe, 71-chamber catchment above one outlet, solved in EPA SWMM's "
+      + "dynamic wave engine, the full equations rather than a simplification.",
+      "Every run is steady: a constant load is held for 120 minutes and the last 10 are "
+      + "read as the answer. There is no storm hydrograph and no time-of-day curve here.",
+      "Two loads enter at each node: sewage proportional to counted dwellings, and "
+      + "infiltration proportional to upstream pipe length. A chamber 'surcharges' when "
+      + "water rises above the crown of its own outlet pipe." ] },
+    { short: "What is one 'scenario', exactly?", a: [
+      "One infiltration level, one growth size and one manhole, all fixed together: "
+      + "'add N houses here, at this wet-weather level.'",
+      "71 chambers x 4 growth sizes x 3 infiltration levels = 852 separate SWMM solves. "
+      + "Clicking a manhole picks one of the three; the two knobs pick the other two." ] },
+    { short: "How does greedy pick the recommended sensor, and what does 'catching' a "
+             + "scenario mean physically?", a: [
+      "For one fixed wet-weather level and growth size, each of the 71 sites has a tipped "
+      + "set: the chambers that surcharge there but did not in the baseline.",
+      "Greedy repeatedly picks whichever chamber appears in the most still-uncovered "
+      + "tipped sets, until every coverable scenario has a chosen chamber in its set.",
+      "A chamber can only appear in a site's tipped set if it sits downstream of that site, "
+      + "since flow only moves one way, and it was already close enough to its own limit "
+      + "that the extra flow pushes it over. Downstream is necessary, not sufficient." ] },
+    { short: "Does a dwelling's load ever get shared between two manholes?", a: [
+      "No. Each property is attributed to exactly one pipe, either by its own connection "
+      + "line (about 96% of properties) or, failing that, by nearest main. Nothing is "
+      + "counted twice at the point of entry.",
+      "But every chamber downstream of that entry point 'sees' its flow in its own "
+      + "cumulative total, because the water genuinely passes through on the way to the "
+      + "outlet. That is aggregation, not sharing." ] },
+    { short: "Can a chamber surcharge because of something downstream of it?", a: [
+      "Yes. The dynamic wave solver captures backwater: if a downstream chamber cannot "
+      + "discharge fast enough, its level rises, and that can restrict the chamber "
+      + "immediately upstream of it too, with no extra load entering there at all.",
+      "A tipped set that is a chain of neighbouring chambers, rather than scattered "
+      + "locations, is the signature of this: one real bottleneck backing up into "
+      + "everything just above it." ] },
+    { short: "Why do so many manholes show the same 'runs out of room at' number?", a: [
+      "Because the figure describes the nearest downstream bottleneck's own remaining "
+      + "capacity, not the manhole clicked. Two manholes upstream of the same bottleneck "
+      + "get the same answer, regardless of how many properties are already connected at "
+      + "either one.",
+      "Walking a real path to the outlet, the number stays flat until it crosses the one "
+      + "pipe that was actually limiting it, then jumps to whatever the next tight pipe "
+      + "allows. This catchment has only 7 such pipes among all 71 chambers.",
+      "'Show bottleneck pipes' on the map draws exactly those 7, identified by full-bore "
+      + "Manning capacity (diameter and slope together, not diameter alone), computed at "
+      + "the one infiltration level the underlying bisection was run at." ] },
+  ];
+
+  function renderQA() {
+    if ($("#qa").dataset.done) return;
+    $("#qa").innerHTML =
+      '<div class="lead"><p>Written up from questions asked while stress-testing this ' +
+      "model's assumptions: how the load is built, what the solver actually does, and " +
+      "why the numbers behave the way they do. Not part of any SWMM run.</p></div>" +
+      DISCUSS_QA.map(q =>
+        '<details class="qa"><summary>' + esc(q.short) + "</summary>" +
+        '<div class="body">' + q.a.map(x => "<p>" + esc(x) + "</p>").join("") +
+        "</div></details>").join("");
+    $("#qa").dataset.done = "1";
   }
 
   /* --------------------------------------------------------------- popup */
@@ -374,6 +479,15 @@ window.GrowthUI = (function () {
     $("#btn-info").onclick = showModal;
     $("#tab-ref").onclick = () => setTab($("#pane-ref").hidden ? "ref" : "map");
     $("#refClose").onclick = () => setTab("map");
+    $("#tab-qa").onclick = () => setTab($("#pane-qa").hidden ? "qa" : "map");
+    $("#qaClose").onclick = () => setTab("map");
+    $("#toggleBottlenecks").onclick = () => {
+      st.showBottlenecks = !st.showBottlenecks;
+      $("#toggleBottlenecks").classList.toggle("primary", st.showBottlenecks);
+      $("#toggleBottlenecks").textContent = st.showBottlenecks
+        ? "Hide bottleneck pipes" : "Show bottleneck pipes";
+      Growth3D.showBottlenecks(st.showBottlenecks);
+    };
     $("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").hidden = true; };
     $("#fitAll").onclick = () => Growth3D.frame(null);
     $("#fitSite").onclick = () => Growth3D.frame(nameOf(st.site));
@@ -387,7 +501,7 @@ window.GrowthUI = (function () {
     document.addEventListener("keydown", e => {
       if (e.key !== "Escape") return;
       if (!$("#modal").hidden) $("#modal").hidden = true;
-      else if (!$("#pane-ref").hidden) setTab("map");
+      else if (!$("#pane-ref").hidden || !$("#pane-qa").hidden) setTab("map");
     });
     window.addEventListener("resize", () => Growth3D.resize($("#stage")));
   }

@@ -20,7 +20,9 @@ window.Growth3D = (function () {
   let pipeGeo = null, pipeColours = null, chamberMeshes = [], labelLayer = null;
   let built = false, onPick = null, onHover = null, focusRing = null, outletLabel = null;
   let houseGeo = null, houseColours = null, houseHi = null, houseUp = null, sleeves = null;
+  let siteLabel = null, bottleneckMesh = null, lastPipeState = null;
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
+  const clock = { t0: performance.now() };
   const ZEXAG = 22.0;
   /* DARK, and saturated. The first version drew grey pipes and beige markers on a cream
      background and was unreadable: every state looked like every other state. On a dark
@@ -31,16 +33,24 @@ window.Growth3D = (function () {
     ok: [0x4c, 0x8b, 0xf5],        // blue, has room
     was: [0xff, 0xa5, 0x00],       // orange, surcharged before any growth
     tip: [0xff, 0x2d, 0x55],       // hot red, tipped by this growth
-    house: 0xd9a066,               // warm, so 643 of them read as dwellings not noise
+    // Pink, not amber/yellow: "already surcharged, not growth" already owns that hue,
+    // and a homes layer that reads the same colour as a pipe warning was the confusion.
+    house: 0xff6f9c,
     junction: 0x30363d,            // a pipe end the record does not call a chamber
     chamber: 0xc9d1d9,             // a real, published manhole: a candidate sensor site
     site: 0x00d4ff,                // cyan, where the new dwellings connect
     outlet: 0xa371f7,              // violet, the chamber everything drains through
     sensor: 0x3fb950,              // green, a proposed sensor
-    houseDim: 0x3a3226,            // a property with nothing to do with the selection
-    houseUp: 0x5fa8c4,             // drains THROUGH the selected manhole, from further up
+    houseDim: 0x3a2430,            // a property with nothing to do with the selection
+    houseUp: 0x7dc4e0,             // drains THROUGH the selected manhole, from further up
     sleeve: 0x00d4ff,              // the pipes those homes drain through
+    // A sleeve is translucent cyan over whatever the pipe already is. Cyan over amber
+    // ("already surcharged, not growth") mixes toward green, which reads as a fourth,
+    // undefined state. Where the covered pipe is amber the sleeve switches to this
+    // yellow instead, so it stays visibly a highlight ON amber rather than a new colour.
+    sleeveOnAmber: 0xffe066,
     watched: 0x3fb950,             // sewage passes a proposed sensor on its way out
+    bottleneck: 0xffffff,          // the fixed set of pipes find_bottlenecks() names
   };
 
   function ensureThree() {
@@ -83,14 +93,21 @@ window.Growth3D = (function () {
       (function loop() {
         requestAnimationFrame(loop);
         controls.update();
+        // The blink. One shared clock so every pulsing thing stays in phase rather than
+        // drifting against each other, which read as flicker rather than a deliberate beat.
+        const t = (performance.now() - clock.t0) / 1000, beat = Math.sin(t * 3.4);
+        if (houseHi) { houseHi.material.opacity = 0.55 + 0.45 * beat; houseHi.material.size = 13 + 3.5 * beat; }
+        if (houseUp) { houseUp.material.opacity = 0.5 + 0.35 * Math.sin(t * 3.4 + 0.7); }
+        if (sleeves) sleeves.material.opacity = 0.20 + 0.22 * (0.5 + 0.5 * beat);
         renderer.render(scene, camera);
-        if (outletLabel) {
-          const v = outletLabel.at.clone().project(camera);
+        [outletLabel, siteLabel].forEach(lbl => {
+          if (!lbl) return;
+          const v = lbl.at.clone().project(camera);
           const el = renderer.domElement;
-          outletLabel.el.style.display = v.z < 1 ? "block" : "none";
-          outletLabel.el.style.left = ((v.x * 0.5 + 0.5) * el.clientWidth) + "px";
-          outletLabel.el.style.top = ((-v.y * 0.5 + 0.5) * el.clientHeight) + "px";
-        }
+          lbl.el.style.display = v.z < 1 ? "block" : "none";
+          lbl.el.style.left = ((v.x * 0.5 + 0.5) * el.clientWidth) + "px";
+          lbl.el.style.top = ((-v.y * 0.5 + 0.5) * el.clientHeight) + "px";
+        });
       })();
     }
     if (built) { resize(container); return; }
@@ -133,8 +150,11 @@ window.Growth3D = (function () {
         scene.add(pts);
         return pts;
       };
-      houseUp = overlay(COL.houseUp, 6);
-      houseHi = overlay(COL.site, 8.5);
+      // Bigger than the plain layer, and blinking (the render loop below pulses their
+      // opacity and size), because a same-size, same-brightness dot in a field of 643
+      // others is easy to lose the moment you move the mouse.
+      houseUp = overlay(COL.houseUp, 9);
+      houseHi = overlay(COL.site, 13);
     }
 
     // Pipe ends the manhole record does not cover. Drawn small and dark so the question
@@ -183,13 +203,49 @@ window.Growth3D = (function () {
     // would overwrite the blue, amber and red the page's argument depends on. A sleeve
     // leaves that colour visible inside it. One instanced cylinder per segment, allocated
     // once; a selection only writes matrices and a count.
+    // White base colour: MeshBasicMaterial MULTIPLIES vertexColors against its own
+    // .color, so a cyan base here would have quietly tinted every per-instance colour
+    // set below, including the yellow meant to fix the cyan-on-amber problem in the
+    // first place. White makes the instance colour render unmodified.
     sleeves = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 8, 1, true),
-      new THREE.MeshBasicMaterial({ color: COL.sleeve, transparent: true, opacity: 0.28,
-        depthWrite: false }), Math.max(1, segEnds.length));
+      new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true, transparent: true,
+        opacity: 0.28, depthWrite: false }), Math.max(1, segEnds.length));
     sleeves.count = 0;
     sleeves.renderOrder = 1;
     sleeves.frustumCulled = false;
     scene.add(sleeves);
+
+    // A permanent, selection-independent highlight of the network's real bottlenecks:
+    // the only pipes where build_growth_web.py's find_bottlenecks() says the per-site
+    // growth capacity actually changes crossing them. Off by default, toggled from the
+    // UI, opaque rather than translucent since it never has to share a pipe with a
+    // selection colour the way the sleeve does.
+    const bnSet = new Set((g.bottlenecks || []).map(b => b.pipe));
+    const bnSegs = [];
+    for (let s = 0; s < segEnds.length; s++) if (bnSet.has(segPipe[s])) bnSegs.push(s);
+    bottleneckMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 8, 1, true),
+      new THREE.MeshBasicMaterial({ color: COL.bottleneck }), Math.max(1, bnSegs.length));
+    bottleneckMesh.count = bnSegs.length;
+    bottleneckMesh.visible = false;
+    bottleneckMesh.frustumCulled = false;
+    {
+      const m = new THREE.Matrix4(), q = new THREE.Quaternion();
+      const yAxis = new THREE.Vector3(0, 1, 0);
+      const dir = new THREE.Vector3(), mid = new THREE.Vector3(), scl = new THREE.Vector3();
+      bnSegs.forEach((s, k) => {
+        const [a, b] = segEnds[s];
+        dir.subVectors(b, a);
+        const len = dir.length();
+        if (len < 1e-6) return;
+        q.setFromUnitVectors(yAxis, dir.clone().divideScalar(len));
+        mid.addVectors(a, b).multiplyScalar(0.5);
+        scl.set(4.4, len, 4.4);
+        m.compose(mid, q, scl);
+        bottleneckMesh.setMatrixAt(k, m);
+      });
+      bottleneckMesh.instanceMatrix.needsUpdate = true;
+    }
+    scene.add(bottleneckMesh);
 
     // Chambers. Spheres rather than points so they can be picked and so their size means
     // something at any zoom.
@@ -224,6 +280,11 @@ window.Growth3D = (function () {
         outletLabel = { el: lbl, at: P(on.x, on.y, on.inv) };
       }
     }
+
+    siteLabel = { el: document.createElement("div"), at: new THREE.Vector3() };
+    siteLabel.el.className = "lbl site";
+    siteLabel.el.style.display = "none";
+    labelLayer.appendChild(siteLabel.el);
 
     focusRing = new THREE.Group();
     const ring = new THREE.Mesh(new THREE.TorusGeometry(22, 2.4, 8, 36),
@@ -371,35 +432,48 @@ window.Growth3D = (function () {
     }
     houseColours.needsUpdate = true;
     houseHi.material.color.setHex(out.mode === "sensors" ? COL.watched : COL.site);
+    houseHi.material.size = 13; houseUp.material.opacity = 1; houseHi.material.opacity = 1;
     [[houseHi, nHi], [houseUp, nUp]].forEach(([pts, k]) => {
       pts.geometry.setDrawRange(0, k);
       pts.geometry.attributes.position.needsUpdate = true;
       pts.frustumCulled = false;
     });
 
-    // Sleeves around the pipes that carry it.
+    // Sleeves around the pipes that carry it. Coloured per instance, not once for the
+    // whole mesh: a segment that is itself amber ("already surcharged, not growth") gets
+    // a yellow sleeve instead of the usual cyan/green, so it never mixes toward green.
     const segPipe = pipeGeo.userData.segPipe, m = new THREE.Matrix4();
     const q = new THREE.Quaternion(), yAxis = new THREE.Vector3(0, 1, 0);
     const dir = new THREE.Vector3(), mid = new THREE.Vector3(), scl = new THREE.Vector3();
+    const tmpColor = new THREE.Color();
+    const baseHex = spec && spec.mode === "sensors" ? COL.watched : COL.sleeve;
     let k = 0;
     if (pipes) {
-      sleeves.material.color.setHex(spec.mode === "sensors" ? COL.watched : COL.sleeve);
       for (let s = 0; s < segPipe.length; s++) {
         if (!pipes.has(segPipe[s])) continue;
         const [a, b] = segEnds[s];
         dir.subVectors(b, a);
         const len = dir.length();
         if (len < 1e-6) continue;
-        q.setFromUnitVectors(yAxis, dir.divideScalar(len));
+        q.setFromUnitVectors(yAxis, dir.clone().divideScalar(len));
         mid.addVectors(a, b).multiplyScalar(0.5);
         scl.set(3.2, len, 3.2);
         m.compose(mid, q, scl);
-        sleeves.setMatrixAt(k++, m);
+        sleeves.setMatrixAt(k, m);
+        const onAmber = lastPipeState && lastPipeState[segPipe[s]] === "was";
+        tmpColor.setHex(onAmber ? COL.sleeveOnAmber : baseHex);
+        sleeves.setColorAt(k, tmpColor);
+        k++;
       }
     }
     sleeves.count = k;
     sleeves.instanceMatrix.needsUpdate = true;
+    if (sleeves.instanceColor) sleeves.instanceColor.needsUpdate = true;
     return out;
+  }
+
+  function showBottlenecks(show) {
+    if (bottleneckMesh) bottleneckMesh.visible = !!show;
   }
 
   /* Recolour for one scenario. `state` maps a chamber name to "tip" | "was" | "ok". */
@@ -417,6 +491,7 @@ window.Growth3D = (function () {
       const su = nodeState(u.name), sd = nodeState(d.name);
       pipeCol.push(rank[su] >= rank[sd] ? su : sd);
     }
+    lastPipeState = pipeCol;   // read by highlight() to keep a sleeve off cyan-on-amber
     for (let s = 0; s < segPipe.length; s++) {
       const c = COL[pipeCol[segPipe[s]] === "tip" ? "tip"
         : pipeCol[segPipe[s]] === "was" ? "was" : "ok"];
@@ -438,9 +513,12 @@ window.Growth3D = (function () {
       if (nm === siteName) {
         focusRing.position.copy(m.position);
         focusRing.visible = true;
+        siteLabel.at.copy(m.position);
+        siteLabel.el.textContent = "MH " + m.userData.node.mh;
+        siteLabel.el.style.display = "";
       }
     });
-    if (!siteName) focusRing.visible = false;
+    if (!siteName) { focusRing.visible = false; siteLabel.el.style.display = "none"; }
   }
 
   function frame(tightOn) {
@@ -468,5 +546,5 @@ window.Growth3D = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { build, paint, highlight, frame, resize, ZEXAG };
+  return { build, paint, highlight, showBottlenecks, frame, resize, ZEXAG };
 })();

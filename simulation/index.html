@@ -41,6 +41,9 @@ h1{font-size:15px; margin:0 0 3px}
 .knob button:hover{border-color:var(--accent); color:var(--ink)}
 .knob button.on{background:var(--accent); border-color:var(--accent); color:#06131f;
   font-weight:600}
+.knob button .knobNum{display:block; font-size:9.5px; font-weight:400; opacity:.72;
+  margin-top:3px; font-variant-numeric:tabular-nums}
+.knob button.on .knobNum{opacity:.85}
 #iiNote{margin:5px 0 0; min-height:2.6em; font-size:11.5px}
 select{width:100%; padding:7px; font:inherit; border:1px solid var(--line);
   border-radius:7px; background:var(--panel-2); color:var(--ink)}
@@ -81,6 +84,9 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .labels .lbl{position:absolute; transform:translate(-50%,-165%); white-space:nowrap;
   font-size:11px; font-weight:600; color:#c9a3ff;
   text-shadow:0 0 4px #0d1117, 0 0 4px #0d1117}
+/* Pushed below the point rather than above, so a growth site chosen at (or right next
+   to) the outlet does not overlap the outlet's own fixed label. */
+.labels .lbl.site{color:#7dd8ff; transform:translate(-50%, 42%)}
 .legend{padding:10px 14px 4px; background:#0d1117; color:#8b949e;
   font-size:11.5px; display:flex; gap:7px 18px; flex-wrap:wrap; align-items:center}
 .legend b{color:#c9d1d9; font-weight:600; margin-right:2px}
@@ -111,10 +117,21 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   z-index:5}
 /* The pane covers the nav, so it needs its own way out. Sticky so it is reachable from
    anywhere in a long register. */
-#refClose{position:sticky; top:0; float:right; z-index:6; font:inherit; font-weight:600;
-  padding:6px 13px; border:1px solid var(--accent); background:var(--panel-2);
+#refClose, #qaClose{position:sticky; top:0; float:right; z-index:6; font:inherit;
+  font-weight:600; padding:6px 13px; border:1px solid var(--accent); background:var(--panel-2);
   color:var(--accent); border-radius:6px; cursor:pointer}
-#refClose:hover{background:var(--accent); color:#06131f}
+#refClose:hover, #qaClose:hover{background:var(--accent); color:#06131f}
+/* Shares #pane-ref's table/heading/lead styling; only the accordion needs its own rules,
+   copied from the popup's .qa so the two look the same without one depending on the other. */
+#pane-qa .qa{border:1px solid var(--line); border-radius:9px; margin-bottom:10px;
+  background:var(--panel-2); overflow:hidden}
+#pane-qa .qa>summary{cursor:pointer; padding:11px 13px; font-weight:600; font-size:13px;
+  list-style:none; display:flex; gap:8px; align-items:baseline; color:var(--ink)}
+#pane-qa .qa>summary::-webkit-details-marker{display:none}
+#pane-qa .qa>summary::before{content:"?"; color:var(--accent); font-weight:700}
+#pane-qa .qa[open]>summary{border-bottom:1px solid var(--line); background:#0f1a2b}
+#pane-qa .qa .body{padding:12px 13px}
+#pane-qa .qa .body p{margin:0 0 9px; font-size:13px; color:var(--dim)}
 .pane[hidden]{display:none!important}
 #pane-ref h1{font-size:19px; margin:18px 0 6px}
 #pane-ref h2{font-size:15px; margin:22px 0 8px; color:var(--accent);
@@ -208,6 +225,8 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
     <button id="fitSite">Zoom to the growth</button>
     <button id="toggleSensors">Show proposed sensors</button>
     <button id="tab-ref">Assumptions</button>
+    <button id="tab-qa">Discussion Q&amp;A</button>
+    <button id="toggleBottlenecks">Show bottleneck pipes</button>
     <button id="btn-info" class="info">About this model</button>
   </nav>
   <div id="stageWrap">
@@ -224,27 +243,33 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
     <div class="grp"><b>Points</b>
       <span><span class="k" style="background:#c9d1d9"></span>manhole, a sensor could go here</span>
       <span><span class="k" style="background:#30363d"></span>pipe end, no manhole recorded</span>
-      <span><span class="k" style="background:#d9a066"></span>connected property</span>
+      <span><span class="k" style="background:#ff6f9c"></span>connected property</span>
       <span><span class="k" style="background:#00d4ff"></span>where the new dwellings connect</span>
       <span><span class="k" style="background:#3fb950"></span>proposed sensor</span>
       <span><span class="k" style="background:#a371f7"></span>outlet, everything drains through it</span>
+    </div>
+    <div class="grp"><b>Bottleneck pipes</b>
+      <span><span class="kl" style="background:#ffffff"></span>where the growth-capacity figure actually changes crossing it (toggle above), 7 in this catchment</span>
     </div>
   </div>
   <div id="scale"></div>
   <section class="pane doc" id="pane-ref" hidden>
     <button id="refClose" title="Close (Esc)">Close, back to the map</button>
     <div id="ref"></div></section>
+  <section class="pane doc" id="pane-qa" hidden>
+    <button id="qaClose" title="Close (Esc)">Close, back to the map</button>
+    <div id="qa"></div></section>
 </main>
 
 <div id="modal" hidden><div class="box" id="modalBox"></div></div>
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=22"></script>
-<script src="data/growth.js?v=22"></script>
-<script src="data/index.js?v=22"></script>
-<script src="growth_3d.js?v=22"></script>
-<script src="growth_ui.js?v=22"></script>
+<script src="data/catchment.js?v=24"></script>
+<script src="data/growth.js?v=24"></script>
+<script src="data/index.js?v=24"></script>
+<script src="growth_3d.js?v=24"></script>
+<script src="growth_ui.js?v=24"></script>
 <script type="module">
   GrowthUI.init();
 </script>
