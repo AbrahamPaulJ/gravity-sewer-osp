@@ -85,6 +85,11 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   vertical-align:-2px; margin-right:6px}
 .legend .kl{display:inline-block; width:16px; height:3px; border-radius:2px;
   vertical-align:3px; margin-right:6px}
+.legend .k.ring{box-shadow:0 0 0 2px #0d1117, 0 0 0 3px #00d4ff}
+.legend strong{color:#e7edf7; font-variant-numeric:tabular-nums}
+#homeKey{width:100%; padding-top:6px; border-top:1px solid #1b2433}
+#homeKey:empty{display:none}
+.legend .quiet2{color:#6e7681; font-size:11px}
 #scale{padding:2px 14px 10px; font-size:10.5px; color:#6e7681; background:#0d1117}
 /* The assumptions tab. It replaces the stage rather than sitting beside it, and
    !important because #stage sets display on an ID selector. */
@@ -201,6 +206,7 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
       <span><span class="k" style="background:#3fb950"></span>proposed sensor</span>
       <span><span class="k" style="background:#a371f7"></span>outlet, everything drains through it</span>
     </div>
+    <div class="grp" id="homeKey"></div>
   </div>
   <div id="scale"></div>
   <section class="pane doc" id="pane-ref" hidden><div id="ref"></div></section>

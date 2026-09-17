@@ -12,7 +12,8 @@
 window.GrowthUI = (function () {
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-  const st = { site: 0, showSensors: false, ii: 1, add: 1 };   // knob indices
+  const st = { site: 0, showSensors: false, ii: 1, add: 1,     // knob indices
+               hover: null };                                  // a manhole NAME, or null
 
   const runs = () => window.GROWTH_RUNS;
   const geom = () => window.GROWTH_GEOM;
@@ -59,10 +60,57 @@ window.GrowthUI = (function () {
     const sensors = st.showSensors
       ? c.coverage.chosen.map(x => nameOf(+x.chamber)) : [];
     Growth3D.paint(named, nameOf(st.site), sensors);
+    renderHomes(sensors);
     $("#site").value = String(st.site);
     renderPanel(c, row);
     renderSensors(c);
     renderKnobs();
+  }
+
+  /* ---------------------------------------------------------------- homes */
+  /* Which homes are behind the manhole in question, lit on the map and counted in the
+     legend. Hovering previews another manhole without moving the growth; showing the
+     proposed sensors switches to which homes' sewage passes one. Precedence is in that
+     order, because a hover is the most deliberate thing a person is doing at that moment. */
+  function renderHomes(sensors) {
+    const mhName = nm => (byName[nm] && byName[nm].mh ? "MH " + byName[nm].mh : nm);
+    const key = (col, text, ring) => '<span><span class="k' + (ring ? " ring" : "") +
+      '" style="background:' + col + '"></span>' + text + "</span>";
+    let spec, lead;
+    if (st.hover) {
+      spec = { mode: "site", name: st.hover };
+      lead = "<b>Homes behind " + esc(mhName(st.hover)) + "</b>";
+    } else if (st.showSensors && sensors.length) {
+      spec = { mode: "sensors", names: sensors };
+    } else {
+      spec = { mode: "site", name: nameOf(st.site) };
+      lead = "<b>Homes behind " + esc(mhName(nameOf(st.site))) + "</b>";
+    }
+    const r = Growth3D.highlight(spec);
+    if (!r) { $("#homeKey").innerHTML = ""; return; }
+    if (r.mode === "sensors") {
+      const pct = Math.round(100 * r.watched / r.total);
+      $("#homeKey").innerHTML = "<b>Homes and the proposed sensors</b>" +
+        key("#3fb950", "<strong>" + r.watched + "</strong> of " + r.total +
+            " drain past a proposed sensor (" + pct + "%)") +
+        key("#d9a066", "<strong>" + r.unwatched + "</strong> reach the outlet without passing one") +
+        '<span class="quiet2">Green sleeves are the pipes feeding a sensor. Passing a sensor ' +
+        "means their flow is in what it measures, not that a problem at their own street " +
+        "would show up there.</span>";
+      return;
+    }
+    $("#homeKey").innerHTML = lead +
+      key("#00d4ff", "<strong>" + r.here + "</strong> reach this manhole first" +
+        // The panel's "connected here" counts only the manhole's own pipe. The rest come in
+        // through pipe ends with no manhole on record, and saying so stops the two numbers
+        // looking like they disagree.
+        (r.here > r.direct ? " (" + (r.here - r.direct) + " via pipe ends with no manhole)" : ""),
+        true) +
+      key("#5fa8c4", "<strong>" + r.through + "</strong> drain through it from further up") +
+      key("#3a3226", "<strong>" + r.elsewhere + "</strong> elsewhere") +
+      (st.hover ? '<span class="quiet2">Previewing. Click it to move the growth here.</span>'
+                : '<span class="quiet2">Cyan sleeves are the pipes that carry them here. ' +
+                  "Hover any manhole to preview its homes.</span>");
   }
 
   function label(i) {
@@ -296,7 +344,15 @@ window.GrowthUI = (function () {
     runs().chambers.forEach((c, i) => { idxOfName[c] = i; });
     Growth3D.build($("#stage"), nd => {
       // A click on the map gives a chamber NAME; everything else here works in indices.
+      st.hover = null;
       if (nd.name in idxOfName) select(idxOfName[nd.name]);
+    }, nd => {
+      // Hovering the manhole that is already selected previews nothing new.
+      const name = nd && nd.name !== nameOf(st.site) ? nd.name : null;
+      if (name === st.hover) return;
+      st.hover = name;
+      const c = cell();
+      renderHomes(st.showSensors ? c.coverage.chosen.map(x => nameOf(+x.chamber)) : []);
     }).then(() => {
       buildKnobs();
       const order = buildList();
