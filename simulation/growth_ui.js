@@ -365,6 +365,7 @@ window.GrowthUI = (function () {
     });
     $("#btn-info").onclick = showModal;
     $("#tab-ref").onclick = () => setTab($("#pane-ref").hidden ? "ref" : "map");
+    $("#refClose").onclick = () => setTab("map");
     $("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").hidden = true; };
     $("#fitAll").onclick = () => Growth3D.frame(null);
     $("#fitSite").onclick = () => Growth3D.frame(nameOf(st.site));
@@ -376,7 +377,9 @@ window.GrowthUI = (function () {
       repaint();
     };
     document.addEventListener("keydown", e => {
-      if (e.key === "Escape") $("#modal").hidden = true;
+      if (e.key !== "Escape") return;
+      if (!$("#modal").hidden) $("#modal").hidden = true;
+      else if (!$("#pane-ref").hidden) setTab("map");
     });
     window.addEventListener("resize", () => Growth3D.resize($("#stage")));
   }
