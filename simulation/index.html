@@ -91,18 +91,19 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   vertical-align:3px; margin-right:6px}
 /* The homes key: an overlay on the map, fixed width, so its text changing on hover
    cannot move anything. It ignores the pointer, so hovering through it still works. */
-#homeKey{position:absolute; left:12px; top:12px; z-index:3; width:300px;
-  max-width:calc(100% - 24px); pointer-events:none;
+#homeKey{position:absolute; left:12px; top:12px; z-index:3; width:330px; height:112px;
+  max-width:calc(100% - 24px); overflow:hidden; box-sizing:border-box; pointer-events:none;
   background:rgba(13,17,23,.88); border:1px solid #22314d; border-radius:8px;
-  padding:9px 11px; color:#8b949e; font-size:11.5px; line-height:1.45;
-  display:flex; flex-direction:column; gap:3px}
-#homeKey:empty{display:none}
-#homeKey b{color:#c9d1d9; font-weight:600; margin-bottom:2px}
+  padding:8px 11px; color:#8b949e; font-size:11.5px}
+/* One line per row, always, clipped rather than wrapped, so no text can change the height. */
+#homeKey .row{height:19px; line-height:19px; white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis}
+#homeKey .row.head{color:#c9d1d9; font-weight:600}
 #homeKey strong{color:#e7edf7; font-variant-numeric:tabular-nums}
 #homeKey .k{display:inline-block; width:11px; height:11px; border-radius:50%;
   vertical-align:-2px; margin-right:6px}
 #homeKey .k.ring{box-shadow:0 0 0 2px #0d1117, 0 0 0 3px #00d4ff}
-#homeKey .quiet2{color:#6e7681; font-size:11px; margin-top:3px}
+#homeKey .quiet2{color:#6e7681; font-size:11px}
 #scale{padding:2px 14px 10px; font-size:10.5px; color:#6e7681; background:#0d1117}
 /* The assumptions tab. It replaces the stage rather than sitting beside it, and
    !important because #stage sets display on an ID selector. */
@@ -237,11 +238,13 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <div id="modal" hidden><div class="box" id="modalBox"></div></div>
 
-<script src="data/catchment.js"></script>
-<script src="data/growth.js"></script>
-<script src="data/index.js"></script>
-<script src="growth_3d.js"></script>
-<script src="growth_ui.js"></script>
+<!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
+     otherwise a new page can run with scripts the browser cached from the old one. -->
+<script src="data/catchment.js?v=22"></script>
+<script src="data/growth.js?v=22"></script>
+<script src="data/index.js?v=22"></script>
+<script src="growth_3d.js?v=22"></script>
+<script src="growth_ui.js?v=22"></script>
 <script type="module">
   GrowthUI.init();
 </script>

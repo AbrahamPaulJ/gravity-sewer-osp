@@ -74,43 +74,48 @@ window.GrowthUI = (function () {
      order, because a hover is the most deliberate thing a person is doing at that moment. */
   function renderHomes(sensors) {
     const mhName = nm => (byName[nm] && byName[nm].mh ? "MH " + byName[nm].mh : nm);
-    const key = (col, text, ring) => '<span><span class="k' + (ring ? " ring" : "") +
-      '" style="background:' + col + '"></span>' + text + "</span>";
+    // FIXED SHAPE. Every state writes exactly a heading, three rows and one hint, each a
+    // single clipped line, into a box of fixed size. Hovering flips between states many
+    // times a second, and when the states had different amounts of text the box changed
+    // height and everything around it moved.
+    const row = (col, text, ring) => '<div class="row">' + (col ? '<span class="k' +
+      (ring ? " ring" : "") + '" style="background:' + col + '"></span>' : "") + text + "</div>";
+    const put = (head, r1, r2, r3, hint) => {
+      $("#homeKey").innerHTML = '<div class="row head">' + head + "</div>" + r1 + r2 + r3 +
+        '<div class="row quiet2">' + hint + "</div>";
+    };
     let spec, lead;
     if (st.hover) {
       spec = { mode: "site", name: st.hover };
-      lead = "<b>Homes behind " + esc(mhName(st.hover)) + "</b>";
+      lead = "Homes behind " + esc(mhName(st.hover));
     } else if (st.showSensors && sensors.length) {
       spec = { mode: "sensors", names: sensors };
     } else {
       spec = { mode: "site", name: nameOf(st.site) };
-      lead = "<b>Homes behind " + esc(mhName(nameOf(st.site))) + "</b>";
+      lead = "Homes behind " + esc(mhName(nameOf(st.site)));
     }
     const r = Growth3D.highlight(spec);
-    if (!r) { $("#homeKey").innerHTML = ""; return; }
+    if (!r) { put("", "", "", "", ""); return; }
     if (r.mode === "sensors") {
       const pct = Math.round(100 * r.watched / r.total);
-      $("#homeKey").innerHTML = "<b>Homes and the proposed sensors</b>" +
-        key("#3fb950", "<strong>" + r.watched + "</strong> of " + r.total +
-            " drain past a proposed sensor (" + pct + "%)") +
-        key("#d9a066", "<strong>" + r.unwatched + "</strong> reach the outlet without passing one") +
-        '<span class="quiet2">Green sleeves are the pipes feeding a sensor. Passing a sensor ' +
-        "means their flow is in what it measures, not that a problem at their own street " +
-        "would show up there.</span>";
+      put("Homes and the proposed sensors",
+        row("#3fb950", "<strong>" + r.watched + "</strong> of " + r.total +
+            " drain past a sensor (" + pct + "%)"),
+        row("#d9a066", "<strong>" + r.unwatched + "</strong> do not"),
+        row("", "&nbsp;"),
+        "Green sleeves: pipes feeding a sensor");
       return;
     }
-    $("#homeKey").innerHTML = lead +
-      key("#00d4ff", "<strong>" + r.here + "</strong> reach this manhole first" +
-        // The panel's "connected here" counts only the manhole's own pipe. The rest come in
-        // through pipe ends with no manhole on record, and saying so stops the two numbers
-        // looking like they disagree.
-        (r.here > r.direct ? " (" + (r.here - r.direct) + " via pipe ends with no manhole)" : ""),
-        true) +
-      key("#5fa8c4", "<strong>" + r.through + "</strong> drain through it from further up") +
-      key("#3a3226", "<strong>" + r.elsewhere + "</strong> elsewhere") +
-      (st.hover ? '<span class="quiet2">Previewing. Click it to move the growth here.</span>'
-                : '<span class="quiet2">Cyan sleeves are the pipes that carry them here. ' +
-                  "Hover any manhole to preview its homes.</span>");
+    put(lead,
+      // The panel's "connected here" counts only the manhole's own pipe. The rest come in
+      // through pipe ends with no manhole on record; saying so stops the numbers disagreeing.
+      row("#00d4ff", "<strong>" + r.here + "</strong> reach it first" +
+        (r.here > r.direct ? " (" + (r.here - r.direct) + " via unrecorded pipe ends)" : ""),
+        true),
+      row("#5fa8c4", "<strong>" + r.through + "</strong> drain through it from further up"),
+      row("#3a3226", "<strong>" + r.elsewhere + "</strong> elsewhere"),
+      st.hover ? "Previewing. Click to move the growth here."
+               : "Hover any manhole to preview its homes");
   }
 
   function label(i) {
@@ -230,7 +235,10 @@ window.GrowthUI = (function () {
         ? "<h4>Best single chambers</h4><table>" + cov.best_single.slice(0, 6).map(
           ([idx, k]) => "<tr><td>" + esc(label(+idx)) + "</td><td>" + k +
             " sites</td></tr>").join("") + "</table>"
-        : "");
+        : "") +
+      "<p class=quiet>On the map, green homes drain past a proposed sensor. That means " +
+      "their flow is in what it measures, not that a problem at their own street would " +
+      "show up there.</p>";
   }
 
   /* ---------------------------------------------------- assumptions tab */
