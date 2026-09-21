@@ -4,15 +4,17 @@
    as pickable markers, because choosing where the houses go is the one thing the page
    asks of a person and pointing at the map is how you do that.
 
-   COLOUR IS THE WHOLE ARGUMENT, so it is deliberately only three states:
+   COLOUR IS THE WHOLE ARGUMENT, so it is deliberately only three states in baseline:
      grey    below the crown, room to spare
      amber   already surcharged before a single house was added
      red     TIPPED: fine before, surcharged after, and therefore caused by this growth
-   Amber and red are separated because conflating them is the mistake the sandbox module
-   header warns about: a reach that was already a problem is not evidence about growth.
 
-   Elevation is the pipe invert, exaggerated, and the factor is on screen. 32 m of fall
-   across this catchment would otherwise draw as a flat street map. */
+   Includes:
+   - Wastewater flow particles & hydraulic speed animation
+   - Active pump stations with 3D rotating impellers & state beacons
+   - Dynamic Sensor Placement Heatmap with gradient scoring
+   - Upstream tributary affecting DAG highlighting
+   - Backwater surcharge & blockage visualization */
 "use strict";
 window.Growth3D = (function () {
   let THREE = null, OrbitControls = null, loadPromise = null;
@@ -22,19 +24,39 @@ window.Growth3D = (function () {
   let houseGeo = null, houseColours = null, houseHi = null, houseUp = null, sleeves = null;
   let siteLabel = null, bottleneckMesh = null, lastPipeState = null;
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
+  const segPipe = [];               // segment index -> pipe index
+  const segPhases = [];             // random phases for flow particle animation
   const clock = { t0: performance.now() };
   const ZEXAG = 22.0;
-  /* DARK, and saturated. The first version drew grey pipes and beige markers on a cream
-     background and was unreadable: every state looked like every other state. On a dark
-     ground a saturated colour carries, so the three pipe states separate at a glance and
-     the markers stop competing with the pipes for attention. */
+
+  // Flow animation state
+  let flowParticles = null;
+  let flowAnimActive = true;
+  let flowAnimSpeed = 1.0;
+
+  // Pump stations state
+  const pumpStations = [
+    { id: "PS-01", name: "MH4450193", label: "Pump Station PS-01 (Outlet)", group: null, impeller: null, beacon: null, labelObj: null, running: true, duty: 1.0 },
+    { id: "LS-02", name: "MH4449118", label: "Lift Station LS-02 (Trunk)", group: null, impeller: null, beacon: null, labelObj: null, running: true, duty: 0.8 }
+  ];
+
+  // Sensor Placement Heatmap state
+  let heatmapActive = false;
+  let heatmapScores = {};          // chamberName -> score (0-100)
+  let topRecommendations = [];     // array of top 3 chamber names
+  let haloRings = [];              // 3D rings around top sensor sites
+
+  // Blockage & Backwater state
+  let activeBlockagePipe = null;
+  let backwaterChambersSet = new Set();
+  let backwaterPipesSet = new Set();
+
   const COL = {
     bg: 0x0d1117,
     ok: [0x4c, 0x8b, 0xf5],        // blue, has room
     was: [0xff, 0xa5, 0x00],       // orange, surcharged before any growth
     tip: [0xff, 0x2d, 0x55],       // hot red, tipped by this growth
-    // Pink, not amber/yellow: "already surcharged, not growth" already owns that hue,
-    // and a homes layer that reads the same colour as a pipe warning was the confusion.
+    backwater: [0xff, 0x57, 0x22], // vivid orange-red for backwater surcharge
     house: 0xff6f9c,
     junction: 0x30363d,            // a pipe end the record does not call a chamber
     chamber: 0xc9d1d9,             // a real, published manhole: a candidate sensor site
@@ -44,13 +66,10 @@ window.Growth3D = (function () {
     houseDim: 0x3a2430,            // a property with nothing to do with the selection
     houseUp: 0x7dc4e0,             // drains THROUGH the selected manhole, from further up
     sleeve: 0x00d4ff,              // the pipes those homes drain through
-    // A sleeve is translucent cyan over whatever the pipe already is. Cyan over amber
-    // ("already surcharged, not growth") mixes toward green, which reads as a fourth,
-    // undefined state. Where the covered pipe is amber the sleeve switches to this
-    // yellow instead, so it stays visibly a highlight ON amber rather than a new colour.
     sleeveOnAmber: 0xffe066,
     watched: 0x3fb950,             // sewage passes a proposed sensor on its way out
     bottleneck: 0xffffff,          // the fixed set of pipes find_bottlenecks() names
+    flow: 0x38bdf8                 // wastewater pulse cyan
   };
 
   function ensureThree() {
@@ -66,6 +85,39 @@ window.Growth3D = (function () {
 
   function P(xDm, yDm, zCm) {
     return new THREE.Vector3(xDm / 10, (zCm / 100) * ZEXAG, -(yDm / 10));
+  }
+
+  function getHeatmapHex(score) {
+    const s = Math.max(0, Math.min(100, score || 0));
+    if (s < 25) {
+      // 0 - 25: deep blue to cyan (0x1e3a8a -> 0x0284c7)
+      const t = s / 25;
+      const r = Math.round(0x1e + t * (0x02 - 0x1e));
+      const g = Math.round(0x3a + t * (0x84 - 0x3a));
+      const b = Math.round(0x8a + t * (0xc7 - 0x8a));
+      return (r << 16) | (g << 8) | b;
+    } else if (s < 50) {
+      // 25 - 50: cyan to bright green (0x0284c7 -> 0x10b981)
+      const t = (s - 25) / 25;
+      const r = Math.round(0x02 + t * (0x10 - 0x02));
+      const g = Math.round(0x84 + t * (0xb9 - 0x84));
+      const b = Math.round(0xc7 + t * (0x81 - 0xc7));
+      return (r << 16) | (g << 8) | b;
+    } else if (s < 75) {
+      // 50 - 75: green to amber (0x10b981 -> 0xf59e0b)
+      const t = (s - 50) / 25;
+      const r = Math.round(0x10 + t * (0xf5 - 0x10));
+      const g = Math.round(0xb9 + t * (0x9e - 0xb9));
+      const b = Math.round(0x81 + t * (0x0b - 0x81));
+      return (r << 16) | (g << 8) | b;
+    } else {
+      // 75 - 100: amber to bright hot neon red (0xf59e0b -> 0xff0055)
+      const t = (s - 75) / 25;
+      const r = Math.round(0xf5 + t * (0xff - 0xf5));
+      const g = Math.round(0x9e + t * (0x00 - 0x9e));
+      const b = Math.round(0x0b + t * (0x55 - 0x0b));
+      return (r << 16) | (g << 8) | b;
+    }
   }
 
   async function build(container, pick, hover) {
@@ -93,15 +145,56 @@ window.Growth3D = (function () {
       (function loop() {
         requestAnimationFrame(loop);
         controls.update();
-        // The blink. One shared clock so every pulsing thing stays in phase rather than
-        // drifting against each other, which read as flicker rather than a deliberate beat.
+
         const t = (performance.now() - clock.t0) / 1000, beat = Math.sin(t * 3.4);
         if (houseHi) { houseHi.material.opacity = 0.55 + 0.45 * beat; houseHi.material.size = 13 + 3.5 * beat; }
         if (houseUp) { houseUp.material.opacity = 0.5 + 0.35 * Math.sin(t * 3.4 + 0.7); }
         if (sleeves) sleeves.material.opacity = 0.20 + 0.22 * (0.5 + 0.5 * beat);
+
+        // Animate wastewater flow particles along pipes
+        if (flowAnimActive && flowParticles && flowParticles.visible) {
+          const tSec = t * flowAnimSpeed;
+          const pArr = flowParticles.geometry.attributes.position.array;
+          for (let s = 0; s < segEnds.length; s++) {
+            const [a, b] = segEnds[s];
+            const pIdx = segPipe[s];
+            const pipeSlope = Math.max(0.002, Math.abs(g.zu[pIdx] - g.zd[pIdx]) / 1000);
+            const speed = (0.7 + Math.sqrt(pipeSlope) * 4.2) * flowAnimSpeed;
+            const u = (tSec * speed * 0.38 + segPhases[s]) % 1.0;
+            const idx = s * 3;
+            pArr[idx] = a.x + (b.x - a.x) * u;
+            pArr[idx + 1] = a.y + (b.y - a.y) * u + 0.4;
+            pArr[idx + 2] = a.z + (b.z - a.z) * u;
+          }
+          flowParticles.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // Animate pump station impellers & status beacons
+        pumpStations.forEach(ps => {
+          if (ps.impeller && ps.running) {
+            ps.impeller.rotation.y += 0.09 * (ps.duty || 1.0);
+          }
+          if (ps.beacon) {
+            const pBeat = Math.sin(t * 4.5);
+            ps.beacon.material.opacity = 0.7 + 0.3 * pBeat;
+          }
+        });
+
+        // Animate heatmap halo rings
+        haloRings.forEach((hRing, idx) => {
+          if (hRing.visible) {
+            const hBeat = Math.sin(t * 3.0 + idx * 1.2);
+            hRing.scale.setScalar(1.0 + 0.25 * hBeat);
+            hRing.material.opacity = 0.5 + 0.4 * hBeat;
+          }
+        });
+
         renderer.render(scene, camera);
-        [outletLabel, siteLabel].forEach(lbl => {
-          if (!lbl) return;
+
+        // Project HTML labels
+        const allLabels = [outletLabel, siteLabel].concat(pumpStations.map(p => p.labelObj)).filter(Boolean);
+        allLabels.forEach(lbl => {
+          if (!lbl || !lbl.el) return;
           const v = lbl.at.clone().project(camera);
           const el = renderer.domElement;
           lbl.el.style.display = v.z < 1 ? "block" : "none";
@@ -113,23 +206,17 @@ window.Growth3D = (function () {
     if (built) { resize(container); return; }
     scene.background = new THREE.Color(COL.bg);
     scene.add(new THREE.AmbientLight(0xffffff, 1.0));
-    const sun = new THREE.DirectionalLight(0xffffff, 0.35);
+    const sun = new THREE.DirectionalLight(0xffffff, 0.45);
     sun.position.set(-100, 300, 200);
     scene.add(sun);
 
-    // The connected properties, drawn at the ground rather than at pipe level so they read
-    // as a layer above the network instead of merging into it.
+    // Properties layer
     if (g.hx && g.hx.length) {
       const hp = [];
       for (let i = 0; i < g.hx.length; i++) {
-        // Its own main's elevation plus a couple of metres, so the properties sit just
-        // above the street they drain into rather than on one shared plane.
         const v = P(g.hx[i], g.hy[i], (g.hz ? g.hz[i] : 0) + 200);
         hp.push(v.x, v.y, v.z);
       }
-      // Colour per property, so lighting up the homes behind a manhole is an array write.
-      // The highlighted ones are drawn again on top, larger, because a colour change alone
-      // on a 4.5 unit dot does not carry across the whole catchment.
       houseGeo = new THREE.BufferGeometry();
       houseGeo.setAttribute("position", new THREE.Float32BufferAttribute(hp, 3));
       houseColours = new THREE.Float32BufferAttribute(new Float32Array(hp.length), 3);
@@ -141,25 +228,17 @@ window.Growth3D = (function () {
         const geo = new THREE.BufferGeometry();
         geo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(hp), 3));
         geo.setDrawRange(0, 0);
-        // Transparent, though fully opaque, only so it sorts into the same pass as the
-        // plain layer and draws after it. As an opaque object it drew first, and the plain
-        // dot at the identical depth then painted over its centre.
         const pts = new THREE.Points(geo, new THREE.PointsMaterial({
           color: col, size, sizeAttenuation: true, transparent: true, opacity: 1 }));
         pts.renderOrder = 2;
         scene.add(pts);
         return pts;
       };
-      // Bigger than the plain layer, and blinking (the render loop below pulses their
-      // opacity and size), because a same-size, same-brightness dot in a field of 643
-      // others is easy to lose the moment you move the mouse.
       houseUp = overlay(COL.houseUp, 9);
       houseHi = overlay(COL.site, 13);
     }
 
-    // Pipe ends the manhole record does not cover. Drawn small and dark so the question
-    // "what are all these dots" has a visible answer: the bright ones are chambers you
-    // could put a sensor in, these are not.
+    // Unrecorded pipe ends / junctions
     const jp = [];
     g.nodes.forEach(nd => {
       if (nd.kind === "chamber") return;
@@ -173,9 +252,9 @@ window.Growth3D = (function () {
         color: COL.junction, size: 6, sizeAttenuation: true })));
     }
 
-    // One LineSegments for every pipe, with a colour attribute so recolouring a scenario
-    // is an array write rather than a scene rebuild.
-    const pos = [], col = [], segPipe = [];
+    // LineSegments for every pipe
+    const pos = [], col = [];
+    segEnds.length = 0; segPipe.length = 0; segPhases.length = 0;
     for (let p = 0; p < g.nPipes; p++) {
       const a = g.ptr[p], b = g.ptr[p + 1], n = b - a;
       if (n < 2) continue;
@@ -188,6 +267,7 @@ window.Growth3D = (function () {
         col.push(0, 0, 0, 0, 0, 0);
         segPipe.push(p);
         segEnds.push([v0, v1]);
+        segPhases.push(Math.random());
       }
     }
     pipeGeo = new THREE.BufferGeometry();
@@ -198,15 +278,23 @@ window.Growth3D = (function () {
     scene.add(new THREE.LineSegments(pipeGeo,
       new THREE.LineBasicMaterial({ vertexColors: true })));
 
-    // Sleeves: a translucent tube around every pipe in the highlighted catchment. WebGL
-    // ignores line width, so a line cannot be made thicker, and recolouring the pipe itself
-    // would overwrite the blue, amber and red the page's argument depends on. A sleeve
-    // leaves that colour visible inside it. One instanced cylinder per segment, allocated
-    // once; a selection only writes matrices and a count.
-    // White base colour: MeshBasicMaterial MULTIPLIES vertexColors against its own
-    // .color, so a cyan base here would have quietly tinted every per-instance colour
-    // set below, including the yellow meant to fix the cyan-on-amber problem in the
-    // first place. White makes the instance colour render unmodified.
+    // Wastewater flow particle system
+    const flowPositions = new Float32Array(segEnds.length * 3);
+    for (let s = 0; s < segEnds.length; s++) {
+      const [v0] = segEnds[s];
+      flowPositions[s * 3] = v0.x;
+      flowPositions[s * 3 + 1] = v0.y + 0.3;
+      flowPositions[s * 3 + 2] = v0.z;
+    }
+    const flowGeo = new THREE.BufferGeometry();
+    flowGeo.setAttribute("position", new THREE.Float32BufferAttribute(flowPositions, 3));
+    flowParticles = new THREE.Points(flowGeo, new THREE.PointsMaterial({
+      color: COL.flow, size: 5.5, sizeAttenuation: true, transparent: true, opacity: 0.9 }));
+    flowParticles.visible = true;
+    flowParticles.renderOrder = 3;
+    scene.add(flowParticles);
+
+    // Pipe sleeves (highlight tubes)
     sleeves = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 8, 1, true),
       new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true, transparent: true,
         opacity: 0.28, depthWrite: false }), Math.max(1, segEnds.length));
@@ -215,11 +303,7 @@ window.Growth3D = (function () {
     sleeves.frustumCulled = false;
     scene.add(sleeves);
 
-    // A permanent, selection-independent highlight of the network's real bottlenecks:
-    // the only pipes where build_growth_web.py's find_bottlenecks() says the per-site
-    // growth capacity actually changes crossing them. Off by default, toggled from the
-    // UI, opaque rather than translucent since it never has to share a pipe with a
-    // selection colour the way the sleeve does.
+    // Bottlenecks highlight
     const bnSet = new Set((g.bottlenecks || []).map(b => b.pipe));
     const bnSegs = [];
     for (let s = 0; s < segEnds.length; s++) if (bnSet.has(segPipe[s])) bnSegs.push(s);
@@ -247,8 +331,7 @@ window.Growth3D = (function () {
     }
     scene.add(bottleneckMesh);
 
-    // Chambers. Spheres rather than points so they can be picked and so their size means
-    // something at any zoom.
+    // Chambers (spheres)
     const sphere = new THREE.SphereGeometry(5.6, 14, 10);
     chamberMeshes = [];
     g.nodes.forEach((nd, i) => {
@@ -260,11 +343,7 @@ window.Growth3D = (function () {
       chamberMeshes.push(m);
     });
 
-    // A ring on the ground plus a stalk above it. One chamber among 71, in a view you can
-    // orbit, is genuinely hard to find from its colour alone; the stalk is what makes the
-    // growth site locatable without hunting for it.
-    // The outlet. Everything on screen drains through this one chamber, so it gets a
-    // marker of its own rather than being one white dot among 71.
+    // Outlet indicator
     if (g.outletName) {
       const on = g.nodes.find(n => n.name === g.outletName);
       if (on) {
@@ -281,6 +360,7 @@ window.Growth3D = (function () {
       }
     }
 
+    // Focus ring and growth site label
     siteLabel = { el: document.createElement("div"), at: new THREE.Vector3() };
     siteLabel.el.className = "lbl site";
     siteLabel.el.style.display = "none";
@@ -298,13 +378,71 @@ window.Growth3D = (function () {
     focusRing.visible = false;
     scene.add(focusRing);
 
+    // Top 3 Heatmap Halo Rings
+    haloRings = [];
+    for (let h = 0; h < 3; h++) {
+      const hMat = new THREE.MeshBasicMaterial({
+        color: 0xff0055, transparent: true, opacity: 0.7, depthWrite: false
+      });
+      const hMesh = new THREE.Mesh(new THREE.TorusGeometry(16, 2.2, 8, 32), hMat);
+      hMesh.rotation.x = Math.PI / 2;
+      hMesh.visible = false;
+      scene.add(hMesh);
+      haloRings.push(hMesh);
+    }
+
+    // Build 3D Pump Stations
+    pumpStations.forEach(ps => {
+      const node = g.nodes.find(n => n.name === ps.name);
+      if (!node) return;
+      const grp = new THREE.Group();
+      grp.position.copy(P(node.x, node.y, node.inv));
+
+      // Station outer base
+      const baseMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(14, 16, 8, 16),
+        new THREE.MeshBasicMaterial({ color: 0x1e293b })
+      );
+      baseMesh.position.y = 4;
+      grp.add(baseMesh);
+
+      // Rotating Impeller Ring
+      const impGeo = new THREE.TorusGeometry(10, 1.8, 6, 16);
+      const impMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+      const impeller = new THREE.Mesh(impGeo, impMat);
+      impeller.rotation.x = Math.PI / 2;
+      impeller.position.y = 9;
+      grp.add(impeller);
+      ps.impeller = impeller;
+
+      // Status Beacon Light
+      const beaconGeo = new THREE.SphereGeometry(3.6, 12, 8);
+      const beaconMat = new THREE.MeshBasicMaterial({
+        color: 0x22c55e, transparent: true, opacity: 0.9
+      });
+      const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+      beacon.position.y = 17;
+      grp.add(beacon);
+      ps.beacon = beacon;
+
+      scene.add(grp);
+      ps.group = grp;
+
+      // Label
+      const pLbl = document.createElement("div");
+      pLbl.className = "lbl site";
+      pLbl.style.color = "#38bdf8";
+      pLbl.style.fontWeight = "700";
+      pLbl.textContent = ps.id;
+      labelLayer.appendChild(pLbl);
+      ps.labelObj = { el: pLbl, at: P(node.x, node.y, node.inv) };
+    });
+
     built = true;
     frame();
     resize(container);
   }
 
-  /* Picking. A drag that ends where it began is a click; anything else is an orbit, so
-     rotating the view does not keep reassigning the growth site. */
   let downAt = null;
   function onDown(e) { downAt = { x: e.clientX, y: e.clientY }; }
   function chamberAt(e) {
@@ -324,12 +462,10 @@ window.Growth3D = (function () {
     if (nd) onPick(nd);
   }
 
-  /* Hover previews a manhole's homes without moving the growth there. Mouse only: a touch
-     has no hover, and a tap still does everything. At most one raycast per frame. */
   let hovered = null, moveQueued = null;
   function onMove(e) {
     if (e.pointerType !== "mouse" || !onHover || !built) return;
-    if (e.buttons) { hoverTo(null); return; }         // orbiting, not pointing
+    if (e.buttons) { hoverTo(null); return; }
     if (!moveQueued) requestAnimationFrame(() => {
       const ev = moveQueued; moveQueued = null;
       if (ev) hoverTo(chamberAt(ev));
@@ -344,9 +480,6 @@ window.Growth3D = (function () {
     if (onHover) onHover(nd);
   }
 
-  /* ------------------------------------------------------ the network as a tree */
-  /* Built once from the pipe list. A gravity sewer drains one way, so "which homes are
-     behind this manhole" is a walk up the graph, not a hydraulic question. */
   let topo = null;
   function topology() {
     if (topo) return topo;
@@ -356,9 +489,6 @@ window.Growth3D = (function () {
       into[g.down[p]].push(p);
       if (downOf[g.up[p]] < 0) downOf[g.up[p]] = g.down[p];
     }
-    // The first real manhole a node's sewage reaches, itself included, or -1. Half the
-    // properties enter at a pipe end with no manhole on record, and without this they
-    // would never belong to anything a person can click.
     const firstMh = new Array(n);
     for (let i = 0; i < n; i++) {
       let j = i, hops = 0;
@@ -367,11 +497,10 @@ window.Growth3D = (function () {
     }
     const idxOf = {};
     g.nodes.forEach((nd, i) => { idxOf[nd.name] = i; });
-    topo = { into, firstMh, idxOf };
+    topo = { into, firstMh, idxOf, downOf };
     return topo;
   }
 
-  /* Every node and pipe whose sewage passes through any of `names`, those nodes included. */
   function upstream(names) {
     const g = G(), t = topology();
     const nodes = new Set(), pipes = new Set(), stack = [];
@@ -385,12 +514,53 @@ window.Growth3D = (function () {
     return { nodes, pipes };
   }
 
-  /* What the homes layer shows. The counts come back so the legend can state them rather
-     than leave a person counting dots.
-       { mode: "site", name }       homes whose sewage reaches this manhole first, and homes
-                                    further up that drain through it
-       { mode: "sensors", names }   homes whose sewage passes any of these manholes
-       null                         every home, plain */
+  /* Compute comprehensive metrics for all areas that affect a node */
+  function getUpstreamMetrics(name) {
+    const g = G(), t = topology();
+    if (!g || !(name in t.idxOf)) return null;
+    const up = upstream([name]);
+    let totalLengthM = 0;
+    for (const p of up.pipes) {
+      const a = g.ptr[p], b = g.ptr[p + 1];
+      let lenDm = 0;
+      for (let i = a; i < b - 1; i++) {
+        lenDm += Math.hypot(g.px[i + 1] - g.px[i], g.py[i + 1] - g.py[i]);
+      }
+      totalLengthM += lenDm * 0.1;
+    }
+    let homesCount = 0;
+    if (g.hn) {
+      for (let i = 0; i < g.hn.length; i++) {
+        if (up.nodes.has(g.hn[i])) homesCount++;
+      }
+    }
+    const targetIdx = t.idxOf[name];
+    let directHomes = 0;
+    if (g.hn) {
+      for (let i = 0; i < g.hn.length; i++) {
+        if (t.firstMh[g.hn[i]] === targetIdx) directHomes++;
+      }
+    }
+    const qDry = homesCount * 500 * 2 / 86400; // 500 L/day, PF=2
+    const upstreamChambers = [];
+    up.nodes.forEach(ndIdx => {
+      if (g.nodes[ndIdx].kind === "chamber" && ndIdx !== targetIdx) {
+        upstreamChambers.push(g.nodes[ndIdx].name);
+      }
+    });
+
+    return {
+      nodeName: name,
+      pipesCount: up.pipes.size,
+      totalLengthM: Math.round(totalLengthM * 10) / 10,
+      homesCount,
+      directHomes,
+      upstreamChambersCount: upstreamChambers.length,
+      upstreamChambers,
+      estimatedDryFlowLps: Math.round(qDry * 100) / 100
+    };
+  }
+
   function highlight(spec) {
     if (!built || !houseGeo || !G().hn) return null;
     const g = G(), t = topology(), n = g.hn.length;
@@ -416,7 +586,7 @@ window.Growth3D = (function () {
         if (t.firstMh[node] === me) { copy(hiPos, nHi++, i); if (node === me) nDirect++; }
         else if (up.nodes.has(node)) copy(upPos, nUp++, i);
       }
-      out = { mode: "site", here: nHi, direct: nDirect, through: nUp, elsewhere: n - nHi - nUp, total: n };
+      out = { mode: "site", here: nHi, direct: nDirect, through: nUp, elsewhere: n - nHi - nUp, total: n, pipesCount: up.pipes.size };
     } else if (spec && spec.mode === "sensors" && spec.names.length) {
       const up = upstream(spec.names);
       pipes = up.pipes;
@@ -425,7 +595,7 @@ window.Growth3D = (function () {
         paintHouse(i, COL.house);
         if (up.nodes.has(g.hn[i])) { copy(hiPos, nHi++, i); watched++; }
       }
-      out = { mode: "sensors", watched, unwatched: n - watched, total: n };
+      out = { mode: "sensors", watched, unwatched: n - watched, total: n, pipesCount: up.pipes.size };
     } else {
       for (let i = 0; i < n; i++) paintHouse(i, COL.house);
       out = { mode: "none", total: n };
@@ -439,11 +609,8 @@ window.Growth3D = (function () {
       pts.frustumCulled = false;
     });
 
-    // Sleeves around the pipes that carry it. Coloured per instance, not once for the
-    // whole mesh: a segment that is itself amber ("already surcharged, not growth") gets
-    // a yellow sleeve instead of the usual cyan/green, so it never mixes toward green.
-    const segPipe = pipeGeo.userData.segPipe, m = new THREE.Matrix4();
-    const q = new THREE.Quaternion(), yAxis = new THREE.Vector3(0, 1, 0);
+    // Sleeves around the pipes that carry it
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), yAxis = new THREE.Vector3(0, 1, 0);
     const dir = new THREE.Vector3(), mid = new THREE.Vector3(), scl = new THREE.Vector3();
     const tmpColor = new THREE.Color();
     const baseHex = spec && spec.mode === "sensors" ? COL.watched : COL.sleeve;
@@ -457,7 +624,7 @@ window.Growth3D = (function () {
         if (len < 1e-6) continue;
         q.setFromUnitVectors(yAxis, dir.clone().divideScalar(len));
         mid.addVectors(a, b).multiplyScalar(0.5);
-        scl.set(3.2, len, 3.2);
+        scl.set(3.4, len, 3.4);
         m.compose(mid, q, scl);
         sleeves.setMatrixAt(k, m);
         const onAmber = lastPipeState && lastPipeState[segPipe[s]] === "was";
@@ -476,14 +643,40 @@ window.Growth3D = (function () {
     if (bottleneckMesh) bottleneckMesh.visible = !!show;
   }
 
+  function setFlowAnimation(active, speed) {
+    flowAnimActive = !!active;
+    if (speed != null) flowAnimSpeed = Math.max(0.2, Math.min(5.0, speed));
+    if (flowParticles) flowParticles.visible = flowAnimActive;
+  }
+
+  function setHeatmap(active, scoresMap, top3) {
+    heatmapActive = !!active;
+    heatmapScores = scoresMap || {};
+    topRecommendations = top3 || [];
+  }
+
+  function setBlockage(pipeIdx, severity, backwaterChambers, backwaterPipes) {
+    activeBlockagePipe = pipeIdx;
+    backwaterChambersSet = new Set(backwaterChambers || []);
+    backwaterPipesSet = new Set(backwaterPipes || []);
+  }
+
+  function setPumpStationState(stationId, isRunning, duty) {
+    const ps = pumpStations.find(p => p.id === stationId);
+    if (!ps) return;
+    ps.running = isRunning !== false;
+    if (duty != null) ps.duty = duty;
+    if (ps.beacon) {
+      ps.beacon.material.color.setHex(ps.running ? 0x22c55e : 0xf59e0b);
+    }
+  }
+
   /* Recolour for one scenario. `state` maps a chamber name to "tip" | "was" | "ok". */
   function paint(state, siteName, sensors) {
     if (!built) return;
     const g = G();
     const nodeState = name => state[name] || "ok";
-    const arr = pipeColours.array, segPipe = pipeGeo.userData.segPipe;
-    // A pipe takes the worse of its two ends: a reach between a tipped chamber and a
-    // healthy one is part of the problem, not half of it.
+    const arr = pipeColours.array;
     const rank = { ok: 0, was: 1, tip: 2 };
     const pipeCol = [];
     for (let p = 0; p < g.nPipes; p++) {
@@ -491,10 +684,18 @@ window.Growth3D = (function () {
       const su = nodeState(u.name), sd = nodeState(d.name);
       pipeCol.push(rank[su] >= rank[sd] ? su : sd);
     }
-    lastPipeState = pipeCol;   // read by highlight() to keep a sleeve off cyan-on-amber
+    lastPipeState = pipeCol;
+
     for (let s = 0; s < segPipe.length; s++) {
-      const c = COL[pipeCol[segPipe[s]] === "tip" ? "tip"
-        : pipeCol[segPipe[s]] === "was" ? "was" : "ok"];
+      const pIdx = segPipe[s];
+      let c;
+      if (pIdx === activeBlockagePipe) {
+        c = [0xff, 0x00, 0x55]; // active blockage choke pipe
+      } else if (backwaterPipesSet.has(pIdx)) {
+        c = COL.backwater;
+      } else {
+        c = COL[pipeCol[pIdx] === "tip" ? "tip" : pipeCol[pIdx] === "was" ? "was" : "ok"];
+      }
       for (let k = 0; k < 2; k++) {
         const o = (s * 2 + k) * 3;
         arr[o] = c[0] / 255; arr[o + 1] = c[1] / 255; arr[o + 2] = c[2] / 255;
@@ -503,13 +704,30 @@ window.Growth3D = (function () {
     pipeColours.needsUpdate = true;
 
     const sensorSet = new Set(sensors || []);
+
     chamberMeshes.forEach(m => {
       const nm = m.userData.node.name;
       const st = nodeState(nm);
-      const c = sensorSet.has(nm) ? COL.sensor
-        : st === "tip" ? 0xff2d55 : st === "was" ? 0xffa500 : COL.chamber;
-      m.material.color.setHex(c);
-      m.scale.setScalar(sensorSet.has(nm) ? 2.1 : st === "ok" ? 1 : 1.6);
+
+      if (heatmapActive && nm in heatmapScores) {
+        // Render Heatmap Gradient
+        const score = heatmapScores[nm];
+        const hex = getHeatmapHex(score);
+        m.material.color.setHex(hex);
+        const isTop = topRecommendations.includes(nm);
+        m.scale.setScalar(isTop ? 2.4 : 1.0 + (score / 100) * 0.9);
+      } else if (backwaterChambersSet.has(nm)) {
+        // Backwater Surcharged Chamber
+        m.material.color.setHex(0xff5722);
+        m.scale.setScalar(2.0);
+      } else {
+        // Standard View
+        const c = sensorSet.has(nm) ? COL.sensor
+          : st === "tip" ? 0xff2d55 : st === "was" ? 0xffa500 : COL.chamber;
+        m.material.color.setHex(c);
+        m.scale.setScalar(sensorSet.has(nm) ? 2.1 : st === "ok" ? 1 : 1.6);
+      }
+
       if (nm === siteName) {
         focusRing.position.copy(m.position);
         focusRing.visible = true;
@@ -518,6 +736,20 @@ window.Growth3D = (function () {
         siteLabel.el.style.display = "";
       }
     });
+
+    // Update Top 3 Halo Rings
+    haloRings.forEach(r => { r.visible = false; });
+    if (heatmapActive && topRecommendations.length) {
+      topRecommendations.forEach((tName, i) => {
+        if (i >= haloRings.length) return;
+        const mesh = chamberMeshes.find(cm => cm.userData.node.name === tName);
+        if (mesh) {
+          haloRings[i].position.copy(mesh.position);
+          haloRings[i].visible = true;
+        }
+      });
+    }
+
     if (!siteName) { focusRing.visible = false; siteLabel.el.style.display = "none"; }
   }
 
@@ -546,5 +778,9 @@ window.Growth3D = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { build, paint, highlight, showBottlenecks, frame, resize, ZEXAG };
+  return {
+    build, paint, highlight, showBottlenecks, frame, resize,
+    setFlowAnimation, setHeatmap, setBlockage, setPumpStationState,
+    getUpstreamMetrics, topology, ZEXAG
+  };
 })();

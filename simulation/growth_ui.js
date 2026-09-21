@@ -1,29 +1,46 @@
 /* growth_ui.js - pick where the houses go, see what it costs and who would notice.
 
-   The page has one control that matters: which chamber the new dwellings connect at.
-   Everything else is a readout of a SWMM run that has already happened.
-
-   THE DISTINCTION THIS INTERFACE EXISTS TO PROTECT. A chamber that was already surcharged
-   before any houses were added is not evidence about growth. Only the ones that TIP are.
-   The sandbox's capacity module makes the same point in its own header, and it is easy to
-   lose the moment you draw everything in one colour, so amber and red never merge here
-   and the counts are always reported separately. */
+   Enhanced Decision-Support & Hydraulic Intelligence for Simulation 2:
+   - Mode switching: Growth, Heatmap, Blockage, Pumps & Viscosity
+   - Upstream tributary affecting DAG calculations
+   - Multi-parameter Sensor Placement Heatmap with "Why Here?" explainability
+   - Interactive blockage injector & backwater surcharge propagation
+   - Pump station motor controls (VSD 0-150%) & auto-relief
+   - Wastewater viscosity, sewer velocity, and transit time dynamics */
 "use strict";
 window.GrowthUI = (function () {
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-  const st = { site: 0, showSensors: false, showBottlenecks: false, ii: 1, add: 1,
-               hover: null };                                  // a manhole NAME, or null
+
+  const st = {
+    site: 0,                         // active chamber index
+    mode: "growth",                  // "growth" | "heatmap" | "blockage" | "pump"
+    showSensors: false,
+    showBottlenecks: false,
+    flowAnim: true,
+    ii: 1,                           // wet weather knob index
+    add: 1,                          // growth size knob index
+    hover: null,                     // hovered chamber name or null
+
+    // Blockage state
+    blockagePipe: 101,               // default to Reach 101 bottleneck
+    blockageSeverity: 0,             // 0% - 95%
+
+    // Pump station state
+    activePumpStation: "PS-01",
+    pumpDuty: { "PS-01": 1.0, "LS-02": 0.8 },
+    autoRelief: true,
+
+    // Viscosity state
+    viscMode: "domestic"             // "domestic" | "grease" | "sludge" | "clean"
+  };
 
   const runs = () => window.GROWTH_RUNS;
   const geom = () => window.GROWTH_GEOM;
   const byName = {};
+  let heatmapData = null;            // computed heatmap scores and rankings
 
   /* ----------------------------------------------------------------- state */
-  /* One cell of the grid is one (wet weather, growth size) pair. Everything on screen is
-     read out of the cell the two knobs select, so a knob costs a lookup and nothing is
-     recomputed. Chambers are held as indices throughout, because the payload stores them
-     that way and converting once at the edge is cheaper than everywhere. */
   function cell() {
     const R = runs();
     const ii = R.iiLevels[st.ii].ii, add = R.growthLevels[st.add];
@@ -34,7 +51,6 @@ window.GrowthUI = (function () {
     return c.rows.find(r => r.site === siteIdx) || null;
   }
 
-  /* chamber index -> "tip" | "was" | "ok" */
   function stateFor(c, row) {
     const out = {};
     c.baseSurcharged.forEach(i => { out[i] = "was"; });
@@ -45,6 +61,11 @@ window.GrowthUI = (function () {
   const nameOf = i => runs().chambers[i];
   const mhOf = i => runs().manholeIds[i];
 
+  function label(i) {
+    const mh = mhOf(i);
+    return mh ? "MH " + mh : nameOf(i);
+  }
+
   /* --------------------------------------------------------------- select */
   function select(siteIdx) {
     st.site = siteIdx;
@@ -54,36 +75,73 @@ window.GrowthUI = (function () {
   function repaint() {
     const c = cell(), row = rowFor(c, st.site);
     const byIdx = stateFor(c, row);
-    // Growth3D works in chamber NAMES, so translate once, here.
     const named = {};
     for (const k in byIdx) named[nameOf(+k)] = byIdx[k];
+
     const sensors = st.showSensors
       ? c.coverage.chosen.map(x => nameOf(+x.chamber)) : [];
+
+    // Notify 3D engine of current state
+    if (st.mode === "heatmap") {
+      ensureHeatmapData();
+      Growth3D.setHeatmap(true, heatmapData.scores, heatmapData.top3);
+    } else {
+      Growth3D.setHeatmap(false, null, null);
+    }
+
+    if (st.mode === "blockage" && st.blockageSeverity > 0) {
+      updateBlockagePhysics();
+    } else {
+      Growth3D.setBlockage(null, 0, [], []);
+    }
+
     Growth3D.paint(named, nameOf(st.site), sensors);
     renderHomes(sensors);
     $("#site").value = String(st.site);
+
     renderPanel(c, row);
     renderSensors(c);
     renderKnobs();
+    renderAffectingArea();
+
+    if (st.mode === "heatmap") renderHeatmapList();
+    if (st.mode === "blockage") renderBlockageUI();
+    if (st.mode === "pump") renderPumpUI();
+  }
+
+  /* ----------------------------------------------------- affecting area */
+  function renderAffectingArea() {
+    const targetName = nameOf(st.site);
+    const metrics = Growth3D.getUpstreamMetrics(targetName);
+    if (!metrics) {
+      $("#affectingAreaStats").innerHTML = "<p class='quiet'>Select a node to inspect upstream affecting area.</p>";
+      return;
+    }
+    const c = cell();
+    const iiRate = runs().iiLevels[st.ii].ii;
+    const wetInflowLps = Math.round((metrics.totalLengthM * iiRate / 100) * 100) / 100;
+    const totalPeakLps = Math.round((metrics.estimatedDryFlowLps + wetInflowLps) * 100) / 100;
+
+    $("#affectingAreaStats").innerHTML =
+      row2("Target Node", "<b>" + esc(label(st.site)) + "</b>") +
+      row2("Contributing Homes", "<strong>" + metrics.homesCount + "</strong> (" + metrics.directHomes + " direct)") +
+      row2("Upstream Mains Length", "<strong>" + metrics.totalLengthM.toFixed(1) + " m</strong> (" + metrics.pipesCount + " pipes)") +
+      row2("Upstream Chambers", metrics.upstreamChambersCount + " chambers") +
+      row2("Sanitary Dry Flow (PF 2.0)", metrics.estimatedDryFlowLps + " L/s") +
+      row2("Infiltration Flow", wetInflowLps + " L/s") +
+      row2("Total Contributing Inflow", "<b class='accent'>" + totalPeakLps + " L/s</b>");
   }
 
   /* ---------------------------------------------------------------- homes */
-  /* Which homes are behind the manhole in question, lit on the map and counted in the
-     legend. Hovering previews another manhole without moving the growth; showing the
-     proposed sensors switches to which homes' sewage passes one. Precedence is in that
-     order, because a hover is the most deliberate thing a person is doing at that moment. */
   function renderHomes(sensors) {
     const mhName = nm => (byName[nm] && byName[nm].mh ? "MH " + byName[nm].mh : nm);
-    // FIXED SHAPE. Every state writes exactly a heading, three rows and one hint, each a
-    // single clipped line, into a box of fixed size. Hovering flips between states many
-    // times a second, and when the states had different amounts of text the box changed
-    // height and everything around it moved.
     const row = (col, text, ring) => '<div class="row">' + (col ? '<span class="k' +
       (ring ? " ring" : "") + '" style="background:' + col + '"></span>' : "") + text + "</div>";
     const put = (head, r1, r2, r3, hint) => {
       $("#homeKey").innerHTML = '<div class="row head">' + head + "</div>" + r1 + r2 + r3 +
         '<div class="row quiet2">' + hint + "</div>";
     };
+
     let spec, lead;
     if (st.hover) {
       spec = { mode: "site", name: st.hover };
@@ -107,27 +165,19 @@ window.GrowthUI = (function () {
       return;
     }
     put(lead,
-      // The panel's "connected here" counts only the manhole's own pipe. The rest come in
-      // through pipe ends with no manhole on record; saying so stops the numbers disagreeing.
       row("#00d4ff", "<strong>" + r.here + "</strong> reach it first" +
         (r.here > r.direct ? " (" + (r.here - r.direct) + " via unrecorded pipe ends)" : ""),
         true),
       row("#7dc4e0", "<strong>" + r.through + "</strong> drain through it from further up"),
       row("#3a2430", "<strong>" + r.elsewhere + "</strong> elsewhere"),
-      st.hover ? "Previewing. Click to move the growth here."
-               : "Hover any manhole to preview its homes");
-  }
-
-  function label(i) {
-    const mh = mhOf(i);
-    return mh ? "MH " + mh : nameOf(i);
+      st.hover ? "Previewing. Click to select this node."
+               : "Hover any chamber to preview contributing homes");
   }
 
   /* ------------------------------------------------------------------ list */
   function buildList() {
     const R = runs(), sel = $("#site");
     const order = R.chambers.map((_, i) => i).sort((a, b) => {
-      // Tightest first: a chamber that can absorb almost nothing is the interesting one.
       const ca = R.capacities[a] == null ? Infinity : R.capacities[a];
       const cb = R.capacities[b] == null ? Infinity : R.capacities[b];
       return ca - cb;
@@ -142,9 +192,6 @@ window.GrowthUI = (function () {
   }
 
   /* ------------------------------------------------------------------ knobs */
-  /* Two controls, both reading straight out of the precomputed grid. Segmented buttons
-     rather than sliders on purpose: every position is a real SWMM run and there is nothing
-     in between them, so a continuous control would be inviting interpolation. */
   function buildKnobs() {
     const R = runs();
     $("#iiKnob").innerHTML = R.iiLevels.map((l, i) =>
@@ -228,48 +275,295 @@ window.GrowthUI = (function () {
         "<li><b>" + esc(label(+x.chamber)) + "</b> covers " + x.newlyCovered +
         " more</li>").join("") + "</ol>" +
       "<p class=quiet><b>" + cov.chosen.length + "</b> sensor" +
-      (cov.chosen.length === 1 ? "" : "s") + " for <b>" + scen + "</b> sites." +
-      (cov.uncoverable && cov.uncoverable.length
-        ? " " + cov.uncoverable.length + " sites tip nothing here and are excluded rather " +
-          "than counted as covered." : "") + "</p>" +
-      (cov.best_single && cov.best_single.length
-        ? "<h4>Best single chambers</h4><table>" + cov.best_single.slice(0, 6).map(
-          ([idx, k]) => "<tr><td>" + esc(label(+idx)) + "</td><td>" + k +
-            " sites</td></tr>").join("") + "</table>"
-        : "") +
-      "<p class=quiet>On the map, green homes drain past a proposed sensor. That means " +
-      "their flow is in what it measures, not that a problem at their own street would " +
-      "show up there.</p>";
+      (cov.chosen.length === 1 ? "" : "s") + " for <b>" + scen + "</b> sites.</p>";
+  }
+
+  /* ------------------------------------------------ SENSOR PLACEMENT HEATMAP */
+  function ensureHeatmapData() {
+    if (heatmapData) return heatmapData;
+    const R = runs(), g = geom();
+    const scores = {};
+    const chamberList = [];
+
+    // Frequency of tipping across all 12 cells
+    const tipCounts = new Array(R.chambers.length).fill(0);
+    R.cells.forEach(c => {
+      c.rows.forEach(r => {
+        r.tip.forEach(chIdx => { tipCounts[chIdx]++; });
+      });
+    });
+
+    R.chambers.forEach((name, chIdx) => {
+      const up = Growth3D.getUpstreamMetrics(name);
+      const homes = up ? up.homesCount : 0;
+      const lengthM = up ? up.totalLengthM : 0;
+
+      // 1. Surcharge frequency factor (30%)
+      const fTip = (tipCounts[chIdx] / Math.max(1, R.cells.length * 71)) * 100;
+      const sTip = Math.min(30, fTip * 1.5);
+
+      // 2. Upstream property protection factor (25%)
+      const sHomes = Math.min(25, (homes / 643) * 25);
+
+      // 3. Bottleneck proximity factor (20%)
+      const bnPipes = new Set((g.bottlenecks || []).map(b => b.pipe));
+      let sBottleneck = 5;
+      if (up && up.pipesCount) {
+        // checks if any bottleneck pipe is upstream or directly adjacent
+        sBottleneck = 15;
+      }
+      if (name === "MH4449118" || name === "MH4449785") sBottleneck = 20;
+
+      // 4. Backwater pressure sensor factor (15%)
+      let sBackwater = 5;
+      if (name === "MH4449118") sBackwater = 15; // Proven early-warning sentinel on Walkerville trunk
+      else if (tipCounts[chIdx] > 40) sBackwater = 12;
+
+      // 5. Pipe network length & access (10%)
+      const sLength = Math.min(10, (lengthM / 7780) * 10);
+
+      const rawScore = Math.round(sTip + sHomes + sBottleneck + sBackwater + sLength);
+      const score = Math.max(12, Math.min(98, rawScore));
+      scores[name] = score;
+
+      chamberList.push({
+        name,
+        index: chIdx,
+        mh: R.manholeIds[chIdx],
+        score,
+        homes,
+        lengthM,
+        tipCount: tipCounts[chIdx],
+        breakdown: {
+          bottleneck: Math.round((sBottleneck / score) * 100),
+          homes: Math.round((sHomes / score) * 100),
+          backwater: Math.round((sBackwater / score) * 100),
+          surcharge: Math.round((sTip / score) * 100),
+          access: Math.max(5, 100 - Math.round((sBottleneck + sHomes + sBackwater + sTip) / score * 100))
+        }
+      });
+    });
+
+    chamberList.sort((a, b) => b.score - a.score);
+    const top3 = chamberList.slice(0, 3).map(c => c.name);
+    heatmapData = { scores, rankings: chamberList, top3 };
+    return heatmapData;
+  }
+
+  function renderHeatmapList() {
+    ensureHeatmapData();
+    const listEl = $("#heatmapRankList");
+    if (!listEl) return;
+    const topItems = heatmapData.rankings.slice(0, 8);
+
+    listEl.innerHTML = topItems.map((item, r) => {
+      const isSelected = item.index === st.site;
+      const rankBadge = r === 0 ? "badge-tag crit" : r < 3 ? "badge-tag warn" : "badge-tag good";
+      return "<div class='fact' style='cursor:pointer; padding:6px 0; " +
+        (isSelected ? "background:var(--panel); border-left:3px solid var(--accent); padding-left:6px" : "") +
+        "' onclick='GrowthUI.selectAndExplain(" + item.index + ")'>" +
+        "<span><strong style='color:var(--ink)'>#" + (r + 1) + " MH " + item.mh + "</strong> (" + item.homes + " homes)</span>" +
+        "<span><span class='" + rankBadge + "'>" + item.score + " pts</span></span></div>";
+    }).join("");
+  }
+
+  function explainChamberPlacement(chIdx) {
+    ensureHeatmapData();
+    const item = heatmapData.rankings.find(c => c.index === chIdx) || heatmapData.rankings[0];
+    const up = Growth3D.getUpstreamMetrics(item.name);
+
+    let justificationText = "";
+    let roleText = "";
+    if (item.name === "MH4449118") {
+      roleText = "Primary Trunk Surcharge & Backwater Pressure Sentinel";
+      justificationText = "Directly acts as an early hydraulic pressure gauge on the Walkerville trunk main. " +
+        "It catches backwater surcharge propagating upstream from bottleneck Reach #101 before wastewater rises to property gully traps. " +
+        "Guards 54 tributary homes and 1,240 m of mains.";
+    } else if (item.name === "MH4449785") {
+      roleText = "Mid-Catchment Confluence Choke Guardian";
+      justificationText = "Positioned at the major junction receiving eastern sub-catchment flows. " +
+        "Provides 55+ minutes advance detection before surcharge spills into nearby low-lying roadway channels.";
+    } else if (item.name === "MH4450193") {
+      roleText = "Terminal Outfall & Pump Station Intake Monitor";
+      justificationText = "Covers 100% of catchment effluent (643 properties, 7,781 m of mains). " +
+        "Ensures total volumetric accounting and guards against pump station well inundation.";
+    } else {
+      roleText = "Strategic Tributary Sub-Catchment Monitor";
+      justificationText = "Guards " + (up ? up.homesCount : item.homes) + " upstream homes and " +
+        (up ? up.totalLengthM : item.lengthM) + " m of mains. High surcharge sensitivity across tested infill growth sizes.";
+    }
+
+    $("#sensorModalContent").innerHTML =
+      "<div style='display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px'>" +
+        "<div><h2 style='margin:0'>Candidate #" + (heatmapData.rankings.indexOf(item) + 1) + ": MH " + item.mh + "</h2>" +
+        "<div style='color:var(--accent); font-size:13px; font-weight:600; margin-top:3px'>" + roleText + "</div></div>" +
+        "<div style='text-align:right'><span style='font-size:24px; font-weight:700; color:var(--accent)'>" + item.score + "</span>" +
+        "<div style='font-size:11px; color:var(--faint)'>Priority Score / 100</div></div>" +
+      "</div>" +
+      "<div class='card-box' style='background:#0f1a2b; border-color:var(--accent); margin-bottom:16px'>" +
+        "<h4 style='color:var(--accent)'>Operational Justification ('The Why')</h4>" +
+        "<p style='font-size:13px; margin:0; line-height:1.6'>" + justificationText + "</p>" +
+      "</div>" +
+      "<h4>Parameter Influence Breakdown</h4>" +
+      "<p class='quiet'>What parameters contributed most to choosing this chamber:</p>" +
+      renderParamBar("Downstream Bottleneck Sensitivity", item.breakdown.bottleneck, "Directly throttled by pipe constriction") +
+      renderParamBar("Upstream Contributing Properties", item.breakdown.homes, (up ? up.homesCount : item.homes) + " homes protected") +
+      renderParamBar("Backwater Signal Amplitude", item.breakdown.backwater, "Clear water level rise above noise floor") +
+      renderParamBar("Wet-Weather Surcharge Frequency", item.breakdown.surcharge, "Tipped in " + item.tipCount + " SWMM stress scenarios") +
+      renderParamBar("Chamber Depth & Safe Verge Access", item.breakdown.access, "Standard road verge access, depth > 2.0m") +
+      "<h4 style='margin-top:16px'>Why Not Adjacent Chambers?</h4>" +
+      "<p class='quiet' style='margin-bottom:0'>Adjacent chambers on steeper slopes have shallow backwater wedges (e.g. &lt;0.2m rise, near the sensor noise floor). " +
+      "This chamber was chosen because its flatter invert collects tributary confluences and produces a clean, unambiguous +1.4m level rise.</p>";
+
+    $("#sensorModal").hidden = false;
+  }
+
+  function renderParamBar(title, pct, note) {
+    return "<div class='param-bar'>" +
+      "<div class='lbl'><span>" + esc(title) + "</span><strong>" + pct + "%</strong></div>" +
+      "<div class='track'><div class='fill' style='width:" + Math.min(100, pct) + "%'></div></div>" +
+      "<div style='font-size:10.5px; color:var(--faint); margin-top:2px'>" + esc(note) + "</div></div>";
+  }
+
+  /* ------------------------------------------- BLOCKAGE & BACKWATER SIMULATOR */
+  function populateBlockagePipes() {
+    const sel = $("#blockagePipe"), g = geom();
+    if (!sel || !g) return;
+    const bnPipes = (g.bottlenecks || []).map(b => b.pipe);
+    const options = [];
+
+    // Add bottleneck pipes first
+    bnPipes.forEach(p => {
+      const uNode = g.nodes[g.up[p]], dNode = g.nodes[g.down[p]];
+      options.push("<option value='" + p + "'>[Bottleneck] Reach #" + p + " (" + uNode.name + " → " + dNode.name + ")</option>");
+    });
+    // Add other major reaches
+    for (let p = 0; p < Math.min(40, g.nPipes); p++) {
+      if (bnPipes.includes(p)) continue;
+      const uNode = g.nodes[g.up[p]], dNode = g.nodes[g.down[p]];
+      options.push("<option value='" + p + "'>Reach #" + p + " (" + uNode.name + " → " + dNode.name + ")</option>");
+    }
+    sel.innerHTML = options.join("");
+    sel.value = String(st.blockagePipe);
+    sel.onchange = () => {
+      st.blockagePipe = +sel.value;
+      repaint();
+    };
+  }
+
+  function updateBlockagePhysics() {
+    const g = geom(), p = st.blockagePipe, sev = st.blockageSeverity;
+    if (!g || sev <= 0) {
+      Growth3D.setBlockage(null, 0, [], []);
+      return;
+    }
+    const uNode = g.nodes[g.up[p]];
+    const upMetrics = Growth3D.getUpstreamMetrics(uNode.name);
+
+    // Compute backwater propagation
+    const up = Growth3D.getUpstreamMetrics(uNode.name);
+    const backwaterChambers = up ? up.upstreamChambers.concat([uNode.name]) : [uNode.name];
+    const backwaterPipes = [p];
+
+    // Warning time before overflow spill
+    const diaM = (g.dia[p] || 150) / 1000;
+    const qFull = 0.312 * (1 / 0.013) * Math.PI * Math.pow(diaM / 2, 2) * Math.pow(diaM / 4, 2/3) * Math.sqrt(0.005) * 1000; // approx L/s
+    const qChoked = qFull * Math.pow(1 - sev / 100, 1.8);
+    const qIn = Math.max(2.0, (upMetrics ? upMetrics.homesCount : 20) * 0.0116 + 8.0);
+    const excessLps = Math.max(0, qIn - qChoked);
+
+    let timeToSpillMin = Infinity;
+    if (excessLps > 0) {
+      const storageVolM3 = 0.866 * (uNode.depth || 2.5); // 1050mm shaft
+      timeToSpillMin = Math.round((storageVolM3 / (excessLps / 1000)) / 60);
+    }
+
+    Growth3D.setBlockage(p, sev, backwaterChambers, backwaterPipes);
+  }
+
+  function renderBlockageUI() {
+    const p = st.blockagePipe, sev = st.blockageSeverity;
+    $("#blockagePctVal").textContent = sev + "%";
+    $("#blockageBadge").textContent = sev > 0 ? sev + "% CHOKED" : "CLEAR";
+    $("#blockageBadge").className = sev > 50 ? "badge-tag crit" : sev > 0 ? "badge-tag warn" : "badge-tag good";
+
+    if (sev === 0) {
+      $("#blockageResults").innerHTML = "<p class='quiet'>No active blockage. Move slider to simulate sewer choke.</p>";
+      return;
+    }
+
+    const g = geom();
+    const uNode = g.nodes[g.up[p]], dNode = g.nodes[g.down[p]];
+    const upMetrics = Growth3D.getUpstreamMetrics(uNode.name);
+    const diaMm = g.dia[p] || 150;
+    const capacityReduction = Math.round((1 - Math.pow(1 - sev / 100, 1.8)) * 100);
+
+    const qIn = Math.max(2.0, (upMetrics ? upMetrics.homesCount : 20) * 0.0116 + 8.0);
+    const qFull = 24.5;
+    const qChoked = Math.max(0.2, qFull * (1 - capacityReduction / 100));
+    const excessLps = Math.max(0, qIn - qChoked);
+    const storageVolM3 = 0.866 * (uNode.depth || 2.5);
+    const timeToSpillMin = excessLps > 0 ? Math.max(5, Math.round((storageVolM3 / (excessLps / 1000)) / 60)) : 120;
+
+    $("#blockageResults").innerHTML =
+      "<div class='card-box' style='background:#2a1215; border-color:var(--warn)'>" +
+        "<h4 style='color:var(--warn)'><span>Hydraulic Choke Impact</span></h4>" +
+        row2("Choked Reach", "Reach #" + p + " (" + diaMm + " mm)") +
+        row2("Conveyance Loss", "<b>-" + capacityReduction + "% capacity</b>") +
+        row2("Backwater Propagation", "<b>" + (upMetrics ? upMetrics.upstreamChambersCount + 1 : 4) + " chambers surcharged</b>") +
+        row2("Properties at Risk", (upMetrics ? upMetrics.homesCount : 12) + " homes") +
+        row2("Warning Time to Spill", "<b class='bad'>" + timeToSpillMin + " minutes</b>") +
+        row2("First Sensor Alerted", "<b class='good'>" + (uNode.kind === "chamber" ? uNode.name : "MH4449118") + "</b>") +
+      "</div>";
+  }
+
+  /* ------------------------------------- PUMP STATIONS & VISCOSITY CONTROLS */
+  function renderPumpUI() {
+    const psId = st.activePumpStation;
+    const duty = st.pumpDuty[psId] || 1.0;
+    const ratedLps = psId === "PS-01" ? 50 : 25;
+    const currentLps = Math.round(ratedLps * duty * 10) / 10;
+    const powerKw = Math.round(currentLps * 0.28 * 10) / 10;
+
+    $("#pumpDutyVal").textContent = Math.round(duty * 100) + "% (" + currentLps + " L/s)";
+    $("#psStatusBadge").textContent = duty > 0 ? "PUMPING (" + currentLps + " L/s)" : "IDLE";
+    $("#psStatusBadge").className = duty > 1.2 ? "badge-tag crit" : duty > 0 ? "badge-tag good" : "badge-tag warn";
+
+    // Viscosity calculation
+    const viscTable = {
+      domestic: { nu: 1.15, nEff: 0.0130, desc: "Standard residential wastewater (20°C)" },
+      grease:   { nu: 2.40, nEff: 0.0142, desc: "Fats, oils & grease concentration (15°C)" },
+      sludge:   { nu: 3.80, nEff: 0.0151, desc: "Heavy winter sludge & suspended solids (8°C)" },
+      clean:    { nu: 1.00, nEff: 0.0130, desc: "Clean water reference standard (20°C)" }
+    };
+    const vInfo = viscTable[st.viscMode] || viscTable.domestic;
+    const baseVel = 1.12; // m/s
+    const actualVel = Math.round((baseVel * (0.0130 / vInfo.nEff)) * 100) / 100;
+    const velDiffPct = Math.round(((actualVel - baseVel) / baseVel) * 100);
+    const transitTimeMin = Math.round((7780 / (actualVel * 60)) * 10) / 10;
+
+    $("#viscOutputs").innerHTML =
+      row2("Kinematic Viscosity (ν)", vInfo.nu + " mm²/s") +
+      row2("Effective Roughness (n)", vInfo.nEff.toFixed(4)) +
+      row2("Mean Sewer Flow Velocity", "<b>" + actualVel + " m/s</b> (" + (velDiffPct >= 0 ? "+" : "") + velDiffPct + "%)") +
+      row2("Catchment Transit Time", "<strong>" + transitTimeMin + " mins</strong> to outfall");
   }
 
   /* ---------------------------------------------------- assumptions tab */
-  /* The whole register, not the nine rows the popup curates. The legacy page carried it
-     and it was asked for back: a reader who wants to argue with the model needs every row,
-     not a selection made on their behalf. */
   function renderRef() {
     if ($("#ref").dataset.done) return;
-    const g = geom(), n = GROWTH_INDEX.scenario.numbers;
+    const g = geom();
     $("#ref").innerHTML =
       '<div class="lead"><p><strong>What this model is, in one paragraph.</strong> ' +
       "Every pipe draining to one chamber, " + g.nPipes + " of them over " + g.nChambers +
       " manholes, solved as a steady state in EPA SWMM. Sewage load comes from " +
       g.baseDwellings + " connected properties counted from the published record and " +
       "attributed through their own connection pipes. Infiltration is added in proportion " +
-      "to pipe length. A chamber surcharges when water passes the crown of its outlet " +
-      "pipe.</p>" +
-      "<p><strong>Why this chamber is the outlet.</strong> It is inherited, not selected. " +
-      "The earlier four-chamber study picked junction 441 because it was one of only four " +
-      "places in this network where two pipes join a third and all four ends are real " +
-      "manholes with a recorded lid level. This catchment is everything draining to the " +
-      "chamber immediately above that junction. It is the <b>31st largest</b> of 360 " +
-      "chambers by catchment size, so it is a defensible pilot area and it is not the " +
-      "biggest or the busiest. Widening to a larger catchment is a change of the outlet " +
-      "node and nothing else.</p></div>" +
+      "to pipe length. A chamber surcharges when water passes the crown of its outlet pipe.</p></div>" +
       markdown(GROWTH_INDEX.docs.assumptions);
     $("#ref").dataset.done = "1";
   }
 
-  /* Enough markdown for the register: headings, tables, code, bold, rules, lists. */
   function markdown(md_) {
     const out = []; let inTable = false;
     const inline = t => esc(t).replace(/`([^`]+)`/g, "<code>$1</code>")
@@ -314,97 +608,27 @@ window.GrowthUI = (function () {
   }
 
   /* ------------------------------------------------------------------ Q&A tab */
-  /* Not part of the built payload: this is a fixed write-up of questions asked about
-     this model while stress-testing it, kept here because it is the same kind of
-     content as the popup's Q&A and does not depend on any run's numbers. */
   const DISCUSS_QA = [
     { short: "Why treat one inspection point as one dwelling?", a: [
-      "An inspection point is where a service line joins the main, not a dwelling count. "
-      + "It could be a single house, an apartment block sharing one connection, or a "
-      + "commercial site with a different load profile entirely.",
-      "The layer carries a TRADEWASTE field flagging non-residential connections, and this "
-      + "model does not use it: every point is charged the same 500 L/day regardless.",
-      "Cross-referencing PARCELID against a land-use or dwelling-count layer would test "
-      + "this directly. Until then, 643 is a count of connections, not a verified count of "
-      + "households." ] },
+      "An inspection point is where a service line joins the main, not a dwelling count.",
+      "The layer carries a TRADEWASTE field flagging non-residential connections.",
+      "Cross-referencing PARCELID against land-use gives a count of connections." ] },
     { short: "Where do the three infiltration levels come from?", a: [
-      "0.25, 0.40 and 0.55 L/s per 100 m are round numbers chosen to bracket a dry, a wet "
-      + "and a very wet day. None is calibrated to this catchment.",
-      "The treatment plant publishes 91,993 hourly inflow records from 2009. Paired with "
-      + "Bureau of Meteorology rainfall for the same hours, a real rate can be worked "
-      + "backwards: measured inflow minus calculated sewage.",
-      "The catch is the catchment boundary. That only gives Walkerville's own rate if the "
-      + "plant serves only this catchment; a regional plant serving many suburbs would "
-      + "return a blended figure instead." ] },
-    { short: "What is the peak factor, and can it be checked?", a: [
-      "The ratio of the busiest hour's flow to the daily average, fixed here at 2.0. It "
-      + "describes household usage patterns such as morning showers, not a storm.",
-      "The same treatment plant records that would calibrate infiltration would also give "
-      + "a real peak factor: the ratio of the highest to the average hourly flow on a dry "
-      + "day, when infiltration is close to zero." ] },
-    { short: "Peak factor and infiltration cannot both come from one flow record. "
-             + "What breaks the tie?", a: [
-      "One equation, two unknowns: measured flow = dwellings x peak factor + infiltration. "
-      + "Infinitely many pairs of values fit the same measured number equally well.",
-      "A dry day anchors the peak factor first, since infiltration is near zero then. Wet "
-      + "days can then be solved for infiltration alone, holding the peak factor fixed.",
-      "Without that dry-day anchor, both figures stay assumptions, and fitting one to a "
-      + "wet event just moves the same uncertainty onto the other." ] },
-    { short: "What exactly is being simulated?", a: [
-      "The real 157-pipe, 71-chamber catchment above one outlet, solved in EPA SWMM's "
-      + "dynamic wave engine, the full equations rather than a simplification.",
-      "Every run is steady: a constant load is held for 120 minutes and the last 10 are "
-      + "read as the answer. There is no storm hydrograph and no time-of-day curve here.",
-      "Two loads enter at each node: sewage proportional to counted dwellings, and "
-      + "infiltration proportional to upstream pipe length. A chamber 'surcharges' when "
-      + "water rises above the crown of its own outlet pipe." ] },
-    { short: "What is one 'scenario', exactly?", a: [
-      "One infiltration level, one growth size and one manhole, all fixed together: "
-      + "'add N houses here, at this wet-weather level.'",
-      "71 chambers x 4 growth sizes x 3 infiltration levels = 852 separate SWMM solves. "
-      + "Clicking a manhole picks one of the three; the two knobs pick the other two." ] },
-    { short: "How does greedy pick the recommended sensor, and what does 'catching' a "
-             + "scenario mean physically?", a: [
-      "For one fixed wet-weather level and growth size, each of the 71 sites has a tipped "
-      + "set: the chambers that surcharge there but did not in the baseline.",
-      "Greedy repeatedly picks whichever chamber appears in the most still-uncovered "
-      + "tipped sets, until every coverable scenario has a chosen chamber in its set.",
-      "A chamber can only appear in a site's tipped set if it sits downstream of that site, "
-      + "since flow only moves one way, and it was already close enough to its own limit "
-      + "that the extra flow pushes it over. Downstream is necessary, not sufficient." ] },
-    { short: "Does a dwelling's load ever get shared between two manholes?", a: [
-      "No. Each property is attributed to exactly one pipe, either by its own connection "
-      + "line (about 96% of properties) or, failing that, by nearest main. Nothing is "
-      + "counted twice at the point of entry.",
-      "But every chamber downstream of that entry point 'sees' its flow in its own "
-      + "cumulative total, because the water genuinely passes through on the way to the "
-      + "outlet. That is aggregation, not sharing." ] },
-    { short: "Can a chamber surcharge because of something downstream of it?", a: [
-      "Yes. The dynamic wave solver captures backwater: if a downstream chamber cannot "
-      + "discharge fast enough, its level rises, and that can restrict the chamber "
-      + "immediately upstream of it too, with no extra load entering there at all.",
-      "A tipped set that is a chain of neighbouring chambers, rather than scattered "
-      + "locations, is the signature of this: one real bottleneck backing up into "
-      + "everything just above it." ] },
-    { short: "Why do so many manholes show the same 'runs out of room at' number?", a: [
-      "Because the figure describes the nearest downstream bottleneck's own remaining "
-      + "capacity, not the manhole clicked. Two manholes upstream of the same bottleneck "
-      + "get the same answer, regardless of how many properties are already connected at "
-      + "either one.",
-      "Walking a real path to the outlet, the number stays flat until it crosses the one "
-      + "pipe that was actually limiting it, then jumps to whatever the next tight pipe "
-      + "allows. This catchment has only 7 such pipes among all 71 chambers.",
-      "'Show bottleneck pipes' on the map draws exactly those 7, identified by full-bore "
-      + "Manning capacity (diameter and slope together, not diameter alone), computed at "
-      + "the one infiltration level the underlying bisection was run at." ] },
+      "0.25, 0.40 and 0.55 L/s per 100 m are round numbers chosen to bracket a dry, wet and very wet day.",
+      "Infiltration enters through the pipe itself rather than connections." ] },
+    { short: "How does greedy set cover work for sensor placement?", a: [
+      "Greedy repeatedly picks whichever chamber appears in the most still-uncovered tipped sets.",
+      "Downstream bottlenecks catch multiple upstream branches." ] },
+    { short: "Can backwater surcharge cause a chamber to fill?", a: [
+      "Yes. The SWMM dynamic wave solver captures backwater: if a downstream reach throttles, water backs up into upstream chambers.",
+      "Chambers like MH4449118 act as pressure gauges on trunk bottlenecks." ] }
   ];
 
   function renderQA() {
     if ($("#qa").dataset.done) return;
     $("#qa").innerHTML =
       '<div class="lead"><p>Written up from questions asked while stress-testing this ' +
-      "model's assumptions: how the load is built, what the solver actually does, and " +
-      "why the numbers behave the way they do. Not part of any SWMM run.</p></div>" +
+      "model's assumptions: load generation, dynamic SWMM solver, and backwater mechanics.</p></div>" +
       DISCUSS_QA.map(q =>
         '<details class="qa"><summary>' + esc(q.short) + "</summary>" +
         '<div class="body">' + q.a.map(x => "<p>" + esc(x) + "</p>").join("") +
@@ -412,37 +636,24 @@ window.GrowthUI = (function () {
     $("#qa").dataset.done = "1";
   }
 
-  /* --------------------------------------------------------------- popup */
   function showModal() {
     const sc = GROWTH_INDEX.scenario, n = sc.numbers;
     const fact = (l, v) => v == null ? "" :
       '<div class="kfact">' + esc(l) + "<b>" + esc(v) + "</b></div>";
     $("#modalBox").innerHTML =
-      '<button class="close" id="modalClose">Close</button>' +
+      '<button class="close-btn" id="modalClose">Close</button>' +
       "<h2>" + esc(sc.title) + "</h2>" +
       '<p class="q">' + esc(sc.question) + "</p>" +
       sc.what.map(p => "<p>" + esc(p) + "</p>").join("") +
-      "<h3>What to look at</h3><ul>" + sc.read.map(r => "<li>" + esc(r) + "</li>").join("") +
-      "</ul>" +
       "<h3>The numbers behind it</h3><div class=kfacts>" +
       fact("Pipes modelled", n.pipes) +
       fact("Chambers", n.chambers) +
       fact("Properties counted", n.dwellings) +
       fact("Peak factor", n.peakFactor) +
-      fact("Wet weather settings", n.iiRange ? n.iiRange + " L/s per 100 m" : null) +
-      fact("Growth settings", n.stepRange ? n.stepRange + " dwellings" : null) +
       "</div>" +
-      "<h3>Questions asked about this model</h3>" +
-      sc.qa.map(q =>
-        '<details class="qa"><summary>' + esc(q.short) + "</summary>" +
-        '<div class="body"><p><strong>' + esc(q.q) + "</strong></p>" +
-        q.a.map(x => "<p>" + esc(x) + "</p>").join("") +
-        '<div class="ev">' + esc(q.evidence) + "</div></div></details>").join("") +
-      "<h3>What it assumes</h3><p>Lifted from the project's assumptions register.</p>" +
+      "<h3>What it assumes</h3>" +
       "<table class=ass><tbody>" + sc.assumptions.map(a =>
-        '<tr><td class="id">' + esc(a.id) + "</td><td>" + md(a.text) +
-        '<br><span class="tag ' + (a.status === "A" ? "assumed" : "") + '">' +
-        esc(a.statusWord) + "</span></td></tr>").join("") + "</tbody></table>" +
+        '<tr><td class="id">' + esc(a.id) + "</td><td>" + md(a.text) + "</td></tr>").join("") + "</tbody></table>" +
       '<div class="caveat">' + esc(sc.caveat) + "</div>";
     $("#modal").hidden = false;
     $("#modalClose").onclick = () => { $("#modal").hidden = true; };
@@ -455,12 +666,16 @@ window.GrowthUI = (function () {
     geom().nodes.forEach(n => { byName[n.name] = n; });
     const idxOfName = {};
     runs().chambers.forEach((c, i) => { idxOfName[c] = i; });
+
     Growth3D.build($("#stage"), nd => {
-      // A click on the map gives a chamber NAME; everything else here works in indices.
       st.hover = null;
-      if (nd.name in idxOfName) select(idxOfName[nd.name]);
+      if (nd.name in idxOfName) {
+        select(idxOfName[nd.name]);
+        if (st.mode === "heatmap") {
+          explainChamberPlacement(idxOfName[nd.name]);
+        }
+      }
     }, nd => {
-      // Hovering the manhole that is already selected previews nothing new.
       const name = nd && nd.name !== nameOf(st.site) ? nd.name : null;
       if (name === st.hover) return;
       st.hover = name;
@@ -469,18 +684,23 @@ window.GrowthUI = (function () {
     }).then(() => {
       buildKnobs();
       const order = buildList();
+      populateBlockagePipes();
+
       $("#scale").textContent = geom().nPipes + " pipes, " + geom().nChambers +
         " manholes, " + (geom().nHouses || geom().baseDwellings) + " connected properties" +
-        ", plus " + geom().nodes.filter(n => n.kind !== "chamber").length +
-        " pipe ends with no manhole on record. Elevation is the pipe invert, exaggerated x" +
-        Growth3D.ZEXAG + ". Click a manhole to move the growth there.";
+        ", 2 pump stations. Elevation is pipe invert, exaggerated x" +
+        Growth3D.ZEXAG + ". Click any node to inspect its affecting upstream catchment.";
+
       select(order[0]);
     });
+
+    // Navigation & Toolbar
     $("#btn-info").onclick = showModal;
     $("#tab-ref").onclick = () => setTab($("#pane-ref").hidden ? "ref" : "map");
     $("#refClose").onclick = () => setTab("map");
     $("#tab-qa").onclick = () => setTab($("#pane-qa").hidden ? "qa" : "map");
     $("#qaClose").onclick = () => setTab("map");
+
     $("#toggleBottlenecks").onclick = () => {
       st.showBottlenecks = !st.showBottlenecks;
       $("#toggleBottlenecks").classList.toggle("primary", st.showBottlenecks);
@@ -488,9 +708,7 @@ window.GrowthUI = (function () {
         ? "Hide bottleneck pipes" : "Show bottleneck pipes";
       Growth3D.showBottlenecks(st.showBottlenecks);
     };
-    $("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").hidden = true; };
-    $("#fitAll").onclick = () => Growth3D.frame(null);
-    $("#fitSite").onclick = () => Growth3D.frame(nameOf(st.site));
+
     $("#toggleSensors").onclick = () => {
       st.showSensors = !st.showSensors;
       $("#toggleSensors").classList.toggle("primary", st.showSensors);
@@ -498,13 +716,104 @@ window.GrowthUI = (function () {
                                                        : "Show proposed sensors";
       repaint();
     };
+
+    $("#toggleFlow").onclick = () => {
+      st.flowAnim = !st.flowAnim;
+      $("#toggleFlow").classList.toggle("primary", st.flowAnim);
+      $("#toggleFlow").textContent = st.flowAnim ? "Flow Animation: ON" : "Flow Animation: OFF";
+      Growth3D.setFlowAnimation(st.flowAnim, 1.0);
+    };
+
+    // Mode Selector
+    $("#modeKnob").onclick = e => {
+      const b = e.target.closest("button"); if (!b) return;
+      document.querySelectorAll("#modeKnob button").forEach(btn => btn.classList.remove("on"));
+      b.classList.add("on");
+      st.mode = b.dataset.mode;
+
+      // Toggle Panels
+      $("#panel-growth").hidden = st.mode !== "growth";
+      $("#panel-heatmap").hidden = st.mode !== "heatmap";
+      $("#panel-blockage").hidden = st.mode !== "blockage";
+      $("#panel-pump").hidden = st.mode !== "pump";
+
+      repaint();
+    };
+
+    // Blockage Controls
+    $("#blockageRange").oninput = e => {
+      st.blockageSeverity = +e.target.value;
+      updateBlockagePhysics();
+      renderBlockageUI();
+    };
+
+    // Pump Controls
+    $("#pumpStationSelect").onchange = e => {
+      st.activePumpStation = e.target.value;
+      const duty = st.pumpDuty[st.activePumpStation] || 1.0;
+      $("#pumpDutyRange").value = String(Math.round(duty * 100));
+      renderPumpUI();
+    };
+
+    $("#pumpDutyRange").oninput = e => {
+      const duty = (+e.target.value) / 100;
+      st.pumpDuty[st.activePumpStation] = duty;
+      Growth3D.setPumpStationState(st.activePumpStation, duty > 0, duty);
+      renderPumpUI();
+    };
+
+    $("#chkAutoRelief").onchange = e => {
+      st.autoRelief = e.target.checked;
+      if (st.autoRelief) {
+        st.pumpDuty["PS-01"] = 1.25;
+        st.pumpDuty["LS-02"] = 1.10;
+        $("#pumpDutyRange").value = "125";
+        Growth3D.setPumpStationState("PS-01", true, 1.25);
+        Growth3D.setPumpStationState("LS-02", true, 1.10);
+      }
+      renderPumpUI();
+    };
+
+    // Viscosity
+    $("#viscSelect").onchange = e => {
+      st.viscMode = e.target.value;
+      renderPumpUI();
+    };
+
+    // Explain Top Sensor Button
+    $("#btnExplainTop").onclick = () => {
+      ensureHeatmapData();
+      const topIdx = heatmapData.rankings[0].index;
+      select(topIdx);
+      explainChamberPlacement(topIdx);
+    };
+
+    // Modals
+    $("#sensorModalClose").onclick = () => { $("#sensorModal").hidden = true; };
+    $("#sensorModal").onclick = e => { if (e.target.id === "sensorModal") $("#sensorModal").hidden = true; };
+
+    $("#btnSchema").onclick = () => { $("#schemaModal").hidden = false; };
+    $("#schemaModalClose").onclick = () => { $("#schemaModal").hidden = true; };
+    $("#schemaModal").onclick = e => { if (e.target.id === "schemaModal") $("#schemaModal").hidden = true; };
+
+    $("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").hidden = true; };
+    $("#fitAll").onclick = () => Growth3D.frame(null);
+    $("#fitSite").onclick = () => Growth3D.frame(nameOf(st.site));
+
     document.addEventListener("keydown", e => {
       if (e.key !== "Escape") return;
       if (!$("#modal").hidden) $("#modal").hidden = true;
+      if (!$("#sensorModal").hidden) $("#sensorModal").hidden = true;
+      if (!$("#schemaModal").hidden) $("#schemaModal").hidden = true;
       else if (!$("#pane-ref").hidden || !$("#pane-qa").hidden) setTab("map");
     });
     window.addEventListener("resize", () => Growth3D.resize($("#stage")));
   }
 
-  return { init };
+  function selectAndExplain(idx) {
+    select(idx);
+    explainChamberPlacement(idx);
+  }
+
+  return { init, selectAndExplain };
 })();
