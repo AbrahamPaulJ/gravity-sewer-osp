@@ -42,7 +42,11 @@ window.GrowthUI = (function () {
     // Sub-window & sidebar resizing & pinning state
     subwindowPinned: false,          // double-click to pin open against outside clicks
     isResizing: false,
-    pointerDownInsideSub: false
+    pointerDownInsideSub: false,
+
+    // Growth sensor recommendations
+    growthSensorsActive: false,
+    growthSensorCrit: "immediate"    // "immediate" | "homes" | "volume"
   };
 
   const runs = () => window.GROWTH_RUNS;
@@ -117,9 +121,11 @@ window.GrowthUI = (function () {
       ? c.coverage.chosen.map(x => nameOf(+x.chamber)) : [];
 
     // Notify 3D engine of current state
-    if (st.mode === "heatmap") {
-      computeHeatmapData();
-      Growth3D.setHeatmap(true, heatmapData.scores, heatmapData.top5);
+    const isHeatmapActive = st.mode === "heatmap" || (st.mode === "growth" && st.growthSensorsActive);
+    if (isHeatmapActive) {
+      const crit = st.mode === "growth" ? st.growthSensorCrit : "combined";
+      computeHeatmapData(crit);
+      Growth3D.setHeatmap(true, heatmapData.scores, heatmapData.top3);
     } else {
       Growth3D.setHeatmap(false, null, null);
     }
@@ -302,6 +308,8 @@ window.GrowthUI = (function () {
       : "No chamber is surcharged before growth in " +
         esc(R.iiLevels[st.ii].label.toLowerCase()) + " conditions. Everything red is caused " +
         "by the new dwellings.";
+
+    renderGrowthSensors();
   }
 
   const row2 = (k, v) => '<div class="fact"><span>' + esc(k) + "</span><span>" + v +
@@ -331,7 +339,8 @@ window.GrowthUI = (function () {
   }
 
   /* ------------------------------------------------ SENSOR PLACEMENT HEATMAP */
-  function computeHeatmapData() {
+  function computeHeatmapData(crit) {
+    const activeCrit = crit || (st.mode === "growth" ? st.growthSensorCrit : "combined");
     const R = runs(), g = geom();
     const c = cell(); // active scenario cell for current st.ii and st.add
     const scores = {};
@@ -339,6 +348,8 @@ window.GrowthUI = (function () {
 
     // Base surcharged chambers in this wet weather condition
     const baseSurchargedSet = new Set(c.baseSurcharged || []);
+    const row = c.rows[st.site] || { tip: [] };
+    const siteTippedSet = new Set(row.tip || []);
 
     // Active cell tipping counts across all 71 connection sites
     const activeTipCounts = new Array(R.chambers.length).fill(0);
@@ -361,10 +372,16 @@ window.GrowthUI = (function () {
       const up = Growth3D.getUpstreamMetrics(name);
       const homes = up ? up.homesCount : 0;
       const lengthM = up ? up.totalLengthM : 0;
+      const qDry = homes * 500 * 2 / 86400; // L/s
+      const wetInflowLps = (lengthM * iiRate) / 100;
+      const qTotalLps = qDry + wetInflowLps; // L/s
+      const dailyM3 = Math.round(qTotalLps * 86.4);
+      const isSiteTipped = siteTippedSet.has(chIdx);
+      const isBaseSurcharged = baseSurchargedSet.has(chIdx);
 
       // 1. Active Scenario Surcharge & Wet Weather Vulnerability (Weight: 30 pts)
       let sTip = 0;
-      if (baseSurchargedSet.has(chIdx)) {
+      if (isBaseSurcharged) {
         sTip = 25 + (iiRate >= 0.55 ? 5 : iiRate >= 0.40 ? 3 : 1);
       } else {
         const tipRateInCell = activeTipCounts[chIdx] / Math.max(1, c.rows.length);
@@ -391,31 +408,51 @@ window.GrowthUI = (function () {
       let sBackwater = 5;
       if (name === "MH4449118") {
         sBackwater = (iiRate >= 0.55 ? 15 : iiRate >= 0.40 ? 14 : 12);
-      } else if (baseSurchargedSet.has(chIdx) || activeTipCounts[chIdx] > 10) {
+      } else if (isBaseSurcharged || activeTipCounts[chIdx] > 10) {
         sBackwater = 12;
       } else if (globalTipCounts[chIdx] > 20) {
         sBackwater = 8;
       }
 
       // 5. Upstream Mains Network & Wet Weather Infiltration Inflow (Weight: 10 pts)
-      const wetInflowLps = (lengthM * iiRate) / 100;
       const sInflow = Math.min(10, Math.max(2, (wetInflowLps / 15.0) * 10));
 
-      const rawScore = Math.round(sTip + sHomes + sBottleneck + sBackwater + sInflow);
-      const score = Math.max(12, Math.min(98, rawScore));
-      scores[name] = score;
-
       const totalParamPoints = sTip + sHomes + sBottleneck + sBackwater + sInflow;
+      let finalScore = 0;
+
+      if (activeCrit === "immediate") {
+        if (isSiteTipped) {
+          finalScore = 90 + Math.min(10, (homes / 643) * 10);
+        } else if (isBaseSurcharged) {
+          finalScore = 78 + (iiRate >= 0.55 ? 10 : iiRate >= 0.40 ? 6 : 2) + Math.min(8, (homes / 643) * 8);
+        } else if (activeTipCounts[chIdx] > 0) {
+          finalScore = 55 + Math.min(22, (activeTipCounts[chIdx] / c.rows.length) * 22) + Math.min(5, (homes / 643) * 5);
+        } else {
+          finalScore = Math.max(12, Math.round((sHomes + sBottleneck + sBackwater) * 0.7));
+        }
+      } else if (activeCrit === "homes") {
+        finalScore = Math.max(10, Math.min(100, Math.round(10 + (homes / 643) * 90)));
+      } else if (activeCrit === "volume") {
+        finalScore = Math.max(10, Math.min(100, Math.round(10 + Math.min(1.0, qTotalLps / 18.0) * 90)));
+      } else {
+        finalScore = Math.max(12, Math.min(98, Math.round(totalParamPoints)));
+      }
+
+      scores[name] = finalScore;
+
       chamberList.push({
         name,
         index: chIdx,
         mh: R.manholeIds[chIdx],
-        score,
+        score: finalScore,
         homes,
         lengthM: Math.round(lengthM * 10) / 10,
         activeTipped: activeTipCounts[chIdx],
-        baseSurcharged: baseSurchargedSet.has(chIdx),
+        baseSurcharged: isBaseSurcharged,
+        isSiteTipped,
         wetInflowLps: Math.round(wetInflowLps * 100) / 100,
+        qTotalLps: Math.round(qTotalLps * 100) / 100,
+        dailyM3,
         breakdown: {
           surcharge: Math.round((sTip / totalParamPoints) * 100),
           homes: Math.round((sHomes / totalParamPoints) * 100),
@@ -431,8 +468,66 @@ window.GrowthUI = (function () {
     chamberList.forEach((cItem, r) => { cItem.rank = r + 1; });
     const top3 = chamberList.slice(0, 3).map(c => c.name);
     const top5 = chamberList.slice(0, 5);
-    heatmapData = { scores, rankings: chamberList, top3, top5 };
+    heatmapData = { scores, rankings: chamberList, top3, top5, activeCrit };
     return heatmapData;
+  }
+
+  function renderGrowthSensors() {
+    const resultsEl = $("#growthSensorResults");
+    if (!resultsEl) return;
+    const crit = st.growthSensorCrit || "immediate";
+    const data = computeHeatmapData(crit);
+    const topCandidates = data.rankings.slice(0, 3);
+
+    let html = "";
+    topCandidates.forEach((item, idx) => {
+      const isSelected = item.index === st.site;
+      let badge = "";
+      let detail = "";
+      if (crit === "immediate") {
+        badge = item.isSiteTipped
+          ? "<span class='badge-tag crit'>Tipped by Growth</span>"
+          : item.baseSurcharged
+          ? "<span class='badge-tag warn'>Wet Surcharge</span>"
+          : item.activeTipped > 0
+          ? "<span class='badge-tag warn'>At Risk (" + item.activeTipped + "/71)</span>"
+          : "<span class='badge-tag good'>High Inflow</span>";
+        detail = "🏠 " + item.homes + " homes &bull; 🌊 " + item.qTotalLps.toFixed(1) + " L/s (" + item.dailyM3.toLocaleString() + " m³/d)";
+      } else if (crit === "homes") {
+        badge = "<span class='badge-tag good'>" + item.homes + " Homes</span>";
+        detail = (item.homes === 643 ? "Total Outfall Sentinel" : item.homes >= 50 ? "Trunk Collector Main" : "Tributary Junction") +
+          " &bull; 🌊 " + item.qTotalLps.toFixed(1) + " L/s";
+      } else { // volume
+        badge = "<span class='badge-tag good'>" + item.qTotalLps.toFixed(1) + " L/s</span>";
+        detail = item.dailyM3.toLocaleString() + " m³/day monitored &bull; 🏠 " + item.homes + " homes";
+      }
+
+      html += "<div class='sensor-candidate-row" + (isSelected ? " selected" : "") + "' onclick='GrowthUI.selectAndFocusChamber(\"" + item.name + "\")'>" +
+        "<div style='display:flex; justify-content:space-between; align-items:center'>" +
+          "<strong style='color:var(--ink)'>#" + (idx + 1) + " MH " + item.mh + "</strong>" +
+          badge +
+        "</div>" +
+        "<div class='quiet' style='font-size:11px; margin-top:2px'>" + detail + " &bull; <span style='color:var(--accent); font-weight:600'>Score: " + item.score + "</span></div>" +
+      "</div>";
+    });
+
+    resultsEl.innerHTML = html;
+
+    const btn = $("#btnGrowthSensors");
+    if (btn) {
+      btn.classList.toggle("active", st.growthSensorsActive);
+      btn.textContent = st.growthSensorsActive ? "Show on Map: ON" : "Show on Map: OFF";
+    }
+  }
+
+  function selectAndFocusChamber(name) {
+    const R = runs();
+    const idx = R.chambers.indexOf(name);
+    if (idx !== -1) {
+      st.site = idx;
+      repaint();
+    }
+    Growth3D.frame(name);
   }
 
   function renderHeatmapList() {
@@ -1261,6 +1356,28 @@ window.GrowthUI = (function () {
       Growth3D.setFlowAnimation(st.flowAnim, 1.0);
     };
 
+    // Growth Sensor Priority Placement Controls
+    const btnGrowthSensors = $("#btnGrowthSensors");
+    if (btnGrowthSensors) {
+      btnGrowthSensors.onclick = () => {
+        st.growthSensorsActive = !st.growthSensorsActive;
+        repaint();
+      };
+    }
+
+    const knobGrowthCrit = $("#growthSensorPriorityKnob");
+    if (knobGrowthCrit) {
+      knobGrowthCrit.onclick = (e) => {
+        const b = e.target.closest("button[data-crit]");
+        if (!b) return;
+        st.growthSensorCrit = b.dataset.crit;
+        knobGrowthCrit.querySelectorAll("button").forEach(btn => {
+          btn.classList.toggle("on", btn === b);
+        });
+        repaint();
+      };
+    }
+
     // Mode Selector
     $("#modeKnob").onclick = e => {
       const b = e.target.closest("button"); if (!b) return;
@@ -1571,5 +1688,5 @@ window.GrowthUI = (function () {
     explainChamberPlacement(idx);
   }
 
-  return { init, selectAndExplain, computeHeatmapData, toggleSubwindowPin, st };
+  return { init, selectAndExplain, selectAndFocusChamber, computeHeatmapData, toggleSubwindowPin, st };
 })();

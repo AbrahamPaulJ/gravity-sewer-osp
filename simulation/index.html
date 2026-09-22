@@ -270,6 +270,29 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
   box-shadow:0 0 12px rgba(56,189,248,0.35)}
 .pan-hint kbd{background:var(--panel-2); border:1px solid var(--line); border-radius:4px;
   padding:1px 5px; font-family:ui-monospace,Menlo,monospace; font-size:10.5px; color:var(--accent)}
+
+/* Priority Sensor Placement in Growth Mode */
+.btn-growth-sensors{
+  background:var(--panel-2); color:var(--dim); border:1px solid var(--line);
+  border-radius:6px; padding:3px 9px; font-size:11px; font-weight:700; cursor:pointer;
+  transition:all 0.15s ease;
+}
+.btn-growth-sensors:hover{border-color:var(--accent); color:var(--ink)}
+.btn-growth-sensors.active{
+  background:var(--accent); color:#06131f; border-color:var(--accent);
+  box-shadow:0 0 10px rgba(56,189,248,0.35);
+}
+.sensor-candidate-row{
+  cursor:pointer; border-radius:6px; padding:7px 9px; margin-bottom:6px;
+  background:var(--panel-2); border:1px solid var(--line); transition:all 0.15s;
+}
+.sensor-candidate-row:hover{
+  border-color:var(--accent); transform:translateX(2px);
+  background:rgba(56,189,248,0.08);
+}
+.sensor-candidate-row.selected{
+  border-color:var(--accent); background:rgba(56,189,248,0.14);
+}
 </style>
 </head>
 <body>
@@ -302,14 +325,35 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
     <div id="siteFacts"></div>
     <div id="tipList"></div>
     <div id="baseNote"></div>
+
+    <!-- Priority Sensor Placement for Active Growth Scenario -->
+    <div class="card-box" id="growthSensorCard" style="margin-top:14px; border-color:var(--accent)">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+        <span style="font-weight:700; font-size:12.5px; color:var(--ink)">🎯 Priority Sensor Placement</span>
+        <button id="btnGrowthSensors" class="btn-growth-sensors">Show on Map: OFF</button>
+      </div>
+      <p class="quiet" style="margin-top:0; font-size:11.5px; line-height:1.4">
+        Recommend sensor manholes based on immediate scenario tipping, contributing homes guarded, or sewer volume monitored.
+      </p>
+
+      <label class="fld" style="margin-top:8px">Prioritize Need By:</label>
+      <div class="knob" id="growthSensorPriorityKnob" style="grid-template-columns: repeat(3, 1fr); margin-bottom:8px">
+        <button data-crit="immediate" class="on" title="Manholes at immediate risk of surcharge in this wet weather and growth condition">Immediate Need</button>
+        <button data-crit="homes" title="Manholes guarding the highest number of upstream homes">Homes Guarded</button>
+        <button data-crit="volume" title="Manholes monitoring the largest volume of sewer wastewater">Sewer Volume</button>
+      </div>
+
+      <div id="growthSensorResults" style="margin-top:6px"></div>
+    </div>
+
     <div id="sensorList"></div>
   </div>
 
   <!-- PANEL 2: Sensor Placement Heatmap -->
   <div id="panel-heatmap" hidden>
     <div class="card-box" style="margin-top:14px">
-      <h4><span>Sensor Placement Heatmap</span><span class="badge-tag good">AI Optimized</span></h4>
-      <p class="quiet" style="margin-top:0">Multi-ring radial gradient layer identifies optimal sensor positions based on active surcharge frequency, properties guarded, bottleneck constriction, backwater wave rise, and wet infiltration.</p>
+      <h4><span>Sensor Placement Heatmap</span><span class="badge-tag good">Dynamic Ranking</span></h4>
+      <p class="quiet" style="margin-top:0">Clean 3D node-based heatmap identifies optimal sensor locations based on active scenario tipping, upstream homes, sewer flow volume, and bottleneck chokes.</p>
       <div style="display:flex; justify-content:space-between; font-size:11px; margin-top:8px; color:var(--dim)">
         <span>0 (Low)</span><span>25</span><span>50</span><span>75</span><span>100 (Critical)</span>
       </div>

@@ -288,7 +288,7 @@ function runSuite() {
   check("index.html contains dynamic legend container", indexHtml.includes('id="simLegend"'));
   check("index.html contains live heatmap explainability card", indexHtml.includes('id="heatmapLiveCard"'));
 
-  check("growth_3d.js contains multi-ring radial heatmap generator", growth3dSrc.includes("getHeatTexture") && growth3dSrc.includes("createRadialGradient"));
+  check("growth_3d.js uses clean node-based heatmap coloring with getHeatmapHex and pulsating halo rings", growth3dSrc.includes("getHeatmapHex") && growth3dSrc.includes("haloRings") && !growth3dSrc.includes("getHeatTexture"));
   check("growth_3d.js executes and exports Growth3D cleanly without runtime reference errors", (() => {
     try {
       const vm = require("vm");
@@ -498,6 +498,28 @@ function runSuite() {
       console.warn("Headless Chrome check skipped or timed out:", e.message);
     }
   }
+
+  console.log("\n14. growth scenario sensor prioritization (immediate need, homes guarded, sewer volume)");
+  check("index.html contains priority sensor placement card in growth view",
+    indexHtml.includes('id="growthSensorCard"') &&
+    indexHtml.includes('id="btnGrowthSensors"') &&
+    indexHtml.includes('id="growthSensorPriorityKnob"') &&
+    indexHtml.includes('id="growthSensorResults"')
+  );
+  check("growth_ui.js implements multi-criteria sensor prioritization (immediate, homes, volume)",
+    growthUiSrc.includes("st.growthSensorsActive") &&
+    growthUiSrc.includes("st.growthSensorCrit") &&
+    growthUiSrc.includes("function renderGrowthSensors()")
+  );
+  check("growth_ui.js computeHeatmapData dynamically supports immediate, homes, and volume criteria",
+    growthUiSrc.includes('activeCrit === "immediate"') &&
+    growthUiSrc.includes('activeCrit === "homes"') &&
+    growthUiSrc.includes('activeCrit === "volume"')
+  );
+  check("growth_ui.js exports selectAndFocusChamber and connects to 3D camera framing",
+    growthUiSrc.includes("selectAndFocusChamber") &&
+    growthUiSrc.includes("Growth3D.frame(name)")
+  );
 
   console.log("\n" + passed + " passed, " + failed + " failed");
   if (failed > 0) process.exit(1);

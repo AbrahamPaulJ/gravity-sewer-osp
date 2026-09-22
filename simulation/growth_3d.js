@@ -45,9 +45,6 @@ window.Growth3D = (function () {
   let heatmapScores = {};          // chamberName -> score (0-100)
   let topRecommendations = [];     // array of top candidate chamber names
   let haloRings = [];              // 3D rings around top sensor sites
-  let heatmapGroup = null;         // THREE.Group containing radial gradient planes
-  let heatTexture = null;          // CanvasTexture for multi-ring radial gradient
-  let rankingPins = [];            // [{ el, at, name }]
 
   // Blockage & Backwater state
   let activeBlockagePipe = null;
@@ -129,28 +126,6 @@ window.Growth3D = (function () {
       const b = Math.round(0x0b + t * (0x55 - 0x0b));
       return (r << 16) | (g << 8) | b;
     }
-  }
-
-  function getHeatTexture() {
-    if (heatTexture) return heatTexture;
-    if (typeof document === "undefined") return null;
-    const canvas = document.createElement("canvas");
-    canvas.width = 256;
-    canvas.height = 256;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-    const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-    // Concentric multi-ring gradient matching user's reference image (media_1790071173730.png)
-    grad.addColorStop(0.00, "rgba(239, 68, 68, 0.88)");   // Red/coral core (critical priority)
-    grad.addColorStop(0.20, "rgba(245, 158, 11, 0.76)");  // Amber ring (high priority)
-    grad.addColorStop(0.45, "rgba(74, 222, 128, 0.60)");  // Lime/green ring (moderate priority)
-    grad.addColorStop(0.70, "rgba(56, 189, 248, 0.44)");  // Cyan/sky-blue ring (low priority)
-    grad.addColorStop(0.88, "rgba(71, 85, 105, 0.22)");  // Translucent dark slate outer boundary
-    grad.addColorStop(1.00, "rgba(13, 17, 23, 0.00)");   // Completely transparent falloff
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 256, 256);
-    heatTexture = new THREE.CanvasTexture(canvas);
-    return heatTexture;
   }
 
   async function build(container, pick, hover) {
@@ -255,20 +230,6 @@ window.Growth3D = (function () {
           lbl.el.style.display = v.z < 1 ? "block" : "none";
           lbl.el.style.left = ((v.x * 0.5 + 0.5) * el.clientWidth) + "px";
           lbl.el.style.top = ((-v.y * 0.5 + 0.5) * el.clientHeight) + "px";
-        });
-
-        // Project numbered ranking teardrop pins on heatmap
-        rankingPins.forEach(pin => {
-          if (!pin || !pin.el) return;
-          const v = pin.at.clone().project(camera);
-          const el = renderer.domElement;
-          if (v.z < 1) {
-            pin.el.style.display = "block";
-            pin.el.style.left = ((v.x * 0.5 + 0.5) * el.clientWidth) + "px";
-            pin.el.style.top = ((-v.y * 0.5 + 0.5) * el.clientHeight) + "px";
-          } else {
-            pin.el.style.display = "none";
-          }
         });
       })();
     }
@@ -446,11 +407,6 @@ window.Growth3D = (function () {
     focusRing.add(stalk);
     focusRing.visible = false;
     scene.add(focusRing);
-
-    // Multi-Ring Radial Gradient Heatmap Overlay Layer
-    heatmapGroup = new THREE.Group();
-    heatmapGroup.visible = false;
-    scene.add(heatmapGroup);
 
     // Dynamic Blockage Water Columns & Overflow Spill Rings
     blockageWaterGroup = new THREE.Group();
@@ -867,84 +823,6 @@ window.Growth3D = (function () {
     heatmapScores = scoresMap || {};
     const rankedArr = topRankedList || [];
     topRecommendations = rankedArr.map(item => typeof item === "string" ? item : item.name);
-
-    if (!built) return;
-    const g = G();
-    if (!g) return;
-
-    if (heatmapActive && heatmapGroup) {
-      heatmapGroup.visible = true;
-      // Rebuild multi-ring gradient overlay planes
-      while (heatmapGroup.children.length) {
-        const c = heatmapGroup.children.pop();
-        if (c.geometry) c.geometry.dispose();
-      }
-
-      const tex = getHeatTexture();
-      if (tex) {
-        g.nodes.forEach(nd => {
-          if (nd.kind !== "chamber") return;
-          const sc = heatmapScores[nd.name] || 0;
-          if (sc < 15) return;
-
-          const planeGeo = new THREE.PlaneGeometry(1, 1);
-          const planeMat = new THREE.MeshBasicMaterial({
-            map: tex,
-            transparent: true,
-            opacity: 0.82,
-            depthWrite: false,
-            depthTest: true,
-            side: THREE.DoubleSide
-          });
-          const mesh = new THREE.Mesh(planeGeo, planeMat);
-          mesh.rotation.x = -Math.PI / 2;
-          mesh.position.copy(P(nd.x, nd.y, nd.inv));
-          mesh.position.y += 1.8; // hover slightly above pipes and terrain
-          const diam = 45 + (sc / 100) * 115;
-          mesh.scale.set(diam, diam, 1);
-          mesh.renderOrder = 2;
-          heatmapGroup.add(mesh);
-        });
-      }
-
-      // Update numbered teardrop pins in labelLayer
-      rankingPins.forEach(p => { if (p.el && p.el.parentNode) p.el.parentNode.removeChild(p.el); });
-      rankingPins.length = 0;
-
-      if (labelLayer) {
-        rankedArr.slice(0, 5).forEach((item, r) => {
-          const name = typeof item === "string" ? item : item.name;
-          const mh = typeof item === "object" && item.mh ? item.mh : name.replace(/^MH/, "");
-          const sc = typeof item === "object" && item.score != null ? item.score : (heatmapScores[name] || 0);
-          const rankNum = typeof item === "object" && item.rank != null ? item.rank : (r + 1);
-          const node = g.nodes.find(n => n.name === name);
-          if (!node) return;
-
-          const pin = document.createElement("div");
-          pin.className = "pin-marker";
-          pin.innerHTML =
-            '<svg width="30" height="38" viewBox="0 0 32 42" class="pin-badge">' +
-              '<path d="M16 0C7.16 0 0 7.16 0 16c0 10.5 16 26 16 26s16-15.5 16-26c0-8.84-7.16-16-16-16z" fill="#0288d1" stroke="#ffffff" stroke-width="1.8"/>' +
-              '<circle cx="16" cy="15" r="9" fill="#ffffff"/>' +
-              '<text x="16" y="19.5" text-anchor="middle" font-size="12" font-weight="800" font-family="system-ui, -apple-system, sans-serif" fill="#0288d1">' + rankNum + '</text>' +
-            '</svg>' +
-            '<div class="pin-tooltip">#' + rankNum + ' MH ' + mh + '<br><b>' + sc + ' pts</b> &bull; Click to inspect</div>';
-          pin.onclick = (e) => {
-            e.stopPropagation();
-            if (onPick) onPick(node);
-          };
-          pin.onmouseenter = () => {
-            if (onHover) onHover(node);
-          };
-          labelLayer.appendChild(pin);
-          rankingPins.push({ el: pin, at: P(node.x, node.y, node.inv), name });
-        });
-      }
-    } else {
-      if (heatmapGroup) heatmapGroup.visible = false;
-      rankingPins.forEach(p => { if (p.el && p.el.parentNode) p.el.parentNode.removeChild(p.el); });
-      rankingPins.length = 0;
-    }
   }
 
   function setBlockage(pipeIdx, severity, backwaterChambers, backwaterPipes) {
