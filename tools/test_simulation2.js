@@ -30,12 +30,13 @@ function runSuite() {
   const sandbox = { window: {} };
   vm.createContext(sandbox);
 
-  const catchmentSrc = fs.readFileSync("simulation/data/catchment.js", "utf8");
-  const growthSrc = fs.readFileSync("simulation/data/growth.js", "utf8");
-  const indexSrc = fs.readFileSync("simulation/data/index.js", "utf8");
-  const growth3dSrc = fs.readFileSync("simulation/growth_3d.js", "utf8");
-  const growthUiSrc = fs.readFileSync("simulation/growth_ui.js", "utf8");
-  const indexHtml = fs.readFileSync("simulation/index.html", "utf8");
+  const baseDir = fs.existsSync("data/catchment.js") ? "." : (fs.existsSync("simulation/data/catchment.js") ? "simulation" : ".");
+  const catchmentSrc = fs.readFileSync(path.join(baseDir, "data/catchment.js"), "utf8");
+  const growthSrc = fs.readFileSync(path.join(baseDir, "data/growth.js"), "utf8");
+  const indexSrc = fs.readFileSync(path.join(baseDir, "data/index.js"), "utf8");
+  const growth3dSrc = fs.readFileSync(path.join(baseDir, "growth_3d.js"), "utf8");
+  const growthUiSrc = fs.readFileSync(path.join(baseDir, "growth_ui.js"), "utf8");
+  const indexHtml = fs.readFileSync(path.join(baseDir, "index.html"), "utf8");
 
   vm.runInContext(catchmentSrc, sandbox);
   vm.runInContext(growthSrc, sandbox);
