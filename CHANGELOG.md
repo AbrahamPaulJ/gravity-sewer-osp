@@ -50,14 +50,22 @@
 - Added automated test for **Heatmap Scenario Reactivity**: verifies that shifting scenario knobs between dry/low-growth and heavy-storm/high-growth dynamically shifts chamber scores and re-ranks top candidates.
 - Full suite of 41 tests passing (100% success). All 42 Sandbox/Simulation 1 tests in `tools/test_sandbox.js` also passing.
 
+### 8. 3D Viewport Free Movement: Spacebar Hand Pan & 4-Direction Navigation (`simulation/growth_3d.js`, `simulation/index.html`, `simulation/growth_ui.js`)
+- **Spacebar Hand Pan:** Holding `Space` switches the mouse left button to `PAN` mode with `cursor: grab / grabbing`, allowing users to drag and translate the 3D map across all four directions (North, South, East, West) without being locked to orbiting a single pivot point.
+- **Screen-Space Translation:** Enabled `controls.screenSpacePanning = true` with `controls.panSpeed = 1.25` so panning moves the camera and focal target concurrently. Subsequent zoom-ins zoom into the newly translated area.
+- **Keyboard 4-Direction Panning:** Added Arrow Keys (`↑`, `↓`, `←`, `→`) and `WASD` navigation that calculates the camera's orthogonal basis vectors and pans smoothly in all four directions.
+- **Pan Lock Mode Button:** Added `Pan: Hold [Space]` toggle button in the main navigation toolbar (`#togglePan`) allowing users to click and lock Pan mode on/off on trackpads or mobile screens without holding keys.
+- **HUD Indicator:** Added a subtle bottom HUD badge (`#panHint`) displaying live navigation guidance (`Space + Drag or ↑↓←→ to pan freely`) and highlighting with a cyan pulse whenever Pan is active.
+- **Node Selection Guard:** Ensured dragging or panning while Space is held never accidentally triggers node or manhole selection.
+
 ---
 
-## Verification of File Changes
-Running `git diff origin/main...HEAD --name-status` confirms that only Simulation 2 and test/documentation files have been modified:
+## File Diff Checklist
 ```
 M   simulation/growth_3d.js
 M   simulation/growth_ui.js
 M   simulation/index.html
+A   tools/serve.js
 A   tools/test_simulation2.js
 A   DATA_PROVENANCE.md
 A   CHANGELOG.md
