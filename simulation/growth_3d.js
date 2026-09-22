@@ -1014,6 +1014,16 @@ window.Growth3D = (function () {
     });
   }
 
+  function setPumpStationState(stationId, isRunning, duty) {
+    const ps = pumpStations.find(p => p.id === stationId);
+    if (!ps) return;
+    ps.running = isRunning !== false;
+    if (duty != null) ps.duty = duty;
+    if (ps.beacon && ps.beacon.material) {
+      ps.beacon.material.color.setHex(ps.running ? 0x22c55e : 0xf59e0b);
+    }
+  }
+
   function setElevationExaggeration(val) {
     if (!val || val <= 0 || !built) return;
     ZEXAG = +val;

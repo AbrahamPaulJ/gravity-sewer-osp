@@ -639,6 +639,8 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
         const errOverlay = document.getElementById('errorOverlay');
         if (errOverlay) {
           errOverlay.hidden = false;
+          const h3 = errOverlay.querySelector('h3');
+          if (h3) h3.textContent = 'Application Error';
           const p = errOverlay.querySelector('p');
           if (p) p.textContent = 'Initialization error: ' + err.message;
         }
@@ -650,6 +652,8 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
       const errOverlay = document.getElementById('errorOverlay');
       if (errOverlay) {
         errOverlay.hidden = false;
+        const h3 = errOverlay.querySelector('h3');
+        if (h3) h3.textContent = 'Application Error';
         const p = errOverlay.querySelector('p');
         if (p) p.textContent = 'Application scripts failed to load. Please refresh the page.';
       }

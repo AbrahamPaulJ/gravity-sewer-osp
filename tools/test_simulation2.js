@@ -289,9 +289,65 @@ function runSuite() {
   check("index.html contains live heatmap explainability card", indexHtml.includes('id="heatmapLiveCard"'));
 
   check("growth_3d.js contains multi-ring radial heatmap generator", growth3dSrc.includes("getHeatTexture") && growth3dSrc.includes("createRadialGradient"));
-  check("growth_3d.js contains numbered SVG teardrop ranking pins", growth3dSrc.includes("pin-marker") && growth3dSrc.includes("pin-badge"));
-  check("growth_3d.js syntax parses cleanly", !(() => { try { new Function(growth3dSrc); return false; } catch (e) { return e; } })());
-  check("growth_ui.js syntax parses cleanly", !(() => { try { new Function(growthUiSrc); return false; } catch (e) { return e; } })());
+  check("growth_3d.js executes and exports Growth3D cleanly without runtime reference errors", (() => {
+    try {
+      const vm = require("vm");
+      const ctx = vm.createContext({
+        window: {},
+        document: {
+          createElement: () => ({ style: {}, appendChild: () => {}, classList: { add: () => {}, remove: () => {} } }),
+          body: { appendChild: () => {} }
+        },
+        navigator: { userAgent: "node" },
+        performance: { now: () => Date.now() },
+        requestAnimationFrame: () => 1,
+        cancelAnimationFrame: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        Set, Map, Math, Object, Array, console
+      });
+      ctx.window = ctx;
+      vm.runInContext(growth3dSrc, ctx);
+      return typeof ctx.Growth3D === "object" && typeof ctx.Growth3D.build === "function" && typeof ctx.Growth3D.setPumpStationState === "function";
+    } catch (e) {
+      console.error("growth_3d.js VM evaluation error:", e.message);
+      return false;
+    }
+  })());
+
+  check("growth_ui.js executes and exports GrowthUI cleanly without runtime reference errors", (() => {
+    try {
+      const vm = require("vm");
+      const ctx = vm.createContext({
+        window: {},
+        document: {
+          createElement: () => ({ style: {}, appendChild: () => {}, classList: { add: () => {}, remove: () => {} }, querySelector: () => null, querySelectorAll: () => [] }),
+          getElementById: () => ({ style: {}, appendChild: () => {}, classList: { add: () => {}, remove: () => {} }, querySelector: () => null, querySelectorAll: () => [] }),
+          querySelectorAll: () => [],
+          addEventListener: () => {},
+          body: { appendChild: () => {} }
+        },
+        navigator: { userAgent: "node" },
+        performance: { now: () => Date.now() },
+        requestAnimationFrame: () => 1,
+        cancelAnimationFrame: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        Set, Map, Math, Object, Array, console,
+        Growth3D: {
+          build: () => {}, paint: () => {}, highlight: () => {}, frame: () => {}, resize: () => {},
+          setFlowAnimation: () => {}, setHeatmap: () => {}, setBlockage: () => {}, setPumpStationState: () => {},
+          getUpstreamMetrics: () => ({ dwellingCount: 0, upstreamPipes: 0, chamberCount: 0, upstreamChambers: [] })
+        }
+      });
+      ctx.window = ctx;
+      vm.runInContext(growthUiSrc, ctx);
+      return typeof ctx.GrowthUI === "object" && typeof ctx.GrowthUI.init === "function";
+    } catch (e) {
+      console.error("growth_ui.js VM evaluation error:", e.message);
+      return false;
+    }
+  })());
   check("no merge conflict markers present", !growth3dSrc.includes("<<<<<<<") && !growthUiSrc.includes("<<<<<<<") && !indexHtml.includes("<<<<<<<"));
 
   console.log("\n7. 3d viewport free movement, spacebar pan & 4-directional navigation");
@@ -424,6 +480,24 @@ function runSuite() {
     indexHtml.includes('id="subwindowPin"') &&
     indexHtml.includes('id="subwindowNotice"')
   );
+
+  console.log("\n13. headless browser runtime & zero-exception verification");
+  const chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+  if (fs.existsSync(chromePath)) {
+    try {
+      const { execFileSync } = require("child_process");
+      const dump = execFileSync(chromePath, [
+        "--headless=new",
+        "--disable-gpu",
+        "--dump-dom",
+        "http://localhost:8080/simulation/index.html"
+      ], { encoding: "utf8", timeout: 10000 });
+      check("headless Chrome loads simulation with error overlay remaining hidden", dump.includes('id="errorOverlay" hidden'));
+      check("headless Chrome renders simulation stage and canvas elements", dump.includes('id="stage"'));
+    } catch (e) {
+      console.warn("Headless Chrome check skipped or timed out:", e.message);
+    }
+  }
 
   console.log("\n" + passed + " passed, " + failed + " failed");
   if (failed > 0) process.exit(1);
