@@ -46,7 +46,10 @@ window.GrowthUI = (function () {
 
     // Growth sensor recommendations
     growthSensorsActive: false,
-    growthSensorCrit: "immediate"    // "immediate" | "homes" | "volume"
+    growthSensorCrit: "immediate",   // "immediate" | "homes" | "volume"
+
+    // Framerate & GPU low-power state
+    targetFPS: 30
   };
 
   const runs = () => window.GROWTH_RUNS;
@@ -1326,6 +1329,26 @@ window.GrowthUI = (function () {
       };
     }
 
+    // Framerate & GPU low-power toggle group (30 Eco, 60 Balanced, Max)
+    const fpsGroup = $("#fpsToggleGroup");
+    if (fpsGroup) {
+      let savedFps = 30;
+      if (typeof localStorage !== "undefined") {
+        try {
+          const raw = localStorage.getItem("sim2_fps");
+          if (raw !== null) savedFps = parseInt(raw, 10);
+        } catch (e) {}
+      }
+      setFpsMode(savedFps);
+
+      fpsGroup.querySelectorAll(".fps-btn").forEach(btn => {
+        btn.onclick = () => {
+          const fps = parseInt(btn.dataset.fps, 10);
+          setFpsMode(fps);
+        };
+      });
+    }
+
     $("#toggleBottlenecks").onclick = () => {
       st.showBottlenecks = !st.showBottlenecks;
       $("#toggleBottlenecks").classList.toggle("primary", st.showBottlenecks);
@@ -1688,5 +1711,24 @@ window.GrowthUI = (function () {
     explainChamberPlacement(idx);
   }
 
-  return { init, selectAndExplain, selectAndFocusChamber, computeHeatmapData, toggleSubwindowPin, st };
+  function setFpsMode(fps) {
+    const val = Number(fps);
+    st.targetFPS = val;
+    if (typeof Growth3D !== "undefined" && typeof Growth3D.setTargetFPS === "function") {
+      Growth3D.setTargetFPS(val);
+    }
+    if (typeof localStorage !== "undefined") {
+      try { localStorage.setItem("sim2_fps", String(val)); } catch (e) {}
+    }
+    const fpsGroup = typeof document !== "undefined" && typeof document.getElementById === "function"
+      ? document.getElementById("fpsToggleGroup") : null;
+    if (fpsGroup && typeof fpsGroup.querySelectorAll === "function") {
+      fpsGroup.querySelectorAll(".fps-btn").forEach(b => {
+        const bFps = parseInt(b.dataset.fps, 10);
+        b.classList.toggle("active", bFps === val);
+      });
+    }
+  }
+
+  return { init, selectAndExplain, selectAndFocusChamber, computeHeatmapData, toggleSubwindowPin, setFpsMode, st };
 })();

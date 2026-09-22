@@ -29,6 +29,23 @@ window.Growth3D = (function () {
   const clock = { t0: performance.now() };
   let ZEXAG = 18.0;
 
+  // Framerate, low-power & performance throttle state
+  let targetFPS = 30;              // Default to 30 FPS Eco Mode to save battery & stop fan noise
+  let lastFrameTime = 0;
+  let cameraDirty = true;
+  let containerRef = null;
+  let isTabVisible = typeof document !== "undefined" ? !document.hidden : true;
+
+  if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+    document.addEventListener("visibilitychange", () => {
+      isTabVisible = !document.hidden;
+      if (isTabVisible) {
+        cameraDirty = true;
+        lastFrameTime = performance.now();
+      }
+    });
+  }
+
   // Flow animation state
   let flowParticles = null;
   let flowAnimActive = true;
@@ -130,10 +147,15 @@ window.Growth3D = (function () {
 
   async function build(container, pick, hover) {
     await ensureThree();
+    containerRef = container;
     onPick = pick; onHover = hover || null;
     const g = G();
     if (!renderer) {
-      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        powerPreference: "low-power",
+        precision: "mediump"
+      });
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(45, 1, 0.1, 500000);
       ray = new THREE.Raycaster();
@@ -157,13 +179,26 @@ window.Growth3D = (function () {
         ONE: THREE.TOUCH.ROTATE,
         TWO: THREE.TOUCH.DOLLY_PAN
       };
+      controls.addEventListener("change", () => { cameraDirty = true; });
       renderer.domElement.addEventListener("pointerdown", onDown);
       renderer.domElement.addEventListener("pointerup", onUp);
       renderer.domElement.addEventListener("pointermove", onMove);
       renderer.domElement.addEventListener("pointerleave", () => hoverTo(null));
       window.addEventListener("resize", () => resize(container));
-      (function loop() {
+      (function loop(now) {
         requestAnimationFrame(loop);
+        if (!isTabVisible || (typeof document !== "undefined" && document.hidden)) return;
+
+        // Framerate limiter gate (30 Eco, 60 Balanced, or 0/Max uncapped)
+        if (targetFPS > 0) {
+          const interval = 1000 / targetFPS;
+          const elapsed = now - lastFrameTime;
+          if (elapsed < interval - 2) return;
+          lastFrameTime = now - (elapsed % interval);
+        } else {
+          lastFrameTime = now;
+        }
+
         controls.update();
 
         const t = (performance.now() - clock.t0) / 1000, beat = Math.sin(t * 3.4);
@@ -221,16 +256,20 @@ window.Growth3D = (function () {
 
         renderer.render(scene, camera);
 
-        // Project HTML labels
-        const allLabels = [outletLabel, siteLabel].concat(pumpStations.map(p => p.labelObj)).filter(Boolean);
-        allLabels.forEach(lbl => {
-          if (!lbl || !lbl.el) return;
-          const v = lbl.at.clone().project(camera);
+        // Project HTML labels only when camera moved / dirty
+        if (cameraDirty) {
+          const allLabels = [outletLabel, siteLabel].concat(pumpStations.map(p => p.labelObj)).filter(Boolean);
           const el = renderer.domElement;
-          lbl.el.style.display = v.z < 1 ? "block" : "none";
-          lbl.el.style.left = ((v.x * 0.5 + 0.5) * el.clientWidth) + "px";
-          lbl.el.style.top = ((-v.y * 0.5 + 0.5) * el.clientHeight) + "px";
-        });
+          const cw = el.clientWidth, ch = el.clientHeight;
+          allLabels.forEach(lbl => {
+            if (!lbl || !lbl.el) return;
+            const v = lbl.at.clone().project(camera);
+            lbl.el.style.display = v.z < 1 ? "block" : "none";
+            lbl.el.style.left = ((v.x * 0.5 + 0.5) * cw) + "px";
+            lbl.el.style.top = ((-v.y * 0.5 + 0.5) * ch) + "px";
+          });
+          cameraDirty = false;
+        }
       })();
     }
     if (built) { resize(container); return; }
@@ -987,6 +1026,7 @@ window.Growth3D = (function () {
       });
       bottleneckMesh.instanceMatrix.needsUpdate = true;
     }
+    cameraDirty = true;
   }
 
   /* Recolour for one scenario. `state` maps a chamber name to "tip" | "was" | "ok". */
@@ -1069,6 +1109,7 @@ window.Growth3D = (function () {
     }
 
     if (!siteName) { focusRing.visible = false; siteLabel.el.style.display = "none"; }
+    cameraDirty = true;
   }
 
   function frame(tightOn) {
@@ -1085,15 +1126,52 @@ window.Growth3D = (function () {
     camera.position.set(centre.x + r * 0.62, centre.y + r * 0.48, centre.z + r * 0.62);
     camera.updateProjectionMatrix();
     controls.update();
+    cameraDirty = true;
+  }
+
+  function getDprForTargetFPS() {
+    const dpr = (typeof window !== "undefined" && window.devicePixelRatio) || 1;
+    if (targetFPS === 30) {
+      return 1.0; // 1x in Eco mode cuts fragment shading by 75% on Retina
+    } else if (targetFPS === 60) {
+      return Math.min(dpr, 1.5);
+    } else {
+      return Math.min(dpr, 2.0); // 0 or max uncapped
+    }
+  }
+
+  function updatePixelRatio() {
+    if (!renderer) return;
+    renderer.setPixelRatio(getDprForTargetFPS());
+    const c = containerRef;
+    if (c) {
+      const w = Math.max(1, c.clientWidth), h = Math.max(1, c.clientHeight);
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      cameraDirty = true;
+    }
+  }
+
+  function setTargetFPS(fps) {
+    targetFPS = Number(fps);
+    updatePixelRatio();
+  }
+
+  function getTargetFPS() {
+    return targetFPS;
   }
 
   function resize(container) {
-    if (!renderer || !container) return;
-    const w = Math.max(1, container.clientWidth), h = Math.max(1, container.clientHeight);
+    if (container) containerRef = container;
+    const c = container || containerRef;
+    if (!renderer || !c) return;
+    const w = Math.max(1, c.clientWidth), h = Math.max(1, c.clientHeight);
     renderer.setSize(w, h, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(getDprForTargetFPS());
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    cameraDirty = true;
   }
 
   return {
@@ -1101,6 +1179,7 @@ window.Growth3D = (function () {
     setFlowAnimation, setHeatmap, setBlockage, setBlockageTimelineState,
     setElevationExaggeration, setPumpStationState,
     getUpstreamMetrics, topology, togglePanMode, panByKeys,
+    setTargetFPS, getTargetFPS,
     get ZEXAG() { return ZEXAG; }, set ZEXAG(v) { setElevationExaggeration(v); }
   };
 })();

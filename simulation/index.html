@@ -180,6 +180,12 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
 .timeline-btn.primary{background:var(--accent); border-color:var(--accent); color:#06131f; font-weight:700}
 .nav-control-group{display:inline-flex; align-items:center; gap:6px; background:var(--panel-2);
   padding:3px 9px; border-radius:6px; border:1px solid var(--line); font-size:11.5px}
+.fps-toggle-group{display:inline-flex; align-items:center; gap:2px; background:var(--panel-2);
+  padding:2px 4px; border-radius:6px; border:1px solid var(--line)}
+.fps-btn{font:inherit; font-size:11px; padding:3px 7px; border:none; background:transparent;
+  color:var(--dim); border-radius:4px; cursor:pointer; font-weight:500; transition:all 0.15s}
+.fps-btn:hover{color:var(--ink); background:rgba(255,255,255,0.06)}
+.fps-btn.active{background:var(--accent); border-color:var(--accent); color:#06131f; font-weight:700; box-shadow:0 0 6px rgba(56,189,248,0.35)}
 
 .subwindow-body{flex:1; overflow-y:auto; padding:18px 22px; font-size:13px; line-height:1.55}
 .subwindow-body h2{margin:0 0 6px; font-size:17px; color:var(--accent)}
@@ -486,6 +492,12 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
     <div class="nav-control-group" title="Adjust 3D vertical elevation exaggeration scale (1x - 35x)">
       <label for="exaggRange" style="color:var(--dim); white-space:nowrap; cursor:pointer">Elevation: <b id="exaggVal" style="color:var(--accent)">18x</b></label>
       <input type="range" id="exaggRange" min="1" max="35" step="1" value="18" style="width:68px; accent-color:var(--accent); margin:0; cursor:pointer">
+    </div>
+    <div class="nav-control-group fps-toggle-group" id="fpsToggleGroup" title="Framerate &amp; GPU power optimization (30 FPS Eco cuts battery &amp; fan noise)">
+      <span style="color:var(--dim); font-size:11px; font-weight:600">FPS:</span>
+      <button type="button" class="fps-btn active" data-fps="30" title="30 FPS Eco Mode (Reduced GPU power, cool &amp; quiet)">30 Eco</button>
+      <button type="button" class="fps-btn" data-fps="60" title="60 FPS Balanced Mode">60</button>
+      <button type="button" class="fps-btn" data-fps="0" title="Uncapped Refresh Rate (Max power)">Max</button>
     </div>
     <button id="toggleSensors">Show proposed sensors</button>
     <button id="toggleFlow" class="primary">Flow Animation: ON</button>

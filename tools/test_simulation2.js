@@ -521,6 +521,98 @@ function runSuite() {
     growthUiSrc.includes("Growth3D.frame(name)")
   );
 
+  console.log("\n15. webgl performance optimization, low-power mode & framerate throttling");
+  check("growth_3d.js configures low-power WebGL flags (powerPreference: 'low-power', precision: 'mediump')",
+    growth3dSrc.includes('powerPreference: "low-power"') &&
+    growth3dSrc.includes('precision: "mediump"')
+  );
+  check("growth_3d.js implements background tab sleep and throttled DOM label projection",
+    growth3dSrc.includes("visibilitychange") &&
+    growth3dSrc.includes("document.hidden") &&
+    growth3dSrc.includes("cameraDirty")
+  );
+  check("growth_3d.js exports setTargetFPS & getTargetFPS defaulting to 30 FPS Eco Mode", (() => {
+    try {
+      const vmCtx = vm.createContext({
+        window: {},
+        document: {
+          createElement: () => ({ style: {}, appendChild: () => {}, classList: { add: () => {}, remove: () => {} } }),
+          body: { appendChild: () => {} }
+        },
+        navigator: { userAgent: "node" },
+        performance: { now: () => Date.now() },
+        requestAnimationFrame: () => 1,
+        cancelAnimationFrame: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        Set, Map, Math, Object, Array, console
+      });
+      vmCtx.window = vmCtx;
+      vm.runInContext(growth3dSrc, vmCtx);
+      const g3d = vmCtx.Growth3D;
+      if (!g3d || typeof g3d.setTargetFPS !== "function" || typeof g3d.getTargetFPS !== "function") return false;
+      const initial = g3d.getTargetFPS();
+      g3d.setTargetFPS(60);
+      const after60 = g3d.getTargetFPS();
+      g3d.setTargetFPS(0);
+      const afterMax = g3d.getTargetFPS();
+      g3d.setTargetFPS(30);
+      return initial === 30 && after60 === 60 && afterMax === 0 && g3d.getTargetFPS() === 30;
+    } catch (e) {
+      console.error("growth_3d.js FPS test error:", e.message);
+      return false;
+    }
+  })());
+  check("index.html contains #fpsToggleGroup with 30 Eco, 60, and Max buttons",
+    indexHtml.includes('id="fpsToggleGroup"') &&
+    indexHtml.includes('data-fps="30"') &&
+    indexHtml.includes('data-fps="60"') &&
+    indexHtml.includes('data-fps="0"') &&
+    indexHtml.includes("30 Eco")
+  );
+  check("growth_ui.js implements and exports setFpsMode with localStorage persistence",
+    growthUiSrc.includes("setFpsMode") &&
+    growthUiSrc.includes('localStorage.getItem("sim2_fps")') &&
+    growthUiSrc.includes('localStorage.setItem("sim2_fps"')
+  );
+  check("growth_ui.js initializes st.targetFPS to 30 Eco default", (() => {
+    try {
+      const storageMock = {};
+      const vmCtx = vm.createContext({
+        window: {
+          GROWTH_GEOM: g,
+          GROWTH_RUNS: R,
+          GROWTH_INDEX: idx
+        },
+        document: {
+          createElement: () => ({ style: {}, appendChild: () => {}, classList: { add: () => {}, remove: () => {} }, querySelector: () => null, querySelectorAll: () => [] }),
+          getElementById: () => ({ style: {}, appendChild: () => {}, classList: { add: () => {}, remove: () => {} }, querySelector: () => null, querySelectorAll: () => [] }),
+          querySelector: () => null,
+          querySelectorAll: () => []
+        },
+        localStorage: {
+          getItem: k => storageMock[k] || null,
+          setItem: (k, v) => { storageMock[k] = String(v); }
+        },
+        navigator: { userAgent: "node" },
+        performance: { now: () => Date.now() },
+        Set, Map, Math, Object, Array, console, parseInt, Number, String
+      });
+      vmCtx.window = vmCtx;
+      vm.runInContext(growthUiSrc, vmCtx);
+      const gui = vmCtx.GrowthUI;
+      if (!gui || typeof gui.setFpsMode !== "function") return false;
+      const initial = gui.st.targetFPS;
+      gui.setFpsMode(60);
+      const after60 = gui.st.targetFPS;
+      const saved = vmCtx.localStorage.getItem("sim2_fps");
+      return initial === 30 && after60 === 60 && saved === "60";
+    } catch (e) {
+      console.error("growth_ui.js FPS test error:", e.message);
+      return false;
+    }
+  })());
+
   console.log("\n" + passed + " passed, " + failed + " failed");
   if (failed > 0) process.exit(1);
 }
