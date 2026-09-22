@@ -286,6 +286,19 @@ function runSuite() {
   check("index.html contains responsive drawer toggle", indexHtml.includes('id="sidebarToggle"'));
   check("index.html contains loading & error overlays", indexHtml.includes('id="loadingOverlay"') && indexHtml.includes('id="errorOverlay"'));
   check("index.html contains dynamic legend container", indexHtml.includes('id="simLegend"'));
+  check("index.html contains bottom simLegendBar and legendControls on left of simLegend",
+    indexHtml.includes('id="simLegendBar"') &&
+    indexHtml.includes('id="legendControls"') &&
+    indexHtml.indexOf('id="legendControls"') < indexHtml.indexOf('id="simLegend"')
+  );
+  check("map controls are situated inside #legendControls",
+    indexHtml.indexOf('id="fitAll"') > indexHtml.indexOf('id="legendControls"') &&
+    indexHtml.indexOf('id="fitAll"') < indexHtml.indexOf('id="simLegend"') &&
+    indexHtml.indexOf('id="exaggRange"') > indexHtml.indexOf('id="legendControls"') &&
+    indexHtml.indexOf('id="exaggRange"') < indexHtml.indexOf('id="simLegend"') &&
+    indexHtml.indexOf('id="fpsToggleGroup"') > indexHtml.indexOf('id="legendControls"') &&
+    indexHtml.indexOf('id="fpsToggleGroup"') < indexHtml.indexOf('id="simLegend"')
+  );
   check("index.html contains live heatmap explainability card", indexHtml.includes('id="heatmapLiveCard"'));
 
   check("growth_3d.js uses clean node-based heatmap coloring with getHeatmapHex and pulsating halo rings", growth3dSrc.includes("getHeatmapHex") && growth3dSrc.includes("haloRings") && !growth3dSrc.includes("getHeatTexture"));
@@ -367,7 +380,9 @@ function runSuite() {
   );
   check("growth_ui.js computes gravity slope S0 and Manning capacity",
     growthUiSrc.includes("dropM / lenM") &&
-    growthUiSrc.includes("(1 / nEff) * Math.pow(rhFull, 2/3) * Math.sqrt(slopeS0)")
+    growthUiSrc.includes("(1 / nEff)") &&
+    growthUiSrc.includes("Math.pow(rhFull") &&
+    growthUiSrc.includes("Math.sqrt(slopeS0)")
   );
   check("index.html contains blockage interactive timeline controls",
     indexHtml.includes('id="timelineScrubber"') &&

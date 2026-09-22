@@ -1,728 +1,2069 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sewer Growth and Sensor Placement</title>
-<script>
-  if (!location.pathname.endsWith('/') && !location.pathname.endsWith('.html')) {
-    location.replace(location.pathname + '/' + location.search + location.hash);
-  }
-</script>
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
-<style>
-/* Dark, to match the site this page is published inside and to stop the sidebar
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sewer Growth and Sensor Placement</title>
+    <script>
+      if (
+        !location.pathname.endsWith("/") &&
+        !location.pathname.endsWith(".html")
+      ) {
+        location.replace(
+          location.pathname + "/" + location.search + location.hash,
+        );
+      }
+    </script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+    <style>
+      /* Dark, to match the site this page is published inside and to stop the sidebar
    competing with the canvas. The first version was cream on cream and nothing separated. */
-:root{
-  --bg:#0d1117; --panel:#111c2f; --panel-2:#16233a; --ink:#e7edf7; --dim:#a9b8d4;
-  --faint:#6f81a3; --line:#22314d; --accent:#38bdf8; --warn:#ff2d55; --amber:#ffa500;
-  --green:#3fb950; --side:340px; --purple:#a371f7;
-}
-*{box-sizing:border-box}
-html,body{margin:0;height:100%}
-body{background:var(--bg); color:var(--ink);
-  font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;
-  display:grid; grid-template-columns:var(--side) 6px 1fr; height:100vh; overflow:hidden}
-aside{border-right:1px solid var(--line); background:var(--panel); padding:15px; overflow-y:auto}
-#grip{cursor:col-resize; position:relative; width:6px; z-index:15; touch-action:none}
-#grip::before{content:""; position:absolute; inset:0 -5px; z-index:1}
-#grip::after{content:""; position:absolute; inset:0 1px; background:var(--line); border-radius:2px; transition:background 0.15s, box-shadow 0.15s}
-#grip:hover::after,#grip.on::after{background:var(--accent); box-shadow:0 0 8px rgba(56,189,248,0.5)}
-body.dragging{cursor:col-resize; user-select:none}
-h1{font-size:15px; margin:0 0 3px}
-.sub{color:var(--dim); font-size:12px; margin:0 0 14px}
-.fld{display:block; margin:14px 0 5px; font-size:11px; color:var(--dim);
-  text-transform:uppercase; letter-spacing:.05em}
-.knob{display:flex; gap:4px}
-.knob button{flex:1; font:inherit; font-size:12px; padding:6px 3px; cursor:pointer;
-  background:var(--panel-2); color:var(--dim); border:1px solid var(--line);
-  border-radius:6px; white-space:nowrap}
-.knob button:hover{border-color:var(--accent); color:var(--ink)}
-.knob button.on{background:var(--accent); border-color:var(--accent); color:#06131f;
-  font-weight:600}
-.knob button .knobNum{display:block; font-size:9.5px; font-weight:400; opacity:.72;
-  margin-top:3px; font-variant-numeric:tabular-nums}
-.knob button.on .knobNum{opacity:.85}
-#iiNote{margin:5px 0 0; min-height:2.6em; font-size:11.5px}
-select{width:100%; padding:7px; font:inherit; border:1px solid var(--line);
-  border-radius:7px; background:var(--panel-2); color:var(--ink)}
-.fact{display:flex; justify-content:space-between; gap:10px; padding:5px 0;
-  border-bottom:1px solid var(--line); font-size:12.5px}
-.fact span:first-child{color:var(--faint)}
-.fact b.bad{color:var(--warn)}
-.fact b.good{color:var(--green)}
-.fact b.accent{color:var(--accent)}
-h4{margin:14px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.05em;
-  color:var(--dim)}
-#tipList ul{margin:0; padding-left:18px; font-size:12.5px; columns:2; column-gap:14px}
-#tipList li{margin-bottom:2px}
-.quiet{color:var(--faint); font-size:12px; margin:4px 0}
-#baseNote{margin-top:12px; padding:9px 10px; border-radius:7px; background:#2a1f08;
-  border:1px solid var(--amber); color:#ffcf7a; font-size:11.5px; line-height:1.45}
-#sensorList{margin-top:14px; padding:11px; border:1px solid var(--line); border-radius:8px;
-  background:var(--panel-2); font-size:12.5px}
-#sensorList p{margin:0 0 8px}
-#sensorList ol{margin:0 0 8px; padding-left:20px}
-#sensorList table{width:100%; border-collapse:collapse; font-size:12px}
-#sensorList td{padding:2px 0; border-top:1px solid var(--line)}
-#sensorList td:last-child{text-align:right; color:var(--faint)}
+      :root {
+        --bg: #0d1117;
+        --panel: #111c2f;
+        --panel-2: #16233a;
+        --ink: #e7edf7;
+        --dim: #a9b8d4;
+        --faint: #6f81a3;
+        --line: #22314d;
+        --accent: #38bdf8;
+        --warn: #ff2d55;
+        --amber: #ffa500;
+        --green: #3fb950;
+        --side: 350px;
+        --purple: #a371f7;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          14px/1.5 system-ui,
+          -apple-system,
+          Segoe UI,
+          sans-serif;
+        display: grid;
+        grid-template-columns: var(--side) 6px 1fr;
+        height: 100vh;
+        overflow: hidden;
+      }
+      aside {
+        border-right: 1px solid var(--line);
+        background: var(--panel);
+        padding: 15px;
+        overflow-y: auto;
+        min-width: 350px;
+      }
+      #grip {
+        cursor: col-resize;
+        position: relative;
+        width: 6px;
+        z-index: 15;
+        touch-action: none;
+      }
+      #grip::before {
+        content: "";
+        position: absolute;
+        inset: 0 -5px;
+        z-index: 1;
+      }
+      #grip::after {
+        content: "";
+        position: absolute;
+        inset: 0 1px;
+        background: var(--line);
+        border-radius: 2px;
+        transition:
+          background 0.15s,
+          box-shadow 0.15s;
+      }
+      #grip:hover::after,
+      #grip.on::after {
+        background: var(--accent);
+        box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+      }
+      body.dragging {
+        cursor: col-resize;
+        user-select: none;
+      }
+      h1 {
+        font-size: 15px;
+        margin: 0 0 3px;
+      }
+      .sub {
+        color: var(--dim);
+        font-size: 12px;
+        margin: 0 0 14px;
+      }
+      .fld {
+        display: block;
+        margin: 14px 0 5px;
+        font-size: 11px;
+        color: var(--dim);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .knob {
+        display: flex;
+        gap: 4px;
+      }
+      .knob button {
+        flex: 1;
+        font: inherit;
+        font-size: 12px;
+        padding: 6px 3px;
+        cursor: pointer;
+        background: var(--panel-2);
+        color: var(--dim);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        white-space: nowrap;
+      }
+      .knob button:hover {
+        border-color: var(--accent);
+        color: var(--ink);
+      }
+      .knob button.on {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #06131f;
+        font-weight: 600;
+      }
+      .knob button .knobNum {
+        display: block;
+        font-size: 9.5px;
+        font-weight: 400;
+        opacity: 0.72;
+        margin-top: 3px;
+        font-variant-numeric: tabular-nums;
+      }
+      .knob button.on .knobNum {
+        opacity: 0.85;
+      }
+      #iiNote {
+        margin: 5px 0 0;
+        min-height: 2.6em;
+        font-size: 11.5px;
+      }
+      select {
+        width: 100%;
+        padding: 7px;
+        font: inherit;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--panel-2);
+        color: var(--ink);
+      }
+      .fact {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 5px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 12.5px;
+      }
+      .fact span:first-child {
+        color: var(--faint);
+      }
+      .fact b.bad {
+        color: var(--warn);
+      }
+      .fact b.good {
+        color: var(--green);
+      }
+      .fact b.accent {
+        color: var(--accent);
+      }
+      h4 {
+        margin: 14px 0 5px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--dim);
+      }
+      #tipList ul {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 12.5px;
+        columns: 2;
+        column-gap: 14px;
+      }
+      #tipList li {
+        margin-bottom: 2px;
+      }
+      .quiet {
+        color: var(--faint);
+        font-size: 12px;
+        margin: 4px 0;
+      }
+      #baseNote {
+        margin-top: 12px;
+        padding: 9px 10px;
+        border-radius: 7px;
+        background: #2a1f08;
+        border: 1px solid var(--amber);
+        color: #ffcf7a;
+        font-size: 11.5px;
+        line-height: 1.45;
+      }
+      #sensorList {
+        margin-top: 14px;
+        padding: 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel-2);
+        font-size: 12.5px;
+      }
+      #sensorList p {
+        margin: 0 0 8px;
+      }
+      #sensorList ol {
+        margin: 0 0 8px;
+        padding-left: 20px;
+      }
+      #sensorList table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      #sensorList td {
+        padding: 2px 0;
+        border-top: 1px solid var(--line);
+      }
+      #sensorList td:last-child {
+        text-align: right;
+        color: var(--faint);
+      }
 
-/* Affecting Area & Hydraulic Lineage card */
-.card-box{margin-top:12px; padding:11px; border:1px solid var(--line); border-radius:8px;
-  background:var(--panel-2); font-size:12px}
-.card-box h4{margin:0 0 8px; color:var(--accent); display:flex; align-items:center; justify-content:space-between}
+      /* Affecting Area & Hydraulic Lineage card */
+      .card-box {
+        margin-top: 12px;
+        padding: 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel-2);
+        font-size: 12px;
+      }
+      .card-box h4 {
+        margin: 0 0 8px;
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
 
-main{display:flex; flex-direction:column; min-width:0; overflow:hidden;
-  position:relative}
-nav{display:flex; gap:5px; align-items:center; padding:8px 13px;
-  border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap}
-nav button{font:inherit; padding:5px 11px; border:1px solid var(--line);
-  background:var(--panel-2); border-radius:6px; cursor:pointer; color:var(--ink); font-size:12px}
-nav button:hover{border-color:var(--accent); color:var(--accent)}
-nav button.primary{background:var(--accent); border-color:var(--accent); color:#06131f; font-weight:600}
-nav button.info{margin-left:auto; border-color:var(--accent); color:var(--accent); font-weight:600}
-nav button.info:hover{background:var(--accent); color:#06131f}
+      main {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        overflow: hidden;
+        position: relative;
+      }
+      nav {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        padding: 8px 13px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+        flex-wrap: wrap;
+      }
+      nav button {
+        font: inherit;
+        padding: 5px 11px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--ink);
+        font-size: 12px;
+      }
+      nav button:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      nav button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #06131f;
+        font-weight: 600;
+      }
+      nav button.info {
+        margin-left: auto;
+        border-color: var(--accent);
+        color: var(--accent);
+        font-weight: 600;
+      }
+      nav button.info:hover {
+        background: var(--accent);
+        color: #06131f;
+      }
 
-/* Stage & canvas */
-#stageWrap{flex:1; min-height:0; position:relative}
-#stage{position:absolute; inset:0}
-#stage canvas{display:block; width:100%; height:100%}
-.labels{position:absolute; inset:0; pointer-events:none}
-.labels .lbl{position:absolute; transform:translate(-50%,-165%); white-space:nowrap;
-  font-size:11px; font-weight:600; color:#c9a3ff;
-  text-shadow:0 0 4px #0d1117, 0 0 4px #0d1117}
-.labels .lbl.site{color:#7dd8ff; transform:translate(-50%, 42%)}
+      /* Stage & canvas */
+      #stageWrap {
+        flex: 1;
+        min-height: 0;
+        position: relative;
+      }
+      #stage {
+        position: absolute;
+        inset: 0;
+      }
+      #stage canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .labels {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .labels .lbl {
+        position: absolute;
+        transform: translate(-50%, -165%);
+        white-space: nowrap;
+        font-size: 11px;
+        font-weight: 600;
+        color: #c9a3ff;
+        text-shadow:
+          0 0 4px #0d1117,
+          0 0 4px #0d1117;
+      }
+      .labels .lbl.site {
+        color: #7dd8ff;
+        transform: translate(-50%, 42%);
+      }
 
-/* HUD overlay cards on canvas */
-#homeKey{position:absolute; left:12px; top:12px; z-index:3; width:340px;
-  max-width:calc(100% - 24px); box-sizing:border-box; pointer-events:none;
-  background:rgba(13,17,23,.90); border:1px solid #22314d; border-radius:8px;
-  padding:9px 12px; color:#8b949e; font-size:11.5px; backdrop-filter:blur(4px)}
-#homeKey .row{line-height:19px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-#homeKey .row.head{color:#c9d1d9; font-weight:600; margin-bottom:2px}
-#homeKey strong{color:#e7edf7; font-variant-numeric:tabular-nums}
-#homeKey .k{display:inline-block; width:11px; height:11px; border-radius:50%;
-  vertical-align:-2px; margin-right:6px}
-#homeKey .k.ring{box-shadow:0 0 0 2px #0d1117, 0 0 0 3px #00d4ff}
-#homeKey .quiet2{color:#6e7681; font-size:11px; margin-top:2px}
+      /* HUD overlay cards on canvas */
+      #homeKey {
+        position: absolute;
+        left: 12px;
+        top: 12px;
+        z-index: 3;
+        width: 340px;
+        max-width: calc(100% - 24px);
+        box-sizing: border-box;
+        pointer-events: none;
+        background: rgba(13, 17, 23, 0.9);
+        border: 1px solid #22314d;
+        border-radius: 8px;
+        padding: 9px 12px;
+        color: #8b949e;
+        font-size: 11.5px;
+        backdrop-filter: blur(4px);
+      }
+      #homeKey .row {
+        line-height: 19px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #homeKey .row.head {
+        color: #c9d1d9;
+        font-weight: 600;
+        margin-bottom: 2px;
+      }
+      #homeKey strong {
+        color: #e7edf7;
+        font-variant-numeric: tabular-nums;
+      }
+      #homeKey .k {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        vertical-align: -2px;
+        margin-right: 6px;
+      }
+      #homeKey .k.ring {
+        box-shadow:
+          0 0 0 2px #0d1117,
+          0 0 0 3px #00d4ff;
+      }
+      #homeKey .quiet2 {
+        color: #6e7681;
+        font-size: 11px;
+        margin-top: 2px;
+      }
 
-/* Legend */
-.legend{padding:10px 14px 4px; background:#0d1117; color:#8b949e;
-  font-size:11.5px; display:flex; gap:7px 18px; flex-wrap:wrap; align-items:center; border-top:1px solid var(--line)}
-.legend b{color:#c9d1d9; font-weight:600; margin-right:2px}
-.legend .grp{display:flex; gap:14px; align-items:center; flex-wrap:wrap}
-.legend .k{display:inline-block; width:11px; height:11px; border-radius:50%;
-  vertical-align:-2px; margin-right:6px}
-.legend .kl{display:inline-block; width:16px; height:3px; border-radius:2px;
-  vertical-align:3px; margin-right:6px}
-#scale{padding:2px 14px 10px; font-size:10.5px; color:#6e7681; background:#0d1117}
+      /* Legend Bar & Bottom Map Controls */
+      .legend-bar {
+        padding: 6px 12px;
+        background: #0d1117;
+        color: #8b949e;
+        font-size: 11.5px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        border-top: 1px solid var(--line);
+        z-index: 10;
+      }
+      .legend-controls {
+        display: flex;
+        gap: 3px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .legend-controls button {
+        font: inherit;
+        padding: 3px 6px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        border-radius: 5px;
+        cursor: pointer;
+        color: var(--ink);
+        font-size: 11px;
+        white-space: nowrap;
+        transition: all 0.15s;
+      }
+      .legend-controls button:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .legend-controls button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #06131f;
+        font-weight: 600;
+      }
+      .legend-divider {
+        display: none;
+      }
+      .legend {
+        color: #8b949e;
+        font-size: 11px;
+        display: flex;
+        gap: 6px 16px;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 3px 0 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        background: transparent;
+      }
+      .legend b {
+        color: #c9d1d9;
+        font-weight: 600;
+        margin-right: 2px;
+      }
+      .legend .grp {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .legend .k {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        vertical-align: -2px;
+        margin-right: 6px;
+      }
+      .legend .kl {
+        display: inline-block;
+        width: 16px;
+        height: 3px;
+        border-radius: 2px;
+        vertical-align: 3px;
+        margin-right: 6px;
+      }
+      #scale {
+        padding: 2px 14px 10px;
+        font-size: 10.5px;
+        color: #6e7681;
+        background: #0d1117;
+      }
 
-/* Sliders & Controls */
-input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
-.row-val{display:flex; justify-content:space-between; font-size:12px; font-variant-numeric:tabular-nums}
-.badge-tag{display:inline-block; padding:1px 6px; border-radius:999px; font-size:10.5px; font-weight:600}
-.badge-tag.crit{background:#3b0d17; color:#fecdd3; border:1px solid #7f1d2d}
-.badge-tag.good{background:#064e3b; color:#6ee7b7; border:1px solid #047857}
-.badge-tag.warn{background:#3a2c07; color:#fde68a; border:1px solid #7c5c10}
+      /* Sliders & Controls */
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+        margin: 6px 0;
+      }
+      .row-val {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+      .badge-tag {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 999px;
+        font-size: 10.5px;
+        font-weight: 600;
+      }
+      .badge-tag.crit {
+        background: #3b0d17;
+        color: #fecdd3;
+        border: 1px solid #7f1d2d;
+      }
+      .badge-tag.good {
+        background: #064e3b;
+        color: #6ee7b7;
+        border: 1px solid #047857;
+      }
+      .badge-tag.warn {
+        background: #3a2c07;
+        color: #fde68a;
+        border: 1px solid #7c5c10;
+      }
 
-/* Unified Right-Side Sub-Window Architecture */
-#sideSubWindow{position:absolute; top:0; right:0; bottom:0; width:var(--subwindow-width, 480px);
-  min-width:320px; max-width:94vw;
-  background:var(--panel); border-left:1px solid var(--line); z-index:35;
-  box-shadow:-8px 0 32px rgba(0,0,0,0.7); display:flex; flex-direction:column;
-  transition:transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s, box-shadow 0.2s; transform:translateX(0)}
-#sideSubWindow.pinned{border-left-color:var(--accent); box-shadow:-10px 0 36px rgba(56,189,248,0.25), -4px 0 24px rgba(0,0,0,0.8)}
-#sideSubWindow[hidden]{display:none !important}
-.subwindow-grip{position:absolute; left:0; top:0; bottom:0; width:12px; cursor:ew-resize; z-index:40; touch-action:none}
-.subwindow-grip::before{content:""; position:absolute; left:2px; top:50%; transform:translateY(-50%);
-  height:44px; width:4px; border-radius:2px; background:var(--line); transition:all 0.15s}
-.subwindow-grip:hover::before, .subwindow-grip.active::before{background:var(--accent);
-  box-shadow:0 0 8px rgba(56,189,248,0.6); height:68px}
-.subwindow-header{padding:12px 18px; border-bottom:1px solid var(--line); background:var(--panel-2);
-  display:flex; align-items:center; justify-content:space-between; flex-shrink:0; user-select:none}
-.subwindow-title{font-size:13.5px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px}
-.subwindow-actions{display:flex; align-items:center; gap:6px}
-.subwindow-pin{padding:5px 10px; font-size:11.5px; font-weight:600; background:var(--panel);
-  border:1px solid var(--line); border-radius:6px; color:var(--dim); cursor:pointer;
-  display:inline-flex; align-items:center; gap:4px; transition:all 0.15s}
-.subwindow-pin:hover{border-color:var(--accent); color:var(--ink); background:var(--panel-2)}
-.subwindow-pin.pinned{background:rgba(56,189,248,0.18); border-color:var(--accent); color:var(--accent);
-  box-shadow:0 0 10px rgba(56,189,248,0.3)}
-.subwindow-close{padding:5px 12px; font-size:12px; font-weight:600; background:var(--panel);
-  border:1px solid var(--line); border-radius:6px; color:var(--dim); cursor:pointer}
-.subwindow-close:hover{border-color:var(--accent); color:var(--ink); background:var(--panel-2)}
-.subwindow-notice{position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
-  background:rgba(15,23,42,0.96); border:1px solid var(--accent); color:var(--ink);
-  padding:7px 16px; border-radius:20px; font-size:12px; font-weight:600;
-  box-shadow:0 6px 24px rgba(0,0,0,0.7), 0 0 14px rgba(56,189,248,0.35);
-  z-index:90; pointer-events:none; transition:opacity 0.25s, transform 0.25s;
-  white-space:nowrap; display:flex; align-items:center; gap:6px}
+      /* Unified Right-Side Sub-Window Architecture */
+      #sideSubWindow {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: var(--subwindow-width, 480px);
+        min-width: 765px;
+        max-width: 94vw;
+        background: var(--panel);
+        border-left: 1px solid var(--line);
+        z-index: 35;
+        box-shadow: -8px 0 32px rgba(0, 0, 0, 0.7);
+        display: flex;
+        flex-direction: column;
+        transition:
+          transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+          border-color 0.2s,
+          box-shadow 0.2s;
+        transform: translateX(0);
+      }
+      #sideSubWindow.pinned {
+        border-left-color: var(--accent);
+        box-shadow:
+          -10px 0 36px rgba(56, 189, 248, 0.25),
+          -4px 0 24px rgba(0, 0, 0, 0.8);
+      }
+      #sideSubWindow[hidden] {
+        display: none !important;
+      }
+      .subwindow-grip {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 12px;
+        cursor: ew-resize;
+        z-index: 40;
+        touch-action: none;
+      }
+      .subwindow-grip::before {
+        content: "";
+        position: absolute;
+        left: 2px;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 44px;
+        width: 4px;
+        border-radius: 2px;
+        background: var(--line);
+        transition: all 0.15s;
+      }
+      .subwindow-grip:hover::before,
+      .subwindow-grip.active::before {
+        background: var(--accent);
+        box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+        height: 68px;
+      }
+      .subwindow-header {
+        padding: 12px 18px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel-2);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+        user-select: none;
+      }
+      .subwindow-title {
+        font-size: 13.5px;
+        font-weight: 700;
+        color: var(--ink);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .subwindow-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .subwindow-pin {
+        padding: 5px 10px;
+        font-size: 11.5px;
+        font-weight: 600;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: var(--dim);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.15s;
+      }
+      .subwindow-pin:hover {
+        border-color: var(--accent);
+        color: var(--ink);
+        background: var(--panel-2);
+      }
+      .subwindow-pin.pinned {
+        background: rgba(56, 189, 248, 0.18);
+        border-color: var(--accent);
+        color: var(--accent);
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+      }
+      .subwindow-close {
+        padding: 5px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: var(--dim);
+        cursor: pointer;
+      }
+      .subwindow-close:hover {
+        border-color: var(--accent);
+        color: var(--ink);
+        background: var(--panel-2);
+      }
+      .subwindow-notice {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(15, 23, 42, 0.96);
+        border: 1px solid var(--accent);
+        color: var(--ink);
+        padding: 7px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        box-shadow:
+          0 6px 24px rgba(0, 0, 0, 0.7),
+          0 0 14px rgba(56, 189, 248, 0.35);
+        z-index: 90;
+        pointer-events: none;
+        transition:
+          opacity 0.25s,
+          transform 0.25s;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
 
-/* Dropdown pulse highlight when 3D node clicked */
-@keyframes pulseGlow{
-  0%{box-shadow:0 0 0 0 rgba(56,189,248,0.7); border-color:var(--accent)}
-  70%{box-shadow:0 0 0 8px rgba(56,189,248,0); border-color:var(--accent)}
-  100%{box-shadow:0 0 0 0 rgba(56,189,248,0)}
-}
-.pulse-highlight{animation:pulseGlow 1.2s ease-out; border-color:var(--accent) !important}
+      /* Dropdown pulse highlight when 3D node clicked */
+      @keyframes pulseGlow {
+        0% {
+          box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7);
+          border-color: var(--accent);
+        }
+        70% {
+          box-shadow: 0 0 0 8px rgba(56, 189, 248, 0);
+          border-color: var(--accent);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
+        }
+      }
+      .pulse-highlight {
+        animation: pulseGlow 1.2s ease-out;
+        border-color: var(--accent) !important;
+      }
 
-/* Timeline Buttons & Controls */
-.timeline-btn{font:inherit; font-size:11.5px; background:var(--panel-2); color:var(--ink);
-  border:1px solid var(--line); border-radius:6px; cursor:pointer; padding:5px 9px}
-.timeline-btn:hover{border-color:var(--accent); color:var(--accent)}
-.timeline-btn.primary{background:var(--accent); border-color:var(--accent); color:#06131f; font-weight:700}
-.nav-control-group{display:inline-flex; align-items:center; gap:6px; background:var(--panel-2);
-  padding:3px 9px; border-radius:6px; border:1px solid var(--line); font-size:11.5px}
-.fps-toggle-group{display:inline-flex; align-items:center; gap:2px; background:var(--panel-2);
-  padding:2px 4px; border-radius:6px; border:1px solid var(--line)}
-.fps-btn{font:inherit; font-size:11px; padding:3px 7px; border:none; background:transparent;
-  color:var(--dim); border-radius:4px; cursor:pointer; font-weight:500; transition:all 0.15s}
-.fps-btn:hover{color:var(--ink); background:rgba(255,255,255,0.06)}
-.fps-btn.active{background:var(--accent); border-color:var(--accent); color:#06131f; font-weight:700; box-shadow:0 0 6px rgba(56,189,248,0.35)}
+      /* Timeline Buttons & Controls */
+      .timeline-btn {
+        font: inherit;
+        font-size: 11.5px;
+        background: var(--panel-2);
+        color: var(--ink);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        cursor: pointer;
+        padding: 5px 9px;
+      }
+      .timeline-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .timeline-btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #06131f;
+        font-weight: 700;
+      }
+      .nav-control-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: var(--panel-2);
+        padding: 2px 7px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        font-size: 11px;
+      }
+      .fps-toggle-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        background: var(--panel-2);
+        padding: 2px 3px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+      }
+      .fps-btn {
+        font: inherit;
+        font-size: 10.5px;
+        padding: 2px 6px;
+        border: none;
+        background: transparent;
+        color: var(--dim);
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.15s;
+      }
+      .fps-btn:hover {
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .fps-btn.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #06131f;
+        font-weight: 700;
+        box-shadow: 0 0 6px rgba(56, 189, 248, 0.35);
+      }
 
-.subwindow-body{flex:1; overflow-y:auto; padding:18px 22px; font-size:13px; line-height:1.55}
-.subwindow-body h2{margin:0 0 6px; font-size:17px; color:var(--accent)}
-.subwindow-body h3{font-size:14px; margin:16px 0 6px; color:var(--ink)}
-.subwindow-body h4{font-size:12px; margin:14px 0 4px; color:var(--dim); text-transform:uppercase; letter-spacing:0.04em}
-.subwindow-body p{margin:7px 0; color:var(--dim); font-size:12.5px}
-.subwindow-body table{border-collapse:collapse; margin:10px 0; font-size:12px; width:100%}
-.subwindow-body th,.subwindow-body td{border:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; color:var(--dim)}
-.subwindow-body th{background:var(--panel-2); color:var(--ink)}
-.subwindow-body code{background:var(--panel-2); border:1px solid var(--line); border-radius:4px; padding:1px 4px; font-size:11.5px}
-.subwindow-pane[hidden]{display:none !important}
-.nav-spacer{flex:1}
+      .subwindow-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 18px 22px;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+      .subwindow-body h2 {
+        margin: 0 0 6px;
+        font-size: 17px;
+        color: var(--accent);
+      }
+      .subwindow-body h3 {
+        font-size: 14px;
+        margin: 16px 0 6px;
+        color: var(--ink);
+      }
+      .subwindow-body h4 {
+        font-size: 12px;
+        margin: 14px 0 4px;
+        color: var(--dim);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .subwindow-body p {
+        margin: 7px 0;
+        color: var(--dim);
+        font-size: 12.5px;
+      }
+      .subwindow-body table {
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 12px;
+        width: 100%;
+      }
+      .subwindow-body th,
+      .subwindow-body td {
+        border: 1px solid var(--line);
+        padding: 6px 8px;
+        text-align: left;
+        vertical-align: top;
+        color: var(--dim);
+      }
+      .subwindow-body th {
+        background: var(--panel-2);
+        color: var(--ink);
+      }
+      .subwindow-body code {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 1px 4px;
+        font-size: 11.5px;
+      }
+      .subwindow-pane[hidden] {
+        display: none !important;
+      }
+      .nav-spacer {
+        flex: 1;
+      }
 
-/* QA Details within Subwindow */
-.subwindow-pane .qa{border:1px solid var(--line); border-radius:9px; margin-bottom:10px; background:var(--panel-2); overflow:hidden}
-.subwindow-pane .qa>summary{cursor:pointer; padding:10px 13px; font-weight:600; font-size:12.5px; list-style:none; display:flex; gap:8px; align-items:baseline; color:var(--ink)}
-.subwindow-pane .qa>summary::-webkit-details-marker{display:none}
-.subwindow-pane .qa>summary::before{content:"?"; color:var(--accent); font-weight:700}
-.subwindow-pane .qa[open]>summary{border-bottom:1px solid var(--line); background:#0f1a2b}
-.subwindow-pane .qa .body{padding:12px 13px}
-.subwindow-pane .qa .body p{margin:0 0 9px; font-size:12.5px; color:var(--dim)}
+      /* QA Details within Subwindow */
+      .subwindow-pane .qa {
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        margin-bottom: 10px;
+        background: var(--panel-2);
+        overflow: hidden;
+      }
+      .subwindow-pane .qa > summary {
+        cursor: pointer;
+        padding: 10px 13px;
+        font-weight: 600;
+        font-size: 12.5px;
+        list-style: none;
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+        color: var(--ink);
+      }
+      .subwindow-pane .qa > summary::-webkit-details-marker {
+        display: none;
+      }
+      .subwindow-pane .qa > summary::before {
+        content: "?";
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .subwindow-pane .qa[open] > summary {
+        border-bottom: 1px solid var(--line);
+        background: #0f1a2b;
+      }
+      .subwindow-pane .qa .body {
+        padding: 12px 13px;
+      }
+      .subwindow-pane .qa .body p {
+        margin: 0 0 9px;
+        font-size: 12.5px;
+        color: var(--dim);
+      }
 
-/* Lead boxes */
-.lead-box{background:var(--panel-2); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:8px; padding:12px 15px; margin:0 0 14px}
-.kfacts{display:flex; flex-wrap:wrap; gap:8px; margin:12px 0}
-.kfact{background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:6px 12px; font-size:12px; color:var(--dim)}
-.kfact b{display:block; font-size:15px; color:var(--ink); margin-top:2px}
+      /* Lead boxes */
+      .lead-box {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--accent);
+        border-radius: 8px;
+        padding: 12px 15px;
+        margin: 0 0 14px;
+      }
+      .kfacts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 12px 0;
+      }
+      .kfact {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 12px;
+        color: var(--dim);
+      }
+      .kfact b {
+        display: block;
+        font-size: 15px;
+        color: var(--ink);
+        margin-top: 2px;
+      }
 
-/* Explainability parameter bars */
-.param-bar{margin:8px 0}
-.param-bar .lbl{display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:3px; color:var(--dim)}
-.param-bar .track{height:6px; background:var(--panel-2); border-radius:3px; overflow:hidden}
-.param-bar .fill{height:100%; background:var(--accent); border-radius:3px}
+      /* Explainability parameter bars */
+      .param-bar {
+        margin: 8px 0;
+      }
+      .param-bar .lbl {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11.5px;
+        margin-bottom: 3px;
+        color: var(--dim);
+      }
+      .param-bar .track {
+        height: 6px;
+        background: var(--panel-2);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .param-bar .fill {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 3px;
+      }
 
-/* Numbered Ranking Map Pins on Heatmap */
-.pin-marker{position:absolute; transform:translate(-50%, -100%); cursor:pointer; pointer-events:auto;
-  z-index:10; transition:transform 0.15s ease; user-select:none}
-.pin-marker:hover{transform:translate(-50%, -108%) scale(1.18); z-index:25}
-.pin-marker svg{display:block; filter:drop-shadow(0 3px 5px rgba(0,0,0,0.65))}
-.pin-marker .pin-tooltip{display:none; position:absolute; bottom:105%; left:50%; transform:translateX(-50%);
-  background:rgba(13,22,38,0.96); border:1px solid var(--accent); border-radius:6px; padding:4px 8px;
-  white-space:nowrap; font-size:11px; color:#fff; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,0.5)}
-.pin-marker:hover .pin-tooltip{display:block}
+      /* Numbered Ranking Map Pins on Heatmap */
+      .pin-marker {
+        position: absolute;
+        transform: translate(-50%, -100%);
+        cursor: pointer;
+        pointer-events: auto;
+        z-index: 10;
+        transition: transform 0.15s ease;
+        user-select: none;
+      }
+      .pin-marker:hover {
+        transform: translate(-50%, -108%) scale(1.18);
+        z-index: 25;
+      }
+      .pin-marker svg {
+        display: block;
+        filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.65));
+      }
+      .pin-marker .pin-tooltip {
+        display: none;
+        position: absolute;
+        bottom: 105%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(13, 22, 38, 0.96);
+        border: 1px solid var(--accent);
+        border-radius: 6px;
+        padding: 4px 8px;
+        white-space: nowrap;
+        font-size: 11px;
+        color: #fff;
+        pointer-events: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      }
+      .pin-marker:hover .pin-tooltip {
+        display: block;
+      }
 
-/* Loading & Error Overlays */
-#loadingOverlay{position:absolute; inset:0; background:rgba(13,17,23,0.94); display:flex;
-  flex-direction:column; align-items:center; justify-content:center; z-index:30; transition:opacity 0.4s ease}
-#loadingOverlay.fade-out{opacity:0; pointer-events:none}
-.spinner{width:42px; height:42px; border:3px solid rgba(56,189,248,0.2); border-top-color:var(--accent);
-  border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:14px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.loading-msg{font-size:15px; font-weight:600; color:var(--ink); margin-bottom:4px}
-.loading-sub{font-size:11.5px; color:var(--dim)}
+      /* Loading & Error Overlays */
+      #loadingOverlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(13, 17, 23, 0.94);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 30;
+        transition: opacity 0.4s ease;
+      }
+      #loadingOverlay.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .spinner {
+        width: 42px;
+        height: 42px;
+        border: 3px solid rgba(56, 189, 248, 0.2);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-bottom: 14px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .loading-msg {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--ink);
+        margin-bottom: 4px;
+      }
+      .loading-sub {
+        font-size: 11.5px;
+        color: var(--dim);
+      }
 
-#errorOverlay{position:absolute; inset:0; background:rgba(13,17,23,0.95); display:flex;
-  align-items:center; justify-content:center; z-index:35}
-#errorOverlay[hidden]{display:none}
-.error-box{background:var(--panel); border:1px solid var(--warn); border-radius:10px;
-  padding:24px 30px; max-width:480px; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.5)}
-.error-box h3{color:var(--warn); margin:0 0 10px}
-.error-box p{font-size:13px; color:var(--dim); line-height:1.5; margin-bottom:16px}
-.error-box button{padding:7px 18px; background:var(--accent); border:0; border-radius:6px;
-  color:#06131f; font-weight:600; cursor:pointer}
+      #errorOverlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(13, 17, 23, 0.95);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 35;
+      }
+      #errorOverlay[hidden] {
+        display: none;
+      }
+      .error-box {
+        background: var(--panel);
+        border: 1px solid var(--warn);
+        border-radius: 10px;
+        padding: 24px 30px;
+        max-width: 480px;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      }
+      .error-box h3 {
+        color: var(--warn);
+        margin: 0 0 10px;
+      }
+      .error-box p {
+        font-size: 13px;
+        color: var(--dim);
+        line-height: 1.5;
+        margin-bottom: 16px;
+      }
+      .error-box button {
+        padding: 7px 18px;
+        background: var(--accent);
+        border: 0;
+        border-radius: 6px;
+        color: #06131f;
+        font-weight: 600;
+        cursor: pointer;
+      }
 
-/* Responsive Drawer for Screens <= 900px */
-.drawer-btn{display:none}
-@media (max-width:900px){
-  body{grid-template-columns:1fr; grid-template-rows:1fr; position:relative; overflow:hidden}
-  #grip{display:none}
-  #side{position:absolute; top:0; left:0; bottom:0; width:330px; max-width:86vw; z-index:45;
-    box-shadow:4px 0 24px rgba(0,0,0,0.7); transform:translateX(-100%);
-    transition:transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)}
-  #side.drawer-open{transform:translateX(0)}
-  .drawer-btn{display:inline-flex; align-items:center; gap:4px; font-weight:600}
-  #stageWrap{height:calc(100vh - 84px)}
-  main{height:100vh}
-}
+      /* Responsive Drawer for Screens <= 900px */
+      .drawer-btn {
+        display: none;
+      }
+      @media (max-width: 900px) {
+        body {
+          grid-template-columns: 1fr;
+          grid-template-rows: 1fr;
+          position: relative;
+          overflow: hidden;
+        }
+        #grip {
+          display: none;
+        }
+        #side {
+          position: absolute;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          width: 330px;
+          max-width: 86vw;
+          z-index: 45;
+          box-shadow: 4px 0 24px rgba(0, 0, 0, 0.7);
+          transform: translateX(-100%);
+          transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #side.drawer-open {
+          transform: translateX(0);
+        }
+        .drawer-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-weight: 600;
+        }
+        #stageWrap {
+          height: calc(100vh - 84px);
+        }
+        main {
+          height: 100vh;
+        }
+      }
 
-/* Pan Mode & Free 4-Direction Navigation */
-#stage.pan-active, #stage.pan-active canvas{cursor:grab !important}
-#stage.panning, #stage.panning canvas{cursor:grabbing !important}
-.pan-hint{position:absolute; bottom:14px; left:16px; background:rgba(13,22,38,0.88);
-  border:1px solid var(--line); border-radius:6px; padding:6px 12px; font-size:11.5px;
-  color:var(--dim); pointer-events:none; z-index:15; display:flex; align-items:center; gap:6px;
-  backdrop-filter:blur(6px); transition:border-color 0.2s, color 0.2s, background 0.2s;
-  box-shadow:0 4px 16px rgba(0,0,0,0.5)}
-.pan-hint.active{border-color:var(--accent); color:#fff; background:rgba(14,165,233,0.22);
-  box-shadow:0 0 12px rgba(56,189,248,0.35)}
-.pan-hint kbd{background:var(--panel-2); border:1px solid var(--line); border-radius:4px;
-  padding:1px 5px; font-family:ui-monospace,Menlo,monospace; font-size:10.5px; color:var(--accent)}
+      /* Pan Mode & Free 4-Direction Navigation */
+      #stage.pan-active,
+      #stage.pan-active canvas {
+        cursor: grab !important;
+      }
+      #stage.panning,
+      #stage.panning canvas {
+        cursor: grabbing !important;
+      }
+      .pan-hint {
+        position: absolute;
+        bottom: 14px;
+        left: 16px;
+        background: rgba(13, 22, 38, 0.88);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 11.5px;
+        color: var(--dim);
+        pointer-events: none;
+        z-index: 15;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        backdrop-filter: blur(6px);
+        transition:
+          border-color 0.2s,
+          color 0.2s,
+          background 0.2s;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      }
+      .pan-hint.active {
+        border-color: var(--accent);
+        color: #fff;
+        background: rgba(14, 165, 233, 0.22);
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+      }
+      .pan-hint kbd {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 10.5px;
+        color: var(--accent);
+      }
 
-/* Priority Sensor Placement in Growth Mode */
-.btn-growth-sensors{
-  background:var(--panel-2); color:var(--dim); border:1px solid var(--line);
-  border-radius:6px; padding:3px 9px; font-size:11px; font-weight:700; cursor:pointer;
-  transition:all 0.15s ease;
-}
-.btn-growth-sensors:hover{border-color:var(--accent); color:var(--ink)}
-.btn-growth-sensors.active{
-  background:var(--accent); color:#06131f; border-color:var(--accent);
-  box-shadow:0 0 10px rgba(56,189,248,0.35);
-}
-.sensor-candidate-row{
-  cursor:pointer; border-radius:6px; padding:7px 9px; margin-bottom:6px;
-  background:var(--panel-2); border:1px solid var(--line); transition:all 0.15s;
-}
-.sensor-candidate-row:hover{
-  border-color:var(--accent); transform:translateX(2px);
-  background:rgba(56,189,248,0.08);
-}
-.sensor-candidate-row.selected{
-  border-color:var(--accent); background:rgba(56,189,248,0.14);
-}
-</style>
-</head>
-<body>
-
-<aside id="side">
-  <h1>Growth &amp; Sensor Intelligence</h1>
-  <p class="sub">Dynamic catchment simulation, sensor placement heatmap &amp; hydraulic controls.</p>
-
-  <!-- Mode Selector Tabs -->
-  <label class="fld">Simulation View</label>
-  <div class="knob" id="modeKnob">
-    <button data-mode="growth" class="on">Growth</button>
-    <button data-mode="heatmap">Heatmap</button>
-    <button data-mode="blockage">Blockage</button>
-    <button data-mode="pump">Pumps &amp; Visc</button>
-  </div>
-
-  <!-- PANEL 1: Growth Model (Default) -->
-  <div id="panel-growth">
-    <label class="fld">Wet weather</label>
-    <div class="knob" id="iiKnob"></div>
-    <div class="quiet" id="iiNote"></div>
-
-    <label class="fld">New dwellings added</label>
-    <div class="knob" id="addKnob"></div>
-
-    <label class="fld" for="site">Connected at</label>
-    <select id="site"></select>
-
-    <div id="siteFacts"></div>
-    <div id="tipList"></div>
-    <div id="baseNote"></div>
-
-    <!-- Priority Sensor Placement for Active Growth Scenario -->
-    <div class="card-box" id="growthSensorCard" style="margin-top:14px; border-color:var(--accent)">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
-        <span style="font-weight:700; font-size:12.5px; color:var(--ink)">🎯 Priority Sensor Placement</span>
-        <button id="btnGrowthSensors" class="btn-growth-sensors">Show on Map: OFF</button>
-      </div>
-      <p class="quiet" style="margin-top:0; font-size:11.5px; line-height:1.4">
-        Recommend sensor manholes based on immediate scenario tipping, contributing homes guarded, or sewer volume monitored.
+      /* Priority Sensor Placement in Growth Mode */
+      .btn-growth-sensors {
+        background: var(--panel-2);
+        color: var(--dim);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 3px 9px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .btn-growth-sensors:hover {
+        border-color: var(--accent);
+        color: var(--ink);
+      }
+      .btn-growth-sensors.active {
+        background: var(--accent);
+        color: #06131f;
+        border-color: var(--accent);
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+      }
+      .sensor-candidate-row {
+        cursor: pointer;
+        border-radius: 6px;
+        padding: 7px 9px;
+        margin-bottom: 6px;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        transition: all 0.15s;
+      }
+      .sensor-candidate-row:hover {
+        border-color: var(--accent);
+        transform: translateX(2px);
+        background: rgba(56, 189, 248, 0.08);
+      }
+      .sensor-candidate-row.selected {
+        border-color: var(--accent);
+        background: rgba(56, 189, 248, 0.14);
+      }
+    </style>
+  </head>
+  <body>
+    <aside id="side">
+      <h1>Growth &amp; Sensor Intelligence</h1>
+      <p class="sub">
+        Dynamic catchment simulation, sensor placement heatmap &amp; hydraulic
+        controls.
       </p>
 
-      <label class="fld" style="margin-top:8px">Prioritize Need By:</label>
-      <div class="knob" id="growthSensorPriorityKnob" style="grid-template-columns: repeat(3, 1fr); margin-bottom:8px">
-        <button data-crit="immediate" class="on" title="Manholes at immediate risk of surcharge in this wet weather and growth condition">Immediate Need</button>
-        <button data-crit="homes" title="Manholes guarding the highest number of upstream homes">Homes Guarded</button>
-        <button data-crit="volume" title="Manholes monitoring the largest volume of sewer wastewater">Sewer Volume</button>
+      <!-- Mode Selector Tabs -->
+      <label class="fld">Simulation View</label>
+      <div class="knob" id="modeKnob">
+        <button data-mode="growth" class="on">Growth</button>
+        <button data-mode="heatmap">Heatmap</button>
+        <button data-mode="blockage">Blockage</button>
+        <button data-mode="pump">Pumps &amp; Visc</button>
       </div>
 
-      <div id="growthSensorResults" style="margin-top:6px"></div>
-    </div>
+      <!-- PANEL 1: Growth Model (Default) -->
+      <div id="panel-growth">
+        <label class="fld">Wet weather</label>
+        <div class="knob" id="iiKnob"></div>
+        <div class="quiet" id="iiNote"></div>
 
-    <div id="sensorList"></div>
-  </div>
+        <label class="fld">New dwellings added</label>
+        <div class="knob" id="addKnob"></div>
 
-  <!-- PANEL 2: Sensor Placement Heatmap -->
-  <div id="panel-heatmap" hidden>
-    <div class="card-box" style="margin-top:14px">
-      <h4><span>Sensor Placement Heatmap</span><span class="badge-tag good">Dynamic Ranking</span></h4>
-      <p class="quiet" style="margin-top:0">Clean 3D node-based heatmap identifies optimal sensor locations based on active scenario tipping, upstream homes, sewer flow volume, and bottleneck chokes.</p>
-      <div style="display:flex; justify-content:space-between; font-size:11px; margin-top:8px; color:var(--dim)">
-        <span>0 (Low)</span><span>25</span><span>50</span><span>75</span><span>100 (Critical)</span>
-      </div>
-      <div style="height:8px; border-radius:4px; background:linear-gradient(to right, #1e3a8a, #0284c7, #10b981, #f59e0b, #ff0055); margin-top:3px"></div>
-    </div>
+        <label class="fld" for="site">Connected at</label>
+        <select id="site"></select>
 
-    <!-- Active Scenario Knobs for Heatmap Reactivity -->
-    <label class="fld">Scenario Wet Weather</label>
-    <div class="knob" id="heatmapIiKnob"></div>
-    <div class="quiet" id="heatmapIiNote" style="font-size:11px; margin-top:3px"></div>
+        <div id="siteFacts"></div>
+        <div id="tipList"></div>
+        <div id="baseNote"></div>
 
-    <label class="fld">Scenario Dwellings Added</label>
-    <div class="knob" id="heatmapAddKnob"></div>
+        <!-- Priority Sensor Placement for Active Growth Scenario -->
+        <div
+          class="card-box"
+          id="growthSensorCard"
+          style="margin-top: 14px; border-color: var(--accent)"
+        >
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 8px;
+            "
+          >
+            <span style="font-weight: 700; font-size: 12.5px; color: var(--ink)"
+              >🎯 Priority Sensor Placement</span
+            >
+            <button id="btnGrowthSensors" class="btn-growth-sensors">
+              Show on Map: OFF
+            </button>
+          </div>
+          <p
+            class="quiet"
+            style="margin-top: 0; font-size: 11.5px; line-height: 1.4"
+          >
+            Recommend sensor manholes based on immediate scenario tipping,
+            contributing homes guarded, or sewer volume monitored.
+          </p>
 
-    <h4 style="margin-top:16px">Top Ranked Candidate Sensors</h4>
-    <div id="heatmapRankList"></div>
-
-    <!-- Live On-Screen Explainability Card -->
-    <div class="card-box" id="heatmapLiveCard" style="margin-top:14px; border-color:var(--accent)"></div>
-
-    <button id="btnExplainTop" style="width:100%; margin-top:12px; padding:8px; background:var(--accent); color:#06131f; font-weight:600; border:0; border-radius:7px; cursor:pointer">
-      Inspect Technical Placement Rationale
-    </button>
-  </div>
-
-  <!-- PANEL 3: Blockage & Backwater Simulator -->
-  <div id="panel-blockage" hidden>
-    <div class="card-box" style="margin-top:14px">
-      <h4><span>Pipe Blockage Choke</span><span class="badge-tag crit" id="blockageBadge">No Blockage</span></h4>
-      <p class="quiet" style="margin-top:0">Simulate fatberg, debris or root intrusion on selected mains to test upstream backwater propagation and sensor detection lead time.</p>
-      <label class="fld" for="blockagePipe">Blockage Location</label>
-      <select id="blockagePipe"></select>
-
-      <label class="fld">Blockage Severity: <span id="blockagePctVal" style="color:var(--warn); font-weight:600">0%</span></label>
-      <input type="range" id="blockageRange" min="0" max="95" step="5" value="0">
-
-      <div class="row-val" style="color:var(--faint)">
-        <span>Clear (0%)</span><span>Partial (50%)</span><span>Severe (95%)</span>
-      </div>
-    </div>
-
-    <!-- Real-Time Sewer Backwater Timeline Controls -->
-    <div class="card-box" style="margin-top:12px; border-color:var(--accent)">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
-        <span style="font-weight:700; font-size:12px; color:var(--ink)">Real-Time Backwater Timeline</span>
-        <span class="badge-tag good" id="timelineStatus">Normal Flow</span>
-      </div>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:6px">
-        <span style="color:var(--dim)">Simulation Time: <strong id="timelineTime" style="color:var(--accent); font-variant-numeric:tabular-nums; font-family:monospace">00:00</strong></span>
-        <span style="color:var(--dim); font-size:11px">Spill Horizon: <span id="timelineHorizon" style="color:var(--warn); font-weight:600">--</span></span>
-      </div>
-
-      <!-- Scrubber Slider -->
-      <input type="range" id="timelineScrubber" min="0" max="3600" step="15" value="0" style="margin:4px 0 8px">
-
-      <!-- Playback Controls -->
-      <div style="display:flex; gap:5px; align-items:center; margin-bottom:8px">
-        <button id="btnTimelinePlay" class="timeline-btn primary" style="flex:1.2; padding:6px 8px; font-weight:700">▶ Play</button>
-        <button id="btnTimelineStepBack" class="timeline-btn" title="Step Back 1 min" style="padding:6px 8px">⏮ -1m</button>
-        <button id="btnTimelineStepFwd" class="timeline-btn" title="Step Forward 1 min" style="padding:6px 8px">⏭ +1m</button>
-        <button id="btnTimelineReset" class="timeline-btn" title="Reset Timeline" style="padding:6px 8px">↺</button>
-        <select id="timelineSpeed" style="width:auto; padding:5px 6px; font-size:11px" title="Simulation Speed Multiplier">
-          <option value="1">1x (Real-sec)</option>
-          <option value="5">5x Speed</option>
-          <option value="15" selected>15x Speed</option>
-          <option value="30">30x Speed</option>
-          <option value="60">60x Speed</option>
-        </select>
-      </div>
-      <p class="quiet" style="font-size:10.5px; margin:0">Scrub or pause to freeze sewer backwater state and inspect chamber water heights.</p>
-    </div>
-
-    <div id="blockageResults" style="margin-top:12px"></div>
-  </div>
-
-  <!-- PANEL 4: Pump Stations & Viscosity Controls -->
-  <div id="panel-pump" hidden>
-    <div class="card-box" style="margin-top:14px">
-      <h4><span>Pump Station Motor Controls</span><span class="badge-tag good" id="psStatusBadge">Active</span></h4>
-      <label class="fld" for="pumpStationSelect">Select Pump Station</label>
-      <select id="pumpStationSelect">
-        <option value="PS-01">Pump Station PS-01 (Catchment Outlet)</option>
-        <option value="LS-02">Lift Station LS-02 (Trunk Junction MH4449118)</option>
-      </select>
-
-      <div style="margin-top:10px">
-        <div class="row-val">
-          <span>Motor VSD Output</span>
-          <span id="pumpDutyVal" style="color:var(--accent); font-weight:600">100% (50 L/s)</span>
-        </div>
-        <input type="range" id="pumpDutyRange" min="0" max="150" step="5" value="100">
-      </div>
-
-      <label style="display:flex; align-items:center; gap:8px; font-size:12px; margin-top:8px; cursor:pointer">
-        <input type="checkbox" id="chkAutoRelief" checked style="width:auto">
-        <strong>Auto-Relieve Overflow</strong> (dynamic draw-down)
-      </label>
-    </div>
-
-    <div class="card-box">
-      <h4><span>Wastewater Viscosity &amp; Speed</span></h4>
-      <p class="quiet" style="margin-top:0">Viscosity changes with temperature, grease/FOG, and suspended solids, altering boundary friction and travel velocity.</p>
-      <label class="fld" for="viscSelect">Sewage Flow Condition</label>
-      <select id="viscSelect">
-        <option value="domestic">Standard Domestic (20°C, ν=1.15 mm²/s)</option>
-        <option value="grease">High Grease / FOG (15°C, ν=2.40 mm²/s)</option>
-        <option value="sludge">Cold Sludge / Heavy Solids (8°C, ν=3.80 mm²/s)</option>
-        <option value="clean">Clean Water Reference (20°C, ν=1.00 mm²/s)</option>
-      </select>
-      <div id="viscOutputs" style="margin-top:10px"></div>
-    </div>
-  </div>
-
-  <!-- Upstream Affecting Area HUD Card (Persistent across modes when node selected) -->
-  <div class="card-box" id="affectingAreaCard" style="margin-top:14px">
-    <h4><span>Upstream Tributary Catchment</span></h4>
-    <div id="affectingAreaStats"></div>
-  </div>
-</aside>
-
-<div id="grip" title="Drag to resize sidebar width (double-click to toggle wide/compact)"></div>
-
-<main>
-  <nav>
-    <button id="sidebarToggle" class="drawer-btn" title="Toggle Controls">☰ Menu</button>
-    <button id="fitAll">Whole catchment</button>
-    <button id="fitSite">Zoom to selected</button>
-    <button id="togglePan" title="Toggle Pan mode (or hold Spacebar and drag)">Pan: Hold [Space]</button>
-    <div class="nav-control-group" title="Adjust 3D vertical elevation exaggeration scale (1x - 35x)">
-      <label for="exaggRange" style="color:var(--dim); white-space:nowrap; cursor:pointer">Elevation: <b id="exaggVal" style="color:var(--accent)">18x</b></label>
-      <input type="range" id="exaggRange" min="1" max="35" step="1" value="18" style="width:68px; accent-color:var(--accent); margin:0; cursor:pointer">
-    </div>
-    <div class="nav-control-group fps-toggle-group" id="fpsToggleGroup" title="Framerate &amp; GPU power optimization (30 FPS Eco cuts battery &amp; fan noise)">
-      <span style="color:var(--dim); font-size:11px; font-weight:600">FPS:</span>
-      <button type="button" class="fps-btn active" data-fps="30" title="30 FPS Eco Mode (Reduced GPU power, cool &amp; quiet)">30 Eco</button>
-      <button type="button" class="fps-btn" data-fps="60" title="60 FPS Balanced Mode">60</button>
-      <button type="button" class="fps-btn" data-fps="0" title="Uncapped Refresh Rate (Max power)">Max</button>
-    </div>
-    <button id="toggleSensors">Show proposed sensors</button>
-    <button id="toggleFlow" class="primary">Flow Animation: ON</button>
-    <button id="toggleBottlenecks">Show bottleneck pipes</button>
-    <div class="nav-spacer"></div>
-    <button id="tab-intro" class="nav-doc-btn">📖 Tool Guide</button>
-    <button id="btn-info" class="nav-doc-btn">About this model</button>
-    <button id="btnSchema" class="nav-doc-btn">Data Schema &amp; Formulas</button>
-    <button id="tab-ref" class="nav-doc-btn">Assumptions</button>
-    <button id="tab-qa" class="nav-doc-btn">Discussion Q&amp;A</button>
-  </nav>
-
-  <div id="stageWrap">
-    <div id="stage"></div>
-    <div id="homeKey"></div>
-    <div id="panHint" class="pan-hint">
-      <span class="pan-badge"><kbd>Space</kbd> + Drag</span> or <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> to pan freely
-    </div>
-    <div id="loadingOverlay">
-      <div class="spinner"></div>
-      <div class="loading-msg">Initializing Catchment 3D Engine &amp; Hydraulics...</div>
-      <div class="loading-sub">158 sewer mains &bull; 71 candidate chambers &bull; 852 SWMM runs</div>
-    </div>
-    <div id="errorOverlay" hidden>
-      <div class="error-box">
-        <h3>WebGL Unavailable</h3>
-        <p>Could not initialize the 3D WebGL renderer. Please ensure hardware acceleration is enabled in your browser settings or use a modern WebGL-compatible browser.</p>
-        <button onclick="location.reload()">Retry</button>
-      </div>
-    </div>
-
-    <!-- Unified Right-Side Sub-Window (Positioned immediately below top second nav) -->
-    <aside id="sideSubWindow" class="side-subwindow" hidden>
-      <div id="subwindowGrip" class="subwindow-grip" title="Drag to resize window width (double-click to toggle wide view)"></div>
-      <div class="subwindow-header" title="Double-click anywhere on window to pin open against outside clicks">
-        <div class="subwindow-title" id="subwindowTitle">Documentation &amp; Guides</div>
-        <div class="subwindow-actions">
-          <button class="subwindow-pin" id="subwindowPin" title="Double-click anywhere on window (or click here) to pin open">📌 <span id="subwindowPinText">Pin</span></button>
-          <button class="subwindow-close" id="subwindowClose" title="Close (Esc)">✕ Close</button>
-        </div>
-      </div>
-      <div id="subwindowNotice" class="subwindow-notice" hidden></div>
-      <div class="subwindow-body">
-        <div class="subwindow-pane" id="pane-intro"></div>
-        <div class="subwindow-pane" id="pane-about" hidden></div>
-        <div class="subwindow-pane" id="pane-schema" hidden>
-          <h2>Current Data Schema &amp; Hydraulic Parameters</h2>
-          <p class="sub">Formal specifications for all data structures, network graphs, physics formulas, and provenance used in Simulation 2.</p>
-          
-          <h3>1. Catchment Network Geometry (<code>GROWTH_GEOM</code>)</h3>
-          <table>
-            <tr style="background:var(--panel-2)"><th>Property</th><th>Type</th><th>Count / Value</th><th>Description</th></tr>
-            <tr><td><code>nodes</code></td><td>Array&lt;Node&gt;</td><td>156 nodes</td><td>Maintenance holes (71) and inline pipe junctions (85). Fields: <code>name, kind, x, y, inv, depth, mh, dw</code>.</td></tr>
-            <tr><td><code>nPipes</code></td><td>Integer</td><td>158 reaches</td><td>Total gravity sewer mains in this drainage catchment.</td></tr>
-            <tr><td><code>up, down</code></td><td>Array&lt;Int&gt;</td><td>158 indices</td><td>Directed graph connectivity. Flow runs from <code>up[p]</code> to <code>down[p]</code>.</td></tr>
-            <tr><td><code>dia</code></td><td>Array&lt;Int&gt;</td><td>158 values</td><td>Internal pipe diameter in mm (predominantly 150mm and 225mm vitrified clay and uPVC).</td></tr>
-            <tr><td><code>zu, zd</code></td><td>Array&lt;Int&gt;</td><td>158 pairs</td><td>Upstream and downstream pipe invert elevations in cm AHD.</td></tr>
-            <tr><td><code>hx, hy, hz, hn</code></td><td>Array&lt;Float&gt;</td><td>643 dwellings</td><td>Coordinates of real connected properties and the node index <code>hn[i]</code> they drain into.</td></tr>
-            <tr><td><code>bottlenecks</code></td><td>Array&lt;Object&gt;</td><td>7 tight pipes</td><td>Reaches where full-bore capacity constrains upstream growth: <code>pipe, capBefore, capAfter, qFullLps</code>.</td></tr>
-          </table>
-
-          <h3>2. SWMM Hydraulic Simulation Grid (<code>GROWTH_RUNS</code>)</h3>
-          <table>
-            <tr style="background:var(--panel-2)"><th>Parameter</th><th>Settings</th><th>Operational Meaning</th></tr>
-            <tr><td>Wet Weather Inflow</td><td>0.25, 0.40, 0.55 L/s per 100m</td><td>Rainfall infiltration entering through pipe joints and defects.</td></tr>
-            <tr><td>Growth Steps</td><td>+50, +150, +350, +700 dwellings</td><td>New housing connections adding 500 L/day per dwelling (PF = 2.0).</td></tr>
-            <tr><td>Total Solved Grid</td><td>852 EPA SWMM solves</td><td>71 sites &times; 4 growth levels &times; 3 wet weather states.</td></tr>
-            <tr><td>Surcharge Criterion</td><td>Water level &gt; pipe crown</td><td>Preissmann slot storage node pressurized flow threshold.</td></tr>
-          </table>
-
-          <h3>3. Hydraulic Equations &amp; Viscosity Formulation</h3>
-          <div class="lead-box" style="line-height:1.65">
-            <p><strong>Full-bore Manning Conveyance:</strong> <code>Q_full = (1 / n_eff) · A · R^(2/3) · S^(1/2)</code></p>
-            <p><strong>Viscosity Roughness Correction:</strong> <code>n_eff = n_0 · [1 + 0.12 · ln(ν / ν_0)]</code> where <code>ν_0 = 1.05 × 10^-6 m²/s</code>.</p>
-            <p><strong>Mean Travel Velocity:</strong> <code>v = Q / A_flow (m/s)</code>, Travel Transit Time: <code>τ = Σ (L_i / v_i)</code>.</p>
-            <p><strong>Pump Station Mass Balance:</strong> <code>dV_well / dt = Q_inflow - Q_pump</code>, rated 50 L/s at PS-01 with VSD 0–150%.</p>
-            <p><strong>Blockage Capacity Reduction:</strong> <code>Q_choked = Q_cap · (1 - Blockage%)^1.8</code>.</p>
+          <label class="fld" style="margin-top: 8px">Prioritize Need By:</label>
+          <div
+            class="knob"
+            id="growthSensorPriorityKnob"
+            style="grid-template-columns: repeat(3, 1fr); margin-bottom: 8px"
+          >
+            <button
+              data-crit="immediate"
+              class="on"
+              title="Manholes at immediate risk of surcharge in this wet weather and growth condition"
+            >
+              Immediate Need
+            </button>
+            <button
+              data-crit="homes"
+              title="Manholes guarding the highest number of upstream homes"
+            >
+              Homes Guarded
+            </button>
+            <button
+              data-crit="volume"
+              title="Manholes monitoring the largest volume of sewer wastewater"
+            >
+              Sewer Volume
+            </button>
           </div>
 
-          <h3>4. Data Provenance &amp; Transparent Model Integrity</h3>
-          <table>
-            <tr style="background:var(--panel-2)"><th>Component</th><th>Source / File</th><th>Classification</th><th>Integrity Notes</th></tr>
-            <tr>
-              <td><b>Network Geometry</b></td>
-              <td><code>simulation/data/catchment.js</code></td>
-              <td><span class="badge-tag good">Real GIS Data</span></td>
-              <td>Walkerville Council / Location SA republication. 158 mains (Layer 6) and 71 chambers (Layer 2). Inverts flow-anchored via <code>START_INVE</code> and <code>FLOWDIRECT</code>.</td>
-            </tr>
-            <tr>
-              <td><b>Connected Properties</b></td>
-              <td><code>simulation/data/catchment.js</code> (<code>hn</code>)</td>
-              <td><span class="badge-tag good">Real GIS Data</span></td>
-              <td>Location SA Layer 4: 643 properties within 40m of mains carrying real <code>PARCELID</code>s. Replaces uncalibrated density proxies.</td>
-            </tr>
-            <tr>
-              <td><b>Dynamic Wave Engine</b></td>
-              <td><code>simulation/data/growth.js</code></td>
-              <td><span class="badge-tag good">Physical Engine</span></td>
-              <td>852 steady-state EPA SWMM 5.2 runs via <code>pyswmm</code> 2.1 (71 sites × 4 growth levels × 3 wet weather levels). Captures Preissmann slot surcharge and backwater.</td>
-            </tr>
-            <tr>
-              <td><b>Domestic Sewage Load</b></td>
-              <td>Hydraulic Model</td>
-              <td><span class="badge-tag warn">Standard Model</span></td>
-              <td>500 L/dwelling/day (2.5 persons × 200 L/person/day) with Sanitary Peak Factor = 2.0 (WSA 02-2014 planning standard).</td>
-            </tr>
-            <tr>
-              <td><b>Infiltration &amp; Inflow</b></td>
-              <td>Hydraulic Model</td>
-              <td><span class="badge-tag warn">Standard Model</span></td>
-              <td>0.25 L/s/100m (nominal base), 0.40 L/s/100m (moderate wet weather), 0.55 L/s/100m (heavy 5-yr storm). Entering via pipe joints.</td>
-            </tr>
-            <tr>
-              <td><b>Manning Roughness</b></td>
-              <td>Hydraulic Model</td>
-              <td><span class="badge-tag warn">Standard Model</span></td>
-              <td>Standard Manning n = 0.013 for clay/concrete gravity sewer mains. Dynamically adjusted for wastewater temperature and viscosity.</td>
-            </tr>
-            <tr>
-              <td><b>Pump &amp; Lift Stations</b></td>
-              <td>Simulation 2 Engine</td>
-              <td><span class="badge-tag warn">Standard Model</span></td>
-              <td>Real chamber locations MH4450193 (terminal outfall) and MH4449118 (trunk confluence) modeled with rated capacities of 50 L/s and 25 L/s, with VSD 0–150%.</td>
-            </tr>
-          </table>
+          <div id="growthSensorResults" style="margin-top: 6px"></div>
         </div>
-        <div class="subwindow-pane" id="pane-ref" hidden>
-          <div id="ref"></div>
+
+        <div id="sensorList"></div>
+      </div>
+
+      <!-- PANEL 2: Sensor Placement Heatmap -->
+      <div id="panel-heatmap" hidden>
+        <div class="card-box" style="margin-top: 14px">
+          <h4>
+            <span>Sensor Placement Heatmap</span
+            ><span class="badge-tag good">Dynamic Ranking</span>
+          </h4>
+          <p class="quiet" style="margin-top: 0">
+            Clean 3D node-based heatmap identifies optimal sensor locations
+            based on active scenario tipping, upstream homes, sewer flow volume,
+            and bottleneck chokes.
+          </p>
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              font-size: 11px;
+              margin-top: 8px;
+              color: var(--dim);
+            "
+          >
+            <span>0 (Low)</span><span>25</span><span>50</span><span>75</span
+            ><span>100 (Critical)</span>
+          </div>
+          <div
+            style="
+              height: 8px;
+              border-radius: 4px;
+              background: linear-gradient(
+                to right,
+                #1e3a8a,
+                #0284c7,
+                #10b981,
+                #f59e0b,
+                #ff0055
+              );
+              margin-top: 3px;
+            "
+          ></div>
         </div>
-        <div class="subwindow-pane" id="pane-qa" hidden>
-          <div id="qa"></div>
+
+        <!-- Active Scenario Knobs for Heatmap Reactivity -->
+        <label class="fld">Scenario Wet Weather</label>
+        <div class="knob" id="heatmapIiKnob"></div>
+        <div
+          class="quiet"
+          id="heatmapIiNote"
+          style="font-size: 11px; margin-top: 3px"
+        ></div>
+
+        <label class="fld">Scenario Dwellings Added</label>
+        <div class="knob" id="heatmapAddKnob"></div>
+
+        <h4 style="margin-top: 16px">Top Ranked Candidate Sensors</h4>
+        <div id="heatmapRankList"></div>
+
+        <!-- Live On-Screen Explainability Card -->
+        <div
+          class="card-box"
+          id="heatmapLiveCard"
+          style="margin-top: 14px; border-color: var(--accent)"
+        ></div>
+
+        <button
+          id="btnExplainTop"
+          style="
+            width: 100%;
+            margin-top: 12px;
+            padding: 8px;
+            background: var(--accent);
+            color: #06131f;
+            font-weight: 600;
+            border: 0;
+            border-radius: 7px;
+            cursor: pointer;
+          "
+        >
+          Inspect Technical Placement Rationale
+        </button>
+      </div>
+
+      <!-- PANEL 3: Blockage & Backwater Simulator -->
+      <div id="panel-blockage" hidden>
+        <div class="card-box" style="margin-top: 14px">
+          <h4>
+            <span>Pipe Blockage Choke</span
+            ><span class="badge-tag crit" id="blockageBadge">No Blockage</span>
+          </h4>
+          <p class="quiet" style="margin-top: 0">
+            Simulate fatberg, debris or root intrusion on selected mains to test
+            upstream backwater propagation and sensor detection lead time.
+          </p>
+          <label class="fld" for="blockagePipe">Blockage Location</label>
+          <select id="blockagePipe"></select>
+
+          <label class="fld"
+            >Blockage Severity:
+            <span
+              id="blockagePctVal"
+              style="color: var(--warn); font-weight: 600"
+              >0%</span
+            ></label
+          >
+          <input
+            type="range"
+            id="blockageRange"
+            min="0"
+            max="95"
+            step="5"
+            value="0"
+          />
+
+          <div class="row-val" style="color: var(--faint)">
+            <span>Clear (0%)</span><span>Partial (50%)</span
+            ><span>Severe (95%)</span>
+          </div>
         </div>
-        <div class="subwindow-pane" id="pane-sensor" hidden>
-          <div id="sensorContent"></div>
+
+        <!-- Real-Time Sewer Backwater Timeline Controls -->
+        <div
+          class="card-box"
+          style="margin-top: 12px; border-color: var(--accent)"
+        >
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 8px;
+            "
+          >
+            <span style="font-weight: 700; font-size: 12px; color: var(--ink)"
+              >Real-Time Backwater Timeline</span
+            >
+            <span class="badge-tag good" id="timelineStatus">Normal Flow</span>
+          </div>
+
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-size: 12px;
+              margin-bottom: 6px;
+            "
+          >
+            <span style="color: var(--dim)"
+              >Simulation Time:
+              <strong
+                id="timelineTime"
+                style="
+                  color: var(--accent);
+                  font-variant-numeric: tabular-nums;
+                  font-family: monospace;
+                "
+                >00:00</strong
+              ></span
+            >
+            <span style="color: var(--dim); font-size: 11px"
+              >Spill Horizon:
+              <span
+                id="timelineHorizon"
+                style="color: var(--warn); font-weight: 600"
+                >--</span
+              ></span
+            >
+          </div>
+
+          <!-- Scrubber Slider -->
+          <input
+            type="range"
+            id="timelineScrubber"
+            min="0"
+            max="3600"
+            step="15"
+            value="0"
+            style="margin: 4px 0 8px"
+          />
+
+          <!-- Playback Controls -->
+          <div
+            style="
+              display: flex;
+              gap: 5px;
+              align-items: center;
+              margin-bottom: 8px;
+            "
+          >
+            <button
+              id="btnTimelinePlay"
+              class="timeline-btn primary"
+              style="flex: 1.2; padding: 6px 8px; font-weight: 700"
+            >
+              ▶ Play
+            </button>
+            <button
+              id="btnTimelineStepBack"
+              class="timeline-btn"
+              title="Step Back 1 min"
+              style="padding: 6px 8px"
+            >
+              ⏮ -1m
+            </button>
+            <button
+              id="btnTimelineStepFwd"
+              class="timeline-btn"
+              title="Step Forward 1 min"
+              style="padding: 6px 8px"
+            >
+              ⏭ +1m
+            </button>
+            <button
+              id="btnTimelineReset"
+              class="timeline-btn"
+              title="Reset Timeline"
+              style="padding: 6px 8px"
+            >
+              ↺
+            </button>
+            <select
+              id="timelineSpeed"
+              style="width: auto; padding: 5px 6px; font-size: 11px"
+              title="Simulation Speed Multiplier"
+            >
+              <option value="1">1x (Real-sec)</option>
+              <option value="5">5x Speed</option>
+              <option value="15" selected>15x Speed</option>
+              <option value="30">30x Speed</option>
+              <option value="60">60x Speed</option>
+            </select>
+          </div>
+          <p class="quiet" style="font-size: 10.5px; margin: 0">
+            Scrub or pause to freeze sewer backwater state and inspect chamber
+            water heights.
+          </p>
+        </div>
+
+        <div id="blockageResults" style="margin-top: 12px"></div>
+      </div>
+
+      <!-- PANEL 4: Pump Stations & Viscosity Controls -->
+      <div id="panel-pump" hidden>
+        <div class="card-box" style="margin-top: 14px">
+          <h4>
+            <span>Pump Station Motor Controls</span
+            ><span class="badge-tag good" id="psStatusBadge">Active</span>
+          </h4>
+          <label class="fld" for="pumpStationSelect">Select Pump Station</label>
+          <select id="pumpStationSelect">
+            <option value="PS-01">Pump Station PS-01 (Catchment Outlet)</option>
+            <option value="LS-02">
+              Lift Station LS-02 (Trunk Junction MH4449118)
+            </option>
+          </select>
+
+          <div style="margin-top: 10px">
+            <div class="row-val">
+              <span>Motor VSD Output</span>
+              <span
+                id="pumpDutyVal"
+                style="color: var(--accent); font-weight: 600"
+                >100% (50 L/s)</span
+              >
+            </div>
+            <input
+              type="range"
+              id="pumpDutyRange"
+              min="0"
+              max="150"
+              step="5"
+              value="100"
+            />
+          </div>
+
+          <label
+            style="
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              font-size: 12px;
+              margin-top: 8px;
+              cursor: pointer;
+            "
+          >
+            <input
+              type="checkbox"
+              id="chkAutoRelief"
+              checked
+              style="width: auto"
+            />
+            <strong>Auto-Relieve Overflow</strong> (dynamic draw-down)
+          </label>
+        </div>
+
+        <div class="card-box">
+          <h4><span>Wastewater Viscosity &amp; Speed</span></h4>
+          <p class="quiet" style="margin-top: 0">
+            Viscosity changes with temperature, grease/FOG, and suspended
+            solids, altering boundary friction and travel velocity.
+          </p>
+          <label class="fld" for="viscSelect">Sewage Flow Condition</label>
+          <select id="viscSelect">
+            <option value="domestic">
+              Standard Domestic (20°C, ν=1.15 mm²/s)
+            </option>
+            <option value="grease">
+              High Grease / FOG (15°C, ν=2.40 mm²/s)
+            </option>
+            <option value="sludge">
+              Cold Sludge / Heavy Solids (8°C, ν=3.80 mm²/s)
+            </option>
+            <option value="clean">
+              Clean Water Reference (20°C, ν=1.00 mm²/s)
+            </option>
+          </select>
+          <div id="viscOutputs" style="margin-top: 10px"></div>
         </div>
       </div>
+
+      <!-- Upstream Affecting Area HUD Card (Persistent across modes when node selected) -->
+      <div class="card-box" id="affectingAreaCard" style="margin-top: 14px">
+        <h4><span>Upstream Tributary Catchment</span></h4>
+        <div id="affectingAreaStats"></div>
+      </div>
     </aside>
-  </div>
 
-  <div class="legend" id="simLegend">
-    <div class="grp"><b>Pipes</b>
-      <span><span class="kl" style="background:#4c8bf5"></span>room to spare</span>
-      <span><span class="kl" style="background:#ffa500"></span>already surcharged, not growth</span>
-      <span><span class="kl" style="background:#ff2d55"></span>tipped by this growth</span>
-      <span><span class="kl" style="background:#ff5722"></span>backwater surcharge choke</span>
-    </div>
-    <div class="grp"><b>Points</b>
-      <span><span class="k" style="background:#c9d1d9"></span>manhole, sensor candidate</span>
-      <span><span class="k" style="background:#30363d"></span>pipe end, no manhole</span>
-      <span><span class="k" style="background:#ff6f9c"></span>connected property</span>
-      <span><span class="k" style="background:#00d4ff"></span>selected node / connection</span>
-      <span><span class="k" style="background:#3fb950"></span>proposed sensor</span>
-      <span><span class="k" style="background:#a371f7"></span>outlet, drains catchment</span>
-      <span><span class="k" style="background:#38bdf8"></span>pump / lift station</span>
-    </div>
-    <div class="grp"><b>Flow &amp; Bottlenecks</b>
-      <span><span class="kl" style="background:#38bdf8"></span>active wastewater pulse</span>
-      <span><span class="kl" style="background:#ffffff"></span>hydraulic bottleneck reach</span>
-    </div>
-  </div>
-  <div id="scale"></div>
-</main>
+    <div
+      id="grip"
+      title="Drag to resize sidebar width (double-click to toggle wide/compact)"
+    ></div>
 
-<!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
+    <main>
+      <nav>
+        <button id="sidebarToggle" class="drawer-btn" title="Toggle Controls">
+          ☰ Menu
+        </button>
+        <div class="nav-spacer"></div>
+        <button id="tab-intro" class="nav-doc-btn">📖 Tool Guide</button>
+        <button id="btn-info" class="nav-doc-btn">About this model</button>
+        <button id="btnSchema" class="nav-doc-btn">
+          Data Schema &amp; Formulas
+        </button>
+        <button id="tab-ref" class="nav-doc-btn">Assumptions</button>
+        <button id="tab-qa" class="nav-doc-btn">Discussion Q&amp;A</button>
+      </nav>
+
+      <div id="stageWrap">
+        <div id="stage"></div>
+        <div id="homeKey"></div>
+        <div id="panHint" class="pan-hint">
+          <span class="pan-badge"><kbd>Space</kbd> + Drag</span> or <kbd>↑</kbd
+          ><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> to pan freely
+        </div>
+        <div id="loadingOverlay">
+          <div class="spinner"></div>
+          <div class="loading-msg">
+            Initializing Catchment 3D Engine &amp; Hydraulics...
+          </div>
+          <div class="loading-sub">
+            158 sewer mains &bull; 71 candidate chambers &bull; 852 SWMM runs
+          </div>
+        </div>
+        <div id="errorOverlay" hidden>
+          <div class="error-box">
+            <h3>WebGL Unavailable</h3>
+            <p>
+              Could not initialize the 3D WebGL renderer. Please ensure hardware
+              acceleration is enabled in your browser settings or use a modern
+              WebGL-compatible browser.
+            </p>
+            <button onclick="location.reload()">Retry</button>
+          </div>
+        </div>
+
+        <!-- Unified Right-Side Sub-Window (Positioned immediately below top second nav) -->
+        <aside id="sideSubWindow" class="side-subwindow" hidden>
+          <div
+            id="subwindowGrip"
+            class="subwindow-grip"
+            title="Drag to resize window width (double-click to toggle wide view)"
+          ></div>
+          <div
+            class="subwindow-header"
+            title="Double-click anywhere on window to pin open against outside clicks"
+          >
+            <div class="subwindow-title" id="subwindowTitle">
+              Documentation &amp; Guides
+            </div>
+            <div class="subwindow-actions">
+              <button
+                class="subwindow-pin"
+                id="subwindowPin"
+                title="Double-click anywhere on window (or click here) to pin open"
+              >
+                📌 <span id="subwindowPinText">Pin</span>
+              </button>
+              <button
+                class="subwindow-close"
+                id="subwindowClose"
+                title="Close (Esc)"
+              >
+                ✕ Close
+              </button>
+            </div>
+          </div>
+          <div id="subwindowNotice" class="subwindow-notice" hidden></div>
+          <div class="subwindow-body">
+            <div class="subwindow-pane" id="pane-intro"></div>
+            <div class="subwindow-pane" id="pane-about" hidden></div>
+            <div class="subwindow-pane" id="pane-schema" hidden>
+              <h2>Current Data Schema &amp; Hydraulic Parameters</h2>
+              <p class="sub">
+                Formal specifications for all data structures, network graphs,
+                physics formulas, and provenance used in Simulation 2.
+              </p>
+
+              <h3>1. Catchment Network Geometry (<code>GROWTH_GEOM</code>)</h3>
+              <table>
+                <tr style="background: var(--panel-2)">
+                  <th>Property</th>
+                  <th>Type</th>
+                  <th>Count / Value</th>
+                  <th>Description</th>
+                </tr>
+                <tr>
+                  <td><code>nodes</code></td>
+                  <td>Array&lt;Node&gt;</td>
+                  <td>156 nodes</td>
+                  <td>
+                    Maintenance holes (71) and inline pipe junctions (85).
+                    Fields: <code>name, kind, x, y, inv, depth, mh, dw</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>nPipes</code></td>
+                  <td>Integer</td>
+                  <td>158 reaches</td>
+                  <td>Total gravity sewer mains in this drainage catchment.</td>
+                </tr>
+                <tr>
+                  <td><code>up, down</code></td>
+                  <td>Array&lt;Int&gt;</td>
+                  <td>158 indices</td>
+                  <td>
+                    Directed graph connectivity. Flow runs from
+                    <code>up[p]</code> to <code>down[p]</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>dia</code></td>
+                  <td>Array&lt;Int&gt;</td>
+                  <td>158 values</td>
+                  <td>
+                    Internal pipe diameter in mm (predominantly 150mm and 225mm
+                    vitrified clay and uPVC).
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>zu, zd</code></td>
+                  <td>Array&lt;Int&gt;</td>
+                  <td>158 pairs</td>
+                  <td>
+                    Upstream and downstream pipe invert elevations in cm AHD.
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>hx, hy, hz, hn</code></td>
+                  <td>Array&lt;Float&gt;</td>
+                  <td>643 dwellings</td>
+                  <td>
+                    Coordinates of real connected properties and the node index
+                    <code>hn[i]</code> they drain into.
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>bottlenecks</code></td>
+                  <td>Array&lt;Object&gt;</td>
+                  <td>7 tight pipes</td>
+                  <td>
+                    Reaches where full-bore capacity constrains upstream growth:
+                    <code>pipe, capBefore, capAfter, qFullLps</code>.
+                  </td>
+                </tr>
+              </table>
+
+              <h3>
+                2. SWMM Hydraulic Simulation Grid (<code>GROWTH_RUNS</code>)
+              </h3>
+              <table>
+                <tr style="background: var(--panel-2)">
+                  <th>Parameter</th>
+                  <th>Settings</th>
+                  <th>Operational Meaning</th>
+                </tr>
+                <tr>
+                  <td>Wet Weather Inflow</td>
+                  <td>0.25, 0.40, 0.55 L/s per 100m</td>
+                  <td>
+                    Rainfall infiltration entering through pipe joints and
+                    defects.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Growth Steps</td>
+                  <td>+50, +150, +350, +700 dwellings</td>
+                  <td>
+                    New housing connections adding 500 L/day per dwelling (PF =
+                    2.0).
+                  </td>
+                </tr>
+                <tr>
+                  <td>Total Solved Grid</td>
+                  <td>852 EPA SWMM solves</td>
+                  <td>
+                    71 sites &times; 4 growth levels &times; 3 wet weather
+                    states.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Surcharge Criterion</td>
+                  <td>Water level &gt; pipe crown</td>
+                  <td>
+                    Preissmann slot storage node pressurized flow threshold.
+                  </td>
+                </tr>
+              </table>
+
+              <h3>3. Hydraulic Equations &amp; Viscosity Formulation</h3>
+              <div class="lead-box" style="line-height: 1.65">
+                <p>
+                  <strong>Full-bore Manning Conveyance:</strong>
+                  <code>Q_full = (1 / n_eff) · A · R^(2/3) · S^(1/2)</code>
+                </p>
+                <p>
+                  <strong>Viscosity Roughness Correction:</strong>
+                  <code>n_eff = n_0 · [1 + 0.12 · ln(ν / ν_0)]</code> where
+                  <code>ν_0 = 1.05 × 10^-6 m²/s</code>.
+                </p>
+                <p>
+                  <strong>Mean Travel Velocity:</strong>
+                  <code>v = Q / A_flow (m/s)</code>, Travel Transit Time:
+                  <code>τ = Σ (L_i / v_i)</code>.
+                </p>
+                <p>
+                  <strong>Pump Station Mass Balance:</strong>
+                  <code>dV_well / dt = Q_inflow - Q_pump</code>, rated 50 L/s at
+                  PS-01 with VSD 0–150%.
+                </p>
+                <p>
+                  <strong>Blockage Capacity Reduction:</strong>
+                  <code>Q_choked = Q_cap · (1 - Blockage%)^1.8</code>.
+                </p>
+              </div>
+
+              <h3>4. Data Provenance &amp; Transparent Model Integrity</h3>
+              <table>
+                <tr style="background: var(--panel-2)">
+                  <th>Component</th>
+                  <th>Source / File</th>
+                  <th>Classification</th>
+                  <th>Integrity Notes</th>
+                </tr>
+                <tr>
+                  <td><b>Network Geometry</b></td>
+                  <td><code>simulation/data/catchment.js</code></td>
+                  <td><span class="badge-tag good">Real GIS Data</span></td>
+                  <td>
+                    Walkerville Council / Location SA republication. 158 mains
+                    (Layer 6) and 71 chambers (Layer 2). Inverts flow-anchored
+                    via <code>START_INVE</code> and <code>FLOWDIRECT</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>Connected Properties</b></td>
+                  <td>
+                    <code>simulation/data/catchment.js</code> (<code>hn</code>)
+                  </td>
+                  <td><span class="badge-tag good">Real GIS Data</span></td>
+                  <td>
+                    Location SA Layer 4: 643 properties within 40m of mains
+                    carrying real <code>PARCELID</code>s. Replaces uncalibrated
+                    density proxies.
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>Dynamic Wave Engine</b></td>
+                  <td><code>simulation/data/growth.js</code></td>
+                  <td><span class="badge-tag good">Physical Engine</span></td>
+                  <td>
+                    852 steady-state EPA SWMM 5.2 runs via
+                    <code>pyswmm</code> 2.1 (71 sites × 4 growth levels × 3 wet
+                    weather levels). Captures Preissmann slot surcharge and
+                    backwater.
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>Domestic Sewage Load</b></td>
+                  <td>Hydraulic Model</td>
+                  <td><span class="badge-tag warn">Standard Model</span></td>
+                  <td>
+                    500 L/dwelling/day (2.5 persons × 200 L/person/day) with
+                    Sanitary Peak Factor = 2.0 (WSA 02-2014 planning standard).
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>Infiltration &amp; Inflow</b></td>
+                  <td>Hydraulic Model</td>
+                  <td><span class="badge-tag warn">Standard Model</span></td>
+                  <td>
+                    0.25 L/s/100m (nominal base), 0.40 L/s/100m (moderate wet
+                    weather), 0.55 L/s/100m (heavy 5-yr storm). Entering via
+                    pipe joints.
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>Manning Roughness</b></td>
+                  <td>Hydraulic Model</td>
+                  <td><span class="badge-tag warn">Standard Model</span></td>
+                  <td>
+                    Standard Manning n = 0.013 for clay/concrete gravity sewer
+                    mains. Dynamically adjusted for wastewater temperature and
+                    viscosity.
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>Pump &amp; Lift Stations</b></td>
+                  <td>Simulation 2 Engine</td>
+                  <td><span class="badge-tag warn">Standard Model</span></td>
+                  <td>
+                    Real chamber locations MH4450193 (terminal outfall) and
+                    MH4449118 (trunk confluence) modeled with rated capacities
+                    of 50 L/s and 25 L/s, with VSD 0–150%.
+                  </td>
+                </tr>
+              </table>
+            </div>
+            <div class="subwindow-pane" id="pane-ref" hidden>
+              <div id="ref"></div>
+            </div>
+            <div class="subwindow-pane" id="pane-qa" hidden>
+              <div id="qa"></div>
+            </div>
+            <div class="subwindow-pane" id="pane-sensor" hidden>
+              <div id="sensorContent"></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <div class="legend-bar" id="simLegendBar">
+        <div class="legend-controls" id="legendControls">
+          <button id="fitAll" title="Reset camera to view entire catchment">Whole catchment</button>
+          <button id="fitSite" title="Zoom to selected chamber">Zoom to selected</button>
+          <button id="togglePan" title="Toggle Pan mode (or hold Spacebar and drag)">Pan: Hold [Space]</button>
+          <div class="nav-control-group" title="Adjust 3D vertical elevation exaggeration scale (1x - 35x)">
+            <label for="exaggRange" style="color: var(--dim); white-space: nowrap; cursor: pointer">Elevation: <b id="exaggVal" style="color: var(--accent)">18x</b></label>
+            <input type="range" id="exaggRange" min="1" max="35" step="1" value="18" style="width: 54px; accent-color: var(--accent); margin: 0; cursor: pointer" />
+          </div>
+          <div class="nav-control-group fps-toggle-group" id="fpsToggleGroup" title="Framerate &amp; GPU power optimization (30 FPS Eco cuts battery &amp; fan noise)">
+            <span style="color: var(--dim); font-size: 11px; font-weight: 600">FPS:</span>
+            <button type="button" class="fps-btn active" data-fps="30" title="30 FPS Eco Mode (Reduced GPU power, cool &amp; quiet)">30 Eco</button>
+            <button type="button" class="fps-btn" data-fps="60" title="60 FPS Balanced Mode">60</button>
+            <button type="button" class="fps-btn" data-fps="0" title="Uncapped Refresh Rate (Max power)">Max</button>
+          </div>
+          <button id="toggleSensors">Show proposed sensors</button>
+          <button id="toggleFlow" class="primary">Flow Animation: ON</button>
+          <button id="toggleBottlenecks">Show bottleneck pipes</button>
+        </div>
+
+        <div class="legend-divider"></div>
+
+        <div class="legend" id="simLegend">
+          <div class="grp">
+            <b>Pipes</b>
+            <span
+              ><span class="kl" style="background: #4c8bf5"></span>room to
+              spare</span
+            >
+            <span
+              ><span class="kl" style="background: #ffa500"></span>already
+              surcharged, not growth</span
+            >
+            <span
+              ><span class="kl" style="background: #ff2d55"></span>tipped by this
+              growth</span
+            >
+            <span
+              ><span class="kl" style="background: #ff5722"></span>backwater
+              surcharge choke</span
+            >
+          </div>
+          <div class="grp">
+            <b>Points</b>
+            <span
+              ><span class="k" style="background: #c9d1d9"></span>manhole, sensor
+              candidate</span
+            >
+            <span
+              ><span class="k" style="background: #30363d"></span>pipe end, no
+              manhole</span
+            >
+            <span
+              ><span class="k" style="background: #ff6f9c"></span>connected
+              property</span
+            >
+            <span
+              ><span class="k" style="background: #00d4ff"></span>selected node /
+              connection</span
+            >
+            <span
+              ><span class="k" style="background: #3fb950"></span>proposed
+              sensor</span
+            >
+            <span
+              ><span class="k" style="background: #a371f7"></span>outlet, drains
+              catchment</span
+            >
+            <span
+              ><span class="k" style="background: #38bdf8"></span>pump / lift
+              station</span
+            >
+          </div>
+          <div class="grp">
+            <b>Flow &amp; Bottlenecks</b>
+            <span
+              ><span class="kl" style="background: #38bdf8"></span>active
+              wastewater pulse</span
+            >
+            <span
+              ><span class="kl" style="background: #ffffff"></span>hydraulic
+              bottleneck reach</span
+            >
+          </div>
+        </div>
+      </div>
+      <div id="scale"></div>
+    </main>
+
+    <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=24"></script>
-<script src="data/growth.js?v=24"></script>
-<script src="data/index.js?v=24"></script>
-<script src="growth_3d.js?v=24"></script>
-<script src="growth_ui.js?v=24"></script>
-<script type="module">
-  const safetyTimer = setTimeout(() => {
-    const ov = document.getElementById('loadingOverlay');
-    if (ov && !ov.classList.contains('fade-out')) {
-      console.warn('Safety timeout: clearing lingering loading overlay.');
-      ov.classList.add('fade-out');
-      setTimeout(() => { if (ov.parentNode) ov.remove(); }, 450);
-    }
-  }, 4000);
-
-  window.addEventListener('error', (e) => {
-    const ov = document.getElementById('loadingOverlay');
-    if (ov && !ov.classList.contains('fade-out')) {
-      ov.classList.add('fade-out');
-      setTimeout(() => { if (ov.parentNode) ov.remove(); }, 450);
-    }
-  });
-
-  function start() {
-    if (typeof GrowthUI !== 'undefined' && typeof GrowthUI.init === 'function') {
-      try {
-        GrowthUI.init();
-      } catch (err) {
-        console.error('GrowthUI.init synchronous error:', err);
-        const errOverlay = document.getElementById('errorOverlay');
-        if (errOverlay) {
-          errOverlay.hidden = false;
-          const h3 = errOverlay.querySelector('h3');
-          if (h3) h3.textContent = 'Application Error';
-          const p = errOverlay.querySelector('p');
-          if (p) p.textContent = 'Initialization error: ' + err.message;
+    <script src="data/catchment.js?v=24"></script>
+    <script src="data/growth.js?v=24"></script>
+    <script src="data/index.js?v=24"></script>
+    <script src="growth_3d.js?v=24"></script>
+    <script src="growth_ui.js?v=24"></script>
+    <script type="module">
+      const safetyTimer = setTimeout(() => {
+        const ov = document.getElementById("loadingOverlay");
+        if (ov && !ov.classList.contains("fade-out")) {
+          console.warn("Safety timeout: clearing lingering loading overlay.");
+          ov.classList.add("fade-out");
+          setTimeout(() => {
+            if (ov.parentNode) ov.remove();
+          }, 450);
         }
-        const ov = document.getElementById('loadingOverlay');
-        if (ov) ov.style.display = 'none';
-      }
-    } else {
-      console.error('GrowthUI script failed to load.');
-      const errOverlay = document.getElementById('errorOverlay');
-      if (errOverlay) {
-        errOverlay.hidden = false;
-        const h3 = errOverlay.querySelector('h3');
-        if (h3) h3.textContent = 'Application Error';
-        const p = errOverlay.querySelector('p');
-        if (p) p.textContent = 'Application scripts failed to load. Please refresh the page.';
-      }
-      const ov = document.getElementById('loadingOverlay');
-      if (ov) ov.style.display = 'none';
-    }
-  }
+      }, 4000);
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start);
-  } else {
-    start();
-  }
-</script>
-</body>
+      window.addEventListener("error", (e) => {
+        const ov = document.getElementById("loadingOverlay");
+        if (ov && !ov.classList.contains("fade-out")) {
+          ov.classList.add("fade-out");
+          setTimeout(() => {
+            if (ov.parentNode) ov.remove();
+          }, 450);
+        }
+      });
+
+      function start() {
+        if (
+          typeof GrowthUI !== "undefined" &&
+          typeof GrowthUI.init === "function"
+        ) {
+          try {
+            GrowthUI.init();
+          } catch (err) {
+            console.error("GrowthUI.init synchronous error:", err);
+            const errOverlay = document.getElementById("errorOverlay");
+            if (errOverlay) {
+              errOverlay.hidden = false;
+              const h3 = errOverlay.querySelector("h3");
+              if (h3) h3.textContent = "Application Error";
+              const p = errOverlay.querySelector("p");
+              if (p) p.textContent = "Initialization error: " + err.message;
+            }
+            const ov = document.getElementById("loadingOverlay");
+            if (ov) ov.style.display = "none";
+          }
+        } else {
+          console.error("GrowthUI script failed to load.");
+          const errOverlay = document.getElementById("errorOverlay");
+          if (errOverlay) {
+            errOverlay.hidden = false;
+            const h3 = errOverlay.querySelector("h3");
+            if (h3) h3.textContent = "Application Error";
+            const p = errOverlay.querySelector("p");
+            if (p)
+              p.textContent =
+                "Application scripts failed to load. Please refresh the page.";
+          }
+          const ov = document.getElementById("loadingOverlay");
+          if (ov) ov.style.display = "none";
+        }
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", start);
+      } else {
+        start();
+      }
+    </script>
+  </body>
 </html>
