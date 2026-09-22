@@ -37,7 +37,12 @@ window.GrowthUI = (function () {
     autoRelief: true,
 
     // Viscosity state
-    viscMode: "domestic"             // "domestic" | "grease" | "sludge" | "clean"
+    viscMode: "domestic",            // "domestic" | "grease" | "sludge" | "clean"
+
+    // Sub-window & sidebar resizing & pinning state
+    subwindowPinned: false,          // double-click to pin open against outside clicks
+    isResizing: false,
+    pointerDownInsideSub: false
   };
 
   const runs = () => window.GROWTH_RUNS;
@@ -1041,6 +1046,8 @@ window.GrowthUI = (function () {
         "<tr><td><b>Rotate / Orbit</b></td><td>Click and drag on the 3D canvas (left mouse button).</td></tr>" +
         "<tr><td><b>Zoom In / Out</b></td><td>Scroll mouse wheel, or pinch on trackpad / touchscreen.</td></tr>" +
         "<tr><td><b>Inspect Any Node</b></td><td>Click any manhole or pipe junction to highlight its complete upstream tributary drainage tree, pipe length, and guarded dwellings.</td></tr>" +
+        "<tr><td><b>Extend Window Sizes</b></td><td>Drag the vertical divider between the left sidebar and map to widen/narrow controls. Drag the left border of this side window to widen/narrow documentation. Double-click dividers to toggle wide view.</td></tr>" +
+        "<tr><td><b>Auto-Close &amp; Pin Window</b></td><td>Clicking outside this window closes it automatically. <b>Double-click anywhere on the side window</b> (or click <code>📌 Pin</code>) to pin it open so it stays open while interacting with the 3D map.</td></tr>" +
         "<tr><td><b>Reset Views</b></td><td>Click <code>Whole catchment</code> to view the full network, or <code>Zoom to selected</code> to zoom directly to your inspected node.</td></tr>" +
       "</table>" +
       "<h3>What Each Simulation View Does &amp; Delivers</h3>" +
@@ -1341,6 +1348,10 @@ window.GrowthUI = (function () {
     $("#fitAll").onclick = () => Growth3D.frame(null);
     $("#fitSite").onclick = () => Growth3D.frame(nameOf(st.site));
 
+    initSideGrip();
+    initSubwindowGrip();
+    initSubwindowPin();
+
     document.addEventListener("keydown", e => {
       if (e.key === "Escape") {
         const sub = $("#sideSubWindow");
@@ -1350,10 +1361,215 @@ window.GrowthUI = (function () {
     window.addEventListener("resize", () => Growth3D.resize($("#stage")));
   }
 
+  /* ------------------------------------- WINDOW RESIZING (LEFT SIDEBAR & SUB-WINDOW) */
+  function initSideGrip() {
+    const grip = $("#grip");
+    if (!grip) return;
+
+    const applyWidth = px => {
+      const minW = 240;
+      const maxW = Math.max(minW, Math.min(850, window.innerWidth * 0.65));
+      const w = Math.max(minW, Math.min(maxW, px));
+      document.documentElement.style.setProperty("--side", w + "px");
+      Growth3D.resize($("#stage"));
+      return w;
+    };
+
+    try {
+      const saved = localStorage.getItem("simSideWidth");
+      if (saved) applyWidth(parseInt(saved, 10));
+    } catch (e) {}
+
+    let dragging = false;
+    const onDown = e => {
+      dragging = true;
+      st.isResizing = true;
+      grip.classList.add("on");
+      document.body.classList.add("dragging");
+      e.preventDefault();
+    };
+    const onMove = e => {
+      if (!dragging) return;
+      const clientX = e.clientX != null ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : null);
+      if (clientX != null) applyWidth(clientX);
+    };
+    const onUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      grip.classList.remove("on");
+      document.body.classList.remove("dragging");
+      setTimeout(() => { st.isResizing = false; }, 60);
+      try {
+        const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--side"), 10);
+        if (cur) localStorage.setItem("simSideWidth", String(cur));
+      } catch (e) {}
+    };
+
+    grip.addEventListener("mousedown", onDown);
+    grip.addEventListener("touchstart", onDown, { passive: false });
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchend", onUp);
+
+    grip.addEventListener("dblclick", () => {
+      const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--side"), 10) || 340;
+      const target = cur > 450 ? 340 : 560;
+      applyWidth(target);
+      try { localStorage.setItem("simSideWidth", String(target)); } catch (e) {}
+    });
+  }
+
+  function initSubwindowGrip() {
+    const grip = $("#subwindowGrip");
+    const sideSub = $("#sideSubWindow");
+    if (!grip || !sideSub) return;
+
+    const applyWidth = px => {
+      const stageWrap = $("#stageWrap");
+      const maxW = stageWrap ? Math.max(380, stageWrap.clientWidth - 40) : (window.innerWidth - 80);
+      const w = Math.max(340, Math.min(maxW, px));
+      sideSub.style.width = w + "px";
+      document.documentElement.style.setProperty("--subwindow-width", w + "px");
+      Growth3D.resize($("#stage"));
+      return w;
+    };
+
+    try {
+      const saved = localStorage.getItem("simSubWindowWidth");
+      if (saved) applyWidth(parseInt(saved, 10));
+    } catch (e) {}
+
+    let dragging = false;
+    const onDown = e => {
+      dragging = true;
+      st.isResizing = true;
+      grip.classList.add("active");
+      document.body.classList.add("dragging");
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    const onMove = e => {
+      if (!dragging) return;
+      const clientX = e.clientX != null ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : null);
+      if (clientX == null) return;
+      const stageWrap = $("#stageWrap");
+      const rect = stageWrap ? stageWrap.getBoundingClientRect() : document.body.getBoundingClientRect();
+      const newWidth = rect.right - clientX;
+      applyWidth(newWidth);
+    };
+    const onUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      grip.classList.remove("active");
+      document.body.classList.remove("dragging");
+      setTimeout(() => { st.isResizing = false; }, 60);
+      try {
+        const cur = parseInt(sideSub.style.width, 10);
+        if (cur) localStorage.setItem("simSubWindowWidth", String(cur));
+      } catch (e) {}
+    };
+
+    grip.addEventListener("mousedown", onDown);
+    grip.addEventListener("touchstart", onDown, { passive: false });
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchend", onUp);
+
+    grip.addEventListener("dblclick", e => {
+      e.stopPropagation();
+      const cur = parseInt(sideSub.style.width, 10) || 480;
+      const target = cur > 620 ? 480 : 780;
+      applyWidth(target);
+      try { localStorage.setItem("simSubWindowWidth", String(target)); } catch (err) {}
+    });
+  }
+
+  /* ------------------------------------- SUB-WINDOW PINNING & OUTSIDE CLICK AUTO-CLOSE */
+  let noticeTimer = null;
+  function showSubwindowNotice(msg) {
+    const notice = $("#subwindowNotice");
+    if (!notice) return;
+    notice.textContent = msg;
+    notice.hidden = false;
+    notice.style.opacity = "1";
+    notice.style.transform = "translateX(-50%) translateY(0)";
+    if (noticeTimer) clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => {
+      notice.style.opacity = "0";
+      notice.style.transform = "translateX(-50%) translateY(8px)";
+      setTimeout(() => { notice.hidden = true; }, 250);
+    }, 2200);
+  }
+
+  function toggleSubwindowPin(forceState) {
+    st.subwindowPinned = forceState !== undefined ? forceState : !st.subwindowPinned;
+    const sideSub = $("#sideSubWindow");
+    const pinBtn = $("#subwindowPin");
+    const pinText = $("#subwindowPinText");
+    if (sideSub) sideSub.classList.toggle("pinned", st.subwindowPinned);
+    if (pinBtn) {
+      pinBtn.classList.toggle("pinned", st.subwindowPinned);
+      pinBtn.title = st.subwindowPinned
+        ? "Window is PINNED: Won't close on outside clicks (Double-click window to unpin)"
+        : "Window is AUTO-CLOSE: Closes on outside clicks (Double-click window to pin)";
+    }
+    if (pinText) pinText.textContent = st.subwindowPinned ? "Pinned" : "Pin";
+    showSubwindowNotice(st.subwindowPinned
+      ? "📌 Window Pinned: Won't close when clicking outside (Double-click to unpin)"
+      : "🔓 Auto-Close Active: Window will close when clicking outside");
+  }
+
+  function initSubwindowPin() {
+    const sideSub = $("#sideSubWindow");
+    const pinBtn = $("#subwindowPin");
+    if (!sideSub) return;
+
+    // Double-click anywhere on the sideSubWindow toggles pin state!
+    sideSub.addEventListener("dblclick", e => {
+      if (e.target.closest("input, select, textarea, button, a, #subwindowGrip")) return;
+      toggleSubwindowPin();
+    });
+
+    if (pinBtn) {
+      pinBtn.addEventListener("click", e => {
+        e.stopPropagation();
+        toggleSubwindowPin();
+      });
+    }
+
+    // Track where pointer went down to prevent accidental closing on text selection
+    document.addEventListener("pointerdown", e => {
+      const sub = $("#sideSubWindow");
+      st.pointerDownInsideSub = sub && !sub.hidden && sub.contains(e.target);
+    });
+
+    // Outside click to close window (unless pinned)
+    document.addEventListener("click", e => {
+      const sub = $("#sideSubWindow");
+      if (!sub || sub.hidden) return;
+      // If pinned, STOP CLOSING even when clicked outside!
+      if (st.subwindowPinned) return;
+
+      // If clicked inside or pointerdown started inside, do nothing
+      if (sub.contains(e.target) || st.pointerDownInsideSub) return;
+
+      // If dragging a resize grip, do nothing
+      if (st.isResizing) return;
+
+      // If clicked on navigation button that toggles/opens subwindow or sidebar, do not close here
+      if (e.target.closest(".nav-doc-btn, #subwindowClose, #fitSite, #btnExplainTop, #sidebarToggle, #grip, #subwindowGrip")) return;
+
+      // Click was outside an unpinned window -> close it!
+      setTab("map");
+    });
+  }
+
   function selectAndExplain(idx) {
     select(idx);
     explainChamberPlacement(idx);
   }
 
-  return { init, selectAndExplain, computeHeatmapData, st };
+  return { init, selectAndExplain, computeHeatmapData, toggleSubwindowPin, st };
 })();

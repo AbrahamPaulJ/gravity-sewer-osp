@@ -393,6 +393,38 @@ function runSuite() {
     );
   }
 
+  console.log("\n12. window size extension, outside-click auto-close & double-click pin lock");
+  check("growth_ui.js implements initSideGrip for left sidebar resizing",
+    growthUiSrc.includes("function initSideGrip()") &&
+    growthUiSrc.includes("--side") &&
+    growthUiSrc.includes("Growth3D.resize")
+  );
+  check("index.html contains #grip resizer element",
+    indexHtml.includes('id="grip"') &&
+    indexHtml.includes('col-resize')
+  );
+  check("growth_ui.js implements initSubwindowGrip for side window resizing",
+    growthUiSrc.includes("function initSubwindowGrip()") &&
+    growthUiSrc.includes("--subwindow-width") &&
+    growthUiSrc.includes("simSubWindowWidth")
+  );
+  check("index.html contains #subwindowGrip resizer handle on side window",
+    indexHtml.includes('id="subwindowGrip"') &&
+    indexHtml.includes('class="subwindow-grip"')
+  );
+  check("growth_ui.js handles double-click on sideSubWindow to toggle pin lock",
+    growthUiSrc.includes('sideSub.addEventListener("dblclick"') &&
+    growthUiSrc.includes("toggleSubwindowPin")
+  );
+  check("growth_ui.js implements outside-click auto-close with pin-lock bypass",
+    growthUiSrc.includes("if (st.subwindowPinned) return;") &&
+    growthUiSrc.includes('setTab("map")')
+  );
+  check("index.html contains #subwindowPin button and #subwindowNotice badge",
+    indexHtml.includes('id="subwindowPin"') &&
+    indexHtml.includes('id="subwindowNotice"')
+  );
+
   console.log("\n" + passed + " passed, " + failed + " failed");
   if (failed > 0) process.exit(1);
 }
