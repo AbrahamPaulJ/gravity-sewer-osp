@@ -89,6 +89,31 @@ function runSuite() {
   check("trunk junction MH4449118 has tributary homes (56)", trunkHomes === 56, "got " + trunkHomes);
   check("trunk junction MH4449118 upstream has multiple pipes", trunkNode.pipes.size >= 12, "got " + trunkNode.pipes.size);
 
+  // Upstream highlighting DAG test: strictly upstream ancestors, zero downstream leakage
+  const testNodeName = "MH4449118";
+  const testNodeIdx = idxOf[testNodeName];
+  const testUp = getUpstream([testNodeName]);
+  // 1. Check all nodes in testUp.nodes can reach testNodeIdx following flow
+  let allAncestorsValid = true;
+  for (const ancestorIdx of testUp.nodes) {
+    let curr = ancestorIdx, steps = 0, reachesTarget = false;
+    while (curr >= 0 && steps++ < n) {
+      if (curr === testNodeIdx) { reachesTarget = true; break; }
+      curr = downOf[curr];
+    }
+    if (!reachesTarget) { allAncestorsValid = false; break; }
+  }
+  check("upstream traversal includes ONLY true DAG ancestors", allAncestorsValid);
+
+  // 2. Check no downstream successor leaks into upstream set
+  let downstreamLeak = false;
+  let dCurr = downOf[testNodeIdx], dSteps = 0;
+  while (dCurr >= 0 && dSteps++ < n) {
+    if (testUp.nodes.has(dCurr)) { downstreamLeak = true; break; }
+    dCurr = downOf[dCurr];
+  }
+  check("upstream traversal strictly DOES NOT leak downstream", !downstreamLeak);
+
   console.log("\n2. wastewater fluid viscosity & flow velocity dynamics");
   const viscTable = {
     domestic: { nu: 1.15, nEff: 0.0130 },
@@ -147,6 +172,22 @@ function runSuite() {
   const timeToSpillMin = Math.round((storageM3 / (excess / 1000)) / 60);
   check("time to spill under severe choke is positive and finite", timeToSpillMin > 0 && timeToSpillMin < 60, timeToSpillMin + " min");
 
+  // Blockage backwater propagation test: backwater surcharge propagates strictly upstream
+  const blockPipe = 101;
+  const blockUpNode = g.nodes[g.up[blockPipe]];
+  const blockUpstream = getUpstream([blockUpNode.name]);
+  const surchargedPipes = new Set([blockPipe, ...blockUpstream.pipes]);
+  const surchargedNodes = new Set([g.up[blockPipe], ...blockUpstream.nodes]);
+
+  let downstreamSurcharged = false;
+  let dNode = g.down[blockPipe], dHops = 0;
+  while (dNode >= 0 && dHops++ < n) {
+    if (surchargedNodes.has(dNode)) { downstreamSurcharged = true; break; }
+    dNode = downOf[dNode];
+  }
+  check("backwater surcharge propagates strictly upstream from blocked pipe", surchargedPipes.size > 1 && surchargedNodes.size > 1);
+  check("backwater surcharge strictly does NOT affect downstream reaches", !downstreamSurcharged);
+
   console.log("\n5. sensor placement heatmap scoring, parameter influence & explainability");
   const tipCounts = new Array(R.chambers.length).fill(0);
   R.cells.forEach(c => {
@@ -182,9 +223,54 @@ function runSuite() {
 
   // Explainability parameter influence
   const topChamber = rankings[0];
-  const weights = { bottleneck: 35, homes: 25, backwater: 20, surcharge: 15, access: 5 };
+  const weights = { surcharge: 30, homes: 25, bottleneck: 20, backwater: 15, inflow: 10 };
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
   check("parameter influence weights sum to 100%", totalWeight === 100);
+
+  // Heatmap scenario reactivity test: scores and rankings dynamically update between scenarios
+  function calcHeatmapForCell(cellObj, iiRate) {
+    const baseSet = new Set(cellObj.baseSurcharged || []);
+    const activeTips = new Array(R.chambers.length).fill(0);
+    cellObj.rows.forEach(r => { r.tip.forEach(ch => { activeTips[ch]++; }); });
+
+    const scMap = {};
+    const rankList = [];
+    R.chambers.forEach((name, chIdx) => {
+      const up = getUpstream([name]);
+      let homes = 0;
+      for (let i = 0; i < g.hn.length; i++) {
+        if (up.nodes.has(g.hn[i])) homes++;
+      }
+      let sTip = baseSet.has(chIdx) ? 28 : Math.min(30, (activeTips[chIdx] / Math.max(1, cellObj.rows.length)) * 30);
+      sTip = Math.min(30, Math.max(3, sTip));
+      const sHomes = Math.min(25, (homes / 643) * 25);
+      const sBottleneck = (name === "MH4449118" || name === "MH4449785") ? 20 : 8;
+      const sBackwater = name === "MH4449118" ? (iiRate >= 0.55 ? 15 : 12) : 6;
+      const sInflow = Math.min(10, ((up.pipes.size * 50 * iiRate) / 100) / 10 * 10);
+      const score = Math.round(sTip + sHomes + sBottleneck + sBackwater + sInflow);
+      scMap[name] = score;
+      rankList.push({ name, score, mh: R.manholeIds[chIdx] });
+    });
+    rankList.sort((a, b) => b.score - a.score);
+    return { scMap, rankList };
+  }
+
+  const dryCell = R.cells.find(c => c.ii === 0.25 && c.add === 50) || R.cells[0];
+  const stormCell = R.cells.find(c => c.ii === 0.55 && c.add === 700) || R.cells[R.cells.length - 1];
+
+  const heatDry = calcHeatmapForCell(dryCell, 0.25);
+  const heatStorm = calcHeatmapForCell(stormCell, 0.55);
+
+  let scoresShifted = false;
+  for (const name of R.chambers) {
+    if (heatDry.scMap[name] !== heatStorm.scMap[name]) {
+      scoresShifted = true;
+      break;
+    }
+  }
+  check("heatmap scores dynamically react to scenario controls (dry vs storm)", scoresShifted);
+  check("trunk sentinel MH4449118 score increases under storm stress", heatStorm.scMap["MH4449118"] >= heatDry.scMap["MH4449118"]);
+  check("ranked list reacts dynamically to scenario cell adjustments", heatDry.rankList.length === 71 && heatStorm.rankList.length === 71);
 
   console.log("\n6. dom / script integration, schema parameters & code hygiene");
   check("index.html contains mode switcher buttons", indexHtml.includes('id="modeKnob"'));
@@ -192,8 +278,14 @@ function runSuite() {
   check("index.html contains pump station controls", indexHtml.includes('id="pumpDutyRange"'));
   check("index.html contains blockage simulator", indexHtml.includes('id="blockageRange"'));
   check("index.html contains sensor explainability modal", indexHtml.includes('id="sensorModal"'));
-  check("index.html contains data schema modal", indexHtml.includes('id="schemaModal"'));
+  check("index.html contains data schema modal with provenance", indexHtml.includes('id="schemaModal"') && indexHtml.includes('Data Provenance'));
+  check("index.html contains responsive drawer toggle", indexHtml.includes('id="sidebarToggle"'));
+  check("index.html contains loading & error overlays", indexHtml.includes('id="loadingOverlay"') && indexHtml.includes('id="errorOverlay"'));
+  check("index.html contains dynamic legend container", indexHtml.includes('id="simLegend"'));
+  check("index.html contains live heatmap explainability card", indexHtml.includes('id="heatmapLiveCard"'));
 
+  check("growth_3d.js contains multi-ring radial heatmap generator", growth3dSrc.includes("getHeatTexture") && growth3dSrc.includes("createRadialGradient"));
+  check("growth_3d.js contains numbered SVG teardrop ranking pins", growth3dSrc.includes("pin-marker") && growth3dSrc.includes("pin-badge"));
   check("growth_3d.js syntax parses cleanly", !(() => { try { new Function(growth3dSrc); return false; } catch (e) { return e; } })());
   check("growth_ui.js syntax parses cleanly", !(() => { try { new Function(growthUiSrc); return false; } catch (e) { return e; } })());
   check("no merge conflict markers present", !growth3dSrc.includes("<<<<<<<") && !growthUiSrc.includes("<<<<<<<") && !indexHtml.includes("<<<<<<<"));

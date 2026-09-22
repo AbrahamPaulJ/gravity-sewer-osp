@@ -83,8 +83,8 @@ window.GrowthUI = (function () {
 
     // Notify 3D engine of current state
     if (st.mode === "heatmap") {
-      ensureHeatmapData();
-      Growth3D.setHeatmap(true, heatmapData.scores, heatmapData.top3);
+      computeHeatmapData();
+      Growth3D.setHeatmap(true, heatmapData.scores, heatmapData.top5);
     } else {
       Growth3D.setHeatmap(false, null, null);
     }
@@ -103,8 +103,12 @@ window.GrowthUI = (function () {
     renderSensors(c);
     renderKnobs();
     renderAffectingArea();
+    renderLegend();
 
-    if (st.mode === "heatmap") renderHeatmapList();
+    if (st.mode === "heatmap") {
+      renderHeatmapList();
+      renderHeatmapLiveExplain();
+    }
     if (st.mode === "blockage") renderBlockageUI();
     if (st.mode === "pump") renderPumpUI();
   }
@@ -194,28 +198,41 @@ window.GrowthUI = (function () {
   /* ------------------------------------------------------------------ knobs */
   function buildKnobs() {
     const R = runs();
-    $("#iiKnob").innerHTML = R.iiLevels.map((l, i) =>
+    const iiHtml = R.iiLevels.map((l, i) =>
       "<button data-i=" + JSON.stringify(String(i)) + " title=" + JSON.stringify(l.note) + ">" +
       esc(l.label) + '<span class="knobNum">' + l.ii.toFixed(2) + " L/s/100m</span></button>").join("");
-    $("#addKnob").innerHTML = R.growthLevels.map((g, i) =>
+    const addHtml = R.growthLevels.map((g, i) =>
       "<button data-i=" + JSON.stringify(String(i)) + ">+" + g + "</button>").join("");
-    $("#iiKnob").onclick = e => {
+
+    $("#iiKnob").innerHTML = iiHtml;
+    $("#addKnob").innerHTML = addHtml;
+    if ($("#heatmapIiKnob")) $("#heatmapIiKnob").innerHTML = iiHtml;
+    if ($("#heatmapAddKnob")) $("#heatmapAddKnob").innerHTML = addHtml;
+
+    const onIiClick = e => {
       const b = e.target.closest("button"); if (!b) return;
       st.ii = +b.dataset.i; repaint();
     };
-    $("#addKnob").onclick = e => {
+    const onAddClick = e => {
       const b = e.target.closest("button"); if (!b) return;
       st.add = +b.dataset.i; repaint();
     };
+
+    $("#iiKnob").onclick = onIiClick;
+    $("#addKnob").onclick = onAddClick;
+    if ($("#heatmapIiKnob")) $("#heatmapIiKnob").onclick = onIiClick;
+    if ($("#heatmapAddKnob")) $("#heatmapAddKnob").onclick = onAddClick;
   }
 
   function renderKnobs() {
     const R = runs();
-    document.querySelectorAll("#iiKnob button").forEach(b =>
+    document.querySelectorAll("#iiKnob button, #heatmapIiKnob button").forEach(b =>
       b.classList.toggle("on", +b.dataset.i === st.ii));
-    document.querySelectorAll("#addKnob button").forEach(b =>
+    document.querySelectorAll("#addKnob button, #heatmapAddKnob button").forEach(b =>
       b.classList.toggle("on", +b.dataset.i === st.add));
-    $("#iiNote").textContent = R.iiLevels[st.ii].note;
+    const note = R.iiLevels[st.ii].note;
+    if ($("#iiNote")) $("#iiNote").textContent = note;
+    if ($("#heatmapIiNote")) $("#heatmapIiNote").textContent = note;
   }
 
   function renderPanel(c, row) {
@@ -279,98 +296,187 @@ window.GrowthUI = (function () {
   }
 
   /* ------------------------------------------------ SENSOR PLACEMENT HEATMAP */
-  function ensureHeatmapData() {
-    if (heatmapData) return heatmapData;
+  function computeHeatmapData() {
     const R = runs(), g = geom();
+    const c = cell(); // active scenario cell for current st.ii and st.add
     const scores = {};
     const chamberList = [];
 
-    // Frequency of tipping across all 12 cells
-    const tipCounts = new Array(R.chambers.length).fill(0);
-    R.cells.forEach(c => {
-      c.rows.forEach(r => {
-        r.tip.forEach(chIdx => { tipCounts[chIdx]++; });
+    // Base surcharged chambers in this wet weather condition
+    const baseSurchargedSet = new Set(c.baseSurcharged || []);
+
+    // Active cell tipping counts across all 71 connection sites
+    const activeTipCounts = new Array(R.chambers.length).fill(0);
+    c.rows.forEach(r => {
+      r.tip.forEach(chIdx => { activeTipCounts[chIdx]++; });
+    });
+
+    // Global tipping counts across all 12 scenario cells
+    const globalTipCounts = new Array(R.chambers.length).fill(0);
+    R.cells.forEach(cellItem => {
+      cellItem.rows.forEach(r => {
+        r.tip.forEach(chIdx => { globalTipCounts[chIdx]++; });
       });
     });
+
+    const iiRate = R.iiLevels[st.ii].ii; // 0.25, 0.40, or 0.55 L/s/100m
+    const growthUnits = R.growthLevels[st.add]; // 50, 150, 350, 700
 
     R.chambers.forEach((name, chIdx) => {
       const up = Growth3D.getUpstreamMetrics(name);
       const homes = up ? up.homesCount : 0;
       const lengthM = up ? up.totalLengthM : 0;
 
-      // 1. Surcharge frequency factor (30%)
-      const fTip = (tipCounts[chIdx] / Math.max(1, R.cells.length * 71)) * 100;
-      const sTip = Math.min(30, fTip * 1.5);
-
-      // 2. Upstream property protection factor (25%)
-      const sHomes = Math.min(25, (homes / 643) * 25);
-
-      // 3. Bottleneck proximity factor (20%)
-      const bnPipes = new Set((g.bottlenecks || []).map(b => b.pipe));
-      let sBottleneck = 5;
-      if (up && up.pipesCount) {
-        // checks if any bottleneck pipe is upstream or directly adjacent
-        sBottleneck = 15;
+      // 1. Active Scenario Surcharge & Wet Weather Vulnerability (Weight: 30 pts)
+      let sTip = 0;
+      if (baseSurchargedSet.has(chIdx)) {
+        sTip = 25 + (iiRate >= 0.55 ? 5 : iiRate >= 0.40 ? 3 : 1);
+      } else {
+        const tipRateInCell = activeTipCounts[chIdx] / Math.max(1, c.rows.length);
+        sTip = Math.min(30, tipRateInCell * 30 + (globalTipCounts[chIdx] / (R.cells.length * 71)) * 8);
       }
-      if (name === "MH4449118" || name === "MH4449785") sBottleneck = 20;
+      sTip = Math.min(30, Math.max(3, sTip));
 
-      // 4. Backwater pressure sensor factor (15%)
+      // 2. Upstream Contributing Properties Protected (Weight: 25 pts)
+      const sHomes = Math.min(25, Math.max(3, (homes / 643) * 25));
+
+      // 3. Downstream Bottleneck Proximity & Choke Vulnerability (Weight: 20 pts)
+      let sBottleneck = 5;
+      if (name === "MH4449118") {
+        sBottleneck = 20; // Direct trunk sentinel upstream of Reach 101 bottleneck
+      } else if (name === "MH4449785") {
+        sBottleneck = 18; // Mid-catchment confluence
+      } else if (up && up.pipesCount >= 8) {
+        sBottleneck = 14;
+      } else if (up && up.pipesCount >= 3) {
+        sBottleneck = 9;
+      }
+
+      // 4. Backwater Pressure Signal Detectability (Weight: 15 pts)
       let sBackwater = 5;
-      if (name === "MH4449118") sBackwater = 15; // Proven early-warning sentinel on Walkerville trunk
-      else if (tipCounts[chIdx] > 40) sBackwater = 12;
+      if (name === "MH4449118") {
+        sBackwater = (iiRate >= 0.55 ? 15 : iiRate >= 0.40 ? 14 : 12);
+      } else if (baseSurchargedSet.has(chIdx) || activeTipCounts[chIdx] > 10) {
+        sBackwater = 12;
+      } else if (globalTipCounts[chIdx] > 20) {
+        sBackwater = 8;
+      }
 
-      // 5. Pipe network length & access (10%)
-      const sLength = Math.min(10, (lengthM / 7780) * 10);
+      // 5. Upstream Mains Network & Wet Weather Infiltration Inflow (Weight: 10 pts)
+      const wetInflowLps = (lengthM * iiRate) / 100;
+      const sInflow = Math.min(10, Math.max(2, (wetInflowLps / 15.0) * 10));
 
-      const rawScore = Math.round(sTip + sHomes + sBottleneck + sBackwater + sLength);
+      const rawScore = Math.round(sTip + sHomes + sBottleneck + sBackwater + sInflow);
       const score = Math.max(12, Math.min(98, rawScore));
       scores[name] = score;
 
+      const totalParamPoints = sTip + sHomes + sBottleneck + sBackwater + sInflow;
       chamberList.push({
         name,
         index: chIdx,
         mh: R.manholeIds[chIdx],
         score,
         homes,
-        lengthM,
-        tipCount: tipCounts[chIdx],
+        lengthM: Math.round(lengthM * 10) / 10,
+        activeTipped: activeTipCounts[chIdx],
+        baseSurcharged: baseSurchargedSet.has(chIdx),
+        wetInflowLps: Math.round(wetInflowLps * 100) / 100,
         breakdown: {
-          bottleneck: Math.round((sBottleneck / score) * 100),
-          homes: Math.round((sHomes / score) * 100),
-          backwater: Math.round((sBackwater / score) * 100),
-          surcharge: Math.round((sTip / score) * 100),
-          access: Math.max(5, 100 - Math.round((sBottleneck + sHomes + sBackwater + sTip) / score * 100))
-        }
+          surcharge: Math.round((sTip / totalParamPoints) * 100),
+          homes: Math.round((sHomes / totalParamPoints) * 100),
+          bottleneck: Math.round((sBottleneck / totalParamPoints) * 100),
+          backwater: Math.round((sBackwater / totalParamPoints) * 100),
+          inflow: Math.round((sInflow / totalParamPoints) * 100)
+        },
+        rawWeights: { sTip, sHomes, sBottleneck, sBackwater, sInflow }
       });
     });
 
     chamberList.sort((a, b) => b.score - a.score);
+    chamberList.forEach((cItem, r) => { cItem.rank = r + 1; });
     const top3 = chamberList.slice(0, 3).map(c => c.name);
-    heatmapData = { scores, rankings: chamberList, top3 };
+    const top5 = chamberList.slice(0, 5);
+    heatmapData = { scores, rankings: chamberList, top3, top5 };
     return heatmapData;
   }
 
   function renderHeatmapList() {
-    ensureHeatmapData();
+    computeHeatmapData();
     const listEl = $("#heatmapRankList");
     if (!listEl) return;
     const topItems = heatmapData.rankings.slice(0, 8);
 
-    listEl.innerHTML = topItems.map((item, r) => {
+    listEl.innerHTML = topItems.map((item) => {
       const isSelected = item.index === st.site;
-      const rankBadge = r === 0 ? "badge-tag crit" : r < 3 ? "badge-tag warn" : "badge-tag good";
+      const rankBadge = item.rank === 1 ? "badge-tag crit" : item.rank <= 3 ? "badge-tag warn" : "badge-tag good";
       return "<div class='fact' style='cursor:pointer; padding:6px 0; " +
-        (isSelected ? "background:var(--panel); border-left:3px solid var(--accent); padding-left:6px" : "") +
+        (isSelected ? "background:var(--panel-2); border-left:3px solid var(--accent); padding-left:6px" : "") +
         "' onclick='GrowthUI.selectAndExplain(" + item.index + ")'>" +
-        "<span><strong style='color:var(--ink)'>#" + (r + 1) + " MH " + item.mh + "</strong> (" + item.homes + " homes)</span>" +
+        "<span><strong style='color:var(--ink)'>#" + item.rank + " MH " + item.mh + "</strong> (" + item.homes + " homes)</span>" +
         "<span><span class='" + rankBadge + "'>" + item.score + " pts</span></span></div>";
     }).join("");
   }
 
+  function renderHeatmapLiveExplain() {
+    computeHeatmapData();
+    const liveEl = $("#heatmapLiveCard");
+    if (!liveEl) return;
+
+    let item = null;
+    if (st.hover) {
+      item = heatmapData.rankings.find(c => c.name === st.hover);
+    }
+    if (!item) {
+      item = heatmapData.rankings.find(c => c.index === st.site) || heatmapData.rankings[0];
+    }
+    if (!item) return;
+
+    const R = runs();
+    const iiLabel = R.iiLevels[st.ii].label;
+    const iiRate = R.iiLevels[st.ii].ii;
+    const addDwellings = R.growthLevels[st.add];
+
+    let whyNote = "";
+    if (item.name === "MH4449118") {
+      whyNote = "Trunk pressure sentinel above bottleneck Reach #101. Catches backwater rise (+1.4m) before property gully traps surcharge. Intercepts 56 upstream dwellings.";
+    } else if (item.name === "MH4449785") {
+      whyNote = "Major eastern branch confluence guardian. Early choke detector providing 55+ min response window before road surface inundation.";
+    } else if (item.name === "MH4450193") {
+      whyNote = "Terminal catchment outfall monitor. Sits at total network drainage confluence guarding 100% of catchment effluent (643 properties, 7,781 m of mains).";
+    } else {
+      whyNote = "Tributary sentinel protecting " + item.homes + " upstream properties across " + item.lengthM + " m of mains. High surcharge sensitivity under active wet weather infiltration.";
+    }
+
+    liveEl.innerHTML =
+      "<div style='display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px'>" +
+        "<div>" +
+          "<span class='badge-tag " + (item.rank === 1 ? "crit" : item.rank <= 3 ? "warn" : "good") + "'>Rank #" + item.rank + "</span>" +
+          "<strong style='font-size:14px; margin-left:6px; color:var(--ink)'>MH " + item.mh + "</strong>" +
+        "</div>" +
+        "<div><strong style='color:var(--accent); font-size:15px'>" + item.score + "</strong> <span style='font-size:10px; color:var(--faint)'>pts</span></div>" +
+      "</div>" +
+      "<div class='quiet' style='font-size:11px; margin-bottom:8px'>" +
+        "Active Scenario: <b>" + esc(iiLabel) + " (" + iiRate + " L/s/100m)</b> + <b>" + addDwellings + " Dwellings</b>" +
+      "</div>" +
+      "<div style='font-size:11.5px; color:var(--dim); line-height:1.45; margin-bottom:10px; background:rgba(22,35,58,0.6); padding:7px 9px; border-radius:6px; border-left:3px solid var(--accent)'>" +
+        esc(whyNote) +
+      "</div>" +
+      "<div style='font-size:10.5px; text-transform:uppercase; color:var(--dim); letter-spacing:0.04em; margin-bottom:4px'>Parameter Influence Breakdown</div>" +
+      renderParamBar("Surcharge & Infiltration Risk", item.breakdown.surcharge, "Active scenario surcharge frequency & tipping sensitivity") +
+      renderParamBar("Tributary Homes Protected", item.breakdown.homes, item.homes + " homes upstream of this chamber") +
+      renderParamBar("Bottleneck Reach Proximity", item.breakdown.bottleneck, "Directly throttled by pipe constriction") +
+      renderParamBar("Backwater Signal Amplitude", item.breakdown.backwater, "Clear water level rise above noise floor") +
+      renderParamBar("Inflow Intercepted", item.breakdown.inflow, item.wetInflowLps + " L/s wet weather infiltration entering mains");
+  }
+
   function explainChamberPlacement(chIdx) {
-    ensureHeatmapData();
+    computeHeatmapData();
     const item = heatmapData.rankings.find(c => c.index === chIdx) || heatmapData.rankings[0];
     const up = Growth3D.getUpstreamMetrics(item.name);
+    const R = runs();
+    const iiLabel = R.iiLevels[st.ii].label;
+    const iiRate = R.iiLevels[st.ii].ii;
+    const addDwellings = R.growthLevels[st.add];
 
     let justificationText = "";
     let roleText = "";
@@ -378,7 +484,7 @@ window.GrowthUI = (function () {
       roleText = "Primary Trunk Surcharge & Backwater Pressure Sentinel";
       justificationText = "Directly acts as an early hydraulic pressure gauge on the Walkerville trunk main. " +
         "It catches backwater surcharge propagating upstream from bottleneck Reach #101 before wastewater rises to property gully traps. " +
-        "Guards 54 tributary homes and 1,240 m of mains.";
+        "Guards 56 tributary homes and 1,240 m of mains.";
     } else if (item.name === "MH4449785") {
       roleText = "Mid-Catchment Confluence Choke Guardian";
       justificationText = "Positioned at the major junction receiving eastern sub-catchment flows. " +
@@ -395,24 +501,25 @@ window.GrowthUI = (function () {
 
     $("#sensorModalContent").innerHTML =
       "<div style='display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px'>" +
-        "<div><h2 style='margin:0'>Candidate #" + (heatmapData.rankings.indexOf(item) + 1) + ": MH " + item.mh + "</h2>" +
+        "<div><h2 style='margin:0'>Candidate #" + item.rank + ": MH " + item.mh + "</h2>" +
         "<div style='color:var(--accent); font-size:13px; font-weight:600; margin-top:3px'>" + roleText + "</div></div>" +
         "<div style='text-align:right'><span style='font-size:24px; font-weight:700; color:var(--accent)'>" + item.score + "</span>" +
         "<div style='font-size:11px; color:var(--faint)'>Priority Score / 100</div></div>" +
       "</div>" +
-      "<div class='card-box' style='background:#0f1a2b; border-color:var(--accent); margin-bottom:16px'>" +
-        "<h4 style='color:var(--accent)'>Operational Justification ('The Why')</h4>" +
+      "<div class='card-box' style='background:#0f1a2b; border-color:var(--accent); margin-bottom:14px'>" +
+        "<div style='font-size:11px; color:var(--accent); font-weight:600; margin-bottom:4px'>SCENARIO: " + esc(iiLabel) + " (" + iiRate + " L/s/100m) &bull; +" + addDwellings + " DWELLINGS</div>" +
+        "<h4 style='color:var(--accent); margin:0 0 6px'>Operational Justification ('The Why')</h4>" +
         "<p style='font-size:13px; margin:0; line-height:1.6'>" + justificationText + "</p>" +
       "</div>" +
       "<h4>Parameter Influence Breakdown</h4>" +
-      "<p class='quiet'>What parameters contributed most to choosing this chamber:</p>" +
-      renderParamBar("Downstream Bottleneck Sensitivity", item.breakdown.bottleneck, "Directly throttled by pipe constriction") +
+      "<p class='quiet'>Dynamic parameters contributing to this candidate ranking in the active scenario:</p>" +
+      renderParamBar("Surcharge & Infiltration Risk", item.breakdown.surcharge, "Active cell surcharge frequency & tipping sensitivity") +
       renderParamBar("Upstream Contributing Properties", item.breakdown.homes, (up ? up.homesCount : item.homes) + " homes protected") +
+      renderParamBar("Downstream Bottleneck Proximity", item.breakdown.bottleneck, "Directly throttled by pipe constriction") +
       renderParamBar("Backwater Signal Amplitude", item.breakdown.backwater, "Clear water level rise above noise floor") +
-      renderParamBar("Wet-Weather Surcharge Frequency", item.breakdown.surcharge, "Tipped in " + item.tipCount + " SWMM stress scenarios") +
-      renderParamBar("Chamber Depth & Safe Verge Access", item.breakdown.access, "Standard road verge access, depth > 2.0m") +
+      renderParamBar("Upstream Mains Network Infiltration", item.breakdown.inflow, item.wetInflowLps + " L/s wet weather infiltration") +
       "<h4 style='margin-top:16px'>Why Not Adjacent Chambers?</h4>" +
-      "<p class='quiet' style='margin-bottom:0'>Adjacent chambers on steeper slopes have shallow backwater wedges (e.g. &lt;0.2m rise, near the sensor noise floor). " +
+      "<p class='quiet' style='margin-bottom:0'>Adjacent chambers on steeper slopes have shallow backwater wedges (&lt;0.2m rise, near the sensor noise floor). " +
       "This chamber was chosen because its flatter invert collects tributary confluences and produces a clean, unambiguous +1.4m level rise.</p>";
 
     $("#sensorModal").hidden = false;
@@ -423,6 +530,71 @@ window.GrowthUI = (function () {
       "<div class='lbl'><span>" + esc(title) + "</span><strong>" + pct + "%</strong></div>" +
       "<div class='track'><div class='fill' style='width:" + Math.min(100, pct) + "%'></div></div>" +
       "<div style='font-size:10.5px; color:var(--faint); margin-top:2px'>" + esc(note) + "</div></div>";
+  }
+
+  function renderLegend() {
+    const legEl = $("#simLegend");
+    if (!legEl) return;
+
+    if (st.mode === "heatmap") {
+      legEl.innerHTML =
+        "<div class='grp'><b>Radial Heat Gradient</b>" +
+          "<span><span class='k' style='background:#ef4444; box-shadow:0 0 8px #ef4444'></span>Red Core (Critical &ge;75)</span>" +
+          "<span><span class='k' style='background:#f59e0b'></span>Amber (High 50&ndash;74)</span>" +
+          "<span><span class='k' style='background:#4ade80'></span>Green (Moderate 25&ndash;49)</span>" +
+          "<span><span class='k' style='background:#38bdf8'></span>Cyan (Low &lt;25)</span>" +
+          "<span><span class='k' style='background:#475569; opacity:0.6'></span>Outer Falloff</span>" +
+        "</div>" +
+        "<div class='grp'><b>Numbered Ranking Pins</b>" +
+          "<span><span class='k' style='background:#0288d1; border:1px solid #fff'></span><b>#1, #2, #3...</b> Top Candidate Sensor Sites</span>" +
+        "</div>" +
+        "<div class='grp'><b>Score Drivers</b>" +
+          "<span style='color:var(--dim)'>Surcharge Freq (30%) &bull; Homes (25%) &bull; Bottleneck (20%) &bull; Backwater (15%) &bull; Inflow (10%)</span>" +
+        "</div>";
+    } else if (st.mode === "blockage") {
+      legEl.innerHTML =
+        "<div class='grp'><b>Blockage Physics</b>" +
+          "<span><span class='kl' style='background:#ff0055'></span>Choke Reach (" + st.blockageSeverity + "% restricted)</span>" +
+          "<span><span class='kl' style='background:#ff5722'></span>Upstream Backwater Surcharge</span>" +
+          "<span><span class='kl' style='background:#4c8bf5'></span>Normal Downstream Flow</span>" +
+        "</div>" +
+        "<div class='grp'><b>Chambers</b>" +
+          "<span><span class='k' style='background:#ff5722'></span>Backwater Surcharged Manhole</span>" +
+          "<span><span class='k' style='background:#c9d1d9'></span>Uncompromised Chamber</span>" +
+        "</div>";
+    } else if (st.mode === "pump") {
+      legEl.innerHTML =
+        "<div class='grp'><b>Pumping &amp; Lift Stations</b>" +
+          "<span><span class='k' style='background:#38bdf8'></span>Pump Station PS-01 (Catchment Outfall)</span>" +
+          "<span><span class='k' style='background:#22c55e'></span>Motor Beacon (Active / Dynamic Draw-down)</span>" +
+          "<span><span class='kl' style='background:#38bdf8'></span>Wastewater Velocity Pulse</span>" +
+        "</div>" +
+        "<div class='grp'><b>Hydraulic Viscosity</b>" +
+          "<span style='color:var(--dim)'>Effective Manning n accounts for fluid temperature &amp; grease friction</span>" +
+        "</div>";
+    } else {
+      // Standard Growth Mode
+      legEl.innerHTML =
+        "<div class='grp'><b>Pipes</b>" +
+          "<span><span class='kl' style='background:#4c8bf5'></span>room to spare</span>" +
+          "<span><span class='kl' style='background:#ffa500'></span>already surcharged, not growth</span>" +
+          "<span><span class='kl' style='background:#ff2d55'></span>tipped by this growth</span>" +
+          "<span><span class='kl' style='background:#ff5722'></span>backwater surcharge</span>" +
+        "</div>" +
+        "<div class='grp'><b>Points</b>" +
+          "<span><span class='k' style='background:#c9d1d9'></span>manhole, sensor candidate</span>" +
+          "<span><span class='k' style='background:#30363d'></span>pipe end, no manhole</span>" +
+          "<span><span class='k' style='background:#ff6f9c'></span>connected property</span>" +
+          "<span><span class='k' style='background:#00d4ff'></span>selected node / connection</span>" +
+          "<span><span class='k' style='background:#3fb950'></span>proposed sensor</span>" +
+          "<span><span class='k' style='background:#a371f7'></span>outlet, drains catchment</span>" +
+          "<span><span class='k' style='background:#38bdf8'></span>pump / lift station</span>" +
+        "</div>" +
+        "<div class='grp'><b>Flow &amp; Bottlenecks</b>" +
+          "<span><span class='kl' style='background:#38bdf8'></span>active wastewater pulse</span>" +
+          "<span><span class='kl' style='background:#ffffff'></span>hydraulic bottleneck reach</span>" +
+        "</div>";
+    }
   }
 
   /* ------------------------------------------- BLOCKAGE & BACKWATER SIMULATOR */
@@ -681,7 +853,16 @@ window.GrowthUI = (function () {
       st.hover = name;
       const c = cell();
       renderHomes(st.showSensors ? c.coverage.chosen.map(x => nameOf(+x.chamber)) : []);
+      if (st.mode === "heatmap") {
+        renderHeatmapLiveExplain();
+      }
     }).then(() => {
+      const loadOverlay = $("#loadingOverlay");
+      if (loadOverlay) {
+        loadOverlay.classList.add("fade-out");
+        setTimeout(() => loadOverlay.remove(), 450);
+      }
+
       buildKnobs();
       const order = buildList();
       populateBlockagePipes();
@@ -692,7 +873,24 @@ window.GrowthUI = (function () {
         Growth3D.ZEXAG + ". Click any node to inspect its affecting upstream catchment.";
 
       select(order[0]);
+    }).catch(err => {
+      console.error("Three.js initialization failed:", err);
+      const errOverlay = $("#errorOverlay");
+      if (errOverlay) errOverlay.hidden = false;
+      const loadOverlay = $("#loadingOverlay");
+      if (loadOverlay) loadOverlay.style.display = "none";
     });
+
+    // Mobile / Tablet Drawer Toggle
+    const sideToggle = $("#sidebarToggle");
+    if (sideToggle) {
+      sideToggle.onclick = () => {
+        const side = $("#side");
+        side.classList.toggle("drawer-open");
+        sideToggle.textContent = side.classList.contains("drawer-open") ? "✕ Close" : "☰ Menu";
+        setTimeout(() => Growth3D.resize($("#stage")), 300);
+      };
+    }
 
     // Navigation & Toolbar
     $("#btn-info").onclick = showModal;
@@ -782,7 +980,7 @@ window.GrowthUI = (function () {
 
     // Explain Top Sensor Button
     $("#btnExplainTop").onclick = () => {
-      ensureHeatmapData();
+      computeHeatmapData();
       const topIdx = heatmapData.rankings[0].index;
       select(topIdx);
       explainChamberPlacement(topIdx);
@@ -815,5 +1013,5 @@ window.GrowthUI = (function () {
     explainChamberPlacement(idx);
   }
 
-  return { init, selectAndExplain };
+  return { init, selectAndExplain, computeHeatmapData, st };
 })();
