@@ -22,9 +22,14 @@ window.GrowthUI = (function () {
     add: 1,                          // growth size knob index
     hover: null,                     // hovered chamber name or null
 
-    // Blockage state
+    // Blockage state & Timeline Simulation
     blockagePipe: 101,               // default to Reach 101 bottleneck
     blockageSeverity: 0,             // 0% - 95%
+    timelineSec: 0,                  // current simulated seconds (0 - 3600)
+    timelinePlaying: false,
+    timelineSpeed: 15,               // time acceleration multiplier
+    timelineTimer: null,
+    timelineMaxSec: 3600,
 
     // Pump station state
     activePumpStation: "PS-01",
@@ -60,7 +65,6 @@ window.GrowthUI = (function () {
 
   const nameOf = i => runs().chambers[i];
   const mhOf = i => runs().manholeIds[i];
-
   function label(i) {
     const mh = mhOf(i);
     return mh ? "MH " + mh : nameOf(i);
@@ -69,6 +73,32 @@ window.GrowthUI = (function () {
   /* --------------------------------------------------------------- select */
   function select(siteIdx) {
     st.site = siteIdx;
+    const g = geom();
+    if (g) {
+      // Find connected pipe for the selected node to sync with blockage dropdown
+      const chName = nameOf(siteIdx);
+      const gNodeIdx = g.nodes.findIndex(n => n.name === chName);
+      let matchedPipe = -1;
+      if (gNodeIdx >= 0) {
+        for (let p = 0; p < g.nPipes; p++) {
+          if (g.up[p] === gNodeIdx || g.down[p] === gNodeIdx) {
+            matchedPipe = p;
+            break;
+          }
+        }
+      }
+      if (matchedPipe >= 0) {
+        st.blockagePipe = matchedPipe;
+        const bPipeSel = $("#blockagePipe");
+        if (bPipeSel) {
+          bPipeSel.value = String(matchedPipe);
+          bPipeSel.classList.remove("pulse-highlight");
+          void bPipeSel.offsetWidth; // force reflow for pulse animation
+          bPipeSel.classList.add("pulse-highlight");
+          setTimeout(() => bPipeSel.classList.remove("pulse-highlight"), 1400);
+        }
+      }
+    }
     repaint();
   }
 
@@ -598,20 +628,27 @@ window.GrowthUI = (function () {
   }
 
   /* ------------------------------------------- BLOCKAGE & BACKWATER SIMULATOR */
+  const VISC_PROPERTIES = {
+    domestic: { nu: 1.15, nEff: 0.0132, name: "Domestic Sewage (20°C)", ref: "Metcalf & Eddy (2014) Wastewater Eng 5th Ed; Alshami et al. (2023)" },
+    grease:   { nu: 2.40, nEff: 0.0144, name: "High Grease/FOG (15°C)", ref: "He et al. (2017) Water Research; Keener et al. (2008)" },
+    sludge:   { nu: 3.80, nEff: 0.0151, name: "Cold Heavy Sludge (8°C)", ref: "Seyssiecq et al. (2003) Process Biochem; Metcalf & Eddy (2014)" },
+    clean:    { nu: 1.00, nEff: 0.0130, name: "Clean Water (20°C)", ref: "IAPWS (2008) Pure Water Standard Baseline" }
+  };
+
   function populateBlockagePipes() {
     const sel = $("#blockagePipe"), g = geom();
     if (!sel || !g) return;
-    const bnPipes = (g.bottlenecks || []).map(b => b.pipe);
+    const bnPipes = new Set((g.bottlenecks || []).map(b => b.pipe));
     const options = [];
 
     // Add bottleneck pipes first
-    bnPipes.forEach(p => {
+    for (const p of bnPipes) {
       const uNode = g.nodes[g.up[p]], dNode = g.nodes[g.down[p]];
       options.push("<option value='" + p + "'>[Bottleneck] Reach #" + p + " (" + uNode.name + " → " + dNode.name + ")</option>");
-    });
-    // Add other major reaches
-    for (let p = 0; p < Math.min(40, g.nPipes); p++) {
-      if (bnPipes.includes(p)) continue;
+    }
+    // Add all remaining reaches in catchment (full network coverage)
+    for (let p = 0; p < g.nPipes; p++) {
+      if (bnPipes.has(p)) continue;
       const uNode = g.nodes[g.up[p]], dNode = g.nodes[g.down[p]];
       options.push("<option value='" + p + "'>Reach #" + p + " (" + uNode.name + " → " + dNode.name + ")</option>");
     }
@@ -619,8 +656,60 @@ window.GrowthUI = (function () {
     sel.value = String(st.blockagePipe);
     sel.onchange = () => {
       st.blockagePipe = +sel.value;
-      repaint();
+      resetTimeline();
     };
+  }
+
+  function formatTime(sec) {
+    const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+    return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  function startTimelinePlay() {
+    if (st.timelinePlaying) return;
+    st.timelinePlaying = true;
+    const playBtn = $("#btnTimelinePlay");
+    if (playBtn) playBtn.textContent = "⏸ Pause";
+
+    if (st.timelineTimer) clearInterval(st.timelineTimer);
+    st.timelineTimer = setInterval(() => {
+      st.timelineSec += st.timelineSpeed;
+      if (st.timelineSec >= st.timelineMaxSec) {
+        st.timelineSec = st.timelineMaxSec;
+        pauseTimelinePlay();
+      }
+      updateBlockagePhysics();
+      renderBlockageUI();
+    }, 1000);
+  }
+
+  function pauseTimelinePlay() {
+    st.timelinePlaying = false;
+    if (st.timelineTimer) {
+      clearInterval(st.timelineTimer);
+      st.timelineTimer = null;
+    }
+    const playBtn = $("#btnTimelinePlay");
+    if (playBtn) playBtn.textContent = "▶ Play";
+  }
+
+  function toggleTimelinePlay() {
+    if (st.timelinePlaying) pauseTimelinePlay();
+    else startTimelinePlay();
+  }
+
+  function stepTimeline(deltaSec) {
+    pauseTimelinePlay();
+    st.timelineSec = Math.max(0, Math.min(st.timelineMaxSec, st.timelineSec + deltaSec));
+    updateBlockagePhysics();
+    renderBlockageUI();
+  }
+
+  function resetTimeline() {
+    pauseTimelinePlay();
+    st.timelineSec = 0;
+    updateBlockagePhysics();
+    renderBlockageUI();
   }
 
   function updateBlockagePhysics() {
@@ -632,60 +721,191 @@ window.GrowthUI = (function () {
     const uNode = g.nodes[g.up[p]];
     const upMetrics = Growth3D.getUpstreamMetrics(uNode.name);
 
-    // Compute backwater propagation
-    const up = Growth3D.getUpstreamMetrics(uNode.name);
-    const backwaterChambers = up ? up.upstreamChambers.concat([uNode.name]) : [uNode.name];
+    // Physical pipe geometry: diameter, length, slope
+    const diaM = (g.dia[p] || 150) / 1000;
+    const a = g.ptr[p], b = g.ptr[p + 1];
+    let lenM = 0;
+    for (let i = a; i < b - 1; i++) {
+      const dx = (g.px[i + 1] - g.px[i]) / 10, dy = (g.py[i + 1] - g.py[i]) / 10;
+      lenM += Math.sqrt(dx * dx + dy * dy);
+    }
+    lenM = Math.max(15, lenM);
+    const dropM = Math.abs(g.zu[p] - g.zd[p]) / 100;
+    const slopeS0 = Math.max(0.0015, dropM / lenM);
+
+    // Fluid viscosity & Manning roughness
+    const vProp = VISC_PROPERTIES[st.viscMode] || VISC_PROPERTIES.domestic;
+    const nEff = vProp.nEff;
+
+    // Gravity conveyance: v = (1/n) * R^(2/3) * S^(1/2), Q = v * A
+    const areaFull = Math.PI * Math.pow(diaM / 2, 2);
+    const rhFull = diaM / 4;
+    const vFull = (1 / nEff) * Math.pow(rhFull, 2/3) * Math.sqrt(slopeS0); // m/s
+    const qCapLps = vFull * areaFull * 1000; // L/s
+
+    // Choked capacity
+    const qChokedLps = qCapLps * Math.pow(1 - sev / 100, 1.8);
+
+    // Tributary inflow under active weather scenario
+    const homes = upMetrics ? upMetrics.homesCount : 24;
+    const tribLenM = upMetrics ? upMetrics.totalLengthM : 650;
+    const qDryLps = homes * (500 * 2.0 / 86400); // 500 L/dwelling/day * PF 2.0
+    const iiRate = runs().iiLevels[st.ii].ii;
+    const qWetLps = tribLenM * (iiRate / 100);
+    const qInLps = Math.max(1.5, qDryLps + qWetLps);
+
+    // Excess backwater accumulation
+    const excessLps = Math.max(0, qInLps - qChokedLps);
+    const pipeVolM3 = areaFull * lenM;
+    const shaftAreaM2 = Math.PI * Math.pow(1.05 / 2, 2); // 0.866 m^2 shaft
+    const depthM = uNode.depth || 2.4;
+    const shaftVolM3 = shaftAreaM2 * depthM;
+    const totalSpillVolM3 = pipeVolM3 + shaftVolM3;
+
+    // Warning horizon to overflow
+    const timeToSpillSec = excessLps > 0 ? (totalSpillVolM3 * 1000) / excessLps : Infinity;
+    st.timelineMaxSec = isFinite(timeToSpillSec) ? Math.max(1800, Math.ceil((timeToSpillSec * 1.35) / 300) * 300) : 3600;
+
+    // Current state at simulated time t = st.timelineSec
+    const t = st.timelineSec;
+    const accumM3 = (excessLps * t) / 1000;
+
+    const chamberLevels = {};
+    const overflowing = [];
     const backwaterPipes = [p];
 
-    // Warning time before overflow spill
-    const diaM = (g.dia[p] || 150) / 1000;
-    const qFull = 0.312 * (1 / 0.013) * Math.PI * Math.pow(diaM / 2, 2) * Math.pow(diaM / 4, 2/3) * Math.sqrt(0.005) * 1000; // approx L/s
-    const qChoked = qFull * Math.pow(1 - sev / 100, 1.8);
-    const qIn = Math.max(2.0, (upMetrics ? upMetrics.homesCount : 20) * 0.0116 + 8.0);
-    const excessLps = Math.max(0, qIn - qChoked);
+    let h0 = 0;
+    if (accumM3 <= pipeVolM3) {
+      // Stage 1: Filling pipe bore
+      h0 = diaM * Math.min(1.0, accumM3 / Math.max(0.1, pipeVolM3));
+    } else {
+      // Stage 2: Surcharging into upstream manhole shaft
+      const excessShaft = accumM3 - pipeVolM3;
+      h0 = diaM + (excessShaft / shaftAreaM2);
+    }
+    chamberLevels[uNode.name] = Math.min(depthM + 0.6, h0);
+    const zWater = (uNode.inv / 100) + h0;
+    if (h0 >= depthM) overflowing.push(uNode.name);
 
-    let timeToSpillMin = Infinity;
-    if (excessLps > 0) {
-      const storageVolM3 = 0.866 * (uNode.depth || 2.5); // 1050mm shaft
-      timeToSpillMin = Math.round((storageVolM3 / (excessLps / 1000)) / 60);
+    // Stage 3: Backwater wave propagation upstream against pipe slopes
+    if (upMetrics && upMetrics.upstreamChambers) {
+      upMetrics.upstreamChambers.forEach(cName => {
+        const cNode = geom().nodes.find(n => n.name === cName);
+        if (!cNode) return;
+        const cInv = cNode.inv / 100;
+        if (zWater > cInv) {
+          const cH = zWater - cInv;
+          const cDepth = cNode.depth || 2.4;
+          chamberLevels[cName] = Math.min(cDepth + 0.6, cH);
+          if (cH >= cDepth) overflowing.push(cName);
+        }
+      });
     }
 
-    Growth3D.setBlockage(p, sev, backwaterChambers, backwaterPipes);
+    if (upMetrics && upMetrics.upstreamPipes) {
+      upMetrics.upstreamPipes.forEach(pIdx => {
+        if (zWater > g.zd[pIdx] / 100) backwaterPipes.push(pIdx);
+      });
+    }
+
+    Growth3D.setBlockageTimelineState(p, sev, backwaterPipes, chamberLevels, overflowing);
   }
 
   function renderBlockageUI() {
-    const p = st.blockagePipe, sev = st.blockageSeverity;
+    const p = st.blockagePipe, sev = st.blockageSeverity, g = geom();
     $("#blockagePctVal").textContent = sev + "%";
     $("#blockageBadge").textContent = sev > 0 ? sev + "% CHOKED" : "CLEAR";
     $("#blockageBadge").className = sev > 50 ? "badge-tag crit" : sev > 0 ? "badge-tag warn" : "badge-tag good";
 
+    const scrubber = $("#timelineScrubber");
+    if (scrubber) {
+      scrubber.max = String(st.timelineMaxSec);
+      scrubber.value = String(st.timelineSec);
+    }
+
+    const timeReadout = $("#timelineTime");
+    if (timeReadout) timeReadout.textContent = formatTime(st.timelineSec);
+
     if (sev === 0) {
+      $("#timelineStatus").textContent = "Normal Flow";
+      $("#timelineStatus").className = "badge-tag good";
+      $("#timelineHorizon").textContent = "--";
       $("#blockageResults").innerHTML = "<p class='quiet'>No active blockage. Move slider to simulate sewer choke.</p>";
       return;
     }
 
-    const g = geom();
     const uNode = g.nodes[g.up[p]], dNode = g.nodes[g.down[p]];
     const upMetrics = Growth3D.getUpstreamMetrics(uNode.name);
     const diaMm = g.dia[p] || 150;
     const capacityReduction = Math.round((1 - Math.pow(1 - sev / 100, 1.8)) * 100);
 
-    const qIn = Math.max(2.0, (upMetrics ? upMetrics.homesCount : 20) * 0.0116 + 8.0);
-    const qFull = 24.5;
-    const qChoked = Math.max(0.2, qFull * (1 - capacityReduction / 100));
-    const excessLps = Math.max(0, qIn - qChoked);
-    const storageVolM3 = 0.866 * (uNode.depth || 2.5);
-    const timeToSpillMin = excessLps > 0 ? Math.max(5, Math.round((storageVolM3 / (excessLps / 1000)) / 60)) : 120;
+    const a = g.ptr[p], b = g.ptr[p + 1];
+    let lenM = 0;
+    for (let i = a; i < b - 1; i++) {
+      const dx = (g.px[i + 1] - g.px[i]) / 10, dy = (g.py[i + 1] - g.py[i]) / 10;
+      lenM += Math.sqrt(dx * dx + dy * dy);
+    }
+    lenM = Math.max(15, lenM);
+    const dropM = Math.abs(g.zu[p] - g.zd[p]) / 100;
+    const slopeS0 = Math.max(0.0015, dropM / lenM);
+
+    const vProp = VISC_PROPERTIES[st.viscMode] || VISC_PROPERTIES.domestic;
+    const nEff = vProp.nEff;
+    const areaFull = Math.PI * Math.pow((diaMm / 1000) / 2, 2);
+    const rhFull = (diaMm / 1000) / 4;
+    const vFull = (1 / nEff) * Math.pow(rhFull, 2/3) * Math.sqrt(slopeS0);
+    const qCapLps = vFull * areaFull * 1000;
+    const qChokedLps = qCapLps * (1 - capacityReduction / 100);
+
+    const homes = upMetrics ? upMetrics.homesCount : 24;
+    const tribLenM = upMetrics ? upMetrics.totalLengthM : 650;
+    const qDryLps = homes * (500 * 2.0 / 86400);
+    const iiRate = runs().iiLevels[st.ii].ii;
+    const qWetLps = tribLenM * (iiRate / 100);
+    const qInLps = Math.max(1.5, qDryLps + qWetLps);
+    const excessLps = Math.max(0, qInLps - qChokedLps);
+
+    const depthM = uNode.depth || 2.4;
+    const totalSpillVolM3 = (areaFull * lenM) + (0.866 * depthM);
+    const timeToSpillMin = excessLps > 0 ? Math.round(((totalSpillVolM3 * 1000) / excessLps) / 60) : Infinity;
+
+    // Determine current filling stage
+    const accumM3 = (excessLps * st.timelineSec) / 1000;
+    const pipeVolM3 = areaFull * lenM;
+    const h0 = accumM3 <= pipeVolM3 ? (diaMm / 1000) * (accumM3 / pipeVolM3) : (diaMm / 1000) + ((accumM3 - pipeVolM3) / 0.866);
+
+    const isSpill = h0 >= depthM;
+    const isShaftSurcharging = h0 > (diaMm / 1000);
+
+    const statusEl = $("#timelineStatus");
+    if (statusEl) {
+      if (isSpill) {
+        statusEl.textContent = "SURCHARGE OVERFLOW! (" + uNode.name + ")";
+        statusEl.className = "badge-tag crit";
+      } else if (isShaftSurcharging) {
+        statusEl.textContent = "Manhole Surcharging (" + Math.round((h0 / depthM) * 100) + "%)";
+        statusEl.className = "badge-tag warn";
+      } else {
+        statusEl.textContent = "Pipe Filling (" + Math.round((accumM3 / Math.max(0.1, pipeVolM3)) * 100) + "%)";
+        statusEl.className = "badge-tag warn";
+      }
+    }
+
+    const horizonEl = $("#timelineHorizon");
+    if (horizonEl) {
+      horizonEl.textContent = isFinite(timeToSpillMin) ? timeToSpillMin + " mins" : "No spill";
+    }
 
     $("#blockageResults").innerHTML =
-      "<div class='card-box' style='background:#2a1215; border-color:var(--warn)'>" +
-        "<h4 style='color:var(--warn)'><span>Hydraulic Choke Impact</span></h4>" +
-        row2("Choked Reach", "Reach #" + p + " (" + diaMm + " mm)") +
-        row2("Conveyance Loss", "<b>-" + capacityReduction + "% capacity</b>") +
-        row2("Backwater Propagation", "<b>" + (upMetrics ? upMetrics.upstreamChambersCount + 1 : 4) + " chambers surcharged</b>") +
-        row2("Properties at Risk", (upMetrics ? upMetrics.homesCount : 12) + " homes") +
-        row2("Warning Time to Spill", "<b class='bad'>" + timeToSpillMin + " minutes</b>") +
-        row2("First Sensor Alerted", "<b class='good'>" + (uNode.kind === "chamber" ? uNode.name : "MH4449118") + "</b>") +
+      "<div class='card-box' style='background:#221015; border-color:var(--warn)'>" +
+        "<h4 style='color:var(--warn)'><span>Hydraulic Choke Physics &amp; Spill Timeline</span></h4>" +
+        row2("Choked Reach", "Reach #" + p + " (" + diaMm + " mm &bull; " + Math.round(lenM) + " m)") +
+        row2("Bed Slope &amp; Gravity Flow", (slopeS0 * 100).toFixed(2) + "% (" + dropM.toFixed(2) + " m drop, v=" + vFull.toFixed(2) + " m/s)") +
+        row2("Fluid Viscosity &amp; Friction", vProp.nu + " mm²/s (n=" + nEff.toFixed(4) + ")") +
+        row2("Capacity Under Choke", "<b>" + qChokedLps.toFixed(1) + " L/s</b> (reduced from " + qCapLps.toFixed(1) + " L/s)") +
+        row2("Tributary Upstream Flow", "<b>" + qInLps.toFixed(1) + " L/s</b> (" + homes + " homes + wet I&I)") +
+        row2("Primary Surcharge Water Height", "<b class='" + (isSpill ? "bad" : "accent") + "'>" + h0.toFixed(2) + " m / " + depthM.toFixed(2) + " m</b> (" + Math.round(Math.min(100, (h0 / depthM) * 100)) + "%)") +
+        row2("Simulated Spill Warning Time", "<b class='bad'>" + (isFinite(timeToSpillMin) ? timeToSpillMin + " minutes" : "Indefinite buffer") + "</b>") +
       "</div>";
   }
 
@@ -701,24 +921,19 @@ window.GrowthUI = (function () {
     $("#psStatusBadge").textContent = duty > 0 ? "PUMPING (" + currentLps + " L/s)" : "IDLE";
     $("#psStatusBadge").className = duty > 1.2 ? "badge-tag crit" : duty > 0 ? "badge-tag good" : "badge-tag warn";
 
-    // Viscosity calculation
-    const viscTable = {
-      domestic: { nu: 1.15, nEff: 0.0130, desc: "Standard residential wastewater (20°C)" },
-      grease:   { nu: 2.40, nEff: 0.0142, desc: "Fats, oils & grease concentration (15°C)" },
-      sludge:   { nu: 3.80, nEff: 0.0151, desc: "Heavy winter sludge & suspended solids (8°C)" },
-      clean:    { nu: 1.00, nEff: 0.0130, desc: "Clean water reference standard (20°C)" }
-    };
-    const vInfo = viscTable[st.viscMode] || viscTable.domestic;
-    const baseVel = 1.12; // m/s
-    const actualVel = Math.round((baseVel * (0.0130 / vInfo.nEff)) * 100) / 100;
+    // Viscosity calculation with peer-reviewed literature
+    const vProp = VISC_PROPERTIES[st.viscMode] || VISC_PROPERTIES.domestic;
+    const baseVel = 1.12; // m/s baseline
+    const actualVel = Math.round((baseVel * (0.0130 / vProp.nEff)) * 100) / 100;
     const velDiffPct = Math.round(((actualVel - baseVel) / baseVel) * 100);
     const transitTimeMin = Math.round((7780 / (actualVel * 60)) * 10) / 10;
 
     $("#viscOutputs").innerHTML =
-      row2("Kinematic Viscosity (ν)", vInfo.nu + " mm²/s") +
-      row2("Effective Roughness (n)", vInfo.nEff.toFixed(4)) +
-      row2("Mean Sewer Flow Velocity", "<b>" + actualVel + " m/s</b> (" + (velDiffPct >= 0 ? "+" : "") + velDiffPct + "%)") +
-      row2("Catchment Transit Time", "<strong>" + transitTimeMin + " mins</strong> to outfall");
+      row2("Kinematic Viscosity (ν)", "<b>" + vProp.nu + " mm²/s</b>") +
+      row2("Effective Manning (n)", vProp.nEff.toFixed(4) + " (roughness adjusted)") +
+      row2("Mean Flow Velocity", "<b>" + actualVel + " m/s</b> (" + (velDiffPct >= 0 ? "+" : "") + velDiffPct + "%)") +
+      row2("Catchment Transit Time", "<strong>" + transitTimeMin + " mins</strong> to outfall") +
+      "<div style='font-size:10.5px; color:var(--faint); margin-top:8px; border-top:1px solid var(--line); padding-top:6px'><strong>Literature Reference:</strong> " + esc(vProp.ref) + "</div>";
   }
 
   /* ---------------------------------------------------- assumptions tab */
@@ -772,7 +987,6 @@ window.GrowthUI = (function () {
     if (isClose) {
       if (sideSub) sideSub.hidden = true;
       document.querySelectorAll(".nav-doc-btn").forEach(b => b.classList.remove("primary"));
-      document.querySelectorAll("#subwindowTabs button").forEach(b => b.classList.remove("active"));
       Growth3D.resize($("#stage"));
       return;
     }
@@ -794,10 +1008,6 @@ window.GrowthUI = (function () {
     panes.forEach(p => {
       const el = $("#pane-" + p);
       if (el) el.hidden = (p !== tab);
-    });
-
-    document.querySelectorAll("#subwindowTabs button").forEach(b => {
-      b.classList.toggle("active", b.dataset.subtab === tab);
     });
 
     const introBtn = $("#tab-intro"), aboutBtn = $("#btn-info"), schemaBtn = $("#btnSchema"),
@@ -1003,12 +1213,14 @@ window.GrowthUI = (function () {
     const subClose = $("#subwindowClose");
     if (subClose) subClose.onclick = () => setTab("map");
 
-    const subTabs = $("#subwindowTabs");
-    if (subTabs) {
-      subTabs.onclick = e => {
-        const b = e.target.closest("button");
-        if (!b || !b.dataset.subtab) return;
-        setTab(b.dataset.subtab);
+    // Elevation exaggeration lever
+    const exaggRange = $("#exaggRange");
+    const exaggVal = $("#exaggVal");
+    if (exaggRange) {
+      exaggRange.oninput = e => {
+        const val = +e.target.value;
+        if (exaggVal) exaggVal.textContent = val + "x";
+        Growth3D.setElevationExaggeration(val);
       };
     }
 
@@ -1058,11 +1270,31 @@ window.GrowthUI = (function () {
       repaint();
     };
 
-    // Blockage Controls
+    // Blockage Controls & Timeline
     $("#blockageRange").oninput = e => {
       st.blockageSeverity = +e.target.value;
       updateBlockagePhysics();
       renderBlockageUI();
+    };
+
+    const btnPlay = $("#btnTimelinePlay");
+    if (btnPlay) btnPlay.onclick = toggleTimelinePlay;
+    const btnStepBack = $("#btnTimelineStepBack");
+    if (btnStepBack) btnStepBack.onclick = () => stepTimeline(-60);
+    const btnStepFwd = $("#btnTimelineStepFwd");
+    if (btnStepFwd) btnStepFwd.onclick = () => stepTimeline(60);
+    const btnReset = $("#btnTimelineReset");
+    if (btnReset) btnReset.onclick = resetTimeline;
+    const timelineSpeed = $("#timelineSpeed");
+    if (timelineSpeed) timelineSpeed.onchange = e => { st.timelineSpeed = +e.target.value; };
+    const scrubber = $("#timelineScrubber");
+    if (scrubber) {
+      scrubber.oninput = e => {
+        pauseTimelinePlay();
+        st.timelineSec = +e.target.value;
+        updateBlockagePhysics();
+        renderBlockageUI();
+      };
     };
 
     // Pump Controls

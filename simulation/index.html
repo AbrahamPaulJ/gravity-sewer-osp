@@ -143,12 +143,23 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
 .subwindow-close{padding:5px 12px; font-size:12px; font-weight:600; background:var(--panel);
   border:1px solid var(--line); border-radius:6px; color:var(--dim); cursor:pointer}
 .subwindow-close:hover{border-color:var(--accent); color:var(--ink); background:var(--panel-2)}
-.subwindow-tabs{display:flex; gap:4px; padding:8px 12px; border-bottom:1px solid var(--line);
-  background:var(--panel); overflow-x:auto; flex-shrink:0}
-.subwindow-tabs button{padding:5px 9px; font-size:11.5px; font-weight:500; background:none;
-  border:1px solid transparent; border-radius:5px; color:var(--dim); cursor:pointer; white-space:nowrap}
-.subwindow-tabs button:hover{background:var(--panel-2); color:var(--ink)}
-.subwindow-tabs button.active{background:var(--panel-2); border-color:var(--accent); color:var(--accent); font-weight:600}
+
+/* Dropdown pulse highlight when 3D node clicked */
+@keyframes pulseGlow{
+  0%{box-shadow:0 0 0 0 rgba(56,189,248,0.7); border-color:var(--accent)}
+  70%{box-shadow:0 0 0 8px rgba(56,189,248,0); border-color:var(--accent)}
+  100%{box-shadow:0 0 0 0 rgba(56,189,248,0)}
+}
+.pulse-highlight{animation:pulseGlow 1.2s ease-out; border-color:var(--accent) !important}
+
+/* Timeline Buttons & Controls */
+.timeline-btn{font:inherit; font-size:11.5px; background:var(--panel-2); color:var(--ink);
+  border:1px solid var(--line); border-radius:6px; cursor:pointer; padding:5px 9px}
+.timeline-btn:hover{border-color:var(--accent); color:var(--accent)}
+.timeline-btn.primary{background:var(--accent); border-color:var(--accent); color:#06131f; font-weight:700}
+.nav-control-group{display:inline-flex; align-items:center; gap:6px; background:var(--panel-2);
+  padding:3px 9px; border-radius:6px; border:1px solid var(--line); font-size:11.5px}
+
 .subwindow-body{flex:1; overflow-y:auto; padding:18px 22px; font-size:13px; line-height:1.55}
 .subwindow-body h2{margin:0 0 6px; font-size:17px; color:var(--accent)}
 .subwindow-body h3{font-size:14px; margin:16px 0 6px; color:var(--ink)}
@@ -319,6 +330,38 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
       </div>
     </div>
 
+    <!-- Real-Time Sewer Backwater Timeline Controls -->
+    <div class="card-box" style="margin-top:12px; border-color:var(--accent)">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+        <span style="font-weight:700; font-size:12px; color:var(--ink)">Real-Time Backwater Timeline</span>
+        <span class="badge-tag good" id="timelineStatus">Normal Flow</span>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:6px">
+        <span style="color:var(--dim)">Simulation Time: <strong id="timelineTime" style="color:var(--accent); font-variant-numeric:tabular-nums; font-family:monospace">00:00</strong></span>
+        <span style="color:var(--dim); font-size:11px">Spill Horizon: <span id="timelineHorizon" style="color:var(--warn); font-weight:600">--</span></span>
+      </div>
+
+      <!-- Scrubber Slider -->
+      <input type="range" id="timelineScrubber" min="0" max="3600" step="15" value="0" style="margin:4px 0 8px">
+
+      <!-- Playback Controls -->
+      <div style="display:flex; gap:5px; align-items:center; margin-bottom:8px">
+        <button id="btnTimelinePlay" class="timeline-btn primary" style="flex:1.2; padding:6px 8px; font-weight:700">▶ Play</button>
+        <button id="btnTimelineStepBack" class="timeline-btn" title="Step Back 1 min" style="padding:6px 8px">⏮ -1m</button>
+        <button id="btnTimelineStepFwd" class="timeline-btn" title="Step Forward 1 min" style="padding:6px 8px">⏭ +1m</button>
+        <button id="btnTimelineReset" class="timeline-btn" title="Reset Timeline" style="padding:6px 8px">↺</button>
+        <select id="timelineSpeed" style="width:auto; padding:5px 6px; font-size:11px" title="Simulation Speed Multiplier">
+          <option value="1">1x (Real-sec)</option>
+          <option value="5">5x Speed</option>
+          <option value="15" selected>15x Speed</option>
+          <option value="30">30x Speed</option>
+          <option value="60">60x Speed</option>
+        </select>
+      </div>
+      <p class="quiet" style="font-size:10.5px; margin:0">Scrub or pause to freeze sewer backwater state and inspect chamber water heights.</p>
+    </div>
+
     <div id="blockageResults" style="margin-top:12px"></div>
   </div>
 
@@ -375,6 +418,10 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
     <button id="fitAll">Whole catchment</button>
     <button id="fitSite">Zoom to selected</button>
     <button id="togglePan" title="Toggle Pan mode (or hold Spacebar and drag)">Pan: Hold [Space]</button>
+    <div class="nav-control-group" title="Adjust 3D vertical elevation exaggeration scale (1x - 35x)">
+      <label for="exaggRange" style="color:var(--dim); white-space:nowrap; cursor:pointer">Elevation: <b id="exaggVal" style="color:var(--accent)">18x</b></label>
+      <input type="range" id="exaggRange" min="1" max="35" step="1" value="18" style="width:68px; accent-color:var(--accent); margin:0; cursor:pointer">
+    </div>
     <button id="toggleSensors">Show proposed sensors</button>
     <button id="toggleFlow" class="primary">Flow Animation: ON</button>
     <button id="toggleBottlenecks">Show bottleneck pipes</button>
@@ -404,6 +451,108 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
         <button onclick="location.reload()">Retry</button>
       </div>
     </div>
+
+    <!-- Unified Right-Side Sub-Window (Positioned immediately below top second nav) -->
+    <aside id="sideSubWindow" class="side-subwindow" hidden>
+      <div class="subwindow-header">
+        <div class="subwindow-title" id="subwindowTitle">Documentation &amp; Guides</div>
+        <button class="subwindow-close" id="subwindowClose" title="Close (Esc)">✕ Close</button>
+      </div>
+      <div class="subwindow-body">
+        <div class="subwindow-pane" id="pane-intro"></div>
+        <div class="subwindow-pane" id="pane-about" hidden></div>
+        <div class="subwindow-pane" id="pane-schema" hidden>
+          <h2>Current Data Schema &amp; Hydraulic Parameters</h2>
+          <p class="sub">Formal specifications for all data structures, network graphs, physics formulas, and provenance used in Simulation 2.</p>
+          
+          <h3>1. Catchment Network Geometry (<code>GROWTH_GEOM</code>)</h3>
+          <table>
+            <tr style="background:var(--panel-2)"><th>Property</th><th>Type</th><th>Count / Value</th><th>Description</th></tr>
+            <tr><td><code>nodes</code></td><td>Array&lt;Node&gt;</td><td>156 nodes</td><td>Maintenance holes (71) and inline pipe junctions (85). Fields: <code>name, kind, x, y, inv, depth, mh, dw</code>.</td></tr>
+            <tr><td><code>nPipes</code></td><td>Integer</td><td>158 reaches</td><td>Total gravity sewer mains in this drainage catchment.</td></tr>
+            <tr><td><code>up, down</code></td><td>Array&lt;Int&gt;</td><td>158 indices</td><td>Directed graph connectivity. Flow runs from <code>up[p]</code> to <code>down[p]</code>.</td></tr>
+            <tr><td><code>dia</code></td><td>Array&lt;Int&gt;</td><td>158 values</td><td>Internal pipe diameter in mm (predominantly 150mm and 225mm vitrified clay and uPVC).</td></tr>
+            <tr><td><code>zu, zd</code></td><td>Array&lt;Int&gt;</td><td>158 pairs</td><td>Upstream and downstream pipe invert elevations in cm AHD.</td></tr>
+            <tr><td><code>hx, hy, hz, hn</code></td><td>Array&lt;Float&gt;</td><td>643 dwellings</td><td>Coordinates of real connected properties and the node index <code>hn[i]</code> they drain into.</td></tr>
+            <tr><td><code>bottlenecks</code></td><td>Array&lt;Object&gt;</td><td>7 tight pipes</td><td>Reaches where full-bore capacity constrains upstream growth: <code>pipe, capBefore, capAfter, qFullLps</code>.</td></tr>
+          </table>
+
+          <h3>2. SWMM Hydraulic Simulation Grid (<code>GROWTH_RUNS</code>)</h3>
+          <table>
+            <tr style="background:var(--panel-2)"><th>Parameter</th><th>Settings</th><th>Operational Meaning</th></tr>
+            <tr><td>Wet Weather Inflow</td><td>0.25, 0.40, 0.55 L/s per 100m</td><td>Rainfall infiltration entering through pipe joints and defects.</td></tr>
+            <tr><td>Growth Steps</td><td>+50, +150, +350, +700 dwellings</td><td>New housing connections adding 500 L/day per dwelling (PF = 2.0).</td></tr>
+            <tr><td>Total Solved Grid</td><td>852 EPA SWMM solves</td><td>71 sites &times; 4 growth levels &times; 3 wet weather states.</td></tr>
+            <tr><td>Surcharge Criterion</td><td>Water level &gt; pipe crown</td><td>Preissmann slot storage node pressurized flow threshold.</td></tr>
+          </table>
+
+          <h3>3. Hydraulic Equations &amp; Viscosity Formulation</h3>
+          <div class="lead-box" style="line-height:1.65">
+            <p><strong>Full-bore Manning Conveyance:</strong> <code>Q_full = (1 / n_eff) · A · R^(2/3) · S^(1/2)</code></p>
+            <p><strong>Viscosity Roughness Correction:</strong> <code>n_eff = n_0 · [1 + 0.12 · ln(ν / ν_0)]</code> where <code>ν_0 = 1.05 × 10^-6 m²/s</code>.</p>
+            <p><strong>Mean Travel Velocity:</strong> <code>v = Q / A_flow (m/s)</code>, Travel Transit Time: <code>τ = Σ (L_i / v_i)</code>.</p>
+            <p><strong>Pump Station Mass Balance:</strong> <code>dV_well / dt = Q_inflow - Q_pump</code>, rated 50 L/s at PS-01 with VSD 0–150%.</p>
+            <p><strong>Blockage Capacity Reduction:</strong> <code>Q_choked = Q_cap · (1 - Blockage%)^1.8</code>.</p>
+          </div>
+
+          <h3>4. Data Provenance &amp; Transparent Model Integrity</h3>
+          <table>
+            <tr style="background:var(--panel-2)"><th>Component</th><th>Source / File</th><th>Classification</th><th>Integrity Notes</th></tr>
+            <tr>
+              <td><b>Network Geometry</b></td>
+              <td><code>simulation/data/catchment.js</code></td>
+              <td><span class="badge-tag good">Real GIS Data</span></td>
+              <td>Walkerville Council / Location SA republication. 158 mains (Layer 6) and 71 chambers (Layer 2). Inverts flow-anchored via <code>START_INVE</code> and <code>FLOWDIRECT</code>.</td>
+            </tr>
+            <tr>
+              <td><b>Connected Properties</b></td>
+              <td><code>simulation/data/catchment.js</code> (<code>hn</code>)</td>
+              <td><span class="badge-tag good">Real GIS Data</span></td>
+              <td>Location SA Layer 4: 643 properties within 40m of mains carrying real <code>PARCELID</code>s. Replaces uncalibrated density proxies.</td>
+            </tr>
+            <tr>
+              <td><b>Dynamic Wave Engine</b></td>
+              <td><code>simulation/data/growth.js</code></td>
+              <td><span class="badge-tag good">Physical Engine</span></td>
+              <td>852 steady-state EPA SWMM 5.2 runs via <code>pyswmm</code> 2.1 (71 sites × 4 growth levels × 3 wet weather levels). Captures Preissmann slot surcharge and backwater.</td>
+            </tr>
+            <tr>
+              <td><b>Domestic Sewage Load</b></td>
+              <td>Hydraulic Model</td>
+              <td><span class="badge-tag warn">Standard Model</span></td>
+              <td>500 L/dwelling/day (2.5 persons × 200 L/person/day) with Sanitary Peak Factor = 2.0 (WSA 02-2014 planning standard).</td>
+            </tr>
+            <tr>
+              <td><b>Infiltration &amp; Inflow</b></td>
+              <td>Hydraulic Model</td>
+              <td><span class="badge-tag warn">Standard Model</span></td>
+              <td>0.25 L/s/100m (nominal base), 0.40 L/s/100m (moderate wet weather), 0.55 L/s/100m (heavy 5-yr storm). Entering via pipe joints.</td>
+            </tr>
+            <tr>
+              <td><b>Manning Roughness</b></td>
+              <td>Hydraulic Model</td>
+              <td><span class="badge-tag warn">Standard Model</span></td>
+              <td>Standard Manning n = 0.013 for clay/concrete gravity sewer mains. Dynamically adjusted for wastewater temperature and viscosity.</td>
+            </tr>
+            <tr>
+              <td><b>Pump &amp; Lift Stations</b></td>
+              <td>Simulation 2 Engine</td>
+              <td><span class="badge-tag warn">Standard Model</span></td>
+              <td>Real chamber locations MH4450193 (terminal outfall) and MH4449118 (trunk confluence) modeled with rated capacities of 50 L/s and 25 L/s, with VSD 0–150%.</td>
+            </tr>
+          </table>
+        </div>
+        <div class="subwindow-pane" id="pane-ref" hidden>
+          <div id="ref"></div>
+        </div>
+        <div class="subwindow-pane" id="pane-qa" hidden>
+          <div id="qa"></div>
+        </div>
+        <div class="subwindow-pane" id="pane-sensor" hidden>
+          <div id="sensorContent"></div>
+        </div>
+      </div>
+    </aside>
   </div>
 
   <div class="legend" id="simLegend">
@@ -428,115 +577,6 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
     </div>
   </div>
   <div id="scale"></div>
-
-  <!-- Unified Right-Side Sub-Window (Slides in from the right, keeping 3D map visible) -->
-  <aside id="sideSubWindow" class="side-subwindow" hidden>
-    <div class="subwindow-header">
-      <div class="subwindow-title" id="subwindowTitle">Documentation &amp; Guides</div>
-      <button class="subwindow-close" id="subwindowClose" title="Close (Esc)">✕ Close</button>
-    </div>
-    <div class="subwindow-tabs" id="subwindowTabs">
-      <button data-subtab="intro" class="active">📖 Tool Guide</button>
-      <button data-subtab="about">ℹ️ About Model</button>
-      <button data-subtab="schema">📐 Schema &amp; Formulas</button>
-      <button data-subtab="ref">📋 Assumptions</button>
-      <button data-subtab="qa">💬 Discussion Q&amp;A</button>
-    </div>
-    <div class="subwindow-body">
-      <div class="subwindow-pane" id="pane-intro"></div>
-      <div class="subwindow-pane" id="pane-about" hidden></div>
-      <div class="subwindow-pane" id="pane-schema" hidden>
-        <h2>Current Data Schema &amp; Hydraulic Parameters</h2>
-        <p class="sub">Formal specifications for all data structures, network graphs, physics formulas, and provenance used in Simulation 2.</p>
-        
-        <h3>1. Catchment Network Geometry (<code>GROWTH_GEOM</code>)</h3>
-        <table>
-          <tr style="background:var(--panel-2)"><th>Property</th><th>Type</th><th>Count / Value</th><th>Description</th></tr>
-          <tr><td><code>nodes</code></td><td>Array&lt;Node&gt;</td><td>156 nodes</td><td>Maintenance holes (71) and inline pipe junctions (85). Fields: <code>name, kind, x, y, inv, depth, mh, dw</code>.</td></tr>
-          <tr><td><code>nPipes</code></td><td>Integer</td><td>158 reaches</td><td>Total gravity sewer mains in this drainage catchment.</td></tr>
-          <tr><td><code>up, down</code></td><td>Array&lt;Int&gt;</td><td>158 indices</td><td>Directed graph connectivity. Flow runs from <code>up[p]</code> to <code>down[p]</code>.</td></tr>
-          <tr><td><code>dia</code></td><td>Array&lt;Int&gt;</td><td>158 values</td><td>Internal pipe diameter in mm (predominantly 150mm and 225mm vitrified clay and uPVC).</td></tr>
-          <tr><td><code>zu, zd</code></td><td>Array&lt;Int&gt;</td><td>158 pairs</td><td>Upstream and downstream pipe invert elevations in cm AHD.</td></tr>
-          <tr><td><code>hx, hy, hz, hn</code></td><td>Array&lt;Float&gt;</td><td>643 dwellings</td><td>Coordinates of real connected properties and the node index <code>hn[i]</code> they drain into.</td></tr>
-          <tr><td><code>bottlenecks</code></td><td>Array&lt;Object&gt;</td><td>7 tight pipes</td><td>Reaches where full-bore capacity constrains upstream growth: <code>pipe, capBefore, capAfter, qFullLps</code>.</td></tr>
-        </table>
-
-        <h3>2. SWMM Hydraulic Simulation Grid (<code>GROWTH_RUNS</code>)</h3>
-        <table>
-          <tr style="background:var(--panel-2)"><th>Parameter</th><th>Settings</th><th>Operational Meaning</th></tr>
-          <tr><td>Wet Weather Inflow</td><td>0.25, 0.40, 0.55 L/s per 100m</td><td>Rainfall infiltration entering through pipe joints and defects.</td></tr>
-          <tr><td>Growth Steps</td><td>+50, +150, +350, +700 dwellings</td><td>New housing connections adding 500 L/day per dwelling (PF = 2.0).</td></tr>
-          <tr><td>Total Solved Grid</td><td>852 EPA SWMM solves</td><td>71 sites &times; 4 growth levels &times; 3 wet weather states.</td></tr>
-          <tr><td>Surcharge Criterion</td><td>Water level &gt; pipe crown</td><td>Preissmann slot storage node pressurized flow threshold.</td></tr>
-        </table>
-
-        <h3>3. Hydraulic Equations &amp; Viscosity Formulation</h3>
-        <div class="lead-box" style="line-height:1.65">
-          <p><strong>Full-bore Manning Conveyance:</strong> <code>Q_full = (1 / n_eff) · A · R^(2/3) · S^(1/2)</code></p>
-          <p><strong>Viscosity Roughness Correction:</strong> <code>n_eff = n_0 · [1 + 0.12 · ln(ν / ν_0)]</code> where <code>ν_0 = 1.05 × 10^-6 m²/s</code>.</p>
-          <p><strong>Mean Travel Velocity:</strong> <code>v = Q / A_flow (m/s)</code>, Travel Transit Time: <code>τ = Σ (L_i / v_i)</code>.</p>
-          <p><strong>Pump Station Mass Balance:</strong> <code>dV_well / dt = Q_inflow - Q_pump</code>, rated 50 L/s at PS-01 with VSD 0–150%.</p>
-          <p><strong>Blockage Capacity Reduction:</strong> <code>Q_choked = Q_cap · (1 - Blockage%)^1.8</code>.</p>
-        </div>
-
-        <h3>4. Data Provenance &amp; Transparent Model Integrity</h3>
-        <table>
-          <tr style="background:var(--panel-2)"><th>Component</th><th>Source / File</th><th>Classification</th><th>Integrity Notes</th></tr>
-          <tr>
-            <td><b>Network Geometry</b></td>
-            <td><code>simulation/data/catchment.js</code></td>
-            <td><span class="badge-tag good">Real GIS Data</span></td>
-            <td>Walkerville Council / Location SA republication. 158 mains (Layer 6) and 71 chambers (Layer 2). Inverts flow-anchored via <code>START_INVE</code> and <code>FLOWDIRECT</code>.</td>
-          </tr>
-          <tr>
-            <td><b>Connected Properties</b></td>
-            <td><code>simulation/data/catchment.js</code> (<code>hn</code>)</td>
-            <td><span class="badge-tag good">Real GIS Data</span></td>
-            <td>Location SA Layer 4: 643 properties within 40m of mains carrying real <code>PARCELID</code>s. Replaces uncalibrated density proxies.</td>
-          </tr>
-          <tr>
-            <td><b>Dynamic Wave Engine</b></td>
-            <td><code>simulation/data/growth.js</code></td>
-            <td><span class="badge-tag good">Physical Engine</span></td>
-            <td>852 steady-state EPA SWMM 5.2 runs via <code>pyswmm</code> 2.1 (71 sites × 4 growth levels × 3 wet weather levels). Captures Preissmann slot surcharge and backwater.</td>
-          </tr>
-          <tr>
-            <td><b>Domestic Sewage Load</b></td>
-            <td>Hydraulic Model</td>
-            <td><span class="badge-tag warn">Standard Model</span></td>
-            <td>500 L/dwelling/day (2.5 persons × 200 L/person/day) with Sanitary Peak Factor = 2.0 (WSA 02-2014 planning standard).</td>
-          </tr>
-          <tr>
-            <td><b>Infiltration &amp; Inflow</b></td>
-            <td>Hydraulic Model</td>
-            <td><span class="badge-tag warn">Standard Model</span></td>
-            <td>0.25 L/s/100m (nominal base), 0.40 L/s/100m (moderate wet weather), 0.55 L/s/100m (heavy 5-yr storm). Entering via pipe joints.</td>
-          </tr>
-          <tr>
-            <td><b>Manning Roughness</b></td>
-            <td>Hydraulic Model</td>
-            <td><span class="badge-tag warn">Standard Model</span></td>
-            <td>Standard Manning n = 0.013 for clay/concrete gravity sewer mains. Dynamically adjusted for wastewater temperature and viscosity.</td>
-          </tr>
-          <tr>
-            <td><b>Pump &amp; Lift Stations</b></td>
-            <td>Simulation 2 Engine</td>
-            <td><span class="badge-tag warn">Standard Model</span></td>
-            <td>Real chamber locations MH4450193 (terminal outfall) and MH4449118 (trunk confluence) modeled with rated capacities of 50 L/s and 25 L/s, with VSD 0–150%.</td>
-          </tr>
-        </table>
-      </div>
-      <div class="subwindow-pane" id="pane-ref" hidden>
-        <div id="ref"></div>
-      </div>
-      <div class="subwindow-pane" id="pane-qa" hidden>
-        <div id="qa"></div>
-      </div>
-      <div class="subwindow-pane" id="pane-sensor" hidden>
-        <div id="sensorContent"></div>
-      </div>
-    </div>
-  </aside>
 </main>
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,

@@ -27,7 +27,7 @@ window.Growth3D = (function () {
   const segPipe = [];               // segment index -> pipe index
   const segPhases = [];             // random phases for flow particle animation
   const clock = { t0: performance.now() };
-  const ZEXAG = 22.0;
+  let ZEXAG = 18.0;
 
   // Flow animation state
   let flowParticles = null;
@@ -53,6 +53,9 @@ window.Growth3D = (function () {
   let activeBlockagePipe = null;
   let backwaterChambersSet = new Set();
   let backwaterPipesSet = new Set();
+  let overflowingSet = new Set();
+  let blockageWaterGroup = null;
+  let blockageSpillRings = [];
 
   const COL = {
     bg: 0x0d1117,
@@ -200,8 +203,9 @@ window.Growth3D = (function () {
           for (let s = 0; s < segEnds.length; s++) {
             const [a, b] = segEnds[s];
             const pIdx = segPipe[s];
+            const isChoked = backwaterPipesSet.has(pIdx) || pIdx === activeBlockagePipe;
             const pipeSlope = Math.max(0.002, Math.abs(g.zu[pIdx] - g.zd[pIdx]) / 1000);
-            const speed = (0.7 + Math.sqrt(pipeSlope) * 4.2) * flowAnimSpeed;
+            const speed = (isChoked ? 0.04 : (0.7 + Math.sqrt(pipeSlope) * 4.2)) * flowAnimSpeed;
             const u = (tSec * speed * 0.38 + segPhases[s]) % 1.0;
             const idx = s * 3;
             pArr[idx] = a.x + (b.x - a.x) * u;
@@ -228,6 +232,15 @@ window.Growth3D = (function () {
             const hBeat = Math.sin(t * 3.0 + idx * 1.2);
             hRing.scale.setScalar(1.0 + 0.25 * hBeat);
             hRing.material.opacity = 0.5 + 0.4 * hBeat;
+          }
+        });
+
+        // Animate blockage overflow spill rings
+        blockageSpillRings.forEach(sr => {
+          if (sr && sr.visible) {
+            const sBeat = Math.sin(t * 6.0);
+            sr.scale.setScalar(1.0 + 0.28 * sBeat);
+            sr.material.opacity = 0.65 + 0.35 * sBeat;
           }
         });
 
@@ -438,6 +451,10 @@ window.Growth3D = (function () {
     heatmapGroup = new THREE.Group();
     heatmapGroup.visible = false;
     scene.add(heatmapGroup);
+
+    // Dynamic Blockage Water Columns & Overflow Spill Rings
+    blockageWaterGroup = new THREE.Group();
+    scene.add(blockageWaterGroup);
 
     // Top 3 Heatmap Halo Rings
     haloRings = [];
@@ -931,18 +948,156 @@ window.Growth3D = (function () {
   }
 
   function setBlockage(pipeIdx, severity, backwaterChambers, backwaterPipes) {
-    activeBlockagePipe = pipeIdx;
-    backwaterChambersSet = new Set(backwaterChambers || []);
-    backwaterPipesSet = new Set(backwaterPipes || []);
+    const levels = {};
+    (backwaterChambers || []).forEach(nm => { levels[nm] = 1.2; });
+    setBlockageTimelineState(pipeIdx, severity, backwaterPipes, levels, []);
   }
 
-  function setPumpStationState(stationId, isRunning, duty) {
-    const ps = pumpStations.find(p => p.id === stationId);
-    if (!ps) return;
-    ps.running = isRunning !== false;
-    if (duty != null) ps.duty = duty;
-    if (ps.beacon) {
-      ps.beacon.material.color.setHex(ps.running ? 0x22c55e : 0xf59e0b);
+  function setBlockageTimelineState(pipeIdx, severity, backwaterPipes, chamberLevels, overflowing) {
+    activeBlockagePipe = pipeIdx;
+    backwaterPipesSet = new Set(backwaterPipes || []);
+    backwaterChambersSet = new Set(Object.keys(chamberLevels || {}));
+    overflowingSet = new Set(overflowing || []);
+
+    if (!blockageWaterGroup) return;
+
+    // Clear existing dynamic water columns & spill rings
+    while (blockageWaterGroup.children.length > 0) {
+      const obj = blockageWaterGroup.children[0];
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
+      blockageWaterGroup.remove(obj);
+    }
+    blockageSpillRings = [];
+
+    if (pipeIdx == null || severity <= 0) return;
+
+    const g = G();
+    if (!g) return;
+
+    // Create 3D water column cylinders and overflow spill rings
+    Object.entries(chamberLevels || {}).forEach(([cName, heightM]) => {
+      if (heightM <= 0.02) return;
+      const nd = g.nodes.find(n => n.name === cName);
+      if (!nd) return;
+
+      const colHeight = Math.max(0.2, heightM) * (ZEXAG / 1.0); // 1 meter = 1.0 * ZEXAG units in 3D
+      const cylGeo = new THREE.CylinderGeometry(4.5, 4.5, colHeight, 14, 1, false);
+      const isOverflow = overflowingSet.has(cName);
+      const cylMat = new THREE.MeshBasicMaterial({
+        color: isOverflow ? 0xff2d55 : 0x00d4ff,
+        transparent: true,
+        opacity: isOverflow ? 0.85 : 0.60,
+        depthWrite: false
+      });
+      const cyl = new THREE.Mesh(cylGeo, cylMat);
+      const invY = (nd.inv / 100) * ZEXAG;
+      cyl.position.set(nd.x / 10, invY + colHeight / 2, -(nd.y / 10));
+      blockageWaterGroup.add(cyl);
+
+      // If overflowing at ground rim: add pulsing spill ring on surface
+      if (isOverflow) {
+        const rimY = ((nd.inv + (nd.depth * 100 || 250)) / 100) * ZEXAG;
+        const ringGeo = new THREE.TorusGeometry(18, 2.5, 8, 32);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0xff0055,
+          transparent: true,
+          opacity: 0.85,
+          depthWrite: false
+        });
+        const spillRing = new THREE.Mesh(ringGeo, ringMat);
+        spillRing.rotation.x = Math.PI / 2;
+        spillRing.position.set(nd.x / 10, rimY, -(nd.y / 10));
+        blockageWaterGroup.add(spillRing);
+        blockageSpillRings.push(spillRing);
+      }
+    });
+  }
+
+  function setElevationExaggeration(val) {
+    if (!val || val <= 0 || !built) return;
+    ZEXAG = +val;
+    const g = G();
+    if (!g) return;
+
+    // 1. Update pipe vertices & segEnds
+    const posArr = pipeGeo.attributes.position.array;
+    let segIdx = 0;
+    for (let p = 0; p < g.nPipes; p++) {
+      const a = g.ptr[p], b = g.ptr[p + 1], n = b - a;
+      if (n < 2) continue;
+      const zu = g.zu[p], zd = g.zd[p];
+      for (let i = a; i < b - 1; i++) {
+        const f0 = (i - a) / (n - 1), f1 = (i + 1 - a) / (n - 1);
+        const y0 = ((zu + (zd - zu) * f0) / 100) * ZEXAG;
+        const y1 = ((zu + (zd - zu) * f1) / 100) * ZEXAG;
+        const base = (segIdx * 2) * 3;
+        posArr[base + 1] = y0;
+        posArr[base + 4] = y1;
+        if (segEnds[segIdx]) {
+          segEnds[segIdx][0].y = y0;
+          segEnds[segIdx][1].y = y1;
+        }
+        segIdx++;
+      }
+    }
+    pipeGeo.attributes.position.needsUpdate = true;
+
+    // 2. Update chamber mesh positions
+    chamberMeshes.forEach(m => {
+      const nd = m.userData.node;
+      m.position.y = (nd.inv / 100) * ZEXAG;
+    });
+
+    // 3. Update property points
+    if (houseGeo && g.hx && g.hz) {
+      const hp = houseGeo.attributes.position.array;
+      for (let i = 0; i < g.hx.length; i++) {
+        hp[i * 3 + 1] = ((g.hz[i] + 200) / 100) * ZEXAG;
+      }
+      houseGeo.attributes.position.needsUpdate = true;
+    }
+
+    // 4. Update pump stations
+    pumpStations.forEach(ps => {
+      const node = g.nodes.find(n => n.name === ps.name);
+      if (node && ps.group) {
+        ps.group.position.y = (node.inv / 100) * ZEXAG;
+      }
+      if (ps.labelObj) {
+        const node2 = g.nodes.find(n => n.name === ps.name);
+        if (node2) ps.labelObj.at.y = (node2.inv / 100) * ZEXAG;
+      }
+    });
+
+    // 5. Update outlet label
+    if (g.outletName) {
+      const on = g.nodes.find(n => n.name === g.outletName);
+      if (on && outletLabel) {
+        outletLabel.at.y = (on.inv / 100) * ZEXAG;
+      }
+    }
+
+    // 6. Update bottleneck sleeves if visible
+    if (bottleneckMesh && bottleneckMesh.visible) {
+      const bnSet = new Set((g.bottlenecks || []).map(b => b.pipe));
+      const bnSegs = [];
+      for (let s = 0; s < segEnds.length; s++) if (bnSet.has(segPipe[s])) bnSegs.push(s);
+      const m = new THREE.Matrix4(), q = new THREE.Quaternion();
+      const yAxis = new THREE.Vector3(0, 1, 0);
+      const dir = new THREE.Vector3(), mid = new THREE.Vector3(), scl = new THREE.Vector3();
+      bnSegs.forEach((s, k) => {
+        const [a, b] = segEnds[s];
+        dir.subVectors(b, a);
+        const len = dir.length();
+        if (len < 1e-6) return;
+        q.setFromUnitVectors(yAxis, dir.clone().divideScalar(len));
+        mid.addVectors(a, b).multiplyScalar(0.5);
+        scl.set(4.4, len, 4.4);
+        m.compose(mid, q, scl);
+        bottleneckMesh.setMatrixAt(k, m);
+      });
+      bottleneckMesh.instanceMatrix.needsUpdate = true;
     }
   }
 
@@ -1055,7 +1210,9 @@ window.Growth3D = (function () {
 
   return {
     build, paint, highlight, showBottlenecks, frame, resize,
-    setFlowAnimation, setHeatmap, setBlockage, setPumpStationState,
-    getUpstreamMetrics, topology, togglePanMode, panByKeys, ZEXAG
+    setFlowAnimation, setHeatmap, setBlockage, setBlockageTimelineState,
+    setElevationExaggeration, setPumpStationState,
+    getUpstreamMetrics, topology, togglePanMode, panByKeys,
+    get ZEXAG() { return ZEXAG; }, set ZEXAG(v) { setElevationExaggeration(v); }
   };
 })();

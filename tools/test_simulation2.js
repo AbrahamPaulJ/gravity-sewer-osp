@@ -302,6 +302,97 @@ function runSuite() {
   check("index.html contains togglePan button and panHint HUD", indexHtml.includes('id="togglePan"') && indexHtml.includes('id="panHint"'));
   check("growth_ui.js connects togglePan button", growthUiSrc.includes('$("#togglePan")') && growthUiSrc.includes("Growth3D.togglePanMode()"));
 
+  console.log("\n8. real-time blockage timeline, gravity physics & fact-checked viscosity");
+  check("growth_ui.js contains fact-checked VISC_PROPERTIES with citations",
+    growthUiSrc.includes("Metcalf & Eddy (2014)") &&
+    growthUiSrc.includes("He et al. (2017)") &&
+    growthUiSrc.includes("Seyssiecq et al. (2003)") &&
+    growthUiSrc.includes("IAPWS (2008)")
+  );
+  check("growth_ui.js computes gravity slope S0 and Manning capacity",
+    growthUiSrc.includes("dropM / lenM") &&
+    growthUiSrc.includes("(1 / nEff) * Math.pow(rhFull, 2/3) * Math.sqrt(slopeS0)")
+  );
+  check("index.html contains blockage interactive timeline controls",
+    indexHtml.includes('id="timelineScrubber"') &&
+    indexHtml.includes('id="btnTimelinePlay"') &&
+    indexHtml.includes('id="btnTimelineStepBack"') &&
+    indexHtml.includes('id="btnTimelineStepFwd"') &&
+    indexHtml.includes('id="btnTimelineReset"') &&
+    indexHtml.includes('id="timelineSpeed"') &&
+    indexHtml.includes('id="timelineTime"') &&
+    indexHtml.includes('id="timelineStatus"') &&
+    indexHtml.includes('id="timelineHorizon"')
+  );
+  check("growth_ui.js implements timeline playback & step functions",
+    growthUiSrc.includes("formatTime") &&
+    growthUiSrc.includes("startTimelinePlay") &&
+    growthUiSrc.includes("pauseTimelinePlay") &&
+    growthUiSrc.includes("toggleTimelinePlay") &&
+    growthUiSrc.includes("stepTimeline") &&
+    growthUiSrc.includes("resetTimeline")
+  );
+  check("growth_3d.js contains blockage 3D water levels and overflow rings",
+    growth3dSrc.includes("setBlockageTimelineState") &&
+    growth3dSrc.includes("blockageWaterGroup") &&
+    growth3dSrc.includes("setElevationExaggeration")
+  );
+
+  console.log("\n9. elevation exaggeration lever & in-place 3d transformation");
+  check("growth_3d.js defines dynamic ZEXAG and setElevationExaggeration",
+    growth3dSrc.includes("let ZEXAG = 18.0;") &&
+    growth3dSrc.includes("function setElevationExaggeration(val)") &&
+    growth3dSrc.includes("setElevationExaggeration,")
+  );
+  check("index.html contains elevation exaggeration slider in nav",
+    indexHtml.includes('id="exaggRange"') &&
+    indexHtml.includes('id="exaggVal"')
+  );
+  check("growth_ui.js connects elevation exaggeration slider to Growth3D",
+    growthUiSrc.includes('$("#exaggRange")') &&
+    growthUiSrc.includes("Growth3D.setElevationExaggeration(val)")
+  );
+
+  console.log("\n10. 3d node-click to blockage dropdown auto-sync & highlight");
+  check("populateBlockagePipes covers all 158 reaches without 40-pipe capping",
+    growthUiSrc.includes("for (let p = 0; p < g.nPipes; p++)") &&
+    !growthUiSrc.includes("Math.min(40, g.nPipes)")
+  );
+  check("growth_ui.js node selection maps to connected pipe and pulses dropdown",
+    growthUiSrc.includes("st.blockagePipe = matchedPipe;") &&
+    growthUiSrc.includes("bPipeSel.classList.add(\"pulse-highlight\")")
+  );
+  check("index.html contains pulse-highlight CSS keyframes",
+    indexHtml.includes(".pulse-highlight") &&
+    indexHtml.includes("@keyframes pulseGlow")
+  );
+
+  console.log("\n11. sub-window layout & topmost nav collapse");
+  check("sideSubWindow is placed inside stageWrap below top second nav",
+    indexHtml.indexOf('id="stageWrap"') < indexHtml.indexOf('id="sideSubWindow"') &&
+    indexHtml.indexOf('id="sideSubWindow"') < indexHtml.indexOf('</main>')
+  );
+  check("duplicate subwindowTabs removed from sideSubWindow",
+    !indexHtml.includes('id="subwindowTabs"')
+  );
+
+  const isRepoRoot = fs.existsSync("simulation/index.html");
+  const suiteHtml = isRepoRoot ? fs.readFileSync("index.html", "utf8") : (fs.existsSync("suite_index.html") ? fs.readFileSync("suite_index.html", "utf8") : null);
+  if (suiteHtml) {
+    check("root index.html contains navMenuBtn and navMenuDropdown",
+      suiteHtml.includes('id="navMenuBtn"') &&
+      suiteHtml.includes('id="navMenuDropdown"')
+    );
+    check("root index.html contains collapse and expand header buttons",
+      suiteHtml.includes('id="btnCollapseHeader"') &&
+      suiteHtml.includes('id="btnExpandHeader"')
+    );
+    check("root index.html auto-collapses header on simulation views",
+      suiteHtml.includes("if (name === 'sim2' || name === 'sim1' || name === 'sandbox')") &&
+      suiteHtml.includes("setHeaderCollapsed(true)")
+    );
+  }
+
   console.log("\n" + passed + " passed, " + failed + " failed");
   if (failed > 0) process.exit(1);
 }

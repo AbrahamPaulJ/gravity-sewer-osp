@@ -12,14 +12,43 @@ html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);display:flex;flex-direction:column;
   font:15px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
 
-header.top{padding:12px 22px;border-bottom:1px solid var(--line);background:var(--panel);
-  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 20px}
+header.top{padding:10px 20px;border-bottom:1px solid var(--line);background:var(--panel);
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;
+  transition:all .25s ease;z-index:100}
+header.top.collapsed{display:none}
 header.top .brand{font-size:14.5px;font-weight:650;letter-spacing:-.1px}
-.tabs{display:flex;gap:2px;flex-wrap:wrap}
+.tabs{display:flex;gap:2px;flex-wrap:wrap;align-items:center}
 .tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--ink-faint);
-  padding:8px 13px;font:inherit;font-size:13px;cursor:pointer;border-radius:6px 6px 0 0}
+  padding:7px 12px;font:inherit;font-size:13px;cursor:pointer;border-radius:6px 6px 0 0}
 .tabs button:hover{color:var(--ink-dim);background:var(--panel-2)}
-.tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.tabs .collapse-btn{border:1px solid var(--line);border-radius:6px;padding:4px 9px;font-size:11.5px;
+  color:var(--ink-dim);margin-left:8px;background:var(--panel-2)}
+.tabs .collapse-btn:hover{color:var(--accent);border-color:var(--accent)}
+
+/* Hidden Floating Menu Bar Button when collapsed */
+#navMenuBtn{position:fixed;top:8px;left:10px;z-index:999;display:none;align-items:center;gap:6px;
+  background:rgba(17,28,47,0.94);border:1px solid var(--line);border-radius:7px;padding:6px 12px;
+  color:var(--ink);font:inherit;font-size:12px;font-weight:600;cursor:pointer;backdrop-filter:blur(8px);
+  box-shadow:0 4px 16px rgba(0,0,0,0.6);transition:border-color .15s,background .15s}
+#navMenuBtn:hover{border-color:var(--accent);color:var(--accent);background:var(--panel-2)}
+#navMenuBtn.active{border-color:var(--accent);box-shadow:0 0 12px rgba(56,189,248,0.35)}
+body.header-collapsed #navMenuBtn{display:inline-flex}
+
+/* Floating Navigation Dropdown Menu */
+#navMenuDropdown{position:fixed;top:44px;left:10px;z-index:1000;display:none;background:var(--panel);
+  border:1px solid var(--line);border-radius:10px;padding:8px 6px;box-shadow:0 12px 36px rgba(0,0,0,0.75);
+  min-width:240px;backdrop-filter:blur(10px)}
+#navMenuDropdown.open{display:block}
+#navMenuDropdown .menu-title{font-size:11px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;
+  letter-spacing:.06em;padding:6px 12px 4px}
+#navMenuDropdown button{display:flex;align-items:center;width:100%;text-align:left;background:none;border:0;
+  border-radius:6px;padding:8px 12px;font:inherit;font-size:13px;color:var(--ink-dim);cursor:pointer}
+#navMenuDropdown button:hover{background:var(--panel-2);color:var(--ink)}
+#navMenuDropdown button.on{background:rgba(56,189,248,0.14);color:var(--accent);font-weight:600}
+#navMenuDropdown hr{border:0;border-top:1px solid var(--line);margin:6px 0}
+#navMenuDropdown .expand-action{font-size:11.5px;color:var(--ink-faint)}
+#navMenuDropdown .expand-action:hover{color:var(--accent)}
 
 .panes{flex:1;min-height:0;position:relative}
 .pane{position:absolute;inset:0;overflow:auto}
@@ -57,7 +86,20 @@ footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);
 </head>
 <body>
 
-<header class="top">
+<button id="navMenuBtn" title="Click to open Navigation Menu">☰ Suite Navigation</button>
+<div id="navMenuDropdown">
+  <div class="menu-title">Network Suite Navigation</div>
+  <button data-tab="overview" class="on">📋 Overview</button>
+  <button data-tab="sandbox">🧪 OSP Sandbox</button>
+  <button data-tab="anatomy">🔍 What a maintenance hole is</button>
+  <button data-tab="observability">👁️ Why observability is limited</button>
+  <button data-tab="sim1">⏱️ Simulation 1 (Warning Time)</button>
+  <button data-tab="sim2">🌊 Simulation 2 (Latest)</button>
+  <hr>
+  <button id="btnExpandHeader" class="expand-action">▲ Restore Top Nav Bar</button>
+</div>
+
+<header class="top" id="topHeader">
   <span class="brand">Optimal sensor placement in gravity sewers</span>
   <nav class="tabs" id="tabs">
     <button data-tab="overview" class="on">Overview</button>
@@ -66,6 +108,7 @@ footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);
     <button data-tab="observability">Why observability is limited</button>
     <button data-tab="sim1">Simulation 1</button>
     <button data-tab="sim2">Simulation 2 (latest)</button>
+    <button id="btnCollapseHeader" class="collapse-btn" title="Collapse header into hidden menu button">Collapse Nav ▾</button>
   </nav>
 </header>
 
@@ -198,19 +241,67 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 </div>
 
 <script>
+var isCollapsed = false;
+var headerEl = document.getElementById('topHeader');
+var navMenuBtn = document.getElementById('navMenuBtn');
+var navMenuDropdown = document.getElementById('navMenuDropdown');
+
+function setHeaderCollapsed(collapsed) {
+  isCollapsed = collapsed;
+  document.body.classList.toggle('header-collapsed', collapsed);
+  if (headerEl) headerEl.classList.toggle('collapsed', collapsed);
+  if (collapsed && navMenuDropdown) navMenuDropdown.classList.remove('open');
+}
+
+document.getElementById('btnCollapseHeader').onclick = function() {
+  setHeaderCollapsed(true);
+};
+
+document.getElementById('btnExpandHeader').onclick = function() {
+  setHeaderCollapsed(false);
+  navMenuDropdown.classList.remove('open');
+  if (navMenuBtn) navMenuBtn.classList.remove('active');
+};
+
+if (navMenuBtn) {
+  navMenuBtn.onclick = function(e) {
+    e.stopPropagation();
+    var isOpen = navMenuDropdown.classList.toggle('open');
+    navMenuBtn.classList.toggle('active', isOpen);
+  };
+}
+
+document.addEventListener('click', function(e) {
+  if (navMenuDropdown && !navMenuDropdown.contains(e.target) && e.target !== navMenuBtn) {
+    navMenuDropdown.classList.remove('open');
+    if (navMenuBtn) navMenuBtn.classList.remove('active');
+  }
+});
+
 function showTab(name){
   var btn = document.querySelector('#tabs button[data-tab="'+name+'"]');
   if (!btn) return false;
-  document.querySelectorAll('#tabs button').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll('#tabs button, #navMenuDropdown button[data-tab]').forEach(function(b){ b.classList.remove('on'); });
   btn.classList.add('on');
+  var dropBtn = document.querySelector('#navMenuDropdown button[data-tab="'+name+'"]');
+  if (dropBtn) dropBtn.classList.add('on');
+  if (navMenuBtn) navMenuBtn.textContent = '☰ ' + btn.textContent;
   document.querySelectorAll('.pane').forEach(function(p){ p.hidden = true; });
   var pane = document.getElementById('pane-'+name);
   pane.hidden = false;
   var frame = pane.querySelector('iframe[data-src]');
   if (frame) { frame.src = frame.dataset.src; frame.removeAttribute('data-src'); }
+  if (navMenuDropdown) navMenuDropdown.classList.remove('open');
+  if (navMenuBtn) navMenuBtn.classList.remove('active');
+
+  // If user navigated to a simulation, auto-collapse header to maximize canvas viewport
+  if (name === 'sim2' || name === 'sim1' || name === 'sandbox') {
+    setHeaderCollapsed(true);
+  }
   return true;
 }
-document.querySelectorAll('#tabs button').forEach(function(b){
+
+document.querySelectorAll('#tabs button[data-tab], #navMenuDropdown button[data-tab]').forEach(function(b){
   b.addEventListener('click', function(){
     showTab(b.dataset.tab);
     history.replaceState(null, '', '#'+b.dataset.tab);
