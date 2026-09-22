@@ -57,6 +57,14 @@
 - **Pan Lock Mode Button:** Added `Pan: Hold [Space]` toggle button in the main navigation toolbar (`#togglePan`) allowing users to click and lock Pan mode on/off on trackpads or mobile screens without holding keys.
 - **HUD Indicator:** Added a subtle bottom HUD badge (`#panHint`) displaying live navigation guidance (`Space + Drag or ↑↓←→ to pan freely`) and highlighting with a cyan pulse whenever Pan is active.
 - **Node Selection Guard:** Ensured dragging or panning while Space is held never accidentally triggers node or manhole selection.
+### 9. Unified Right-Side Sub-Window Architecture & Tool Guide (`simulation/index.html`, `simulation/growth_ui.js`)
+- **Eliminated Floating Center Modals:** Completely removed blocking center modal popups (`#modalBox`, `#sensorModal`, `#schemaModal`).
+- **Unified Right-Side Sub-Window Drawer (`#sideSubWindow`):** Added a non-blocking slide-out drawer on the right edge of the viewport (`width: 480px, max-width: 92vw`) that keeps the 3D map fully visible, interactive, and responsive while reviewing formulas, guides, assumptions, or sensor explainability.
+- **Top Menu "About this model":** Moved "About this model" (`#btn-info`) into the top menu bar alongside Discussion & Q/A, opening directly into the right-side sub-window.
+- **Comprehensive Tool Guide (`📖 Tool Guide`):** Added an interactive introductory guide explaining what each of the 4 simulation views does and delivers (Growth, Heatmap, Blockage, Pumps & Viscosity), full 3D navigation instructions (Spacebar pan, orbit, zoom, inspect), and top navbar document links.
+- **Integrated Data Schema & Formulas:** Moved data schemas, physical equations, and Location SA data provenance into the side sub-window (`#pane-schema`).
+- **Sensor Placement Explainability Pane:** Clicking candidate pins or selecting candidates opens the technical placement rationale and parameter influence bars directly inside the side drawer (`#pane-sensor`).
+- **Escape Key & Tabbed Navigation:** Fully integrated tabbed navigation inside the sub-window, with `Esc` key shortcut to close and return focus to the map.
 
 ---
 
