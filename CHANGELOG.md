@@ -64,15 +64,35 @@
 - Added keyboard 4-direction panning via Arrow keys (`↑`, `↓`, `←`, `→`) and `WASD`.
 - Added `Pan: Hold [Space]` toggle button (`#togglePan`) and HUD badge (`#panHint`).
 
+### 10. Window Size Extension, Outside-Click Auto-Close & Double-Click Pin Lock (`simulation/growth_ui.js`, `simulation/index.html`)
+- **Left Controls Sidebar Extension (`#grip`):**
+  - Added dragging support on the vertical divider (`#grip`) between the left sidebar and map.
+  - Allows extending controls width from 240px to 850px for a wide, uncompressed view of all sliders, cards, and diagrams.
+  - Calls `Growth3D.resize($("#stage"))` dynamically during resize to keep the 3D canvas viewport proportional.
+  - Double-clicking `#grip` toggles between default compact (340px) and wide (560px) view.
+  - Persists custom width across sessions to `localStorage ("simSideWidth")`.
+- **Right Side Sub-Window Extension (`#subwindowGrip`):**
+  - Added a dedicated draggable resizer handle (`#subwindowGrip`) on the left border of `#sideSubWindow`.
+  - Allows extending documentation and formula tables from 340px up to 1100px.
+  - Double-clicking `#subwindowGrip` toggles between default (480px) and wide view (780px).
+  - Persists custom width across sessions to `localStorage ("simSubWindowWidth")`.
+- **Outside-Click Auto-Close (`setTab("map")`):**
+  - Clicking anywhere outside the side window (e.g. on the 3D canvas, map background, or blank area) automatically closes the side window so the user returns to an unobstructed 3D view.
+- **Double-Click Pin Lock:**
+  - **Double-clicking anywhere on the side window** toggles a PIN state (`st.subwindowPinned`).
+  - When pinned, the side window **stops closing even when clicking outside**, allowing users to orbit, pan, inspect nodes, and interact with the 3D map while keeping documentation or explainability visible!
+  - Added `#subwindowPin` button in the header (`📌 Pin` / `📌 Pinned`) and an animated confirmation toast (`#subwindowNotice`).
+  - Double-clicking again unpins the window and re-enables auto-closing.
+
 ---
 
 ## File Diff Checklist
 ```
 M   index.html (collapsible topmost nav, #navMenuBtn, #navMenuDropdown)
 M   simulation/growth_3d.js (dynamic ZEXAG, setElevationExaggeration, setBlockageTimelineState, blockageWaterGroup)
-M   simulation/growth_ui.js (blockage timeline, fact-checked viscosity, gravity slope, node-to-pipe sync)
-M   simulation/index.html (elevation slider, timeline controls, sub-window layout below nav, pulse highlight)
-M   tools/test_simulation2.js (deep multi-perspective verification suite: 67 tests)
+M   simulation/growth_ui.js (window resizers, outside-click close, double-click pin lock, blockage timeline, viscosity)
+M   simulation/index.html (subwindow grip, pin button, notice toast, elevation slider, timeline controls)
+M   tools/test_simulation2.js (deep multi-perspective verification suite: 74 tests)
 A   tools/serve.js (standalone review HTTP server)
 A   DATA_PROVENANCE.md (Location SA GIS, SWMM 5.2, WSAA 02 standards)
 A   CHANGELOG.md (this document)
@@ -82,7 +102,7 @@ A   CHANGELOG.md (this document)
 ---
 
 ## Automated Test Results
-- `node tools/test_simulation2.js`: **67 passed, 0 failed** (100%)
+- `node tools/test_simulation2.js`: **74 passed, 0 failed** (100%)
 - `node tools/test_sandbox.js`: **42 passed, 0 failed** (100%)
 
 ---
@@ -93,3 +113,4 @@ A   CHANGELOG.md (this document)
 node serve.js
 # Open http://localhost:8080 in your browser
 ```
+
