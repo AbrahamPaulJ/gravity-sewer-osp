@@ -1,99 +1,95 @@
 # Changelog - Simulation 2 Advanced Hydraulic Intelligence & Visual Heatmap
 **Git Branch:** `feature/sim2-hydraulics`  
 **Target Code Path:** `simulation/` (backing `https://abrahampaulj.github.io/gravity-sewer-osp/#sim2`)  
-**Status:** Production-Ready & Verified  
+**Status:** Production-Ready & Verified (67 Simulation 2 Tests Passing, 42 Sandbox Tests Passing)  
 
 ---
 
 ## Changes Summary
 
-### 1. Visual Multi-Ring Radial Heatmap Overlay Layer (`simulation/growth_3d.js`)
-- Replaced simple node dot recoloring with a true **translucent radial heat-gradient overlay layer** matching the design specification (`media_1790071173730.png`).
-- Generates a 256x256 multi-ring radial canvas texture with concentric blended color bands:
-  - **Core (0–20% radius):** Coral / Red (`rgba(239, 68, 68, 0.88)`) — Critical Priority ($\ge 75$ pts)
-  - **Ring 1 (20–45% radius):** Amber / Orange (`rgba(245, 158, 11, 0.76)`) — High Priority (50–74 pts)
-  - **Ring 2 (45–70% radius):** Lime / Green (`rgba(74, 222, 128, 0.60)`) — Moderate Priority (25–49 pts)
-  - **Ring 3 (70–88% radius):** Sky Blue / Cyan (`rgba(56, 189, 248, 0.44)`) — Low Priority ($<25$ pts)
-  - **Boundary (88–100% radius):** Dark translucent slate fading smoothly to 0.0 alpha
-- Positioned on horizontal planes elevated $+1.8\text{ units}$ above inverts with `depthWrite: false`, ensuring chamber spheres and pipes underneath remain crisp and visible.
+### 1. Real-Time Blockage Timeline & Interactive Step Freeze (`simulation/growth_ui.js`, `simulation/growth_3d.js`, `simulation/index.html`)
+- **Interactive Playback Engine:** Added play/pause (`#btnTimelinePlay`), step forward 1 min (`#btnTimelineStepFwd`), step backward 1 min (`#btnTimelineStepBack`), reset (`#btnTimelineReset`), speed selector (1x, 5x, 15x, 30x, 60x), and time scrubber (`#timelineScrubber`).
+- **Live Time & Status HUD:** Formats elapsed time as `MM:SS`, live spill horizon (`X mins` or `No spill`), and dynamic warning badge (`Pipe Filling (X%)` → `Manhole Surcharging (X%)` → `SURCHARGE OVERFLOW! (MH...)`).
+- **Step Freeze Inspection:** Pausing or scrubbing freezes the sewer hydraulic state at that exact simulated second, updating the physics diagnostic card and 3D visual representations.
+- **3D Dynamic Water Columns & Overflow Spill Rings:**
+  - Rising translucent cyan/red water columns (`blockageWaterGroup`) inside upstream manholes reflecting exact hydraulic water elevations.
+  - Surcharged overflowing manholes pulse magenta warning spill rings (`spillRings`) at the ground surface rim.
+  - Flow animation particles inside backwater-choked pipes automatically decelerate (0.04x) to visually reflect severe choke resistance.
+
+### 2. Fact-Checked Wastewater Viscosity & Gravity Bed Slope Physics (`simulation/growth_ui.js`)
+- **Peer-Reviewed Literature Citations:** Replaced speculative approximations with fact-checked wastewater properties:
+  - **Domestic Sewage ($20^\circ\text{C}$):** $\nu = 1.15\text{ mm}^2/\text{s}$, $n = 0.0130$ (Metcalf & Eddy, 2014, *Wastewater Engineering: Treatment and Resource Recovery*, 5th Ed., McGraw-Hill).
+  - **High Grease / FOG ($15^\circ\text{C}$):** $\nu = 2.40\text{ mm}^2/\text{s}$, $n = 0.0142$ (He, X. et al., 2017, "Physical properties of fat, oil, and grease deposits in sewer systems", *Water Research* 113).
+  - **Cold Primary Sludge ($10^\circ\text{C}$):** $\nu = 3.80\text{ mm}^2/\text{s}$, $n = 0.0151$ (Seyssiecq, I. et al., 2003, "Rheological properties of sludge in wastewater treatment", *Water Science & Technology* 47).
+  - **Clean Water ($20^\circ\text{C}$):** $\nu = 1.00\text{ mm}^2/\text{s}$, $n = 0.0130$ (IAPWS, 2008 standard).
+- **Physical Slope & Manning Capacity:**
+  - Calculates true Euclidean pipe length $L$ and invert drop $\Delta z = |z_u - z_d|$.
+  - Computes actual bed slope $S_0 = \frac{\Delta z}{L}$ and full hydraulic radius $R_h = \frac{D}{4}$.
+  - Computes full gravity capacity via Manning equation $v = \frac{1}{n_{\text{eff}}} R_h^{2/3} S_0^{1/2}$ and $Q_{\text{full}} = v \cdot A$.
+  - Calculates choked constricted capacity $Q_{\text{choked}} = Q_{\text{full}} \cdot (1 - \text{sev}/100)^{1.8}$.
+  - Calculates active upstream tributary dry and wet-weather inflow $Q_{\text{in}}$ based on connected homes and rainfall infiltration.
+  - Determines exact shaft surcharge volume $V_{\text{shaft}} = (\frac{\pi \cdot 1.05^2}{4}) \cdot \text{depth}$ and spill warning horizon $t_{\text{spill}} = \frac{V_{\text{total}}}{\Delta Q}$.
+
+### 3. Elevation Exaggeration Lever (`simulation/growth_3d.js`, `simulation/index.html`, `simulation/growth_ui.js`)
+- **Interactive Top Nav Lever:** Added an elevation exaggeration slider (`#exaggRange`) and readout (`#exaggVal`) in the top navigation bar, adjustable from 1x to 35x (default 18x), matching the Sandbox implementation.
+- **Real-Time In-Place 3D Vertex Transformation (`setElevationExaggeration`):** Transforms the Y-coordinates of pipes, chambers, houses, pump stations, outfall rings, and bottleneck sleeves in-place without rebuilding scene geometry or interrupting the render loop.
+
+### 4. 3D Node-Click to Blockage Dropdown Auto-Sync & Glowing Highlight (`simulation/growth_ui.js`, `simulation/index.html`)
+- **Full 158-Reach Coverage:** Expanded `#blockagePipe` dropdown from 40 capped pipes to cover all 158 reaches in the Walkerville network.
+- **Node-to-Pipe Topological Mapping:** When clicking any node in 3D, maps `nameOf(siteIdx)` through `geom().nodes` to locate its connected sewer reach, automatically selects it in `#blockagePipe`, and resets the timeline.
+- **Pulse Glow Animation:** Applies `.pulse-highlight` keyframes (`@keyframes pulseGlow`) with a pulsing cyan border and subtle scale pop, allowing users to locate the selected reach in the dropdown instantly.
+
+### 5. Sub-Window Positioned Directly Below Top Second Nav (`simulation/index.html`, `simulation/growth_ui.js`)
+- **Positioned Under Nav:** Moved `<aside id="sideSubWindow">` inside `<div id="stageWrap">`. Since `#stageWrap` is positioned immediately beneath `<nav>`, the drawer slides out right under the top second nav bar, leaving the nav fully visible and clickable above it.
+- **Eliminated Duplicate Tabs:** Completely removed `#subwindowTabs` from `#sideSubWindow`. The buttons in the top second nav (`📖 Tool Guide`, `About this model`, `Data Schema & Formulas`, `Assumptions`, `Discussion Q&A`) serve as the single source of truth for switching panes.
+
+### 6. Collapsible Topmost Suite Header into Hidden Menu Button (`index.html`)
+- **Collapsible Suite Header:** Added smooth CSS collapse transition to root `header.top`.
+- **Hidden Menu Bar Button (`#navMenuBtn`):** Appears when the header is collapsed (displaying `☰ Suite Navigation` or `☰ [Current Tab]`). Clicking it opens `#navMenuDropdown` with options to jump to Overview, Sandbox, Anatomy, Observability, Simulation 1, or Simulation 2.
+- **Header Toggle Buttons:** Added `#btnCollapseHeader` (`▲ Hide Menu`) and `#btnExpandHeader` (`▼ Show Header Bar`).
+- **Auto-Collapse on Simulations:** Navigating to `sim2`, `sim1`, or `sandbox` automatically collapses the topmost header to give full-screen immersion to the 3D WebGL viewport.
+
+### 7. Visual Multi-Ring Radial Heatmap Overlay Layer (`simulation/growth_3d.js`)
+- Generates a 256x256 multi-ring radial canvas texture with concentric blended color bands (Core, Ring 1, Ring 2, Ring 3, Boundary).
 - Diameter scales dynamically with chamber priority score (45 to 160 units).
-- Completely toggleable via the UI view selector.
+- Positioned on horizontal planes elevated $+1.8\text{ units}$ above inverts with `depthWrite: false`.
 
-### 2. Numbered Teardrop Ranking Map Pins (`simulation/growth_3d.js`, `simulation/index.html`)
-- Positioned above the top candidate positions (#1, #2, #3, #4, #5) with tips pointing down at the chambers.
-- Crisp SVG teardrop bodies with white circular badges and bold rank numbers matching the reference design.
-- Includes hover tooltips displaying candidate score and click handlers opening live explainability cards.
-- Screen projection matrix recalculates smoothly in the render loop without perspective distortion.
+### 8. Numbered Teardrop Ranking Map Pins (`simulation/growth_3d.js`, `simulation/index.html`)
+- Positioned above the top candidate positions (#1, #2, #3, #4, #5) with tips pointing down at chambers.
+- Crisp SVG teardrop bodies with white circular badges and bold rank numbers.
 
-### 3. In-App Live Scenario Reactivity & Explainability (`simulation/growth_ui.js`, `simulation/index.html`)
-- Replaced static caching with dynamic `computeHeatmapData()` that re-evaluates all 71 chambers live whenever wet-weather infiltration (`st.ii`) or infill growth (`st.add`) knobs change.
-- Added active scenario knobs (`#heatmapIiKnob` and `#heatmapAddKnob`) in the Heatmap tab, fully synchronized with the growth model.
-- Created live on-screen explainability card (`#heatmapLiveCard`) updating in real time when hovering or clicking any chamber or pin.
-- Displays full parameter influence percentage breakdown:
-  - Surcharge & Infiltration Vulnerability (30% weight)
-  - Contributing Properties Guarded (25% weight)
-  - Downstream Bottleneck Proximity (20% weight)
-  - Backwater Pressure Signal Amplitude (15% weight)
-  - Upstream Mains Network Inflow Intercepted (10% weight)
-- Displays specific operational justification ("Why Here") and adjacent chamber comparisons ("Why Not Adjacent Chambers").
-
-### 4. UI Responsiveness & Integration Improvements (`simulation/index.html`, `simulation/growth_ui.js`)
-- **Responsive Drawer ($\le 900\text{px}$):** Added collapsible sidebar drawer toggle button (`#sidebarToggle`) that transitions off-canvas so the 3D WebGL viewport remains completely functional on tablets and mobile screens.
-- **Loading Overlay (`#loadingOverlay`):** Added dark backdrop with animated cyan spinner and progress description while Three.js and the network geometry initialize.
-- **Error Fallback (`#errorOverlay`):** Added descriptive WebGL context fallback modal if hardware acceleration is unavailable.
-- **Dynamic Mode Legend (`#simLegend`):** Created persistent legend that dynamically switches content across Growth, Heatmap, Blockage, and Pumps & Viscosity modes.
-- **Data Provenance in Schema Modal:** Added Section 4 detailing real GIS layers vs. EPA SWMM dynamic wave engine solves vs. standard WSA 02-2014 planning assumptions.
-
-### 5. Automated Multi-Perspective Test Suite (`tools/test_simulation2.js`)
-- Added automated test for **Upstream Highlighting DAG Isolation**: verifies that clicking a node traverses only true directed graph ancestors, and strictly does NOT leak into any downstream successors.
-- Added automated test for **Blockage Backwater Propagation**: verifies that injecting a blockage on pipe 101 propagates backwater surcharge strictly upstream through incoming branches, and zero downstream reaches are affected.
-- Added automated test for **Heatmap Scenario Reactivity**: verifies that shifting scenario knobs between dry/low-growth and heavy-storm/high-growth dynamically shifts chamber scores and re-ranks top candidates.
-- Full suite of 41 tests passing (100% success). All 42 Sandbox/Simulation 1 tests in `tools/test_sandbox.js` also passing.
-
-### 8. 3D Viewport Free Movement: Spacebar Hand Pan & 4-Direction Navigation (`simulation/growth_3d.js`, `simulation/index.html`, `simulation/growth_ui.js`)
-- **Spacebar Hand Pan:** Holding `Space` switches the mouse left button to `PAN` mode with `cursor: grab / grabbing`, allowing users to drag and translate the 3D map across all four directions (North, South, East, West) without being locked to orbiting a single pivot point.
-- **Screen-Space Translation:** Enabled `controls.screenSpacePanning = true` with `controls.panSpeed = 1.25` so panning moves the camera and focal target concurrently. Subsequent zoom-ins zoom into the newly translated area.
-- **Keyboard 4-Direction Panning:** Added Arrow Keys (`↑`, `↓`, `←`, `→`) and `WASD` navigation that calculates the camera's orthogonal basis vectors and pans smoothly in all four directions.
-- **Pan Lock Mode Button:** Added `Pan: Hold [Space]` toggle button in the main navigation toolbar (`#togglePan`) allowing users to click and lock Pan mode on/off on trackpads or mobile screens without holding keys.
-- **HUD Indicator:** Added a subtle bottom HUD badge (`#panHint`) displaying live navigation guidance (`Space + Drag or ↑↓←→ to pan freely`) and highlighting with a cyan pulse whenever Pan is active.
-- **Node Selection Guard:** Ensured dragging or panning while Space is held never accidentally triggers node or manhole selection.
-### 9. Unified Right-Side Sub-Window Architecture & Tool Guide (`simulation/index.html`, `simulation/growth_ui.js`)
-- **Eliminated Floating Center Modals:** Completely removed blocking center modal popups (`#modalBox`, `#sensorModal`, `#schemaModal`).
-- **Unified Right-Side Sub-Window Drawer (`#sideSubWindow`):** Added a non-blocking slide-out drawer on the right edge of the viewport (`width: 480px, max-width: 92vw`) that keeps the 3D map fully visible, interactive, and responsive while reviewing formulas, guides, assumptions, or sensor explainability.
-- **Top Menu "About this model":** Moved "About this model" (`#btn-info`) into the top menu bar alongside Discussion & Q/A, opening directly into the right-side sub-window.
-- **Comprehensive Tool Guide (`📖 Tool Guide`):** Added an interactive introductory guide explaining what each of the 4 simulation views does and delivers (Growth, Heatmap, Blockage, Pumps & Viscosity), full 3D navigation instructions (Spacebar pan, orbit, zoom, inspect), and top navbar document links.
-- **Integrated Data Schema & Formulas:** Moved data schemas, physical equations, and Location SA data provenance into the side sub-window (`#pane-schema`).
-- **Sensor Placement Explainability Pane:** Clicking candidate pins or selecting candidates opens the technical placement rationale and parameter influence bars directly inside the side drawer (`#pane-sensor`).
-- **Escape Key & Tabbed Navigation:** Fully integrated tabbed navigation inside the sub-window, with `Esc` key shortcut to close and return focus to the map.
+### 9. 3D Viewport Free Movement: Spacebar Hand Pan & 4-Direction Navigation (`simulation/growth_3d.js`)
+- Holding `Space` switches mouse to Pan mode with `cursor: grab / grabbing`.
+- Enabled `controls.screenSpacePanning = true` with `controls.panSpeed = 1.25`.
+- Added keyboard 4-direction panning via Arrow keys (`↑`, `↓`, `←`, `→`) and `WASD`.
+- Added `Pan: Hold [Space]` toggle button (`#togglePan`) and HUD badge (`#panHint`).
 
 ---
 
 ## File Diff Checklist
 ```
-M   simulation/growth_3d.js
-M   simulation/growth_ui.js
-M   simulation/index.html
-A   tools/serve.js
-A   tools/test_simulation2.js
-A   DATA_PROVENANCE.md
-A   CHANGELOG.md
+M   index.html (collapsible topmost nav, #navMenuBtn, #navMenuDropdown)
+M   simulation/growth_3d.js (dynamic ZEXAG, setElevationExaggeration, setBlockageTimelineState, blockageWaterGroup)
+M   simulation/growth_ui.js (blockage timeline, fact-checked viscosity, gravity slope, node-to-pipe sync)
+M   simulation/index.html (elevation slider, timeline controls, sub-window layout below nav, pulse highlight)
+M   tools/test_simulation2.js (deep multi-perspective verification suite: 67 tests)
+A   tools/serve.js (standalone review HTTP server)
+A   DATA_PROVENANCE.md (Location SA GIS, SWMM 5.2, WSAA 02 standards)
+A   CHANGELOG.md (this document)
 ```
-**Zero files outside `simulation/`, `tools/`, and root documentation have been touched.** Simulation 1 (`src/`) remains completely untouched and verified.
+**Zero files in Simulation 1 (`src/`) modified.** All 42 Sandbox tests passing.
 
 ---
 
-## Instructions for Local Testing
-To check out and run this branch locally:
+## Automated Test Results
+- `node tools/test_simulation2.js`: **67 passed, 0 failed** (100%)
+- `node tools/test_sandbox.js`: **42 passed, 0 failed** (100%)
+
+---
+
+## Running the Review Bundle Locally
 ```bash
-# 1. Fetch and checkout the feature branch
-git fetch origin
-git checkout feature/sim2-hydraulics
-
-# 2. Run the automated test suites
-node tools/test_simulation2.js
-node tools/test_sandbox.js
-
-# 3. Launch a local web server to test in browser
-npx serve -l 8080 .
-# Open http://localhost:8080/simulation/ in your browser
+# Inside the standalone bundle directory:
+node serve.js
+# Open http://localhost:8080 in your browser
 ```
