@@ -913,6 +913,13 @@ window.GrowthUI = (function () {
       Growth3D.showBottlenecks(st.showBottlenecks);
     };
 
+    const togglePanBtn = $("#togglePan");
+    if (togglePanBtn) {
+      togglePanBtn.onclick = () => {
+        Growth3D.togglePanMode();
+      };
+    }
+
     $("#toggleSensors").onclick = () => {
       st.showSensors = !st.showSensors;
       $("#toggleSensors").classList.toggle("primary", st.showSensors);

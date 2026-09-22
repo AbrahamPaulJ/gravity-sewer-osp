@@ -290,6 +290,14 @@ function runSuite() {
   check("growth_ui.js syntax parses cleanly", !(() => { try { new Function(growthUiSrc); return false; } catch (e) { return e; } })());
   check("no merge conflict markers present", !growth3dSrc.includes("<<<<<<<") && !growthUiSrc.includes("<<<<<<<") && !indexHtml.includes("<<<<<<<"));
 
+  console.log("\n7. 3d viewport free movement, spacebar pan & 4-directional navigation");
+  check("growth_3d.js enables screenSpacePanning for true 4-direction translation", growth3dSrc.includes("controls.screenSpacePanning = true"));
+  check("growth_3d.js contains Spacebar listener with preventDefault", growth3dSrc.includes('e.code === "Space"') && growth3dSrc.includes("isSpacePressed"));
+  check("growth_3d.js contains 4-directional keyboard panning (Arrow keys & WASD)", growth3dSrc.includes("panByKeys") && growth3dSrc.includes("ArrowLeft") && growth3dSrc.includes("ArrowUp"));
+  check("growth_3d.js exports togglePanMode & panByKeys", growth3dSrc.includes("togglePanMode, panByKeys"));
+  check("index.html contains togglePan button and panHint HUD", indexHtml.includes('id="togglePan"') && indexHtml.includes('id="panHint"'));
+  check("growth_ui.js connects togglePan button", growthUiSrc.includes('$("#togglePan")') && growthUiSrc.includes("Growth3D.togglePanMode()"));
+
   console.log("\n" + passed + " passed, " + failed + " failed");
   if (failed > 0) process.exit(1);
 }

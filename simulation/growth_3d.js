@@ -167,6 +167,18 @@ window.Growth3D = (function () {
       container.appendChild(labelLayer);
       controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
+      controls.screenSpacePanning = true;
+      controls.panSpeed = 1.25;
+      controls.enablePan = true;
+      controls.mouseButtons = {
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.PAN
+      };
+      controls.touches = {
+        ONE: THREE.TOUCH.ROTATE,
+        TWO: THREE.TOUCH.DOLLY_PAN
+      };
       renderer.domElement.addEventListener("pointerdown", onDown);
       renderer.domElement.addEventListener("pointerup", onUp);
       renderer.domElement.addEventListener("pointermove", onMove);
@@ -493,7 +505,134 @@ window.Growth3D = (function () {
   }
 
   let downAt = null;
-  function onDown(e) { downAt = { x: e.clientX, y: e.clientY }; }
+  let isSpacePressed = false;
+  let isPanLocked = false;
+  let isDraggingPan = false;
+
+  function isTyping(e) {
+    const t = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : "";
+    return t === "input" || t === "select" || t === "textarea" || (e.target && e.target.isContentEditable);
+  }
+
+  function updatePanMode() {
+    const active = isSpacePressed || isPanLocked;
+    if (controls) {
+      controls.mouseButtons.LEFT = active ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+    }
+    const stage = document.getElementById("stage");
+    const panHint = document.getElementById("panHint");
+    const btnPan = document.getElementById("togglePan");
+
+    if (stage) {
+      if (active) {
+        stage.classList.add("pan-active");
+        if (isDraggingPan) stage.classList.add("panning");
+        else stage.classList.remove("panning");
+      } else {
+        stage.classList.remove("pan-active", "panning");
+      }
+    }
+    if (panHint) {
+      panHint.classList.toggle("active", active);
+      if (active) {
+        panHint.innerHTML = '<span class="pan-badge" style="color:var(--accent);font-weight:600">✋ PAN ACTIVE</span> Drag mouse or use <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move';
+      } else {
+        panHint.innerHTML = '<span class="pan-badge"><kbd>Space</kbd> + Drag</span> or <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> to pan freely';
+      }
+    }
+    if (btnPan) {
+      btnPan.classList.toggle("primary", active);
+      btnPan.textContent = isPanLocked ? "Pan: LOCKED (Click to Rotate)" : (isSpacePressed ? "Pan: ACTIVE [Space]" : "Pan: Hold [Space]");
+    }
+  }
+
+  function togglePanMode(forced) {
+    isPanLocked = forced !== undefined ? !!forced : !isPanLocked;
+    updatePanMode();
+    return isPanLocked;
+  }
+
+  function panByKeys(key) {
+    if (!camera || !controls) return;
+    const dist = camera.position.distanceTo(controls.target);
+    const step = Math.max(8, dist * 0.045);
+
+    // Compute right vector (screen X axis in world coordinates)
+    const right = new THREE.Vector3();
+    camera.getWorldDirection(right);
+    right.cross(camera.up).normalize();
+
+    // Compute up vector (screen Y axis in world coordinates)
+    const up = new THREE.Vector3();
+    up.copy(camera.up).normalize();
+
+    const delta = new THREE.Vector3();
+    if (key === "ArrowLeft" || key === "a" || key === "A") {
+      delta.addScaledVector(right, -step);
+    } else if (key === "ArrowRight" || key === "d" || key === "D") {
+      delta.addScaledVector(right, step);
+    } else if (key === "ArrowUp" || key === "w" || key === "W") {
+      delta.addScaledVector(up, step);
+    } else if (key === "ArrowDown" || key === "s" || key === "S") {
+      delta.addScaledVector(up, -step);
+    }
+
+    if (delta.lengthSq() > 0) {
+      camera.position.add(delta);
+      controls.target.add(delta);
+      controls.update();
+    }
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (isTyping(e)) return;
+
+    if (e.code === "Space" || e.key === " ") {
+      if (!isSpacePressed) {
+        isSpacePressed = true;
+        updatePanMode();
+      }
+      e.preventDefault();
+      return;
+    }
+
+    const isArrow = e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown";
+    const isWASD = e.key === "w" || e.key === "W" || e.key === "a" || e.key === "A" ||
+                   e.key === "s" || e.key === "S" || e.key === "d" || e.key === "D";
+
+    if (isArrow || isWASD) {
+      panByKeys(e.key);
+      e.preventDefault();
+    }
+  });
+
+  window.addEventListener("keyup", (e) => {
+    if (e.code === "Space" || e.key === " ") {
+      if (isSpacePressed) {
+        isSpacePressed = false;
+        isDraggingPan = false;
+        updatePanMode();
+      }
+      e.preventDefault();
+    }
+  });
+
+  window.addEventListener("blur", () => {
+    if (isSpacePressed) {
+      isSpacePressed = false;
+      isDraggingPan = false;
+      updatePanMode();
+    }
+  });
+
+  function onDown(e) {
+    downAt = { x: e.clientX, y: e.clientY };
+    if (isSpacePressed || isPanLocked) {
+      isDraggingPan = true;
+      updatePanMode();
+    }
+  }
+
   function chamberAt(e) {
     const r = renderer.domElement.getBoundingClientRect();
     pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
@@ -502,17 +641,23 @@ window.Growth3D = (function () {
     const hit = ray.intersectObjects(chamberMeshes, false)[0];
     return hit ? hit.object.userData.node : null;
   }
+
   function onUp(e) {
+    if (isDraggingPan) {
+      isDraggingPan = false;
+      updatePanMode();
+    }
     if (!downAt) return;
     const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
     downAt = null;
-    if (moved > 4 || !onPick) return;
+    if (moved > 4 || !onPick || isSpacePressed || isPanLocked) return;
     const nd = chamberAt(e);
     if (nd) onPick(nd);
   }
 
   let hovered = null, moveQueued = null;
   function onMove(e) {
+    if (isSpacePressed || isPanLocked) return;
     if (e.pointerType !== "mouse" || !onHover || !built) return;
     if (e.buttons) { hoverTo(null); return; }
     if (!moveQueued) requestAnimationFrame(() => {
@@ -521,7 +666,9 @@ window.Growth3D = (function () {
     });
     moveQueued = e;
   }
+
   function hoverTo(nd) {
+    if (isSpacePressed || isPanLocked) return;
     const name = nd ? nd.name : null;
     if (name === hovered) return;
     hovered = name;
@@ -909,6 +1056,6 @@ window.Growth3D = (function () {
   return {
     build, paint, highlight, showBottlenecks, frame, resize,
     setFlowAnimation, setHeatmap, setBlockage, setPumpStationState,
-    getUpstreamMetrics, topology, ZEXAG
+    getUpstreamMetrics, topology, togglePanMode, panByKeys, ZEXAG
   };
 })();

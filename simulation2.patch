@@ -174,7 +174,7 @@ index 0000000..ad35f47
 +## 4. Integrity Statement
 +No simulation numbers are hallucinated or randomly generated. The 852 scenario grid consists of deterministic EPA SWMM 5.2 dynamic wave differential equation solves. All UI controls either query this precomputed physics grid or apply explicit hydraulic equations in real time.
 diff --git a/simulation/growth_3d.js b/simulation/growth_3d.js
-index 4134561..ac56a16 100644
+index 4134561..4e2a3e0 100644
 --- a/simulation/growth_3d.js
 +++ b/simulation/growth_3d.js
 @@ -4,15 +4,17 @@
@@ -343,7 +343,26 @@ index 4134561..ac56a16 100644
    async function build(container, pick, hover) {
      await ensureThree();
      onPick = pick; onHover = hover || null;
-@@ -93,43 +175,92 @@ window.Growth3D = (function () {
+@@ -85,6 +167,18 @@ window.Growth3D = (function () {
+       container.appendChild(labelLayer);
+       controls = new OrbitControls(camera, renderer.domElement);
+       controls.enableDamping = true;
++      controls.screenSpacePanning = true;
++      controls.panSpeed = 1.25;
++      controls.enablePan = true;
++      controls.mouseButtons = {
++        LEFT: THREE.MOUSE.ROTATE,
++        MIDDLE: THREE.MOUSE.DOLLY,
++        RIGHT: THREE.MOUSE.PAN
++      };
++      controls.touches = {
++        ONE: THREE.TOUCH.ROTATE,
++        TWO: THREE.TOUCH.DOLLY_PAN
++      };
+       renderer.domElement.addEventListener("pointerdown", onDown);
+       renderer.domElement.addEventListener("pointerup", onUp);
+       renderer.domElement.addEventListener("pointermove", onMove);
+@@ -93,43 +187,92 @@ window.Growth3D = (function () {
        (function loop() {
          requestAnimationFrame(loop);
          controls.update();
@@ -448,7 +467,7 @@ index 4134561..ac56a16 100644
        houseGeo = new THREE.BufferGeometry();
        houseGeo.setAttribute("position", new THREE.Float32BufferAttribute(hp, 3));
        houseColours = new THREE.Float32BufferAttribute(new Float32Array(hp.length), 3);
-@@ -141,25 +272,17 @@ window.Growth3D = (function () {
+@@ -141,25 +284,17 @@ window.Growth3D = (function () {
          const geo = new THREE.BufferGeometry();
          geo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(hp), 3));
          geo.setDrawRange(0, 0);
@@ -475,7 +494,7 @@ index 4134561..ac56a16 100644
      const jp = [];
      g.nodes.forEach(nd => {
        if (nd.kind === "chamber") return;
-@@ -173,9 +296,9 @@ window.Growth3D = (function () {
+@@ -173,9 +308,9 @@ window.Growth3D = (function () {
          color: COL.junction, size: 6, sizeAttenuation: true })));
      }
  
@@ -488,7 +507,7 @@ index 4134561..ac56a16 100644
      for (let p = 0; p < g.nPipes; p++) {
        const a = g.ptr[p], b = g.ptr[p + 1], n = b - a;
        if (n < 2) continue;
-@@ -188,6 +311,7 @@ window.Growth3D = (function () {
+@@ -188,6 +323,7 @@ window.Growth3D = (function () {
          col.push(0, 0, 0, 0, 0, 0);
          segPipe.push(p);
          segEnds.push([v0, v1]);
@@ -496,7 +515,7 @@ index 4134561..ac56a16 100644
        }
      }
      pipeGeo = new THREE.BufferGeometry();
-@@ -198,15 +322,23 @@ window.Growth3D = (function () {
+@@ -198,15 +334,23 @@ window.Growth3D = (function () {
      scene.add(new THREE.LineSegments(pipeGeo,
        new THREE.LineBasicMaterial({ vertexColors: true })));
  
@@ -529,7 +548,7 @@ index 4134561..ac56a16 100644
      sleeves = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 8, 1, true),
        new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true, transparent: true,
          opacity: 0.28, depthWrite: false }), Math.max(1, segEnds.length));
-@@ -215,11 +347,7 @@ window.Growth3D = (function () {
+@@ -215,11 +359,7 @@ window.Growth3D = (function () {
      sleeves.frustumCulled = false;
      scene.add(sleeves);
  
@@ -542,7 +561,7 @@ index 4134561..ac56a16 100644
      const bnSet = new Set((g.bottlenecks || []).map(b => b.pipe));
      const bnSegs = [];
      for (let s = 0; s < segEnds.length; s++) if (bnSet.has(segPipe[s])) bnSegs.push(s);
-@@ -247,8 +375,7 @@ window.Growth3D = (function () {
+@@ -247,8 +387,7 @@ window.Growth3D = (function () {
      }
      scene.add(bottleneckMesh);
  
@@ -552,7 +571,7 @@ index 4134561..ac56a16 100644
      const sphere = new THREE.SphereGeometry(5.6, 14, 10);
      chamberMeshes = [];
      g.nodes.forEach((nd, i) => {
-@@ -260,11 +387,7 @@ window.Growth3D = (function () {
+@@ -260,11 +399,7 @@ window.Growth3D = (function () {
        chamberMeshes.push(m);
      });
  
@@ -565,7 +584,7 @@ index 4134561..ac56a16 100644
      if (g.outletName) {
        const on = g.nodes.find(n => n.name === g.outletName);
        if (on) {
-@@ -281,6 +404,7 @@ window.Growth3D = (function () {
+@@ -281,6 +416,7 @@ window.Growth3D = (function () {
        }
      }
  
@@ -573,7 +592,7 @@ index 4134561..ac56a16 100644
      siteLabel = { el: document.createElement("div"), at: new THREE.Vector3() };
      siteLabel.el.className = "lbl site";
      siteLabel.el.style.display = "none";
-@@ -298,13 +422,76 @@ window.Growth3D = (function () {
+@@ -298,15 +434,205 @@ window.Growth3D = (function () {
      focusRing.visible = false;
      scene.add(focusRing);
  
@@ -650,9 +669,154 @@ index 4134561..ac56a16 100644
 -  /* Picking. A drag that ends where it began is a click; anything else is an orbit, so
 -     rotating the view does not keep reassigning the growth site. */
    let downAt = null;
-   function onDown(e) { downAt = { x: e.clientX, y: e.clientY }; }
+-  function onDown(e) { downAt = { x: e.clientX, y: e.clientY }; }
++  let isSpacePressed = false;
++  let isPanLocked = false;
++  let isDraggingPan = false;
++
++  function isTyping(e) {
++    const t = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : "";
++    return t === "input" || t === "select" || t === "textarea" || (e.target && e.target.isContentEditable);
++  }
++
++  function updatePanMode() {
++    const active = isSpacePressed || isPanLocked;
++    if (controls) {
++      controls.mouseButtons.LEFT = active ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
++    }
++    const stage = document.getElementById("stage");
++    const panHint = document.getElementById("panHint");
++    const btnPan = document.getElementById("togglePan");
++
++    if (stage) {
++      if (active) {
++        stage.classList.add("pan-active");
++        if (isDraggingPan) stage.classList.add("panning");
++        else stage.classList.remove("panning");
++      } else {
++        stage.classList.remove("pan-active", "panning");
++      }
++    }
++    if (panHint) {
++      panHint.classList.toggle("active", active);
++      if (active) {
++        panHint.innerHTML = '<span class="pan-badge" style="color:var(--accent);font-weight:600">✋ PAN ACTIVE</span> Drag mouse or use <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move';
++      } else {
++        panHint.innerHTML = '<span class="pan-badge"><kbd>Space</kbd> + Drag</span> or <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> to pan freely';
++      }
++    }
++    if (btnPan) {
++      btnPan.classList.toggle("primary", active);
++      btnPan.textContent = isPanLocked ? "Pan: LOCKED (Click to Rotate)" : (isSpacePressed ? "Pan: ACTIVE [Space]" : "Pan: Hold [Space]");
++    }
++  }
++
++  function togglePanMode(forced) {
++    isPanLocked = forced !== undefined ? !!forced : !isPanLocked;
++    updatePanMode();
++    return isPanLocked;
++  }
++
++  function panByKeys(key) {
++    if (!camera || !controls) return;
++    const dist = camera.position.distanceTo(controls.target);
++    const step = Math.max(8, dist * 0.045);
++
++    // Compute right vector (screen X axis in world coordinates)
++    const right = new THREE.Vector3();
++    camera.getWorldDirection(right);
++    right.cross(camera.up).normalize();
++
++    // Compute up vector (screen Y axis in world coordinates)
++    const up = new THREE.Vector3();
++    up.copy(camera.up).normalize();
++
++    const delta = new THREE.Vector3();
++    if (key === "ArrowLeft" || key === "a" || key === "A") {
++      delta.addScaledVector(right, -step);
++    } else if (key === "ArrowRight" || key === "d" || key === "D") {
++      delta.addScaledVector(right, step);
++    } else if (key === "ArrowUp" || key === "w" || key === "W") {
++      delta.addScaledVector(up, step);
++    } else if (key === "ArrowDown" || key === "s" || key === "S") {
++      delta.addScaledVector(up, -step);
++    }
++
++    if (delta.lengthSq() > 0) {
++      camera.position.add(delta);
++      controls.target.add(delta);
++      controls.update();
++    }
++  }
++
++  window.addEventListener("keydown", (e) => {
++    if (isTyping(e)) return;
++
++    if (e.code === "Space" || e.key === " ") {
++      if (!isSpacePressed) {
++        isSpacePressed = true;
++        updatePanMode();
++      }
++      e.preventDefault();
++      return;
++    }
++
++    const isArrow = e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown";
++    const isWASD = e.key === "w" || e.key === "W" || e.key === "a" || e.key === "A" ||
++                   e.key === "s" || e.key === "S" || e.key === "d" || e.key === "D";
++
++    if (isArrow || isWASD) {
++      panByKeys(e.key);
++      e.preventDefault();
++    }
++  });
++
++  window.addEventListener("keyup", (e) => {
++    if (e.code === "Space" || e.key === " ") {
++      if (isSpacePressed) {
++        isSpacePressed = false;
++        isDraggingPan = false;
++        updatePanMode();
++      }
++      e.preventDefault();
++    }
++  });
++
++  window.addEventListener("blur", () => {
++    if (isSpacePressed) {
++      isSpacePressed = false;
++      isDraggingPan = false;
++      updatePanMode();
++    }
++  });
++
++  function onDown(e) {
++    downAt = { x: e.clientX, y: e.clientY };
++    if (isSpacePressed || isPanLocked) {
++      isDraggingPan = true;
++      updatePanMode();
++    }
++  }
++
    function chamberAt(e) {
-@@ -324,12 +511,10 @@ window.Growth3D = (function () {
+     const r = renderer.domElement.getBoundingClientRect();
+     pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+@@ -315,28 +641,34 @@ window.Growth3D = (function () {
+     const hit = ray.intersectObjects(chamberMeshes, false)[0];
+     return hit ? hit.object.userData.node : null;
+   }
++
+   function onUp(e) {
++    if (isDraggingPan) {
++      isDraggingPan = false;
++      updatePanMode();
++    }
+     if (!downAt) return;
+     const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
+     downAt = null;
+-    if (moved > 4 || !onPick) return;
++    if (moved > 4 || !onPick || isSpacePressed || isPanLocked) return;
+     const nd = chamberAt(e);
      if (nd) onPick(nd);
    }
  
@@ -660,13 +824,23 @@ index 4134561..ac56a16 100644
 -     has no hover, and a tap still does everything. At most one raycast per frame. */
    let hovered = null, moveQueued = null;
    function onMove(e) {
++    if (isSpacePressed || isPanLocked) return;
      if (e.pointerType !== "mouse" || !onHover || !built) return;
 -    if (e.buttons) { hoverTo(null); return; }         // orbiting, not pointing
 +    if (e.buttons) { hoverTo(null); return; }
      if (!moveQueued) requestAnimationFrame(() => {
        const ev = moveQueued; moveQueued = null;
        if (ev) hoverTo(chamberAt(ev));
-@@ -344,9 +529,6 @@ window.Growth3D = (function () {
+     });
+     moveQueued = e;
+   }
++
+   function hoverTo(nd) {
++    if (isSpacePressed || isPanLocked) return;
+     const name = nd ? nd.name : null;
+     if (name === hovered) return;
+     hovered = name;
+@@ -344,9 +676,6 @@ window.Growth3D = (function () {
      if (onHover) onHover(nd);
    }
  
@@ -676,7 +850,7 @@ index 4134561..ac56a16 100644
    let topo = null;
    function topology() {
      if (topo) return topo;
-@@ -356,9 +538,6 @@ window.Growth3D = (function () {
+@@ -356,9 +685,6 @@ window.Growth3D = (function () {
        into[g.down[p]].push(p);
        if (downOf[g.up[p]] < 0) downOf[g.up[p]] = g.down[p];
      }
@@ -686,7 +860,7 @@ index 4134561..ac56a16 100644
      const firstMh = new Array(n);
      for (let i = 0; i < n; i++) {
        let j = i, hops = 0;
-@@ -367,11 +546,10 @@ window.Growth3D = (function () {
+@@ -367,11 +693,10 @@ window.Growth3D = (function () {
      }
      const idxOf = {};
      g.nodes.forEach((nd, i) => { idxOf[nd.name] = i; });
@@ -699,7 +873,7 @@ index 4134561..ac56a16 100644
    function upstream(names) {
      const g = G(), t = topology();
      const nodes = new Set(), pipes = new Set(), stack = [];
-@@ -385,12 +563,53 @@ window.Growth3D = (function () {
+@@ -385,12 +710,53 @@ window.Growth3D = (function () {
      return { nodes, pipes };
    }
  
@@ -759,7 +933,7 @@ index 4134561..ac56a16 100644
    function highlight(spec) {
      if (!built || !houseGeo || !G().hn) return null;
      const g = G(), t = topology(), n = g.hn.length;
-@@ -416,7 +635,7 @@ window.Growth3D = (function () {
+@@ -416,7 +782,7 @@ window.Growth3D = (function () {
          if (t.firstMh[node] === me) { copy(hiPos, nHi++, i); if (node === me) nDirect++; }
          else if (up.nodes.has(node)) copy(upPos, nUp++, i);
        }
@@ -768,7 +942,7 @@ index 4134561..ac56a16 100644
      } else if (spec && spec.mode === "sensors" && spec.names.length) {
        const up = upstream(spec.names);
        pipes = up.pipes;
-@@ -425,7 +644,7 @@ window.Growth3D = (function () {
+@@ -425,7 +791,7 @@ window.Growth3D = (function () {
          paintHouse(i, COL.house);
          if (up.nodes.has(g.hn[i])) { copy(hiPos, nHi++, i); watched++; }
        }
@@ -777,7 +951,7 @@ index 4134561..ac56a16 100644
      } else {
        for (let i = 0; i < n; i++) paintHouse(i, COL.house);
        out = { mode: "none", total: n };
-@@ -439,11 +658,8 @@ window.Growth3D = (function () {
+@@ -439,11 +805,8 @@ window.Growth3D = (function () {
        pts.frustumCulled = false;
      });
  
@@ -791,7 +965,7 @@ index 4134561..ac56a16 100644
      const dir = new THREE.Vector3(), mid = new THREE.Vector3(), scl = new THREE.Vector3();
      const tmpColor = new THREE.Color();
      const baseHex = spec && spec.mode === "sensors" ? COL.watched : COL.sleeve;
-@@ -457,7 +673,7 @@ window.Growth3D = (function () {
+@@ -457,7 +820,7 @@ window.Growth3D = (function () {
          if (len < 1e-6) continue;
          q.setFromUnitVectors(yAxis, dir.clone().divideScalar(len));
          mid.addVectors(a, b).multiplyScalar(0.5);
@@ -800,7 +974,7 @@ index 4134561..ac56a16 100644
          m.compose(mid, q, scl);
          sleeves.setMatrixAt(k, m);
          const onAmber = lastPipeState && lastPipeState[segPipe[s]] === "was";
-@@ -476,14 +692,119 @@ window.Growth3D = (function () {
+@@ -476,14 +839,119 @@ window.Growth3D = (function () {
      if (bottleneckMesh) bottleneckMesh.visible = !!show;
    }
  
@@ -923,7 +1097,7 @@ index 4134561..ac56a16 100644
      const rank = { ok: 0, was: 1, tip: 2 };
      const pipeCol = [];
      for (let p = 0; p < g.nPipes; p++) {
-@@ -491,10 +812,18 @@ window.Growth3D = (function () {
+@@ -491,10 +959,18 @@ window.Growth3D = (function () {
        const su = nodeState(u.name), sd = nodeState(d.name);
        pipeCol.push(rank[su] >= rank[sd] ? su : sd);
      }
@@ -945,7 +1119,7 @@ index 4134561..ac56a16 100644
        for (let k = 0; k < 2; k++) {
          const o = (s * 2 + k) * 3;
          arr[o] = c[0] / 255; arr[o + 1] = c[1] / 255; arr[o + 2] = c[2] / 255;
-@@ -503,13 +832,30 @@ window.Growth3D = (function () {
+@@ -503,13 +979,30 @@ window.Growth3D = (function () {
      pipeColours.needsUpdate = true;
  
      const sensorSet = new Set(sensors || []);
@@ -980,7 +1154,7 @@ index 4134561..ac56a16 100644
        if (nm === siteName) {
          focusRing.position.copy(m.position);
          focusRing.visible = true;
-@@ -518,6 +864,20 @@ window.Growth3D = (function () {
+@@ -518,6 +1011,20 @@ window.Growth3D = (function () {
          siteLabel.el.style.display = "";
        }
      });
@@ -1001,7 +1175,7 @@ index 4134561..ac56a16 100644
      if (!siteName) { focusRing.visible = false; siteLabel.el.style.display = "none"; }
    }
  
-@@ -546,5 +906,9 @@ window.Growth3D = (function () {
+@@ -546,5 +1053,9 @@ window.Growth3D = (function () {
      camera.updateProjectionMatrix();
    }
  
@@ -1009,11 +1183,11 @@ index 4134561..ac56a16 100644
 +  return {
 +    build, paint, highlight, showBottlenecks, frame, resize,
 +    setFlowAnimation, setHeatmap, setBlockage, setPumpStationState,
-+    getUpstreamMetrics, topology, ZEXAG
++    getUpstreamMetrics, topology, togglePanMode, panByKeys, ZEXAG
 +  };
  })();
 diff --git a/simulation/growth_ui.js b/simulation/growth_ui.js
-index d5a48d5..6dc06ef 100644
+index d5a48d5..b9cc4b7 100644
 --- a/simulation/growth_ui.js
 +++ b/simulation/growth_ui.js
 @@ -1,29 +1,46 @@
@@ -1977,7 +2151,7 @@ index d5a48d5..6dc06ef 100644
      $("#toggleBottlenecks").onclick = () => {
        st.showBottlenecks = !st.showBottlenecks;
        $("#toggleBottlenecks").classList.toggle("primary", st.showBottlenecks);
-@@ -488,9 +912,7 @@ window.GrowthUI = (function () {
+@@ -488,9 +912,14 @@ window.GrowthUI = (function () {
          ? "Hide bottleneck pipes" : "Show bottleneck pipes";
        Growth3D.showBottlenecks(st.showBottlenecks);
      };
@@ -1985,10 +2159,17 @@ index d5a48d5..6dc06ef 100644
 -    $("#fitAll").onclick = () => Growth3D.frame(null);
 -    $("#fitSite").onclick = () => Growth3D.frame(nameOf(st.site));
 +
++    const togglePanBtn = $("#togglePan");
++    if (togglePanBtn) {
++      togglePanBtn.onclick = () => {
++        Growth3D.togglePanMode();
++      };
++    }
++
      $("#toggleSensors").onclick = () => {
        st.showSensors = !st.showSensors;
        $("#toggleSensors").classList.toggle("primary", st.showSensors);
-@@ -498,13 +920,104 @@ window.GrowthUI = (function () {
+@@ -498,13 +927,104 @@ window.GrowthUI = (function () {
                                                         : "Show proposed sensors";
        repaint();
      };
@@ -2095,7 +2276,7 @@ index d5a48d5..6dc06ef 100644
 +  return { init, selectAndExplain, computeHeatmapData, st };
  })();
 diff --git a/simulation/index.html b/simulation/index.html
-index e0c7a69..8c903b3 100644
+index e0c7a69..8c5d657 100644
 --- a/simulation/index.html
 +++ b/simulation/index.html
 @@ -4,6 +4,11 @@
@@ -2234,7 +2415,7 @@ index e0c7a69..8c903b3 100644
  #pane-qa .qa{border:1px solid var(--line); border-radius:9px; margin-bottom:10px;
    background:var(--panel-2); overflow:hidden}
  #pane-qa .qa>summary{cursor:pointer; padding:11px 13px; font-weight:600; font-size:13px;
-@@ -149,119 +163,360 @@ nav button.info:hover{background:var(--accent); color:#06131f}
+@@ -149,119 +163,377 @@ nav button.info:hover{background:var(--accent); color:#06131f}
  #pane-ref li{color:var(--dim); font-size:13px}
  #pane-ref .lead{background:var(--panel); border:1px solid var(--line); border-left:3px solid
    var(--accent); border-radius:8px; padding:13px 16px; margin:0 0 14px; max-width:78ch}
@@ -2339,6 +2520,19 @@ index e0c7a69..8c903b3 100644
 +  #stageWrap{height:calc(100vh - 84px)}
 +  main{height:100vh}
  }
++
++/* Pan Mode & Free 4-Direction Navigation */
++#stage.pan-active, #stage.pan-active canvas{cursor:grab !important}
++#stage.panning, #stage.panning canvas{cursor:grabbing !important}
++.pan-hint{position:absolute; bottom:14px; left:16px; background:rgba(13,22,38,0.88);
++  border:1px solid var(--line); border-radius:6px; padding:6px 12px; font-size:11.5px;
++  color:var(--dim); pointer-events:none; z-index:15; display:flex; align-items:center; gap:6px;
++  backdrop-filter:blur(6px); transition:border-color 0.2s, color 0.2s, background 0.2s;
++  box-shadow:0 4px 16px rgba(0,0,0,0.5)}
++.pan-hint.active{border-color:var(--accent); color:#fff; background:rgba(14,165,233,0.22);
++  box-shadow:0 0 12px rgba(56,189,248,0.35)}
++.pan-hint kbd{background:var(--panel-2); border:1px solid var(--line); border-radius:4px;
++  padding:1px 5px; font-family:ui-monospace,Menlo,monospace; font-size:10.5px; color:var(--accent)}
  </style>
  </head>
  <body>
@@ -2490,6 +2684,7 @@ index e0c7a69..8c903b3 100644
      <button id="fitAll">Whole catchment</button>
 -    <button id="fitSite">Zoom to the growth</button>
 +    <button id="fitSite">Zoom to selected</button>
++    <button id="togglePan" title="Toggle Pan mode (or hold Spacebar and drag)">Pan: Hold [Space]</button>
      <button id="toggleSensors">Show proposed sensors</button>
 +    <button id="toggleFlow" class="primary">Flow Animation: ON</button>
 +    <button id="toggleBottlenecks">Show bottleneck pipes</button>
@@ -2503,6 +2698,9 @@ index e0c7a69..8c903b3 100644
    <div id="stageWrap">
      <div id="stage"></div>
      <div id="homeKey"></div>
++    <div id="panHint" class="pan-hint">
++      <span class="pan-badge"><kbd>Space</kbd> + Drag</span> or <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> to pan freely
++    </div>
 +    <div id="loadingOverlay">
 +      <div class="spinner"></div>
 +      <div class="loading-msg">Initializing Catchment 3D Engine &amp; Hydraulics...</div>
@@ -2661,7 +2859,7 @@ index e0c7a69..8c903b3 100644
  
  <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
       otherwise a new page can run with scripts the browser cached from the old one. -->
-@@ -271,7 +526,56 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
+@@ -271,7 +543,56 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
  <script src="growth_3d.js?v=24"></script>
  <script src="growth_ui.js?v=24"></script>
  <script type="module">
@@ -2721,10 +2919,10 @@ index e0c7a69..8c903b3 100644
  </html>
 diff --git a/simulation2.patch b/simulation2.patch
 new file mode 100644
-index 0000000..1783216
+index 0000000..34b2c51
 --- /dev/null
 +++ b/simulation2.patch
-@@ -0,0 +1,2673 @@
+@@ -0,0 +1,2895 @@
 +diff --git a/CHANGELOG.md b/CHANGELOG.md
 +new file mode 100644
 +index 0000000..4cd240e
@@ -2901,7 +3099,7 @@ index 0000000..1783216
 ++## 4. Integrity Statement
 ++No simulation numbers are hallucinated or randomly generated. The 852 scenario grid consists of deterministic EPA SWMM 5.2 dynamic wave differential equation solves. All UI controls either query this precomputed physics grid or apply explicit hydraulic equations in real time.
 +diff --git a/simulation/growth_3d.js b/simulation/growth_3d.js
-+index 4134561..ac56a16 100644
++index 4134561..4e2a3e0 100644
 +--- a/simulation/growth_3d.js
 ++++ b/simulation/growth_3d.js
 +@@ -4,15 +4,17 @@
@@ -3070,7 +3268,26 @@ index 0000000..1783216
 +   async function build(container, pick, hover) {
 +     await ensureThree();
 +     onPick = pick; onHover = hover || null;
-+@@ -93,43 +175,92 @@ window.Growth3D = (function () {
++@@ -85,6 +167,18 @@ window.Growth3D = (function () {
++       container.appendChild(labelLayer);
++       controls = new OrbitControls(camera, renderer.domElement);
++       controls.enableDamping = true;
+++      controls.screenSpacePanning = true;
+++      controls.panSpeed = 1.25;
+++      controls.enablePan = true;
+++      controls.mouseButtons = {
+++        LEFT: THREE.MOUSE.ROTATE,
+++        MIDDLE: THREE.MOUSE.DOLLY,
+++        RIGHT: THREE.MOUSE.PAN
+++      };
+++      controls.touches = {
+++        ONE: THREE.TOUCH.ROTATE,
+++        TWO: THREE.TOUCH.DOLLY_PAN
+++      };
++       renderer.domElement.addEventListener("pointerdown", onDown);
++       renderer.domElement.addEventListener("pointerup", onUp);
++       renderer.domElement.addEventListener("pointermove", onMove);
++@@ -93,43 +187,92 @@ window.Growth3D = (function () {
 +       (function loop() {
 +         requestAnimationFrame(loop);
 +         controls.update();
@@ -3175,7 +3392,7 @@ index 0000000..1783216
 +       houseGeo = new THREE.BufferGeometry();
 +       houseGeo.setAttribute("position", new THREE.Float32BufferAttribute(hp, 3));
 +       houseColours = new THREE.Float32BufferAttribute(new Float32Array(hp.length), 3);
-+@@ -141,25 +272,17 @@ window.Growth3D = (function () {
++@@ -141,25 +284,17 @@ window.Growth3D = (function () {
 +         const geo = new THREE.BufferGeometry();
 +         geo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(hp), 3));
 +         geo.setDrawRange(0, 0);
@@ -3202,7 +3419,7 @@ index 0000000..1783216
 +     const jp = [];
 +     g.nodes.forEach(nd => {
 +       if (nd.kind === "chamber") return;
-+@@ -173,9 +296,9 @@ window.Growth3D = (function () {
++@@ -173,9 +308,9 @@ window.Growth3D = (function () {
 +         color: COL.junction, size: 6, sizeAttenuation: true })));
 +     }
 + 
@@ -3215,7 +3432,7 @@ index 0000000..1783216
 +     for (let p = 0; p < g.nPipes; p++) {
 +       const a = g.ptr[p], b = g.ptr[p + 1], n = b - a;
 +       if (n < 2) continue;
-+@@ -188,6 +311,7 @@ window.Growth3D = (function () {
++@@ -188,6 +323,7 @@ window.Growth3D = (function () {
 +         col.push(0, 0, 0, 0, 0, 0);
 +         segPipe.push(p);
 +         segEnds.push([v0, v1]);
@@ -3223,7 +3440,7 @@ index 0000000..1783216
 +       }
 +     }
 +     pipeGeo = new THREE.BufferGeometry();
-+@@ -198,15 +322,23 @@ window.Growth3D = (function () {
++@@ -198,15 +334,23 @@ window.Growth3D = (function () {
 +     scene.add(new THREE.LineSegments(pipeGeo,
 +       new THREE.LineBasicMaterial({ vertexColors: true })));
 + 
@@ -3256,7 +3473,7 @@ index 0000000..1783216
 +     sleeves = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 8, 1, true),
 +       new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true, transparent: true,
 +         opacity: 0.28, depthWrite: false }), Math.max(1, segEnds.length));
-+@@ -215,11 +347,7 @@ window.Growth3D = (function () {
++@@ -215,11 +359,7 @@ window.Growth3D = (function () {
 +     sleeves.frustumCulled = false;
 +     scene.add(sleeves);
 + 
@@ -3269,7 +3486,7 @@ index 0000000..1783216
 +     const bnSet = new Set((g.bottlenecks || []).map(b => b.pipe));
 +     const bnSegs = [];
 +     for (let s = 0; s < segEnds.length; s++) if (bnSet.has(segPipe[s])) bnSegs.push(s);
-+@@ -247,8 +375,7 @@ window.Growth3D = (function () {
++@@ -247,8 +387,7 @@ window.Growth3D = (function () {
 +     }
 +     scene.add(bottleneckMesh);
 + 
@@ -3279,7 +3496,7 @@ index 0000000..1783216
 +     const sphere = new THREE.SphereGeometry(5.6, 14, 10);
 +     chamberMeshes = [];
 +     g.nodes.forEach((nd, i) => {
-+@@ -260,11 +387,7 @@ window.Growth3D = (function () {
++@@ -260,11 +399,7 @@ window.Growth3D = (function () {
 +       chamberMeshes.push(m);
 +     });
 + 
@@ -3292,7 +3509,7 @@ index 0000000..1783216
 +     if (g.outletName) {
 +       const on = g.nodes.find(n => n.name === g.outletName);
 +       if (on) {
-+@@ -281,6 +404,7 @@ window.Growth3D = (function () {
++@@ -281,6 +416,7 @@ window.Growth3D = (function () {
 +       }
 +     }
 + 
@@ -3300,7 +3517,7 @@ index 0000000..1783216
 +     siteLabel = { el: document.createElement("div"), at: new THREE.Vector3() };
 +     siteLabel.el.className = "lbl site";
 +     siteLabel.el.style.display = "none";
-+@@ -298,13 +422,76 @@ window.Growth3D = (function () {
++@@ -298,15 +434,205 @@ window.Growth3D = (function () {
 +     focusRing.visible = false;
 +     scene.add(focusRing);
 + 
@@ -3377,9 +3594,154 @@ index 0000000..1783216
 +-  /* Picking. A drag that ends where it began is a click; anything else is an orbit, so
 +-     rotating the view does not keep reassigning the growth site. */
 +   let downAt = null;
-+   function onDown(e) { downAt = { x: e.clientX, y: e.clientY }; }
++-  function onDown(e) { downAt = { x: e.clientX, y: e.clientY }; }
+++  let isSpacePressed = false;
+++  let isPanLocked = false;
+++  let isDraggingPan = false;
+++
+++  function isTyping(e) {
+++    const t = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : "";
+++    return t === "input" || t === "select" || t === "textarea" || (e.target && e.target.isContentEditable);
+++  }
+++
+++  function updatePanMode() {
+++    const active = isSpacePressed || isPanLocked;
+++    if (controls) {
+++      controls.mouseButtons.LEFT = active ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+++    }
+++    const stage = document.getElementById("stage");
+++    const panHint = document.getElementById("panHint");
+++    const btnPan = document.getElementById("togglePan");
+++
+++    if (stage) {
+++      if (active) {
+++        stage.classList.add("pan-active");
+++        if (isDraggingPan) stage.classList.add("panning");
+++        else stage.classList.remove("panning");
+++      } else {
+++        stage.classList.remove("pan-active", "panning");
+++      }
+++    }
+++    if (panHint) {
+++      panHint.classList.toggle("active", active);
+++      if (active) {
+++        panHint.innerHTML = '<span class="pan-badge" style="color:var(--accent);font-weight:600">✋ PAN ACTIVE</span> Drag mouse or use <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move';
+++      } else {
+++        panHint.innerHTML = '<span class="pan-badge"><kbd>Space</kbd> + Drag</span> or <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> to pan freely';
+++      }
+++    }
+++    if (btnPan) {
+++      btnPan.classList.toggle("primary", active);
+++      btnPan.textContent = isPanLocked ? "Pan: LOCKED (Click to Rotate)" : (isSpacePressed ? "Pan: ACTIVE [Space]" : "Pan: Hold [Space]");
+++    }
+++  }
+++
+++  function togglePanMode(forced) {
+++    isPanLocked = forced !== undefined ? !!forced : !isPanLocked;
+++    updatePanMode();
+++    return isPanLocked;
+++  }
+++
+++  function panByKeys(key) {
+++    if (!camera || !controls) return;
+++    const dist = camera.position.distanceTo(controls.target);
+++    const step = Math.max(8, dist * 0.045);
+++
+++    // Compute right vector (screen X axis in world coordinates)
+++    const right = new THREE.Vector3();
+++    camera.getWorldDirection(right);
+++    right.cross(camera.up).normalize();
+++
+++    // Compute up vector (screen Y axis in world coordinates)
+++    const up = new THREE.Vector3();
+++    up.copy(camera.up).normalize();
+++
+++    const delta = new THREE.Vector3();
+++    if (key === "ArrowLeft" || key === "a" || key === "A") {
+++      delta.addScaledVector(right, -step);
+++    } else if (key === "ArrowRight" || key === "d" || key === "D") {
+++      delta.addScaledVector(right, step);
+++    } else if (key === "ArrowUp" || key === "w" || key === "W") {
+++      delta.addScaledVector(up, step);
+++    } else if (key === "ArrowDown" || key === "s" || key === "S") {
+++      delta.addScaledVector(up, -step);
+++    }
+++
+++    if (delta.lengthSq() > 0) {
+++      camera.position.add(delta);
+++      controls.target.add(delta);
+++      controls.update();
+++    }
+++  }
+++
+++  window.addEventListener("keydown", (e) => {
+++    if (isTyping(e)) return;
+++
+++    if (e.code === "Space" || e.key === " ") {
+++      if (!isSpacePressed) {
+++        isSpacePressed = true;
+++        updatePanMode();
+++      }
+++      e.preventDefault();
+++      return;
+++    }
+++
+++    const isArrow = e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown";
+++    const isWASD = e.key === "w" || e.key === "W" || e.key === "a" || e.key === "A" ||
+++                   e.key === "s" || e.key === "S" || e.key === "d" || e.key === "D";
+++
+++    if (isArrow || isWASD) {
+++      panByKeys(e.key);
+++      e.preventDefault();
+++    }
+++  });
+++
+++  window.addEventListener("keyup", (e) => {
+++    if (e.code === "Space" || e.key === " ") {
+++      if (isSpacePressed) {
+++        isSpacePressed = false;
+++        isDraggingPan = false;
+++        updatePanMode();
+++      }
+++      e.preventDefault();
+++    }
+++  });
+++
+++  window.addEventListener("blur", () => {
+++    if (isSpacePressed) {
+++      isSpacePressed = false;
+++      isDraggingPan = false;
+++      updatePanMode();
+++    }
+++  });
+++
+++  function onDown(e) {
+++    downAt = { x: e.clientX, y: e.clientY };
+++    if (isSpacePressed || isPanLocked) {
+++      isDraggingPan = true;
+++      updatePanMode();
+++    }
+++  }
+++
 +   function chamberAt(e) {
-+@@ -324,12 +511,10 @@ window.Growth3D = (function () {
++     const r = renderer.domElement.getBoundingClientRect();
++     pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
++@@ -315,28 +641,34 @@ window.Growth3D = (function () {
++     const hit = ray.intersectObjects(chamberMeshes, false)[0];
++     return hit ? hit.object.userData.node : null;
++   }
+++
++   function onUp(e) {
+++    if (isDraggingPan) {
+++      isDraggingPan = false;
+++      updatePanMode();
+++    }
++     if (!downAt) return;
++     const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
++     downAt = null;
++-    if (moved > 4 || !onPick) return;
+++    if (moved > 4 || !onPick || isSpacePressed || isPanLocked) return;
++     const nd = chamberAt(e);
 +     if (nd) onPick(nd);
 +   }
 + 
@@ -3387,13 +3749,23 @@ index 0000000..1783216
 +-     has no hover, and a tap still does everything. At most one raycast per frame. */
 +   let hovered = null, moveQueued = null;
 +   function onMove(e) {
+++    if (isSpacePressed || isPanLocked) return;
 +     if (e.pointerType !== "mouse" || !onHover || !built) return;
 +-    if (e.buttons) { hoverTo(null); return; }         // orbiting, not pointing
 ++    if (e.buttons) { hoverTo(null); return; }
 +     if (!moveQueued) requestAnimationFrame(() => {
 +       const ev = moveQueued; moveQueued = null;
 +       if (ev) hoverTo(chamberAt(ev));
-+@@ -344,9 +529,6 @@ window.Growth3D = (function () {
++     });
++     moveQueued = e;
++   }
+++
++   function hoverTo(nd) {
+++    if (isSpacePressed || isPanLocked) return;
++     const name = nd ? nd.name : null;
++     if (name === hovered) return;
++     hovered = name;
++@@ -344,9 +676,6 @@ window.Growth3D = (function () {
 +     if (onHover) onHover(nd);
 +   }
 + 
@@ -3403,7 +3775,7 @@ index 0000000..1783216
 +   let topo = null;
 +   function topology() {
 +     if (topo) return topo;
-+@@ -356,9 +538,6 @@ window.Growth3D = (function () {
++@@ -356,9 +685,6 @@ window.Growth3D = (function () {
 +       into[g.down[p]].push(p);
 +       if (downOf[g.up[p]] < 0) downOf[g.up[p]] = g.down[p];
 +     }
@@ -3413,7 +3785,7 @@ index 0000000..1783216
 +     const firstMh = new Array(n);
 +     for (let i = 0; i < n; i++) {
 +       let j = i, hops = 0;
-+@@ -367,11 +546,10 @@ window.Growth3D = (function () {
++@@ -367,11 +693,10 @@ window.Growth3D = (function () {
 +     }
 +     const idxOf = {};
 +     g.nodes.forEach((nd, i) => { idxOf[nd.name] = i; });
@@ -3426,7 +3798,7 @@ index 0000000..1783216
 +   function upstream(names) {
 +     const g = G(), t = topology();
 +     const nodes = new Set(), pipes = new Set(), stack = [];
-+@@ -385,12 +563,53 @@ window.Growth3D = (function () {
++@@ -385,12 +710,53 @@ window.Growth3D = (function () {
 +     return { nodes, pipes };
 +   }
 + 
@@ -3486,7 +3858,7 @@ index 0000000..1783216
 +   function highlight(spec) {
 +     if (!built || !houseGeo || !G().hn) return null;
 +     const g = G(), t = topology(), n = g.hn.length;
-+@@ -416,7 +635,7 @@ window.Growth3D = (function () {
++@@ -416,7 +782,7 @@ window.Growth3D = (function () {
 +         if (t.firstMh[node] === me) { copy(hiPos, nHi++, i); if (node === me) nDirect++; }
 +         else if (up.nodes.has(node)) copy(upPos, nUp++, i);
 +       }
@@ -3495,7 +3867,7 @@ index 0000000..1783216
 +     } else if (spec && spec.mode === "sensors" && spec.names.length) {
 +       const up = upstream(spec.names);
 +       pipes = up.pipes;
-+@@ -425,7 +644,7 @@ window.Growth3D = (function () {
++@@ -425,7 +791,7 @@ window.Growth3D = (function () {
 +         paintHouse(i, COL.house);
 +         if (up.nodes.has(g.hn[i])) { copy(hiPos, nHi++, i); watched++; }
 +       }
@@ -3504,7 +3876,7 @@ index 0000000..1783216
 +     } else {
 +       for (let i = 0; i < n; i++) paintHouse(i, COL.house);
 +       out = { mode: "none", total: n };
-+@@ -439,11 +658,8 @@ window.Growth3D = (function () {
++@@ -439,11 +805,8 @@ window.Growth3D = (function () {
 +       pts.frustumCulled = false;
 +     });
 + 
@@ -3518,7 +3890,7 @@ index 0000000..1783216
 +     const dir = new THREE.Vector3(), mid = new THREE.Vector3(), scl = new THREE.Vector3();
 +     const tmpColor = new THREE.Color();
 +     const baseHex = spec && spec.mode === "sensors" ? COL.watched : COL.sleeve;
-+@@ -457,7 +673,7 @@ window.Growth3D = (function () {
++@@ -457,7 +820,7 @@ window.Growth3D = (function () {
 +         if (len < 1e-6) continue;
 +         q.setFromUnitVectors(yAxis, dir.clone().divideScalar(len));
 +         mid.addVectors(a, b).multiplyScalar(0.5);
@@ -3527,7 +3899,7 @@ index 0000000..1783216
 +         m.compose(mid, q, scl);
 +         sleeves.setMatrixAt(k, m);
 +         const onAmber = lastPipeState && lastPipeState[segPipe[s]] === "was";
-+@@ -476,14 +692,119 @@ window.Growth3D = (function () {
++@@ -476,14 +839,119 @@ window.Growth3D = (function () {
 +     if (bottleneckMesh) bottleneckMesh.visible = !!show;
 +   }
 + 
@@ -3650,7 +4022,7 @@ index 0000000..1783216
 +     const rank = { ok: 0, was: 1, tip: 2 };
 +     const pipeCol = [];
 +     for (let p = 0; p < g.nPipes; p++) {
-+@@ -491,10 +812,18 @@ window.Growth3D = (function () {
++@@ -491,10 +959,18 @@ window.Growth3D = (function () {
 +       const su = nodeState(u.name), sd = nodeState(d.name);
 +       pipeCol.push(rank[su] >= rank[sd] ? su : sd);
 +     }
@@ -3672,7 +4044,7 @@ index 0000000..1783216
 +       for (let k = 0; k < 2; k++) {
 +         const o = (s * 2 + k) * 3;
 +         arr[o] = c[0] / 255; arr[o + 1] = c[1] / 255; arr[o + 2] = c[2] / 255;
-+@@ -503,13 +832,30 @@ window.Growth3D = (function () {
++@@ -503,13 +979,30 @@ window.Growth3D = (function () {
 +     pipeColours.needsUpdate = true;
 + 
 +     const sensorSet = new Set(sensors || []);
@@ -3707,7 +4079,7 @@ index 0000000..1783216
 +       if (nm === siteName) {
 +         focusRing.position.copy(m.position);
 +         focusRing.visible = true;
-+@@ -518,6 +864,20 @@ window.Growth3D = (function () {
++@@ -518,6 +1011,20 @@ window.Growth3D = (function () {
 +         siteLabel.el.style.display = "";
 +       }
 +     });
@@ -3728,7 +4100,7 @@ index 0000000..1783216
 +     if (!siteName) { focusRing.visible = false; siteLabel.el.style.display = "none"; }
 +   }
 + 
-+@@ -546,5 +906,9 @@ window.Growth3D = (function () {
++@@ -546,5 +1053,9 @@ window.Growth3D = (function () {
 +     camera.updateProjectionMatrix();
 +   }
 + 
@@ -3736,11 +4108,11 @@ index 0000000..1783216
 ++  return {
 ++    build, paint, highlight, showBottlenecks, frame, resize,
 ++    setFlowAnimation, setHeatmap, setBlockage, setPumpStationState,
-++    getUpstreamMetrics, topology, ZEXAG
+++    getUpstreamMetrics, topology, togglePanMode, panByKeys, ZEXAG
 ++  };
 + })();
 +diff --git a/simulation/growth_ui.js b/simulation/growth_ui.js
-+index d5a48d5..6dc06ef 100644
++index d5a48d5..b9cc4b7 100644
 +--- a/simulation/growth_ui.js
 ++++ b/simulation/growth_ui.js
 +@@ -1,29 +1,46 @@
@@ -4704,7 +5076,7 @@ index 0000000..1783216
 +     $("#toggleBottlenecks").onclick = () => {
 +       st.showBottlenecks = !st.showBottlenecks;
 +       $("#toggleBottlenecks").classList.toggle("primary", st.showBottlenecks);
-+@@ -488,9 +912,7 @@ window.GrowthUI = (function () {
++@@ -488,9 +912,14 @@ window.GrowthUI = (function () {
 +         ? "Hide bottleneck pipes" : "Show bottleneck pipes";
 +       Growth3D.showBottlenecks(st.showBottlenecks);
 +     };
@@ -4712,10 +5084,17 @@ index 0000000..1783216
 +-    $("#fitAll").onclick = () => Growth3D.frame(null);
 +-    $("#fitSite").onclick = () => Growth3D.frame(nameOf(st.site));
 ++
+++    const togglePanBtn = $("#togglePan");
+++    if (togglePanBtn) {
+++      togglePanBtn.onclick = () => {
+++        Growth3D.togglePanMode();
+++      };
+++    }
+++
 +     $("#toggleSensors").onclick = () => {
 +       st.showSensors = !st.showSensors;
 +       $("#toggleSensors").classList.toggle("primary", st.showSensors);
-+@@ -498,13 +920,104 @@ window.GrowthUI = (function () {
++@@ -498,13 +927,104 @@ window.GrowthUI = (function () {
 +                                                        : "Show proposed sensors";
 +       repaint();
 +     };
@@ -4822,7 +5201,7 @@ index 0000000..1783216
 ++  return { init, selectAndExplain, computeHeatmapData, st };
 + })();
 +diff --git a/simulation/index.html b/simulation/index.html
-+index e0c7a69..8c903b3 100644
++index e0c7a69..8c5d657 100644
 +--- a/simulation/index.html
 ++++ b/simulation/index.html
 +@@ -4,6 +4,11 @@
@@ -4961,7 +5340,7 @@ index 0000000..1783216
 + #pane-qa .qa{border:1px solid var(--line); border-radius:9px; margin-bottom:10px;
 +   background:var(--panel-2); overflow:hidden}
 + #pane-qa .qa>summary{cursor:pointer; padding:11px 13px; font-weight:600; font-size:13px;
-+@@ -149,119 +163,360 @@ nav button.info:hover{background:var(--accent); color:#06131f}
++@@ -149,119 +163,377 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 + #pane-ref li{color:var(--dim); font-size:13px}
 + #pane-ref .lead{background:var(--panel); border:1px solid var(--line); border-left:3px solid
 +   var(--accent); border-radius:8px; padding:13px 16px; margin:0 0 14px; max-width:78ch}
@@ -5066,6 +5445,19 @@ index 0000000..1783216
 ++  #stageWrap{height:calc(100vh - 84px)}
 ++  main{height:100vh}
 + }
+++
+++/* Pan Mode & Free 4-Direction Navigation */
+++#stage.pan-active, #stage.pan-active canvas{cursor:grab !important}
+++#stage.panning, #stage.panning canvas{cursor:grabbing !important}
+++.pan-hint{position:absolute; bottom:14px; left:16px; background:rgba(13,22,38,0.88);
+++  border:1px solid var(--line); border-radius:6px; padding:6px 12px; font-size:11.5px;
+++  color:var(--dim); pointer-events:none; z-index:15; display:flex; align-items:center; gap:6px;
+++  backdrop-filter:blur(6px); transition:border-color 0.2s, color 0.2s, background 0.2s;
+++  box-shadow:0 4px 16px rgba(0,0,0,0.5)}
+++.pan-hint.active{border-color:var(--accent); color:#fff; background:rgba(14,165,233,0.22);
+++  box-shadow:0 0 12px rgba(56,189,248,0.35)}
+++.pan-hint kbd{background:var(--panel-2); border:1px solid var(--line); border-radius:4px;
+++  padding:1px 5px; font-family:ui-monospace,Menlo,monospace; font-size:10.5px; color:var(--accent)}
 + </style>
 + </head>
 + <body>
@@ -5217,6 +5609,7 @@ index 0000000..1783216
 +     <button id="fitAll">Whole catchment</button>
 +-    <button id="fitSite">Zoom to the growth</button>
 ++    <button id="fitSite">Zoom to selected</button>
+++    <button id="togglePan" title="Toggle Pan mode (or hold Spacebar and drag)">Pan: Hold [Space]</button>
 +     <button id="toggleSensors">Show proposed sensors</button>
 ++    <button id="toggleFlow" class="primary">Flow Animation: ON</button>
 ++    <button id="toggleBottlenecks">Show bottleneck pipes</button>
@@ -5230,6 +5623,9 @@ index 0000000..1783216
 +   <div id="stageWrap">
 +     <div id="stage"></div>
 +     <div id="homeKey"></div>
+++    <div id="panHint" class="pan-hint">
+++      <span class="pan-badge"><kbd>Space</kbd> + Drag</span> or <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> to pan freely
+++    </div>
 ++    <div id="loadingOverlay">
 ++      <div class="spinner"></div>
 ++      <div class="loading-msg">Initializing Catchment 3D Engine &amp; Hydraulics...</div>
@@ -5388,7 +5784,7 @@ index 0000000..1783216
 + 
 + <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
 +      otherwise a new page can run with scripts the browser cached from the old one. -->
-+@@ -271,7 +526,56 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
++@@ -271,7 +543,56 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 + <script src="growth_3d.js?v=24"></script>
 + <script src="growth_ui.js?v=24"></script>
 + <script type="module">
@@ -5397,7 +5793,31 @@ index 0000000..1783216
 ++    const ov = document.getElementById('loadingOverlay');
 ++    if (ov && !ov.classList.contains('fade-out')) {
 ++      console.warn('Safety timeout: clearing lingering loading overlay.');
-++      ov.classList.add('fade-o
+++      ov.classList.add('fade-out');
+++      setTimeout(() => { if (ov.parentNode) ov.remove(); }, 450);
+++    }
+++  }, 4000);
+++
+++  window.addEventListener('error', (e) => {
+++    const ov = document.getElementById('loadingOverlay');
+++    if (ov && !ov.classList.contains('fade-out')) {
+++      ov.classList.add('fade-out');
+++      setTimeout(() => { if (ov.parentNode) ov.remove(); }, 450);
+++    }
+++  });
+++
+++  function start() {
+++    if (typeof GrowthUI !== 'undefined' && typeof GrowthUI.init === 'function') {
+++      try {
+++        GrowthUI.init();
+++      } catch (err) {
+++        console.error('GrowthUI.init synchronous error:', err);
+++        const errOverlay = document.getElementById('errorOverlay');
+++        if (errOverlay) {
+++          errOverlay.hidden = false;
+++          const p = errOverlay.querySelector('p');
+++          if (p) p.textContent = 'Initialization error: ' + err.message;
+++
 \ No newline at end of file
 diff --git a/tools/serve.js b/tools/serve.js
 new file mode 100644
@@ -5471,10 +5891,10 @@ index 0000000..9664da6
 +});
 diff --git a/tools/test_simulation2.js b/tools/test_simulation2.js
 new file mode 100644
-index 0000000..4421bad
+index 0000000..624bdf4
 --- /dev/null
 +++ b/tools/test_simulation2.js
-@@ -0,0 +1,297 @@
+@@ -0,0 +1,305 @@
 +/* test_simulation2.js - Deep multi-perspective test suite for Simulation 2.
 +
 +   Tests Simulation 2 from 6 distinct operational and engineering perspectives:
@@ -5766,6 +6186,14 @@ index 0000000..4421bad
 +  check("growth_3d.js syntax parses cleanly", !(() => { try { new Function(growth3dSrc); return false; } catch (e) { return e; } })());
 +  check("growth_ui.js syntax parses cleanly", !(() => { try { new Function(growthUiSrc); return false; } catch (e) { return e; } })());
 +  check("no merge conflict markers present", !growth3dSrc.includes("<<<<<<<") && !growthUiSrc.includes("<<<<<<<") && !indexHtml.includes("<<<<<<<"));
++
++  console.log("\n7. 3d viewport free movement, spacebar pan & 4-directional navigation");
++  check("growth_3d.js enables screenSpacePanning for true 4-direction translation", growth3dSrc.includes("controls.screenSpacePanning = true"));
++  check("growth_3d.js contains Spacebar listener with preventDefault", growth3dSrc.includes('e.code === "Space"') && growth3dSrc.includes("isSpacePressed"));
++  check("growth_3d.js contains 4-directional keyboard panning (Arrow keys & WASD)", growth3dSrc.includes("panByKeys") && growth3dSrc.includes("ArrowLeft") && growth3dSrc.includes("ArrowUp"));
++  check("growth_3d.js exports togglePanMode & panByKeys", growth3dSrc.includes("togglePanMode, panByKeys"));
++  check("index.html contains togglePan button and panHint HUD", indexHtml.includes('id="togglePan"') && indexHtml.includes('id="panHint"'));
++  check("growth_ui.js connects togglePan button", growthUiSrc.includes('$("#togglePan")') && growthUiSrc.includes("Growth3D.togglePanMode()"));
 +
 +  console.log("\n" + passed + " passed, " + failed + " failed");
 +  if (failed > 0) process.exit(1);

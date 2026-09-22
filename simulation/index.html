@@ -224,6 +224,19 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
   #stageWrap{height:calc(100vh - 84px)}
   main{height:100vh}
 }
+
+/* Pan Mode & Free 4-Direction Navigation */
+#stage.pan-active, #stage.pan-active canvas{cursor:grab !important}
+#stage.panning, #stage.panning canvas{cursor:grabbing !important}
+.pan-hint{position:absolute; bottom:14px; left:16px; background:rgba(13,22,38,0.88);
+  border:1px solid var(--line); border-radius:6px; padding:6px 12px; font-size:11.5px;
+  color:var(--dim); pointer-events:none; z-index:15; display:flex; align-items:center; gap:6px;
+  backdrop-filter:blur(6px); transition:border-color 0.2s, color 0.2s, background 0.2s;
+  box-shadow:0 4px 16px rgba(0,0,0,0.5)}
+.pan-hint.active{border-color:var(--accent); color:#fff; background:rgba(14,165,233,0.22);
+  box-shadow:0 0 12px rgba(56,189,248,0.35)}
+.pan-hint kbd{background:var(--panel-2); border:1px solid var(--line); border-radius:4px;
+  padding:1px 5px; font-family:ui-monospace,Menlo,monospace; font-size:10.5px; color:var(--accent)}
 </style>
 </head>
 <body>
@@ -360,6 +373,7 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
     <button id="sidebarToggle" class="drawer-btn" title="Toggle Controls">☰ Menu</button>
     <button id="fitAll">Whole catchment</button>
     <button id="fitSite">Zoom to selected</button>
+    <button id="togglePan" title="Toggle Pan mode (or hold Spacebar and drag)">Pan: Hold [Space]</button>
     <button id="toggleSensors">Show proposed sensors</button>
     <button id="toggleFlow" class="primary">Flow Animation: ON</button>
     <button id="toggleBottlenecks">Show bottleneck pipes</button>
@@ -372,6 +386,9 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
   <div id="stageWrap">
     <div id="stage"></div>
     <div id="homeKey"></div>
+    <div id="panHint" class="pan-hint">
+      <span class="pan-badge"><kbd>Space</kbd> + Drag</span> or <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> to pan freely
+    </div>
     <div id="loadingOverlay">
       <div class="spinner"></div>
       <div class="loading-msg">Initializing Catchment 3D Engine &amp; Hydraulics...</div>
