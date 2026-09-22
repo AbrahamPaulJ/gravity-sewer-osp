@@ -277,8 +277,12 @@ function runSuite() {
   check("index.html contains affecting area card", indexHtml.includes('id="affectingAreaCard"'));
   check("index.html contains pump station controls", indexHtml.includes('id="pumpDutyRange"'));
   check("index.html contains blockage simulator", indexHtml.includes('id="blockageRange"'));
-  check("index.html contains sensor explainability modal", indexHtml.includes('id="sensorModal"'));
-  check("index.html contains data schema modal with provenance", indexHtml.includes('id="schemaModal"') && indexHtml.includes('Data Provenance'));
+  check("index.html contains right-side sub-window architecture", indexHtml.includes('id="sideSubWindow"') && indexHtml.includes('class="side-subwindow"'));
+  check("index.html contains schema and data provenance in sub-window pane", indexHtml.includes('id="pane-schema"') && indexHtml.includes('Data Provenance'));
+  check("index.html contains sensor explainability sub-window pane", indexHtml.includes('id="pane-sensor"') && indexHtml.includes('id="sensorContent"'));
+  check("index.html contains tool guide intro in top menu and pane", indexHtml.includes('id="pane-intro"') && indexHtml.includes('id="tab-intro"'));
+  check("index.html eliminates legacy floating center modals", !indexHtml.includes('id="modalBox"') && !indexHtml.includes('id="sensorModal"'));
+  check("growth_ui.js implements renderIntro and sub-window setTab", growthUiSrc.includes("function renderIntro()") && growthUiSrc.includes("function renderAbout()") && growthUiSrc.includes('setTab("sensor")'));
   check("index.html contains responsive drawer toggle", indexHtml.includes('id="sidebarToggle"'));
   check("index.html contains loading & error overlays", indexHtml.includes('id="loadingOverlay"') && indexHtml.includes('id="errorOverlay"'));
   check("index.html contains dynamic legend container", indexHtml.includes('id="simLegend"'));

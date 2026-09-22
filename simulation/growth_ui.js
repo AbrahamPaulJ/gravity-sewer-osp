@@ -499,7 +499,7 @@ window.GrowthUI = (function () {
         (up ? up.totalLengthM : item.lengthM) + " m of mains. High surcharge sensitivity across tested infill growth sizes.";
     }
 
-    $("#sensorModalContent").innerHTML =
+    $("#sensorContent").innerHTML =
       "<div style='display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px'>" +
         "<div><h2 style='margin:0'>Candidate #" + item.rank + ": MH " + item.mh + "</h2>" +
         "<div style='color:var(--accent); font-size:13px; font-weight:600; margin-top:3px'>" + roleText + "</div></div>" +
@@ -522,7 +522,7 @@ window.GrowthUI = (function () {
       "<p class='quiet' style='margin-bottom:0'>Adjacent chambers on steeper slopes have shallow backwater wedges (&lt;0.2m rise, near the sensor noise floor). " +
       "This chamber was chosen because its flatter invert collects tributary confluences and produces a clean, unambiguous +1.4m level rise.</p>";
 
-    $("#sensorModal").hidden = false;
+    setTab("sensor");
   }
 
   function renderParamBar(title, pct, note) {
@@ -767,16 +767,126 @@ window.GrowthUI = (function () {
   }
 
   function setTab(tab) {
-    const ref = tab === "ref", qa = tab === "qa";
-    $("#pane-ref").hidden = !ref;
-    $("#pane-qa").hidden = !qa;
-    $("#tab-ref").classList.toggle("primary", ref);
-    $("#tab-ref").textContent = ref ? "Back to the map" : "Assumptions";
-    $("#tab-qa").classList.toggle("primary", qa);
-    $("#tab-qa").textContent = qa ? "Back to the map" : "Discussion Q&A";
-    if (ref) renderRef();
-    else if (qa) renderQA();
-    else Growth3D.resize($("#stage"));
+    const isClose = tab === "map" || !tab;
+    const sideSub = $("#sideSubWindow");
+    if (isClose) {
+      if (sideSub) sideSub.hidden = true;
+      document.querySelectorAll(".nav-doc-btn").forEach(b => b.classList.remove("primary"));
+      document.querySelectorAll("#subwindowTabs button").forEach(b => b.classList.remove("active"));
+      Growth3D.resize($("#stage"));
+      return;
+    }
+
+    if (sideSub) sideSub.hidden = false;
+
+    const titles = {
+      intro: "📖 Catchment Intelligence Guide",
+      about: "ℹ️ About the Hydraulic Model",
+      schema: "📐 Data Schema & Hydraulic Equations",
+      ref: "📋 Engineering Assumptions",
+      qa: "💬 Discussion Q&A",
+      sensor: "🎯 Sensor Technical Placement Rationale"
+    };
+    const titleEl = $("#subwindowTitle");
+    if (titleEl) titleEl.textContent = titles[tab] || "Documentation & Reference";
+
+    const panes = ["intro", "about", "schema", "ref", "qa", "sensor"];
+    panes.forEach(p => {
+      const el = $("#pane-" + p);
+      if (el) el.hidden = (p !== tab);
+    });
+
+    document.querySelectorAll("#subwindowTabs button").forEach(b => {
+      b.classList.toggle("active", b.dataset.subtab === tab);
+    });
+
+    const introBtn = $("#tab-intro"), aboutBtn = $("#btn-info"), schemaBtn = $("#btnSchema"),
+          refBtn = $("#tab-ref"), qaBtn = $("#tab-qa");
+    if (introBtn) introBtn.classList.toggle("primary", tab === "intro");
+    if (aboutBtn) aboutBtn.classList.toggle("primary", tab === "about");
+    if (schemaBtn) schemaBtn.classList.toggle("primary", tab === "schema");
+    if (refBtn) refBtn.classList.toggle("primary", tab === "ref");
+    if (qaBtn) qaBtn.classList.toggle("primary", tab === "qa");
+
+    if (tab === "intro") renderIntro();
+    else if (tab === "about") renderAbout();
+    else if (tab === "ref") renderRef();
+    else if (tab === "qa") renderQA();
+
+    Growth3D.resize($("#stage"));
+  }
+
+  function renderIntro() {
+    const p = $("#pane-intro");
+    if (!p || p.dataset.done) return;
+    p.innerHTML =
+      "<h2>📖 Catchment Intelligence & Sensor Placement Guide</h2>" +
+      "<div class='lead-box'>" +
+        "<p style='margin:0;font-weight:600;color:var(--ink)'>Engineering digital twin of the Walkerville gravity sewer network in Adelaide, South Australia, combining EPA SWMM 5.2 dynamic wave routing, 643 real property connections, and multi-criteria sensor placement optimization.</p>" +
+      "</div>" +
+      "<h3>How to Navigate the 3D Catchment</h3>" +
+      "<table style='margin-bottom:14px'>" +
+        "<tr><th style='width:35%'>Action</th><th>How to do it</th></tr>" +
+        "<tr><td><b>Free 4-Direction Pan</b></td><td>Hold <kbd>Spacebar</kbd> and drag with mouse, or use <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> arrow keys. You can also toggle the 'Pan' button in the top menu.</td></tr>" +
+        "<tr><td><b>Rotate / Orbit</b></td><td>Click and drag on the 3D canvas (left mouse button).</td></tr>" +
+        "<tr><td><b>Zoom In / Out</b></td><td>Scroll mouse wheel, or pinch on trackpad / touchscreen.</td></tr>" +
+        "<tr><td><b>Inspect Any Node</b></td><td>Click any manhole or pipe junction to highlight its complete upstream tributary drainage tree, pipe length, and guarded dwellings.</td></tr>" +
+        "<tr><td><b>Reset Views</b></td><td>Click <code>Whole catchment</code> to view the full network, or <code>Zoom to selected</code> to zoom directly to your inspected node.</td></tr>" +
+      "</table>" +
+      "<h3>What Each Simulation View Does &amp; Delivers</h3>" +
+      "<div class='card-box' style='margin-bottom:10px'>" +
+        "<h4 style='color:var(--accent);margin:0 0 4px'>1. Growth Simulation (Default)</h4>" +
+        "<p style='margin:0 0 6px'><strong>What it does:</strong> Simulates infill housing development (+50 to +700 dwellings) and 3 wet-weather rainfall infiltration levels (0.25, 0.40, 0.55 L/s/100m) connected to any candidate manhole.</p>" +
+        "<p style='margin:0'><strong>What it delivers:</strong> Differentiates pipes that surcharge solely due to new development from baseline capacity deficits. Computes greedy set-cover sensor placement to catch newly tipped pipes.</p>" +
+      "</div>" +
+      "<div class='card-box' style='margin-bottom:10px'>" +
+        "<h4 style='color:var(--green);margin:0 0 4px'>2. Sensor Placement Heatmap</h4>" +
+        "<p style='margin:0 0 6px'><strong>What it does:</strong> Evaluates every manhole in the catchment across 5 dynamic hydraulic parameters (Surcharge Frequency, Tributary Properties, Bottleneck Proximity, Backwater Amplitude, Wet Inflow). Renders numbered 3D map pins and radial heat rings.</p>" +
+        "<p style='margin:0'><strong>What it delivers:</strong> Ranked recommendations for IoT ultrasonic level sensor placement. Clicking any candidate reveals an explainability card detailing why the location was chosen over adjacent chambers.</p>" +
+      "</div>" +
+      "<div class='card-box' style='margin-bottom:10px'>" +
+        "<h4 style='color:var(--warn);margin:0 0 4px'>3. Blockage &amp; Backwater Simulator</h4>" +
+        "<p style='margin:0 0 6px'><strong>What it does:</strong> Injects choke constrictions (0% to 95%) mimicking fatbergs, root intrusion, or debris build-up into key collector mains.</p>" +
+        "<p style='margin:0'><strong>What it delivers:</strong> Models upstream St. Venant backwater wave surcharge propagation and calculates proactive early-warning detection lead times (up to 32.6 days before street spills occur).</p>" +
+      "</div>" +
+      "<div class='card-box' style='margin-bottom:10px'>" +
+        "<h4 style='color:var(--purple);margin:0 0 4px'>4. Pump Stations &amp; Viscosity Controls</h4>" +
+        "<p style='margin:0 0 6px'><strong>What it does:</strong> Controls variable-speed motor dispatch (0–150% duty) for Outfall PS-01 and Trunk LS-02, and adjusts fluid viscosity across 4 wastewater conditions (Domestic, Grease/FOG, Cold Sludge, Clean Water).</p>" +
+        "<p style='margin:0'><strong>What it delivers:</strong> Shows how fluid boundary-layer drag affects self-cleansing velocity (0.7–2.5 m/s) and transit times, and demonstrates automated pump drawdown to relieve upstream pipe surcharge.</p>" +
+      "</div>" +
+      "<h3>Top Menu Reference Documents</h3>" +
+      "<p>The right side of the top menu contains technical engineering documentation:</p>" +
+      "<ul>" +
+        "<li><b>📖 Tool Guide:</b> This quick overview of controls and simulation deliverables.</li>" +
+        "<li><b>ℹ️ About this model:</b> High-level catchment scope, research questions, and key statistics.</li>" +
+        "<li><b>📐 Data Schema &amp; Formulas:</b> Formal data dictionaries, hydraulic Manning/viscosity equations, and data provenance.</li>" +
+        "<li><b>📋 Assumptions:</b> Deep technical dive into EPA SWMM solver setup, loading methods, and edge cases.</li>" +
+        "<li><b>💬 Discussion Q&amp;A:</b> Engineering rationale answering common peer-review questions.</li>" +
+      "</ul>";
+    p.dataset.done = "1";
+  }
+
+  function renderAbout() {
+    const p = $("#pane-about");
+    if (!p || p.dataset.done) return;
+    const sc = GROWTH_INDEX.scenario, n = sc.numbers;
+    const fact = (l, v) => v == null ? "" :
+      '<div class="kfact">' + esc(l) + "<b>" + esc(v) + "</b></div>";
+    p.innerHTML =
+      "<h2>" + esc(sc.title) + "</h2>" +
+      '<div class="lead-box"><p class="q" style="margin:0;font-weight:600;color:var(--ink)">' + esc(sc.question) + "</p></div>" +
+      sc.what.map(p2 => "<p>" + esc(p2) + "</p>").join("") +
+      "<h3>Catchment Scale &amp; Parameters</h3><div class=kfacts>" +
+      fact("Pipes modelled", n.pipes) +
+      fact("Chambers", n.chambers) +
+      fact("Properties counted", n.dwellings) +
+      fact("Peak factor", n.peakFactor) +
+      "</div>" +
+      "<h3>Core Model Assumptions</h3>" +
+      "<table class=ass><tbody>" + sc.assumptions.map(a =>
+        '<tr><td class="id" style="font-weight:600;color:var(--accent);width:80px">' + esc(a.id) + "</td><td>" + md(a.text) + "</td></tr>").join("") + "</tbody></table>" +
+      '<div class="lead-box" style="border-left-color:var(--warn);margin-top:14px"><strong>Model Limitations &amp; Caveat:</strong> ' + esc(sc.caveat) + "</div>";
+    p.dataset.done = "1";
   }
 
   /* ------------------------------------------------------------------ Q&A tab */
@@ -809,26 +919,7 @@ window.GrowthUI = (function () {
   }
 
   function showModal() {
-    const sc = GROWTH_INDEX.scenario, n = sc.numbers;
-    const fact = (l, v) => v == null ? "" :
-      '<div class="kfact">' + esc(l) + "<b>" + esc(v) + "</b></div>";
-    $("#modalBox").innerHTML =
-      '<button class="close-btn" id="modalClose">Close</button>' +
-      "<h2>" + esc(sc.title) + "</h2>" +
-      '<p class="q">' + esc(sc.question) + "</p>" +
-      sc.what.map(p => "<p>" + esc(p) + "</p>").join("") +
-      "<h3>The numbers behind it</h3><div class=kfacts>" +
-      fact("Pipes modelled", n.pipes) +
-      fact("Chambers", n.chambers) +
-      fact("Properties counted", n.dwellings) +
-      fact("Peak factor", n.peakFactor) +
-      "</div>" +
-      "<h3>What it assumes</h3>" +
-      "<table class=ass><tbody>" + sc.assumptions.map(a =>
-        '<tr><td class="id">' + esc(a.id) + "</td><td>" + md(a.text) + "</td></tr>").join("") + "</tbody></table>" +
-      '<div class="caveat">' + esc(sc.caveat) + "</div>";
-    $("#modal").hidden = false;
-    $("#modalClose").onclick = () => { $("#modal").hidden = true; };
+    setTab("about");
   }
   const md = t => esc(t).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
                         .replace(/`([^`]+)`/g, "<code>$1</code>");
@@ -898,12 +989,28 @@ window.GrowthUI = (function () {
       };
     }
 
-    // Navigation & Toolbar
-    $("#btn-info").onclick = showModal;
-    $("#tab-ref").onclick = () => setTab($("#pane-ref").hidden ? "ref" : "map");
-    $("#refClose").onclick = () => setTab("map");
-    $("#tab-qa").onclick = () => setTab($("#pane-qa").hidden ? "qa" : "map");
-    $("#qaClose").onclick = () => setTab("map");
+    // Navigation & Sub-window Doc Tabs
+    const tabIntro = $("#tab-intro");
+    if (tabIntro) tabIntro.onclick = () => setTab($("#sideSubWindow").hidden || $("#pane-intro").hidden ? "intro" : "map");
+    const btnInfo = $("#btn-info");
+    if (btnInfo) btnInfo.onclick = () => setTab($("#sideSubWindow").hidden || $("#pane-about").hidden ? "about" : "map");
+    const btnSchema = $("#btnSchema");
+    if (btnSchema) btnSchema.onclick = () => setTab($("#sideSubWindow").hidden || $("#pane-schema").hidden ? "schema" : "map");
+    const tabRef = $("#tab-ref");
+    if (tabRef) tabRef.onclick = () => setTab($("#sideSubWindow").hidden || $("#pane-ref").hidden ? "ref" : "map");
+    const tabQa = $("#tab-qa");
+    if (tabQa) tabQa.onclick = () => setTab($("#sideSubWindow").hidden || $("#pane-qa").hidden ? "qa" : "map");
+    const subClose = $("#subwindowClose");
+    if (subClose) subClose.onclick = () => setTab("map");
+
+    const subTabs = $("#subwindowTabs");
+    if (subTabs) {
+      subTabs.onclick = e => {
+        const b = e.target.closest("button");
+        if (!b || !b.dataset.subtab) return;
+        setTab(b.dataset.subtab);
+      };
+    }
 
     $("#toggleBottlenecks").onclick = () => {
       st.showBottlenecks = !st.showBottlenecks;
@@ -999,24 +1106,14 @@ window.GrowthUI = (function () {
       explainChamberPlacement(topIdx);
     };
 
-    // Modals
-    $("#sensorModalClose").onclick = () => { $("#sensorModal").hidden = true; };
-    $("#sensorModal").onclick = e => { if (e.target.id === "sensorModal") $("#sensorModal").hidden = true; };
-
-    $("#btnSchema").onclick = () => { $("#schemaModal").hidden = false; };
-    $("#schemaModalClose").onclick = () => { $("#schemaModal").hidden = true; };
-    $("#schemaModal").onclick = e => { if (e.target.id === "schemaModal") $("#schemaModal").hidden = true; };
-
-    $("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").hidden = true; };
     $("#fitAll").onclick = () => Growth3D.frame(null);
     $("#fitSite").onclick = () => Growth3D.frame(nameOf(st.site));
 
     document.addEventListener("keydown", e => {
-      if (e.key !== "Escape") return;
-      if (!$("#modal").hidden) $("#modal").hidden = true;
-      if (!$("#sensorModal").hidden) $("#sensorModal").hidden = true;
-      if (!$("#schemaModal").hidden) $("#schemaModal").hidden = true;
-      else if (!$("#pane-ref").hidden || !$("#pane-qa").hidden) setTab("map");
+      if (e.key === "Escape") {
+        const sub = $("#sideSubWindow");
+        if (sub && !sub.hidden) setTab("map");
+      }
     });
     window.addEventListener("resize", () => Growth3D.resize($("#stage")));
   }
