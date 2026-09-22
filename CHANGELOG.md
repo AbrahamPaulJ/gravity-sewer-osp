@@ -1,7 +1,11 @@
 # Changelog - Simulation 2 Advanced Hydraulic Intelligence & Visual Heatmap
 **Git Branch:** `feature/sim2-hydraulics`  
 **Target Code Path:** `simulation/` (backing `https://abrahampaulj.github.io/gravity-sewer-osp/#sim2`)  
-**Status:** Production-Ready & Verified (67 Simulation 2 Tests Passing, 42 Sandbox Tests Passing)  
+**Status:** Production-Ready & Verified (87 Simulation 2 Tests Passing, 42 Sandbox Tests Passing, 0 Regressions)  
+
+> [!NOTE]
+> **Comprehensive Technical Guide Available:**  
+> For complete technical breakdowns, hydraulic and viscosity derivations, peer-reviewed citations, WebGL optimization architecture, and test matrices across all 16 features from branch start, see [FEATURE_DOCUMENTATION.md](FEATURE_DOCUMENTATION.md).
 
 ---
 
@@ -49,22 +53,7 @@
 - **Header Toggle Buttons:** Added `#btnCollapseHeader` (`▲ Hide Menu`) and `#btnExpandHeader` (`▼ Show Header Bar`).
 - **Auto-Collapse on Simulations:** Navigating to `sim2`, `sim1`, or `sandbox` automatically collapses the topmost header to give full-screen immersion to the 3D WebGL viewport.
 
-### 7. Visual Multi-Ring Radial Heatmap Overlay Layer (`simulation/growth_3d.js`)
-- Generates a 256x256 multi-ring radial canvas texture with concentric blended color bands (Core, Ring 1, Ring 2, Ring 3, Boundary).
-- Diameter scales dynamically with chamber priority score (45 to 160 units).
-- Positioned on horizontal planes elevated $+1.8\text{ units}$ above inverts with `depthWrite: false`.
-
-### 8. Numbered Teardrop Ranking Map Pins (`simulation/growth_3d.js`, `simulation/index.html`)
-- Positioned above the top candidate positions (#1, #2, #3, #4, #5) with tips pointing down at chambers.
-- Crisp SVG teardrop bodies with white circular badges and bold rank numbers.
-
-### 9. 3D Viewport Free Movement: Spacebar Hand Pan & 4-Direction Navigation (`simulation/growth_3d.js`)
-- Holding `Space` switches mouse to Pan mode with `cursor: grab / grabbing`.
-- Enabled `controls.screenSpacePanning = true` with `controls.panSpeed = 1.25`.
-- Added keyboard 4-direction panning via Arrow keys (`↑`, `↓`, `←`, `→`) and `WASD`.
-- Added `Pan: Hold [Space]` toggle button (`#togglePan`) and HUD badge (`#panHint`).
-
-### 10. Window Size Extension, Outside-Click Auto-Close & Double-Click Pin Lock (`simulation/growth_ui.js`, `simulation/index.html`)
+### 7. Window Size Extension, Outside-Click Auto-Close & Double-Click Pin Lock (`simulation/growth_ui.js`, `simulation/index.html`)
 - **Left Controls Sidebar Extension (`#grip`):**
   - Added dragging support on the vertical divider (`#grip`) between the left sidebar and map.
   - Allows extending controls width from 240px to 850px for a wide, uncompressed view of all sliders, cards, and diagrams.
@@ -84,17 +73,43 @@
   - Added `#subwindowPin` button in the header (`📌 Pin` / `📌 Pinned`) and an animated confirmation toast (`#subwindowNotice`).
   - Double-clicking again unpins the window and re-enables auto-closing.
 
+### 8. Clean 3D Node Heatmap Reversion with Pulsing Halo Rings (`simulation/growth_3d.js`)
+- Reverted blurry planar canvas discs back to high-performance, crisp 3D node sphere coloring via `getHeatmapHex(score)` (Blue $\to$ Cyan $\to$ Green $\to$ Amber $\to$ Hot Neon Red).
+- Retained dynamic sphere radius scaling and 3 glowing pulsing halo rings (`haloRings`) around the top-ranked sensor candidates.
+
+### 9. In-Growth Scenario Sensor Placement Prioritization (`simulation/index.html`, `simulation/growth_ui.js`)
+- Added `#growthSensorCard` directly into the Growth view (`#panel-growth`), allowing engineers to evaluate sensor needs within their active growth scenario.
+- Integrated multi-criteria prioritization knob (`#growthSensorPriorityKnob`):
+  1. **Immediate Need:** Ranks by immediate surcharge/tipping risk under active rainfall infiltration and dwelling loads.
+  2. **Homes Guarded:** Ranks by total upstream connected properties monitored (e.g., outfall sentinel `MH4450193` covering 643 homes).
+  3. **Sewer Volume:** Ranks by total wastewater effluent discharge monitored ($Q_{\text{total}} = Q_{\text{dry}} + Q_{\text{wet}}$ in L/s and m³/day).
+- Clicking any candidate row automatically frames and highlights it in 3D.
+
+### 10. WebGL Performance Optimization & Low-Power Engine (`simulation/growth_3d.js`)
+- **Framerate Throttling Gate:** Introduced `targetFPS` limiter (`30 Eco`, `60`, `Max`) via `#fpsToggleGroup` to stop MacBook fan noise and conserve battery.
+- **Eco 30 Mode:** Drops DPR to 1.0 (saving 75% GPU fragment overhead) and caps redraws at 30 FPS.
+- **Low-Power Context Flags:** `powerPreference: "low-power"` and `precision: "mediump"`.
+- **Sleeping on Background Tabs:** Suspends rendering and simulation ticks entirely when `document.hidden` is true.
+- **Throttled DOM Layout Projections:** HTML label matrix projections only execute when camera actually moves (`cameraDirty`).
+
+### 11. Relocation of Map Controls to Bottom SimLegend Bar (`simulation/index.html`, `simulation/growth_ui.js`)
+- Relocated all 8 map tools, levers, and buttons (`fitAll`, `fitSite`, `togglePan`, `exaggRange`, `fpsToggleGroup`, `toggleSensors`, `toggleFlow`, `toggleBottlenecks`) from top nav to `#simLegendBar > #legendControls` on the left of the bottom legend.
+- Cleared the top navbar into a single uncluttered row with `☰ Menu` and right-aligned documentation tabs.
+- Added a crisp horizontal separator line (`.legend-divider`) between controls and dynamic legend items.
+- Structured so `GrowthUI.renderLegend()` updates legend items without destroying button event listeners.
+
 ---
 
 ## File Diff Checklist
 ```
 M   index.html (collapsible topmost nav, #navMenuBtn, #navMenuDropdown)
-M   simulation/growth_3d.js (dynamic ZEXAG, setElevationExaggeration, setBlockageTimelineState, blockageWaterGroup)
-M   simulation/growth_ui.js (window resizers, outside-click close, double-click pin lock, blockage timeline, viscosity)
-M   simulation/index.html (subwindow grip, pin button, notice toast, elevation slider, timeline controls)
-M   tools/test_simulation2.js (deep multi-perspective verification suite: 74 tests)
+M   simulation/growth_3d.js (dynamic ZEXAG, setElevationExaggeration, setBlockageTimelineState, blockageWaterGroup, fpsLimiter, low-power)
+M   simulation/growth_ui.js (window resizers, outside-click close, double-click pin lock, blockage timeline, viscosity, sensor priority)
+M   simulation/index.html (subwindow grip, pin button, notice toast, bottom legend controls, legend divider, growth sensor card)
+M   tools/test_simulation2.js (deep multi-perspective verification suite: 87 tests)
 A   tools/serve.js (standalone review HTTP server)
 A   DATA_PROVENANCE.md (Location SA GIS, SWMM 5.2, WSAA 02 standards)
+A   FEATURE_DOCUMENTATION.md (Comprehensive 16-feature technical documentation)
 A   CHANGELOG.md (this document)
 ```
 **Zero files in Simulation 1 (`src/`) modified.** All 42 Sandbox tests passing.
@@ -102,7 +117,7 @@ A   CHANGELOG.md (this document)
 ---
 
 ## Automated Test Results
-- `node tools/test_simulation2.js`: **74 passed, 0 failed** (100%)
+- `node tools/test_simulation2.js`: **87 passed, 0 failed** (100%)
 - `node tools/test_sandbox.js`: **42 passed, 0 failed** (100%)
 
 ---

@@ -501,13 +501,15 @@ function runSuite() {
   if (fs.existsSync(chromePath)) {
     try {
       const { execFileSync } = require("child_process");
+      const targetUrl = "file://" + path.resolve(baseDir, "index.html");
       const dump = execFileSync(chromePath, [
         "--headless=new",
         "--disable-gpu",
         "--dump-dom",
-        "http://localhost:8080/simulation/index.html"
+        targetUrl
       ], { encoding: "utf8", timeout: 10000 });
-      check("headless Chrome loads simulation with error overlay remaining hidden", dump.includes('id="errorOverlay" hidden'));
+      check("headless Chrome loads simulation with error overlay remaining hidden",
+        dump.includes('id="errorOverlay"') && (dump.includes('id="errorOverlay" hidden') || dump.includes('id="errorOverlay" class="canvas-overlay" hidden')));
       check("headless Chrome renders simulation stage and canvas elements", dump.includes('id="stage"'));
     } catch (e) {
       console.warn("Headless Chrome check skipped or timed out:", e.message);
