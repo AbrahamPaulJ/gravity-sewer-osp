@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sewer Growth and Sensor Placement</title>
+<script>
+  if (!location.pathname.endsWith('/') && !location.pathname.endsWith('.html')) {
+    location.replace(location.pathname + '/' + location.search + location.hash);
+  }
+</script>
 <script type="importmap">
 {
   "imports": {
@@ -521,7 +526,56 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0}
 <script src="growth_3d.js?v=24"></script>
 <script src="growth_ui.js?v=24"></script>
 <script type="module">
-  GrowthUI.init();
+  const safetyTimer = setTimeout(() => {
+    const ov = document.getElementById('loadingOverlay');
+    if (ov && !ov.classList.contains('fade-out')) {
+      console.warn('Safety timeout: clearing lingering loading overlay.');
+      ov.classList.add('fade-out');
+      setTimeout(() => { if (ov.parentNode) ov.remove(); }, 450);
+    }
+  }, 4000);
+
+  window.addEventListener('error', (e) => {
+    const ov = document.getElementById('loadingOverlay');
+    if (ov && !ov.classList.contains('fade-out')) {
+      ov.classList.add('fade-out');
+      setTimeout(() => { if (ov.parentNode) ov.remove(); }, 450);
+    }
+  });
+
+  function start() {
+    if (typeof GrowthUI !== 'undefined' && typeof GrowthUI.init === 'function') {
+      try {
+        GrowthUI.init();
+      } catch (err) {
+        console.error('GrowthUI.init synchronous error:', err);
+        const errOverlay = document.getElementById('errorOverlay');
+        if (errOverlay) {
+          errOverlay.hidden = false;
+          const p = errOverlay.querySelector('p');
+          if (p) p.textContent = 'Initialization error: ' + err.message;
+        }
+        const ov = document.getElementById('loadingOverlay');
+        if (ov) ov.style.display = 'none';
+      }
+    } else {
+      console.error('GrowthUI script failed to load.');
+      const errOverlay = document.getElementById('errorOverlay');
+      if (errOverlay) {
+        errOverlay.hidden = false;
+        const p = errOverlay.querySelector('p');
+        if (p) p.textContent = 'Application scripts failed to load. Please refresh the page.';
+      }
+      const ov = document.getElementById('loadingOverlay');
+      if (ov) ov.style.display = 'none';
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
 </script>
 </body>
 </html>

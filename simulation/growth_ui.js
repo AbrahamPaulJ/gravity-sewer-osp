@@ -876,7 +876,13 @@ window.GrowthUI = (function () {
     }).catch(err => {
       console.error("Three.js initialization failed:", err);
       const errOverlay = $("#errorOverlay");
-      if (errOverlay) errOverlay.hidden = false;
+      if (errOverlay) {
+        errOverlay.hidden = false;
+        const p = errOverlay.querySelector("p");
+        if (p && err && err.message) {
+          p.textContent = "Could not initialize 3D scene: " + err.message;
+        }
+      }
       const loadOverlay = $("#loadingOverlay");
       if (loadOverlay) loadOverlay.style.display = "none";
     });

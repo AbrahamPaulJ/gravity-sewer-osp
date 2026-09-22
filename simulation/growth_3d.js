@@ -77,10 +77,15 @@ window.Growth3D = (function () {
 
   function ensureThree() {
     if (loadPromise) return loadPromise;
-    loadPromise = (async () => {
-      THREE = await import("three");
-      OrbitControls = (await import("three/addons/controls/OrbitControls.js")).OrbitControls;
-    })();
+    loadPromise = Promise.race([
+      (async () => {
+        THREE = await import("three");
+        OrbitControls = (await import("three/addons/controls/OrbitControls.js")).OrbitControls;
+      })(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout loading Three.js library from CDN. Please check your network connection.")), 10000)
+      )
+    ]);
     return loadPromise;
   }
 
