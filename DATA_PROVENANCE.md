@@ -54,10 +54,17 @@ Where real-time sensor measurements or asset attributes are not published by cou
   - Cold Sludge / Solids: $\nu = 3.80\text{ mm}^2/\text{s} \implies n_{\text{eff}} = 0.0151$
 
 ### D. Maintenance Hole Shaft Geometry
+- **Type:** `A` (Assumed)
 - **Diameter:** 1050 mm standard circular shaft ($A = 0.866\text{ m}^2$) from invert to lid.
 - **Surcharge Criterion:** Water surface elevation exceeding pipe crown ($z > z_{\text{crown}}$).
+- **Status & Basis:** Standard engineering chamber size (WSA 02-2014); real chamber cross-sections vary across the network. This is a uniform proxy pending per-chamber asset survey data. It directly controls the available shaft storage volume and surcharge water-level rise rate.
 
-### E. Pump & Lift Station Operational Parameters
+### E. Real-Time Blockage Capacity Choke Exponent
+- **Type:** `A` (Assumed)
+- **Equation:** $Q_{\text{choked}} = Q_{\text{cap}} \cdot \left(1 - \frac{\text{sev}}{100}\right)^{1.8}$
+- **Status & Basis:** Declared modeling choice for the real-time interactive blockage timeline, pending physical calibration against observed sewer choke flow data. Unlike the viscosity-adjusted Manning roughness $n_{\text{eff}}$ which is derived from published empirical studies (Metcalf & Eddy, He et al., Seyssiecq et al.), the exponent 1.8 is an uncalibrated power-law proxy capturing progressive hydraulic throttling and localized head loss.
+
+### F. Pump & Lift Station Operational Parameters
 - **PS-01 (Catchment Outfall at MH4450193):** Rated 50 L/s at 100% duty, equipped with Variable Speed Drive (0–150%, 0–75 L/s) and auto-relief dynamic draw-down.
 - **LS-02 (Walkerville Trunk Lift Station at MH4449118):** Rated 25 L/s at 100% duty.
 
