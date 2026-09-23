@@ -1207,6 +1207,22 @@ window.GrowthUI = (function () {
     renderBlockageUI();
   }
 
+  function solveCircularDepth(af, diaM) {
+    if (af <= 0) return 0;
+    if (af >= 1) return diaM;
+    if (Math.abs(af - 0.5) < 1e-9) return diaM / 2;
+    let low = 0, high = 2 * Math.PI;
+    const target = 2 * Math.PI * af;
+    for (let i = 0; i < 35; i++) {
+      const mid = (low + high) / 2;
+      const f = mid - Math.sin(mid);
+      if (f < target) low = mid;
+      else high = mid;
+    }
+    const theta = (low + high) / 2;
+    return (diaM / 2) * (1 - Math.cos(theta / 2));
+  }
+
   function updateBlockagePhysics() {
     const g = geom(),
       p = st.blockagePipe,
@@ -1278,8 +1294,9 @@ window.GrowthUI = (function () {
 
     let h0 = 0;
     if (accumM3 <= pipeVolM3) {
-      // Stage 1: Filling pipe bore
-      h0 = diaM * Math.min(1.0, accumM3 / Math.max(0.1, pipeVolM3));
+      // Stage 1: Filling pipe bore (circular-segment geometry)
+      const af = Math.min(1.0, Math.max(0.0, accumM3 / Math.max(0.001, pipeVolM3)));
+      h0 = solveCircularDepth(af, diaM);
     } else {
       // Stage 2: Surcharging into upstream manhole shaft
       const excessShaft = accumM3 - pipeVolM3;
@@ -1396,9 +1413,10 @@ window.GrowthUI = (function () {
     // Determine current filling stage
     const accumM3 = (excessLps * st.timelineSec) / 1000;
     const pipeVolM3 = areaFull * lenM;
+    const af = Math.min(1.0, Math.max(0.0, accumM3 / Math.max(0.001, pipeVolM3)));
     const h0 =
       accumM3 <= pipeVolM3
-        ? (diaMm / 1000) * (accumM3 / pipeVolM3)
+        ? solveCircularDepth(af, diaMm / 1000)
         : diaMm / 1000 + (accumM3 - pipeVolM3) / 0.866;
 
     const isSpill = h0 >= depthM;
