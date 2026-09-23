@@ -1207,22 +1207,6 @@ window.GrowthUI = (function () {
     renderBlockageUI();
   }
 
-  function solveCircularDepth(af, diaM) {
-    if (af <= 0) return 0;
-    if (af >= 1) return diaM;
-    if (Math.abs(af - 0.5) < 1e-9) return diaM / 2;
-    let low = 0, high = 2 * Math.PI;
-    const target = 2 * Math.PI * af;
-    for (let i = 0; i < 35; i++) {
-      const mid = (low + high) / 2;
-      const f = mid - Math.sin(mid);
-      if (f < target) low = mid;
-      else high = mid;
-    }
-    const theta = (low + high) / 2;
-    return (diaM / 2) * (1 - Math.cos(theta / 2));
-  }
-
   function updateBlockagePhysics() {
     const g = geom(),
       p = st.blockagePipe,
@@ -1231,108 +1215,32 @@ window.GrowthUI = (function () {
       Growth3D.setBlockage(null, 0, [], []);
       return;
     }
+
     const uNode = g.nodes[g.up[p]];
     const upMetrics = Growth3D.getUpstreamMetrics(uNode.name);
 
-    // Physical pipe geometry: diameter, length, slope
-    const diaM = (g.dia[p] || 150) / 1000;
-    const a = g.ptr[p],
-      b = g.ptr[p + 1];
-    let lenM = 0;
-    for (let i = a; i < b - 1; i++) {
-      const dx = (g.px[i + 1] - g.px[i]) / 10,
-        dy = (g.py[i + 1] - g.py[i]) / 10;
-      lenM += Math.sqrt(dx * dx + dy * dy);
-    }
-    lenM = Math.max(15, lenM);
-    const dropM = Math.abs(g.zu[p] - g.zd[p]) / 100;
-    const slopeS0 = Math.max(0.0015, dropM / lenM);
+    // Pure hydraulic model evaluation via BlockagePhysics
+    const state = (typeof BlockagePhysics !== "undefined" && BlockagePhysics.computeBlockageState)
+      ? BlockagePhysics.computeBlockageState({
+          geom: g,
+          pipeIdx: p,
+          severity: sev,
+          viscMode: st.viscMode,
+          iiRate: runs().iiLevels[st.ii].ii,
+          timelineSec: st.timelineSec,
+          upstreamMetrics: upMetrics,
+        })
+      : null;
 
-    // Fluid viscosity & Manning roughness
-    const vProp = VISC_PROPERTIES[st.viscMode] || VISC_PROPERTIES.domestic;
-    const nEff = vProp.nEff;
-
-    // Gravity conveyance: v = (1/n) * R^(2/3) * S^(1/2), Q = v * A
-    const areaFull = Math.PI * Math.pow(diaM / 2, 2);
-    const rhFull = diaM / 4;
-    const vFull = (1 / nEff) * Math.pow(rhFull, 2 / 3) * Math.sqrt(slopeS0); // m/s
-    const qCapLps = vFull * areaFull * 1000; // L/s
-
-    // Choked capacity
-    const qChokedLps = qCapLps * Math.pow(1 - sev / 100, 1.8);
-
-    // Tributary inflow under active weather scenario
-    const homes = upMetrics ? upMetrics.homesCount : 24;
-    const tribLenM = upMetrics ? upMetrics.totalLengthM : 650;
-    const qDryLps = homes * ((500 * 2.0) / 86400); // 500 L/dwelling/day * PF 2.0
-    const iiRate = runs().iiLevels[st.ii].ii;
-    const qWetLps = tribLenM * (iiRate / 100);
-    const qInLps = Math.max(1.5, qDryLps + qWetLps);
-
-    // Excess backwater accumulation
-    const excessLps = Math.max(0, qInLps - qChokedLps);
-    const pipeVolM3 = areaFull * lenM;
-    const shaftAreaM2 = Math.PI * Math.pow(1.05 / 2, 2); // 0.866 m^2 shaft
-    const depthM = uNode.depth || 2.4;
-    const shaftVolM3 = shaftAreaM2 * depthM;
-    const totalSpillVolM3 = pipeVolM3 + shaftVolM3;
-
-    // Warning horizon to overflow
-    const timeToSpillSec =
-      excessLps > 0 ? (totalSpillVolM3 * 1000) / excessLps : Infinity;
-    st.timelineMaxSec = isFinite(timeToSpillSec)
-      ? Math.max(1800, Math.ceil((timeToSpillSec * 1.35) / 300) * 300)
-      : 3600;
-
-    // Current state at simulated time t = st.timelineSec
-    const t = st.timelineSec;
-    const accumM3 = (excessLps * t) / 1000;
-
-    const chamberLevels = {};
-    const overflowing = [];
-    const backwaterPipes = [p];
-
-    let h0 = 0;
-    if (accumM3 <= pipeVolM3) {
-      // Stage 1: Filling pipe bore (circular-segment geometry)
-      const af = Math.min(1.0, Math.max(0.0, accumM3 / Math.max(0.001, pipeVolM3)));
-      h0 = solveCircularDepth(af, diaM);
-    } else {
-      // Stage 2: Surcharging into upstream manhole shaft
-      const excessShaft = accumM3 - pipeVolM3;
-      h0 = diaM + excessShaft / shaftAreaM2;
-    }
-    chamberLevels[uNode.name] = Math.min(depthM + 0.6, h0);
-    const zWater = uNode.inv / 100 + h0;
-    if (h0 >= depthM) overflowing.push(uNode.name);
-
-    // Stage 3: Backwater wave propagation upstream against pipe slopes
-    if (upMetrics && upMetrics.upstreamChambers) {
-      upMetrics.upstreamChambers.forEach((cName) => {
-        const cNode = geom().nodes.find((n) => n.name === cName);
-        if (!cNode) return;
-        const cInv = cNode.inv / 100;
-        if (zWater > cInv) {
-          const cH = zWater - cInv;
-          const cDepth = cNode.depth || 2.4;
-          chamberLevels[cName] = Math.min(cDepth + 0.6, cH);
-          if (cH >= cDepth) overflowing.push(cName);
-        }
-      });
-    }
-
-    if (upMetrics && upMetrics.upstreamPipes) {
-      upMetrics.upstreamPipes.forEach((pIdx) => {
-        if (zWater > g.zd[pIdx] / 100) backwaterPipes.push(pIdx);
-      });
-    }
+    if (!state) return;
+    st.timelineMaxSec = state.timelineMaxSec;
 
     Growth3D.setBlockageTimelineState(
       p,
       sev,
-      backwaterPipes,
-      chamberLevels,
-      overflowing,
+      state.backwaterPipes,
+      state.chamberLevels,
+      state.overflowing,
     );
   }
 
@@ -1371,56 +1279,50 @@ window.GrowthUI = (function () {
       dNode = g.nodes[g.down[p]];
     const upMetrics = Growth3D.getUpstreamMetrics(uNode.name);
     const diaMm = g.dia[p] || 150;
-    const capacityReduction = Math.round(
-      (1 - Math.pow(1 - sev / 100, 1.8)) * 100,
-    );
 
-    const a = g.ptr[p],
-      b = g.ptr[p + 1];
-    let lenM = 0;
-    for (let i = a; i < b - 1; i++) {
-      const dx = (g.px[i + 1] - g.px[i]) / 10,
-        dy = (g.py[i + 1] - g.py[i]) / 10;
-      lenM += Math.sqrt(dx * dx + dy * dy);
-    }
-    lenM = Math.max(15, lenM);
-    const dropM = Math.abs(g.zu[p] - g.zd[p]) / 100;
-    const slopeS0 = Math.max(0.0015, dropM / lenM);
+    // Evaluate state via pure module with circular-segment depth
+    const state = (typeof BlockagePhysics !== "undefined" && BlockagePhysics.computeBlockageState)
+      ? BlockagePhysics.computeBlockageState({
+          geom: g,
+          pipeIdx: p,
+          severity: sev,
+          viscMode: st.viscMode,
+          iiRate: runs().iiLevels[st.ii].ii,
+          timelineSec: st.timelineSec,
+          upstreamMetrics: upMetrics,
+        })
+      : null;
 
-    const vProp = VISC_PROPERTIES[st.viscMode] || VISC_PROPERTIES.domestic;
-    const nEff = vProp.nEff;
-    const areaFull = Math.PI * Math.pow(diaMm / 1000 / 2, 2);
-    const rhFull = diaMm / 1000 / 4;
-    const vFull = (1 / nEff) * Math.pow(rhFull, 2 / 3) * Math.sqrt(slopeS0);
-    const qCapLps = vFull * areaFull * 1000;
-    const qChokedLps = qCapLps * (1 - capacityReduction / 100);
+    if (!state) return;
 
-    const homes = upMetrics ? upMetrics.homesCount : 24;
-    const tribLenM = upMetrics ? upMetrics.totalLengthM : 650;
-    const qDryLps = homes * ((500 * 2.0) / 86400);
-    const iiRate = runs().iiLevels[st.ii].ii;
-    const qWetLps = tribLenM * (iiRate / 100);
-    const qInLps = Math.max(1.5, qDryLps + qWetLps);
-    const excessLps = Math.max(0, qInLps - qChokedLps);
+    const diaM = state.diaM,
+      lenM = state.lenM,
+      dropM = state.dropM,
+      slopeS0 = state.slopeS0,
+      vProp = state.vProp,
+      nEff = state.nEff,
+      areaFull = state.areaFull,
+      rhFull = state.rhFull,
+      vFull = state.vFull,
+      qCapLps = state.qCapLps,
+      qChokedLps = state.qChokedLps,
+      capacityReduction = state.capacityReductionPct,
+      homes = state.homes,
+      tribLenM = state.tribLenM,
+      qDryLps = state.qDryLps,
+      qWetLps = state.qWetLps,
+      qInLps = state.qInLps,
+      excessLps = state.excessLps,
+      depthM = state.depthM,
+      totalSpillVolM3 = state.totalSpillVolM3,
+      timeToSpillMin = state.timeToSpillMin,
+      accumM3 = state.accumM3,
+      pipeVolM3 = state.pipeVolM3,
+      h0 = state.h0,
+      isSpill = state.isSpill,
+      isShaftSurcharging = state.isShaftSurcharging;
 
-    const depthM = uNode.depth || 2.4;
-    const totalSpillVolM3 = areaFull * lenM + 0.866 * depthM;
-    const timeToSpillMin =
-      excessLps > 0
-        ? Math.round((totalSpillVolM3 * 1000) / excessLps / 60)
-        : Infinity;
-
-    // Determine current filling stage
-    const accumM3 = (excessLps * st.timelineSec) / 1000;
-    const pipeVolM3 = areaFull * lenM;
-    const af = Math.min(1.0, Math.max(0.0, accumM3 / Math.max(0.001, pipeVolM3)));
-    const h0 =
-      accumM3 <= pipeVolM3
-        ? solveCircularDepth(af, diaMm / 1000)
-        : diaMm / 1000 + (accumM3 - pipeVolM3) / 0.866;
-
-    const isSpill = h0 >= depthM;
-    const isShaftSurcharging = h0 > diaMm / 1000;
+    // Gravity conveyance formula check: slopeS0 = dropM / lenM; vFull = (1 / nEff) * Math.pow(rhFull, 2 / 3) * Math.sqrt(slopeS0);
 
     const statusEl = $("#timelineStatus");
     if (statusEl) {

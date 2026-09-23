@@ -690,6 +690,9 @@ window.Growth3D = (function () {
 
   let topo = null;
   function topology() {
+    if (typeof BlockagePhysics !== "undefined" && BlockagePhysics.topology) {
+      return BlockagePhysics.topology(G());
+    }
     if (topo) return topo;
     const g = G(), n = g.nodes.length;
     const into = Array.from({ length: n }, () => []), downOf = new Array(n).fill(-1);
@@ -710,6 +713,9 @@ window.Growth3D = (function () {
   }
 
   function upstream(names) {
+    if (typeof BlockagePhysics !== "undefined" && BlockagePhysics.upstream) {
+      return BlockagePhysics.upstream(G(), names, topology());
+    }
     const g = G(), t = topology();
     const nodes = new Set(), pipes = new Set(), stack = [];
     names.forEach(nm => { if (nm in t.idxOf) stack.push(t.idxOf[nm]); });
@@ -724,6 +730,9 @@ window.Growth3D = (function () {
 
   /* Compute comprehensive metrics for all areas that affect a node */
   function getUpstreamMetrics(name) {
+    if (typeof BlockagePhysics !== "undefined" && BlockagePhysics.getUpstreamMetrics) {
+      return BlockagePhysics.getUpstreamMetrics(G(), name);
+    }
     const g = G(), t = topology();
     if (!g || !(name in t.idxOf)) return null;
     const up = upstream([name]);
@@ -765,6 +774,7 @@ window.Growth3D = (function () {
       directHomes,
       upstreamChambersCount: upstreamChambers.length,
       upstreamChambers,
+      upstreamPipes: Array.from(up.pipes),
       estimatedDryFlowLps: Math.round(qDry * 100) / 100
     };
   }
