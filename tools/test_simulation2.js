@@ -630,6 +630,99 @@ function runSuite() {
     }
   })());
 
+  console.log("\n16. sim2 hydraulics accuracy, circular-segment depth & pure blockage model");
+  const bpPath = path.join(baseDir, "model/blockage_physics.js");
+  check("blockage_physics.js exists and is loadable in pure Node", fs.existsSync(bpPath));
+  let BP = null;
+  try {
+    BP = require(path.resolve(bpPath));
+    check("blockage_physics.js exports computeBlockageState & solveCircularDepth",
+      BP && typeof BP.computeBlockageState === "function" && typeof BP.solveCircularDepth === "function"
+    );
+  } catch (err) {
+    check("blockage_physics.js loads without DOM error", false, err.message);
+  }
+
+  if (BP) {
+    const testDia = 0.300; // 300 mm diameter
+    const dHalf = BP.solveCircularDepth(0.5, testDia);
+    check("circular-segment depth at Af=0.5 equals diaM/2 exactly", Math.abs(dHalf - testDia / 2) < 1e-6, "got " + dHalf);
+    const dZero = BP.solveCircularDepth(0.0, testDia);
+    check("circular-segment depth at Af=0.0 equals 0", Math.abs(dZero) < 1e-6, "got " + dZero);
+    const dFull = BP.solveCircularDepth(1.0, testDia);
+    check("circular-segment depth at Af=1.0 equals diaM", Math.abs(dFull - testDia) < 1e-6, "got " + dFull);
+
+    // Monotonicity check
+    let monotonic = true;
+    let prev = 0;
+    for (let af = 0.05; af <= 0.95; af += 0.05) {
+      const cur = BP.solveCircularDepth(af, testDia);
+      if (cur <= prev) { monotonic = false; break; }
+      prev = cur;
+    }
+    check("circular-segment depth is strictly monotonic over [0, 1]", monotonic);
+
+    // Bug B fix check: getUpstreamMetrics returns upstreamPipes array
+    const upM = BP.getUpstreamMetrics(g, "MH4429312");
+    check("getUpstreamMetrics returns upstreamPipes array",
+      upM && Array.isArray(upM.upstreamPipes) && upM.upstreamPipes.length === upM.pipesCount,
+      "pipesCount=" + (upM ? upM.pipesCount : 0) + " arrayLen=" + (upM && upM.upstreamPipes ? upM.upstreamPipes.length : 0)
+    );
+
+    // Backwater propagation expands beyond single blocked reach
+    const chokeRes = BP.computeBlockageState({
+      geom: g,
+      pipeIdx: 101,
+      severity: 85,
+      viscMode: "domestic",
+      iiRate: 0.55,
+      timelineSec: 3600
+    });
+    check("backwaterPipes expands upstream beyond [p] when surcharging",
+      chokeRes.backwaterPipes.length > 1,
+      "count=" + chokeRes.backwaterPipes.length
+    );
+  }
+
+  // Assumptions disclosure checks
+  const scAssumptions = idx && idx.scenario && idx.scenario.assumptions;
+  check("scenario.assumptions flags H8 1050mm shaft diameter as assumed proxy",
+    scAssumptions && scAssumptions.some(a => a.id === "H8" && a.status === "A")
+  );
+  check("scenario.assumptions flags B1 choke exponent 1.8 as assumed modeling choice",
+    scAssumptions && scAssumptions.some(a => a.id === "B1" && a.status === "A" && a.text.includes("1.8"))
+  );
+  check("docs.assumptions markdown table lists H12 choke exponent",
+    idx && idx.docs && idx.docs.assumptions && idx.docs.assumptions.includes("H12") && idx.docs.assumptions.includes("1.8")
+  );
+
+  // Engine badges in UI
+  check("index.html contains #growthEngineBadge for EPA SWMM 5.2",
+    indexHtml.includes('id="growthEngineBadge"') && indexHtml.includes("EPA SWMM 5.2 (precomputed)")
+  );
+  check("index.html contains #blockageEngineBadge for real-time approximation with validation tooltip",
+    indexHtml.includes('id="blockageEngineBadge"') &&
+    indexHtml.includes("Real-time approximation") &&
+    indexHtml.includes("VALIDATION.md")
+  );
+  check("index.html includes model/blockage_physics.js script tag",
+    indexHtml.includes('src="model/blockage_physics.js?v=24"')
+  );
+
+  // Published validation report
+  const valPath = path.join(baseDir, "../VALIDATION.md");
+  const valPathDirect = path.join(baseDir, "VALIDATION.md");
+  const hasValDoc = fs.existsSync(valPath) || fs.existsSync(valPathDirect) || fs.existsSync("VALIDATION.md");
+  check("VALIDATION.md exists at repo root", hasValDoc);
+  if (hasValDoc) {
+    const valContent = fs.readFileSync(fs.existsSync("VALIDATION.md") ? "VALIDATION.md" : (fs.existsSync(valPath) ? valPath : valPathDirect), "utf8");
+    check("VALIDATION.md contains empirical comparison table with measured errors",
+      valContent.includes("SC-01") &&
+      valContent.includes("32.3%") &&
+      valContent.includes("100.0%")
+    );
+  }
+
   console.log("\n" + passed + " passed, " + failed + " failed");
   if (failed > 0) process.exit(1);
 }
