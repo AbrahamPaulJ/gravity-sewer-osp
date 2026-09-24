@@ -1,0 +1,70 @@
+{
+ "experiment": "compare",
+ "text": [
+  "SPLIT COMPARISON, first chamber to reach each stage",
+  "",
+  "split       unit                       surcharge            spill",
+  "equal       L/s per chamber               8.07 at D         24.8 at B",
+  "catchment   L/s per 100 m of sewer       0.364 at A          1.2 at A",
+  "along       L/s per 100 m of sewer       0.368 at A         1.22 at A",
+  "",
+  "Units differ: equal is per chamber, the others per 100 m of sewer, so compare",
+  "WHERE the stages appear first, not the numbers across rows."
+ ],
+ "first": {
+  "equal": {
+   "half pipe": {
+    "load": 3.19921875,
+    "chamber": "D"
+   },
+   "surcharge": {
+    "load": 8.0684125,
+    "chamber": "D"
+   },
+   "half shaft": {
+    "load": 19.755787499999997,
+    "chamber": "B"
+   },
+   "spill": {
+    "load": 24.82819375,
+    "chamber": "B"
+   }
+  },
+  "catchment": {
+   "half pipe": {
+    "load": 0.152965625,
+    "chamber": "J"
+   },
+   "surcharge": {
+    "load": 0.36397500000000005,
+    "chamber": "A"
+   },
+   "half shaft": {
+    "load": 0.8278,
+    "chamber": "A"
+   },
+   "spill": {
+    "load": 1.20168125,
+    "chamber": "A"
+   }
+  },
+  "along": {
+   "half pipe": {
+    "load": 0.16000312500000002,
+    "chamber": "D"
+   },
+   "surcharge": {
+    "load": 0.36793125000000004,
+    "chamber": "A"
+   },
+   "half shaft": {
+    "load": 0.8278,
+    "chamber": "A"
+   },
+   "spill": {
+    "load": 1.215034375,
+    "chamber": "A"
+   }
+  }
+ }
+}

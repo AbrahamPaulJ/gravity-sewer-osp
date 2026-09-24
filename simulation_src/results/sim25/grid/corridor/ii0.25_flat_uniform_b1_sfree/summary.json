@@ -1,0 +1,60 @@
+{
+ "case": {
+  "ii": 0.25,
+  "pf": "flat",
+  "age": "uniform",
+  "bfac": 1.0,
+  "stage": null
+ },
+ "corridor_nodes": 68,
+ "rows": [
+  {
+   "dwellings": 80,
+   "added_lps": 0.8518518518518517,
+   "outlet_head_rise_m": 0.008312642365730483,
+   "alarm": [
+    4428836
+   ],
+   "surcharge": [
+    4428836
+   ],
+   "max_depth_rise_m": 0.007370290435573246
+  },
+  {
+   "dwellings": 150,
+   "added_lps": 1.5972222222222223,
+   "outlet_head_rise_m": 0.015589723924506416,
+   "alarm": [
+    4428836
+   ],
+   "surcharge": [
+    4428836
+   ],
+   "max_depth_rise_m": 0.013830495968229162
+  },
+  {
+   "dwellings": 390,
+   "added_lps": 4.152777777777779,
+   "outlet_head_rise_m": 0.04089401152338468,
+   "alarm": [
+    4428836
+   ],
+   "surcharge": [
+    4428836
+   ],
+   "max_depth_rise_m": 0.036312634510642816
+  },
+  {
+   "dwellings": 485,
+   "added_lps": 5.164351851851853,
+   "outlet_head_rise_m": 0.05080709648166959,
+   "alarm": [
+    4428836
+   ],
+   "surcharge": [
+    4428836
+   ],
+   "max_depth_rise_m": 0.04514347975993438
+  }
+ ]
+}

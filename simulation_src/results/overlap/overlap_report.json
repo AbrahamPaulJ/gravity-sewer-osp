@@ -1,0 +1,766 @@
+{
+ "council_pipes": 1002,
+ "matched_on_id": 999,
+ "unmatched": [
+  4433240,
+  4433467,
+  4433468
+ ],
+ "duplicate_ids_statewide": 0,
+ "geometry": {
+  "agree": 966,
+  "disagree": 33,
+  "not_comparable": 0
+ },
+ "geom_offset_m": {
+  "median": 0.004,
+  "max": 41.003
+ },
+ "digitised_reversed": 7,
+ "nominal_diameter": {
+  "agree": 999,
+  "disagree": 0,
+  "not_comparable": 0
+ },
+ "internal_diameter": {
+  "agree": 543,
+  "disagree": 0,
+  "not_comparable": 456
+ },
+ "start_invert": {
+  "agree": 999,
+  "disagree": 0,
+  "not_comparable": 0
+ },
+ "end_invert": {
+  "agree": 999,
+  "disagree": 0,
+  "not_comparable": 0
+ },
+ "flow_direction": {
+  "agree": 989,
+  "disagree": 7,
+  "not_comparable": 3
+ },
+ "datum_shift_added_to_statewide_m": [
+  0.648,
+  1.498
+ ],
+ "boundary": [
+  {
+   "id": 1495234,
+   "dia": 450,
+   "start_invert": 26.96,
+   "end_invert": 25.981,
+   "wwtp": 1,
+   "kind": "outflow",
+   "council_pipe": 1495235,
+   "at": [
+    281864.9,
+    6134433.7
+   ]
+  },
+  {
+   "id": 1495294,
+   "dia": 450,
+   "start_invert": 29.151,
+   "end_invert": 29.085,
+   "wwtp": 1,
+   "kind": "gap",
+   "council_pipe": 1495295,
+   "council_pipe_down": 1495293,
+   "at": [
+    281858.4,
+    6134733.8
+   ]
+  },
+  {
+   "id": 1675029,
+   "dia": 150,
+   "start_invert": 47.58,
+   "end_invert": 46.962,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4310716,
+   "at": [
+    280473.9,
+    6135584.4
+   ]
+  },
+  {
+   "id": 1675055,
+   "dia": 225,
+   "start_invert": 47.086,
+   "end_invert": 46.705,
+   "wwtp": 1,
+   "kind": "outflow",
+   "council_pipe": 1675059,
+   "at": [
+    280630.7,
+    6135833.3
+   ]
+  },
+  {
+   "id": 4404773,
+   "dia": 150,
+   "start_invert": 53.05,
+   "end_invert": 52.82,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4404772,
+   "at": [
+    282407.0,
+    6137127.5
+   ]
+  },
+  {
+   "id": 4404811,
+   "dia": 150,
+   "start_invert": 52.12,
+   "end_invert": 51.762,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4404812,
+   "at": [
+    282485.3,
+    6137222.1
+   ]
+  },
+  {
+   "id": 4404810,
+   "dia": 150,
+   "start_invert": 53.74,
+   "end_invert": 52.866,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4404812,
+   "at": [
+    282485.3,
+    6137222.1
+   ]
+  },
+  {
+   "id": 4404822,
+   "dia": 150,
+   "start_invert": 51.23,
+   "end_invert": 50.9,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4404818,
+   "at": [
+    282541.1,
+    6137253.0
+   ]
+  },
+  {
+   "id": 4404916,
+   "dia": 150,
+   "start_invert": 56.12,
+   "end_invert": 55.865,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4404917,
+   "at": [
+    282929.9,
+    6137635.0
+   ]
+  },
+  {
+   "id": 4404918,
+   "dia": 150,
+   "start_invert": 56.04,
+   "end_invert": 55.82,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4404917,
+   "at": [
+    282929.9,
+    6137635.0
+   ]
+  },
+  {
+   "id": 4405068,
+   "dia": 150,
+   "start_invert": 42.7,
+   "end_invert": 42.362,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4405067,
+   "at": [
+    283753.2,
+    6137073.3
+   ]
+  },
+  {
+   "id": 4405092,
+   "dia": 150,
+   "start_invert": 40.8,
+   "end_invert": 40.718,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4405091,
+   "at": [
+    283681.4,
+    6137212.2
+   ]
+  },
+  {
+   "id": 4405113,
+   "dia": 150,
+   "start_invert": 45.191,
+   "end_invert": 44.712,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4405087,
+   "at": [
+    283571.0,
+    6137320.9
+   ]
+  },
+  {
+   "id": 4405135,
+   "dia": 150,
+   "start_invert": 53.535,
+   "end_invert": 52.363,
+   "wwtp": 1,
+   "kind": "gap",
+   "council_pipe": 4405132,
+   "council_pipe_down": 4405136,
+   "at": [
+    283299.6,
+    6137530.5
+   ]
+  },
+  {
+   "id": 4405154,
+   "dia": 150,
+   "start_invert": 58.294,
+   "end_invert": 57.659,
+   "wwtp": 1,
+   "kind": "gap",
+   "council_pipe": 4405151,
+   "council_pipe_down": 4405153,
+   "at": [
+    283146.4,
+    6137688.2
+   ]
+  },
+  {
+   "id": 4405155,
+   "dia": 150,
+   "start_invert": 58.775,
+   "end_invert": 58.294,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4405151,
+   "at": [
+    283146.4,
+    6137688.2
+   ]
+  },
+  {
+   "id": 4405181,
+   "dia": 150,
+   "start_invert": 59.489,
+   "end_invert": 58.877,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4405180,
+   "at": [
+    283090.8,
+    6137779.6
+   ]
+  },
+  {
+   "id": 4432898,
+   "dia": 150,
+   "start_invert": 50.805,
+   "end_invert": 50.72,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4432897,
+   "at": [
+    280987.3,
+    6136127.6
+   ]
+  },
+  {
+   "id": 4432932,
+   "dia": 150,
+   "start_invert": 51.817,
+   "end_invert": 51.481,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4432905,
+   "at": [
+    281303.5,
+    6136161.6
+   ]
+  },
+  {
+   "id": 4432934,
+   "dia": 150,
+   "start_invert": 51.481,
+   "end_invert": 51.234,
+   "wwtp": 1,
+   "kind": "outflow",
+   "council_pipe": 4432905,
+   "at": [
+    281303.5,
+    6136161.6
+   ]
+  },
+  {
+   "id": 4432937,
+   "dia": 150,
+   "start_invert": 50.914,
+   "end_invert": 50.718,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4432938,
+   "at": [
+    281426.0,
+    6136171.2
+   ]
+  },
+  {
+   "id": 4432941,
+   "dia": 150,
+   "start_invert": 50.352,
+   "end_invert": 50.255,
+   "wwtp": 1,
+   "kind": "outflow",
+   "council_pipe": 4432940,
+   "at": [
+    281485.0,
+    6136176.2
+   ]
+  },
+  {
+   "id": 4432947,
+   "dia": 150,
+   "start_invert": 50.255,
+   "end_invert": 50.069,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4432948,
+   "at": [
+    281531.5,
+    6136180.4
+   ]
+  },
+  {
+   "id": 4433211,
+   "dia": 150,
+   "start_invert": 51.783,
+   "end_invert": 51.357,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4433190,
+   "at": [
+    281750.6,
+    6136459.8
+   ]
+  },
+  {
+   "id": 4433213,
+   "dia": 150,
+   "start_invert": 51.45,
+   "end_invert": 50.732,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4433222,
+   "at": [
+    281796.3,
+    6136528.0
+   ]
+  },
+  {
+   "id": 4433217,
+   "dia": 150,
+   "start_invert": 51.357,
+   "end_invert": 50.732,
+   "wwtp": 1,
+   "kind": "gap",
+   "council_pipe": 4433190,
+   "council_pipe_down": 4433222,
+   "at": [
+    281750.6,
+    6136459.8
+   ]
+  },
+  {
+   "id": 4433246,
+   "dia": 150,
+   "start_invert": 52.29,
+   "end_invert": 51.891,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4433247,
+   "at": [
+    281852.6,
+    6136643.7
+   ]
+  },
+  {
+   "id": 4433252,
+   "dia": 150,
+   "start_invert": 51.812,
+   "end_invert": 51.689,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4433271,
+   "at": [
+    281993.0,
+    6136726.7
+   ]
+  },
+  {
+   "id": 4433272,
+   "dia": 150,
+   "start_invert": 51.748,
+   "end_invert": 51.689,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4433271,
+   "at": [
+    281993.0,
+    6136726.7
+   ]
+  },
+  {
+   "id": 4433283,
+   "dia": 150,
+   "start_invert": 51.821,
+   "end_invert": 51.415,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4433284,
+   "at": [
+    282049.0,
+    6136777.8
+   ]
+  },
+  {
+   "id": 4433308,
+   "dia": 150,
+   "start_invert": 54.22,
+   "end_invert": 53.832,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4433311,
+   "at": [
+    282217.4,
+    6136944.7
+   ]
+  },
+  {
+   "id": 4433973,
+   "dia": 150,
+   "start_invert": 44.167,
+   "end_invert": 43.313,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4433775,
+   "at": [
+    283848.2,
+    6137067.5
+   ]
+  },
+  {
+   "id": 4441442,
+   "dia": 150,
+   "start_invert": 50.695,
+   "end_invert": 50.318,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4432946,
+   "at": [
+    281572.4,
+    6136214.0
+   ]
+  },
+  {
+   "id": 9042678,
+   "dia": 150,
+   "start_invert": 36.652,
+   "end_invert": 36.547,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4433479,
+   "at": [
+    282733.1,
+    6136501.3
+   ]
+  },
+  {
+   "id": 9046148,
+   "dia": 150,
+   "start_invert": 43.465,
+   "end_invert": 42.609,
+   "wwtp": 1,
+   "kind": "inflow",
+   "council_pipe": 4433239,
+   "at": [
+    282300.8,
+    6136483.1
+   ]
+  },
+  {
+   "id": 9046149,
+   "dia": 150,
+   "start_invert": 44.349,
+   "end_invert": 44.13,
+   "wwtp": 1,
+   "kind": "outflow",
+   "council_pipe": 4433469,
+   "at": [
+    282387.8,
+    6136568.0
+   ]
+  }
+ ],
+ "boundary_counts": {
+  "outflow": 5,
+  "gap": 4,
+  "inflow": 27
+ },
+ "inflow_impact": [
+  {
+   "id": 1675029,
+   "council_pipe": 4310716,
+   "lands": "trunk",
+   "trunk_hop": 46,
+   "outside_pipes": 1,
+   "outside_length_m": 68.0
+  },
+  {
+   "id": 4404773,
+   "council_pipe": 4404772,
+   "lands": "elsewhere",
+   "trunk_hop": null,
+   "outside_pipes": 11,
+   "outside_length_m": 559.3
+  },
+  {
+   "id": 4404811,
+   "council_pipe": 4404812,
+   "lands": "elsewhere",
+   "trunk_hop": null,
+   "outside_pipes": 11,
+   "outside_length_m": 555.3
+  },
+  {
+   "id": 4404810,
+   "council_pipe": 4404812,
+   "lands": "elsewhere",
+   "trunk_hop": null,
+   "outside_pipes": 12,
+   "outside_length_m": 646.6
+  },
+  {
+   "id": 4404822,
+   "council_pipe": 4404818,
+   "lands": "trunk",
+   "trunk_hop": 3,
+   "outside_pipes": 20,
+   "outside_length_m": 1072.7
+  },
+  {
+   "id": 4404916,
+   "council_pipe": 4404917,
+   "lands": "trunk",
+   "trunk_hop": 3,
+   "outside_pipes": 12,
+   "outside_length_m": 685.9
+  },
+  {
+   "id": 4404918,
+   "council_pipe": 4404917,
+   "lands": "trunk",
+   "trunk_hop": 3,
+   "outside_pipes": 72,
+   "outside_length_m": 3757.4
+  },
+  {
+   "id": 4405068,
+   "council_pipe": 4405067,
+   "lands": "growth",
+   "trunk_hop": 0,
+   "outside_pipes": 14,
+   "outside_length_m": 661.0
+  },
+  {
+   "id": 4405092,
+   "council_pipe": 4405091,
+   "lands": "growth",
+   "trunk_hop": 0,
+   "outside_pipes": 44,
+   "outside_length_m": 2523.9
+  },
+  {
+   "id": 4405113,
+   "council_pipe": 4405087,
+   "lands": "growth",
+   "trunk_hop": 0,
+   "outside_pipes": 1,
+   "outside_length_m": 41.3
+  },
+  {
+   "id": 4405155,
+   "council_pipe": 4405151,
+   "lands": "elsewhere",
+   "trunk_hop": null,
+   "outside_pipes": 3,
+   "outside_length_m": 100.1
+  },
+  {
+   "id": 4405181,
+   "council_pipe": 4405180,
+   "lands": "trunk",
+   "trunk_hop": 3,
+   "outside_pipes": 2,
+   "outside_length_m": 148.3
+  },
+  {
+   "id": 4432898,
+   "council_pipe": 4432897,
+   "lands": "elsewhere",
+   "trunk_hop": null,
+   "outside_pipes": 5,
+   "outside_length_m": 292.3
+  },
+  {
+   "id": 4432932,
+   "council_pipe": 4432905,
+   "lands": "elsewhere",
+   "trunk_hop": null,
+   "outside_pipes": 3,
+   "outside_length_m": 167.6
+  },
+  {
+   "id": 4432937,
+   "council_pipe": 4432938,
+   "lands": "elsewhere",
+   "trunk_hop": null,
+   "outside_pipes": 6,
+   "outside_length_m": 317.2
+  },
+  {
+   "id": 4432947,
+   "council_pipe": 4432948,
+   "lands": "trunk",
+   "trunk_hop": 45,
+   "outside_pipes": 14,
+   "outside_length_m": 641.8
+  },
+  {
+   "id": 4433211,
+   "council_pipe": 4433190,
+   "lands": "elsewhere",
+   "trunk_hop": null,
+   "outside_pipes": 5,
+   "outside_length_m": 298.7
+  },
+  {
+   "id": 4433213,
+   "council_pipe": 4433222,
+   "lands": "trunk",
+   "trunk_hop": 23,
+   "outside_pipes": 11,
+   "outside_length_m": 441.6
+  },
+  {
+   "id": 4433246,
+   "council_pipe": 4433247,
+   "lands": "trunk",
+   "trunk_hop": 19,
+   "outside_pipes": 8,
+   "outside_length_m": 468.4
+  },
+  {
+   "id": 4433252,
+   "council_pipe": 4433271,
+   "lands": "trunk",
+   "trunk_hop": 16,
+   "outside_pipes": 2,
+   "outside_length_m": 82.7
+  },
+  {
+   "id": 4433272,
+   "council_pipe": 4433271,
+   "lands": "trunk",
+   "trunk_hop": 16,
+   "outside_pipes": 8,
+   "outside_length_m": 389.4
+  },
+  {
+   "id": 4433283,
+   "council_pipe": 4433284,
+   "lands": "trunk",
+   "trunk_hop": 16,
+   "outside_pipes": 23,
+   "outside_length_m": 977.3
+  },
+  {
+   "id": 4433308,
+   "council_pipe": 4433311,
+   "lands": "trunk",
+   "trunk_hop": 16,
+   "outside_pipes": 3,
+   "outside_length_m": 206.9
+  },
+  {
+   "id": 4433973,
+   "council_pipe": 4433775,
+   "lands": "not_in_network",
+   "trunk_hop": null,
+   "outside_pipes": 1,
+   "outside_length_m": 84.2
+  },
+  {
+   "id": 4441442,
+   "council_pipe": 4432946,
+   "lands": "trunk",
+   "trunk_hop": 45,
+   "outside_pipes": 6,
+   "outside_length_m": 227.4
+  },
+  {
+   "id": 9042678,
+   "council_pipe": 4433479,
+   "lands": "trunk",
+   "trunk_hop": 9,
+   "outside_pipes": 1,
+   "outside_length_m": 12.8
+  },
+  {
+   "id": 9046148,
+   "council_pipe": 4433239,
+   "lands": "trunk",
+   "trunk_hop": 16,
+   "outside_pipes": 3,
+   "outside_length_m": 148.4
+  }
+ ],
+ "growth_catchment_missing": {
+  "inflows": 3,
+  "outside_length_m": 3226.2
+ },
+ "rising_mains": {
+  "council": 7,
+  "also_statewide": 7,
+  "missing_statewide": []
+ },
+ "sources": {
+  "council": "https://services-ap1.arcgis.com/38lmAqtkEsaNGT6T/arcgis/rest/services/SA_Water_Sewer_Network/FeatureServer/6",
+  "statewide": "https://agsplus.geodata.sa.gov.au/arcgis/rest/services/Infrastructure_Utilities/MapServer/9",
+  "statewide_fetched": "2026-09-24",
+  "statewide_box": [
+   277974.180744659,
+   6131945.96589117,
+   286323.359632635,
+   6140262.35144902
+  ]
+ }
+}
