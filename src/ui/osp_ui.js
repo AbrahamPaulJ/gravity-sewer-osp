@@ -28,7 +28,7 @@ const S = {
      is in force rather than showing 0.013 either way. */
   manningN: null,
   growthPoints: [], addedLoad: 2,
-  anchor: null, sensors: [], covered: null, lastResult: null,
+  anchor: null, hoverNode: null, sensors: [], covered: null, lastResult: null,
   view: "2d", exaggeration: 30,
   water3d: true, waterAnim: true, boreExagg: 70,
   profNode: null, profExagg: 45, profBore: 1, profSpan: 12,
@@ -315,6 +315,9 @@ function pipeWidths(scale) {
 }
 /* Likelihood ramp. Quiet through the bulk of the distribution, warming only at the
    top, with the top decile lifted out of the ramp entirely into the alarm red. */
+/* Headroom ramp, reversed against the others on purpose: here a HIGH value is
+   good news, so the alarm end is the low end. */
+const HEAD_STOPS = [[0, [56, 189, 248]], [0.55, [251, 191, 36]], [1, [244, 63, 94]]];
 const RISK_STOPS = [[0, [51, 65, 85]], [0.55, [56, 189, 248]], [1, [251, 146, 60]]];
 function rampN(t, stops) {
   t = Math.max(0, Math.min(1, t));
@@ -378,6 +381,45 @@ function draw() {
       ctx.beginPath();
       ctx.arc(sx(G.x[i]), sy(G.y[i]), gr2, 0, 6.284);
       ctx.fill(); ctx.stroke();
+    }
+    drawSensors();
+    return;
+  }
+
+  /* Growth headroom. A per-NODE quantity drawn on the reaches below each chamber,
+     because "how much more can connect here" is answered by the pipe that gives
+     out, not by the chamber itself. The binding reach of the chamber under the
+     cursor is drawn last and in a colour used nowhere else, since it is the
+     answer to "why is this site constrained". */
+  if (S.colourBy === "headroom" && window.OSPCapacity) {
+    const H = headroomState();
+    const v = Array.from(H.head).filter(isFinite).sort((a, b) => a - b);
+    const lo = v.length ? v[Math.floor(v.length * 0.05)] : 0;
+    const hi = v.length ? v[Math.floor(v.length * 0.95)] : 1;
+    const span = Math.max(1e-6, hi - lo);
+    // colour a reach by the tightest headroom among the chambers it serves
+    const tight = new Float64Array(G.edges.length).fill(Infinity);
+    for (let i = 0; i < G.n; i++) {
+      const b = H.bind[i];
+      if (b >= 0 && H.head[i] < tight[b]) tight[b] = H.head[i];
+    }
+    for (let ei = 0; ei < G.edges.length; ei++) {
+      const t = isFinite(tight[ei]) ? 1 - Math.max(0, Math.min(1, (tight[ei] - lo) / span)) : 0;
+      const pl = G.polylines[ei];
+      ctx.beginPath();
+      ctx.moveTo(sx(pl[0][0]), sy(pl[0][1]));
+      for (let k = 1; k < pl.length; k++) ctx.lineTo(sx(pl[k][0]), sy(pl[k][1]));
+      ctx.strokeStyle = isFinite(tight[ei]) ? rampN(t, HEAD_STOPS) : "#2b3a55";
+      ctx.lineWidth = isFinite(tight[ei]) ? 1.1 + 2.2 * t : 0.8;
+      ctx.lineCap = "round";
+      ctx.stroke();
+    }
+    if (S.hoverNode != null && H.bind[S.hoverNode] >= 0) {
+      const pl = G.polylines[H.bind[S.hoverNode]];
+      ctx.beginPath();
+      ctx.moveTo(sx(pl[0][0]), sy(pl[0][1]));
+      for (let k = 1; k < pl.length; k++) ctx.lineTo(sx(pl[k][0]), sy(pl[k][1]));
+      ctx.strokeStyle = "#a78bfa"; ctx.lineWidth = 3.4; ctx.lineCap = "round"; ctx.stroke();
     }
     drawSensors();
     return;
@@ -508,7 +550,8 @@ function drawSensors() {
   // Sensors are drawn white-cored in capacity mode: the alarm red is taken by
   // over-capacity reaches there, and two different meanings for one colour on the
   // same canvas is how a map starts lying to you.
-  const capMode = S.colourBy === "capacity" || S.colourBy === "risk";
+  const capMode = S.colourBy === "capacity" || S.colourBy === "risk"
+    || S.colourBy === "headroom";
   ctx.fillStyle = capMode ? "#f8fafc" : "#f43f5e";
   ctx.strokeStyle = capMode ? "#0f172a" : "#4c0519";
   ctx.lineWidth = capMode ? 1.6 : 1;
@@ -537,6 +580,38 @@ function capacityState() {
   _capKey = key;
   updateCapHint(_capCache);
   return _capCache;
+}
+
+/* Growth headroom, cached on whatever changes it: the region and the demand case.
+   It is a pure function of the capacity state, so it rides that cache rather than
+   holding its own copy of the inputs. About 8 ms for 1,010 chambers. */
+let _headCache = null, _headKey = null;
+function headroomState() {
+  const key = [S.region, S.perNodeLoad, S.peakFactor, S.manningN].join("|");
+  if (_headCache && _headKey === key) return _headCache;
+  const st = capacityState();
+  _headCache = OSPCapacity.growthHeadroom(G, OSPCore, st);
+  _headCache.cover = OSPCapacity.growthCover(G, _headCache);
+  _headKey = key;
+  updateHeadHint(_headCache);
+  return _headCache;
+}
+
+function updateHeadHint(H) {
+  const el = $("head-hint");
+  if (!el) return;
+  const v = Array.from(H.head).filter(isFinite).sort((a, b) => a - b);
+  if (!v.length) { el.textContent = ""; return; }
+  const q = p => v[Math.floor(p * v.length)];
+  const per = S.perNodeLoad || 0.05;
+  el.innerHTML =
+    `Spare capacity before the first reach tips. Median <b>${q(0.5).toFixed(1)} L/s</b>, ` +
+    `tightest tenth under <b>${q(0.1).toFixed(1)} L/s</b> ` +
+    `&mdash; about ${Math.round(q(0.1) / per)} chambers' worth of new load at the current ` +
+    `demand setting. ${H.cover.summary.sites} connection points funnel into just ` +
+    `<b>${H.cover.summary.chambers} chambers</b>, which is why one sensor can watch many sites. ` +
+    `<span class="warn">Manning screening: it ranks reaches and finds bottlenecks, it is not ` +
+    `a hydraulic model.</span>`;
 }
 
 /* Blockage likelihood, cached on the region and the chosen blend. Same reasoning
@@ -720,6 +795,30 @@ function inEdgesOf(i) {
   return _inEdges[i];
 }
 
+/* What this chamber could still take, and what stops it.
+
+   Reported only in the headroom view: it is a real number in every mode, but a
+   line that appears on every hover in every mode is noise, and the binding reach
+   it names is only drawn in that view. */
+function headroomLine(i) {
+  if (S.colourBy !== "headroom" || !window.OSPCapacity) return "";
+  const H = headroomState();
+  const h = H.head[i];
+  if (!isFinite(h))
+    return '<span style="color:#6f81a3">nothing downstream to fill</span><br>';
+  const per = S.perNodeLoad || 0.05;
+  const c = H.surchargeAt[i];
+  const watched = S.covered && c >= 0 && S.covered[c];
+  return '<span style="color:#6f81a3">room for</span> ' + h.toFixed(2) + ' L/s'
+    + ' <span style="color:#6f81a3">(~' + Math.round(h / per) + ' chambers)</span><br>'
+    + '<span style="color:#6f81a3">first tips reach</span> ' + H.bind[i]
+    + ' <span style="color:#6f81a3">at chamber</span> ' + c + '<br>'
+    + (S.sensors.length
+        ? (watched ? '<span style="color:#34d399">a sensor would see it</span><br>'
+                   : '<span style="color:#f87171">nothing watches that</span><br>')
+        : '');
+}
+
 /* Publisher material codes, expanded for the readout. The codes are what the
    register and the glossary use, because they are what the source carries; the
    words are what someone reading a map can act on without a lookup. */
@@ -778,12 +877,15 @@ cv.addEventListener("mousemove", e => {
   const nObs = G.obs.ptr[i + 1] - G.obs.ptr[i];
   const depth = G.cover[i] > 0 ? (G.cover[i] - G.inv[i]) : null;
   const ceil = G.ceil ? G.ceil[i] : null;
+  S.hoverNode = i;
+  if (S.colourBy === "headroom") draw();
   hud.innerHTML =
     `node ${i}${G.mh[i] ? ' <span style="color:#34d399">chamber</span>' : ' <span style="color:#f87171">no manhole</span>'}<br>` +
     `invert ${G.inv[i].toFixed(2)} m<br>` +
     (depth != null ? `depth ${depth.toFixed(2)} m <span style="color:#6f81a3">(${COVER_SRC[G.coverSrc[i]]})</span><br>` : `depth unknown<br>`) +
     (ceil != null && isFinite(ceil) ? `ceiling ${ceil.toFixed(2)} m, headroom ${(ceil - G.inv[i]).toFixed(2)} m<br>` : "") +
     `observes ${nObs}<br>` +
+    headroomLine(i) +
     incomingPipes(i) +
     (S.covered && S.covered[i] ? '<span style="color:#38bdf8">covered</span>'
       : G.obs.inUniverse[i] ? '<span style="color:#93a4c4">observable</span>'
@@ -850,6 +952,23 @@ async function run() {
        are the ones a future rollout has to catch; otherwise it is the ones already
        surcharging today. */
     let objective = S.objective, marked = null;
+    if (S.objective === "growth") {
+      /* Weight a chamber by how many potential connection points announce
+         themselves there. Several sites share one binding reach, so covering
+         one chamber can watch many of them, which is the structure set cover
+         is for. */
+      const H = headroomState();
+      const cw = H.cover.w;
+      let any = 0;
+      for (let i = 0; i < G.n; i++) if (cw[i] > 0) any++;
+      if (!any) throw new Error(
+        "No chamber is a growth bottleneck at this demand case, so there is " +
+        "nothing for the growth objective to target. Raise the load per chamber " +
+        "or the peak factor under Colour by.");
+      objective = { w: cw };
+      marked = Uint8Array.from(cw, x => x > 0 ? 1 : 0);
+      extra.growth = H.cover.summary;
+    }
     if (S.objective === "risk") {
       /* Expected-blockage exposure per chamber, straight into weightOf. No
          algorithm changes: every one of them scores through that function, so
@@ -910,6 +1029,17 @@ async function run() {
     // Coverage of all nodes is not the headline when the objective is overcapacity:
     // "24 of 183 surcharging chambers" is the number that means something.
     if (marked) extra.marked = C.scoreMarked(G, sensors, marked);
+    if (extra.growth) {
+      /* Report SITES watched, not chambers. One chamber can be the bottleneck for
+         four connection points, and a chamber count would hide that entirely. */
+      const H = headroomState(), cov = C.score(G, sensors).covered;
+      let seen = 0;
+      for (let v = 0; v < G.n; v++) {
+        const c = H.surchargeAt[v];
+        if (c >= 0 && isFinite(H.head[v]) && G.candidate[v] && cov[c]) seen++;
+      }
+      extra.growthWatched = seen;
+    }
     if (S.objective === "risk") {
       const rs = riskState();
       let hit = 0, tot = 0;
@@ -962,12 +1092,16 @@ function renderResult() {
      understate the result and answer a question nobody asked: most of the network
      is not at risk of overcapacity, and deliberately not covering it is the point. */
   const marked = e.marked;
-  const main = e.risk ? 100 * e.risk.share
+  const main = e.growth ? (e.growth.sites ? 100 * e.growthWatched / e.growth.sites : 0)
+    : e.risk ? 100 * e.risk.share
     : marked ? (marked.total ? 100 * marked.hit / marked.total : 0)
     : S.objective === "length"
       ? (o.universeLen ? 100 * r.len / o.universeLen : 0)
       : (o.universeSize ? 100 * r.nodes / o.universeSize : 0);
-  const sub = e.risk
+  const sub = e.growth
+    ? `of the ${e.growth.sites} growth connection points watched, using ${r.sensors}
+       sensor${r.sensors === 1 ? "" : "s"}`
+    : e.risk
     ? `of the network's blockage exposure observed, using ${r.sensors}
        sensor${r.sensors === 1 ? "" : "s"}`
     : marked
@@ -987,6 +1121,10 @@ function renderResult() {
       <b>declared</b> likelihood, so the share is a ranking statement, not a prediction.</div>` : ""}
     <div class="stat"><span>Nodes covered</span><span>${r.nodes} / ${o.universeSize}</span></div>
     <div class="stat"><span>Length covered</span><span>${fmtM(r.len)} / ${fmtM(o.universeLen)}</span></div>
+    ${e.growth ? `<div class="stat"><span>Connection points watched</span>
+      <span>${e.growthWatched} / ${e.growth.sites}</span></div>
+      <div class="stat"><span>Bottleneck chambers in play</span>
+      <span>${e.growth.chambers}</span></div>` : ""}
     ${e.weighted ? `<div class="stat"><span>Objective weighting</span>
       <span style="color:var(--good)">applied</span></div>` : ""}
     <div class="stat"><span>Per sensor</span><span>${r.sensors ? (r.nodes / r.sensors).toFixed(2) : "0"} nodes</span></div>
@@ -1084,6 +1222,7 @@ function setRegion(k) {
   _diaOrder = null; _diaOrderKey = null;
   _pipeW = null; _pipeWKey = null;
   _riskCache = null; _riskKey = null;
+  _headCache = null; _headKey = null;
 
   // Only regions harvested since the pipe-attribute fetch carry per-pipe data, so
   // the mode is offered where it means something and withdrawn where it does not,
@@ -1159,14 +1298,18 @@ function setRegion(k) {
 function syncColourUI() {
   const mode = S.colourBy;
   const cap = mode === "capacity", dia = mode === "diameter", risk = mode === "risk";
-  $("p-capacity").hidden = !cap;
+  const head = mode === "headroom";
+  $("p-capacity").hidden = !(cap || head);   // headroom reads the same demand case
   $("cap-hint").hidden = !cap;
   $("p-risk").hidden = !risk;
   $("grp-growth").classList.toggle("collapsed", !cap);
-  $("legend").hidden = cap || dia || risk;   // the coverage legend means nothing here
+  $("legend").hidden = cap || dia || risk || head;  // the coverage legend means nothing here
   $("legend-cap").hidden = !cap;
   $("legend-dia").hidden = !dia;
   $("legend-risk").hidden = !risk;
+  $("legend-head").hidden = !head;
+  $("p-headroom-info").hidden = !head;
+  if (head) headroomState();
   if (risk) riskState();                     // fills the hint on first switch
 }
 
