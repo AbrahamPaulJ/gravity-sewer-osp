@@ -126,7 +126,7 @@ window.GrowthUI = (function () {
     put(lead,
       // The panel's "connected here" counts only the manhole's own pipe. The rest come in
       // through pipe ends with no manhole on record; saying so stops the numbers disagreeing.
-      row("#00d4ff", "<strong>" + r.here + "</strong> reach it first" +
+      row("#1f4fff", "<strong>" + r.here + "</strong> reach it first" +
         (r.here > r.direct ? " (" + (r.here - r.direct) + " via unrecorded pipe ends)" : ""),
         true),
       row("#7dc4e0", "<strong>" + r.through + "</strong> drain through it from further up"),
@@ -143,12 +143,14 @@ window.GrowthUI = (function () {
   /* ------------------------------------------------------------------ list */
   function buildList() {
     const R = runs(), sel = $("#site");
-    // Busiest first: the manholes with the most homes connected directly to them.
-    const order = R.chambers.map((_, i) => i).sort((a, b) =>
-      (R.dwellingsAt[b] || 0) - (R.dwellingsAt[a] || 0));
+    // Busiest first, by the same count as the panel: homes reaching the manhole first,
+    // including those entering at an unrecorded pipe end above it.
+    const homes = i => { const r = Growth3D.reach(nameOf(i)); return r ? r.here : (R.dwellingsAt[i] || 0); };
+    const n = R.chambers.map((_, i) => homes(i));
+    const order = R.chambers.map((_, i) => i).sort((a, b) => n[b] - n[a]);
     sel.innerHTML = order.map(i =>
       "<option value=" + JSON.stringify(String(i)) + ">" + esc(label(i)) +
-      "  (" + (R.dwellingsAt[i] || 0) + " homes)</option>").join("");
+      "  (" + n[i] + " homes)</option>").join("");
     sel.onchange = () => select(+sel.value);
     return order;
   }
@@ -195,13 +197,12 @@ window.GrowthUI = (function () {
 
   function renderPanel(c, row) {
     const R = runs();
-    const dw = R.dwellingsAt[st.site] || 0;
     const add = R.growthLevels[st.add];
     const tipped = row ? row.tip : [];
     const cs = R.cases[st.ii];
 
     $("#siteFacts").innerHTML =
-      row2("Connected here now", dw + " properties") +
+      reachRow() +
       row2("Adding", "<b>+" + add + "</b> dwellings") +
       row2("Manholes that see it", tipped.length
         ? '<b class="bad">' + tipped.length + "</b>"
@@ -222,6 +223,18 @@ window.GrowthUI = (function () {
           "over the alarm in this case <b>before any houses are added</b>. They are amber and " +
           "cannot report the growth."
         : "No manhole is over the alarm before growth in this case.");
+  }
+
+  /* Homes whose sewage reaches this manhole first. The model loads a home at the top of
+     its pipe, and about half the pipes start at a pipe end with no manhole on record, so
+     counting only the homes loaded AT the manhole left those out. */
+  function reachRow() {
+    const r = Growth3D.reach(nameOf(st.site));
+    if (!r) return row2("Homes reaching it first", (runs().dwellingsAt[st.site] || 0) + "");
+    const via = r.here - r.direct;
+    return row2("Homes reaching it first", "<b>" + r.here + "</b>") + (via
+      ? '<div class="fact sub2"><span>' + via + " via unrecorded pipe ends</span><span></span></div>"
+      : "");
   }
 
   const row2 = (k, v) => '<div class="fact"><span>' + esc(k) + "</span><span>" + v +

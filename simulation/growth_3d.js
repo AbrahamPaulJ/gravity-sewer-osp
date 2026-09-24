@@ -19,7 +19,8 @@ window.Growth3D = (function () {
   let renderer, scene, camera, controls, ray, pointer;
   let pipeGeo = null, pipeColours = null, chamberMeshes = [], labelLayer = null;
   let built = false, onPick = null, onHover = null, focusRing = null, outletLabel = null;
-  let houseGeo = null, houseColours = null, houseHi = null, houseUp = null, sleeves = null;
+  let houseGeo = null, houseColours = null, houseHi = null, houseRim = null, houseUp = null,
+      sleeves = null;
   let siteLabel = null, bottleneckMesh = null, lastPipeState = null;
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
   const clock = { t0: performance.now() };
@@ -28,6 +29,7 @@ window.Growth3D = (function () {
      background and was unreadable: every state looked like every other state. On a dark
      ground a saturated colour carries, so the three pipe states separate at a glance and
      the markers stop competing with the pipes for attention. */
+  const HI_MIN = 16, HI_MAX = 20, RIM = 5;   // linked-home dot sizes; RIM is the white edge
   const COL = {
     bg: 0x0d1117,
     ok: [0x4c, 0x8b, 0xf5],        // blue, has room
@@ -43,6 +45,11 @@ window.Growth3D = (function () {
     sensor: 0x3fb950,              // green, a proposed sensor
     houseDim: 0x3a2430,            // a property with nothing to do with the selection
     houseUp: 0x7dc4e0,             // drains THROUGH the selected manhole, from further up
+    // Royal blue, not the cyan of the growth marker: "these homes reach this manhole first"
+    // and "the new dwellings connect here" are different facts. A white rim keeps a dark
+    // blue readable on the near-black background and apart from the blue pipes.
+    houseHere: 0x1f4fff,
+    houseRim: 0xffffff,
     sleeve: 0x00d4ff,              // the pipes those homes drain through
     // A sleeve is translucent cyan over whatever the pipe already is. Cyan over amber
     // ("already surcharged, not growth") mixes toward green, which reads as a fourth,
@@ -96,7 +103,13 @@ window.Growth3D = (function () {
         // The blink. One shared clock so every pulsing thing stays in phase rather than
         // drifting against each other, which read as flicker rather than a deliberate beat.
         const t = (performance.now() - clock.t0) / 1000, beat = Math.sin(t * 3.4);
-        if (houseHi) { houseHi.material.opacity = 0.55 + 0.45 * beat; houseHi.material.size = 13 + 3.5 * beat; }
+        // Linked homes never shrink below HI_MIN (plain homes are 4.5) or fade below 80%,
+        // so even at the bottom of the pulse they cannot be mistaken for unrelated ones.
+        if (houseHi) {
+          const sz = HI_MIN + (HI_MAX - HI_MIN) * (0.5 + 0.5 * beat);
+          houseHi.material.size = sz; houseHi.material.opacity = 0.9 + 0.1 * beat;
+          houseRim.material.size = sz + RIM; houseRim.material.opacity = 0.8 + 0.2 * beat;
+        }
         if (houseUp) { houseUp.material.opacity = 0.5 + 0.35 * Math.sin(t * 3.4 + 0.7); }
         if (sleeves) sleeves.material.opacity = 0.20 + 0.22 * (0.5 + 0.5 * beat);
         renderer.render(scene, camera);
@@ -137,7 +150,7 @@ window.Growth3D = (function () {
       scene.add(new THREE.Points(houseGeo, new THREE.PointsMaterial({
         size: 4.5, sizeAttenuation: true, vertexColors: true,
         transparent: true, opacity: 0.9 })));
-      const overlay = (col, size) => {
+      const overlay = (col, size, order = 2) => {
         const geo = new THREE.BufferGeometry();
         geo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(hp), 3));
         geo.setDrawRange(0, 0);
@@ -146,7 +159,7 @@ window.Growth3D = (function () {
         // dot at the identical depth then painted over its centre.
         const pts = new THREE.Points(geo, new THREE.PointsMaterial({
           color: col, size, sizeAttenuation: true, transparent: true, opacity: 1 }));
-        pts.renderOrder = 2;
+        pts.renderOrder = order;
         scene.add(pts);
         return pts;
       };
@@ -154,7 +167,8 @@ window.Growth3D = (function () {
       // opacity and size), because a same-size, same-brightness dot in a field of 643
       // others is easy to lose the moment you move the mouse.
       houseUp = overlay(COL.houseUp, 9);
-      houseHi = overlay(COL.site, 13);
+      houseRim = overlay(COL.houseRim, HI_MIN + RIM, 3);   // drawn under the blue, a size up
+      houseHi = overlay(COL.houseHere, HI_MIN, 4);
     }
 
     // Pipe ends the manhole record does not cover. Drawn small and dark so the question
@@ -391,11 +405,24 @@ window.Growth3D = (function () {
                                     further up that drain through it
        { mode: "sensors", names }   homes whose sewage passes any of these manholes
        null                         every home, plain */
+  /* How many homes reach a manhole first, and how many of those enter at the manhole itself
+     rather than at an unrecorded pipe end above it. The same rule highlight() paints by,
+     without touching the map, so the side panel and the homes key cannot disagree. */
+  function reach(name) {
+    if (!built || !G().hn) return null;
+    const g = G(), t = topology(), me = t.idxOf[name];
+    if (me == null) return null;
+    let here = 0, direct = 0;
+    g.hn.forEach(node => { if (t.firstMh[node] === me) { here++; if (node === me) direct++; } });
+    return { here, direct };
+  }
+
   function highlight(spec) {
     if (!built || !houseGeo || !G().hn) return null;
     const g = G(), t = topology(), n = g.hn.length;
     const arr = houseColours.array, src = houseGeo.attributes.position.array;
     const hiPos = houseHi.geometry.attributes.position.array;
+    const rimPos = houseRim.geometry.attributes.position.array;
     const upPos = houseUp.geometry.attributes.position.array;
     const paintHouse = (i, hex) => {
       arr[i * 3] = ((hex >> 16) & 255) / 255;
@@ -431,9 +458,10 @@ window.Growth3D = (function () {
       out = { mode: "none", total: n };
     }
     houseColours.needsUpdate = true;
-    houseHi.material.color.setHex(out.mode === "sensors" ? COL.watched : COL.site);
-    houseHi.material.size = 13; houseUp.material.opacity = 1; houseHi.material.opacity = 1;
-    [[houseHi, nHi], [houseUp, nUp]].forEach(([pts, k]) => {
+    houseHi.material.color.setHex(out.mode === "sensors" ? COL.watched : COL.houseHere);
+    houseUp.material.opacity = 1;
+    rimPos.set(hiPos.subarray(0, nHi * 3));             // the rim sits under every linked home
+    [[houseHi, nHi], [houseRim, nHi], [houseUp, nUp]].forEach(([pts, k]) => {
       pts.geometry.setDrawRange(0, k);
       pts.geometry.attributes.position.needsUpdate = true;
       pts.frustumCulled = false;
@@ -546,5 +574,5 @@ window.Growth3D = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { build, paint, highlight, showBottlenecks, frame, resize, ZEXAG };
+  return { build, paint, highlight, reach, showBottlenecks, frame, resize, ZEXAG };
 })();

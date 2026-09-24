@@ -109,7 +109,7 @@ window.GrowthUI = (function () {
     put(lead,
       // The panel's "connected here" counts only the manhole's own pipe. The rest come in
       // through pipe ends with no manhole on record; saying so stops the numbers disagreeing.
-      row("#00d4ff", "<strong>" + r.here + "</strong> reach it first" +
+      row("#1f4fff", "<strong>" + r.here + "</strong> reach it first" +
         (r.here > r.direct ? " (" + (r.here - r.direct) + " via unrecorded pipe ends)" : ""),
         true),
       row("#7dc4e0", "<strong>" + r.through + "</strong> drain through it from further up"),
@@ -173,14 +173,13 @@ window.GrowthUI = (function () {
 
   function renderPanel(c, row) {
     const R = runs();
-    const dw = R.dwellingsAt[st.site] || 0;
     const cap = R.capacities[st.site];
     const add = R.growthLevels[st.add];
     const tipped = row ? row.tip : [];
     const spilling = row ? row.spill : [];
 
     $("#siteFacts").innerHTML =
-      row2("Connected here now", dw + " properties") +
+      reachRow() +
       row2("Adding", "<b>+" + add + "</b> dwellings") +
       row2("Runs out of room at", cap == null ? "beyond what was tested" : "<b>+" + cap + "</b>") +
       row2("Chambers tipped", tipped.length
@@ -203,6 +202,18 @@ window.GrowthUI = (function () {
       : "No chamber is surcharged before growth in " +
         esc(R.iiLevels[st.ii].label.toLowerCase()) + " conditions. Everything red is caused " +
         "by the new dwellings.";
+  }
+
+  /* Homes whose sewage reaches this manhole first. The model loads a home at the top of
+     its pipe, and about half the pipes start at a pipe end with no manhole on record, so
+     counting only the homes loaded AT the manhole left those out. */
+  function reachRow() {
+    const r = Growth3D.reach(nameOf(st.site));
+    if (!r) return row2("Homes reaching it first", (runs().dwellingsAt[st.site] || 0) + "");
+    const via = r.here - r.direct;
+    return row2("Homes reaching it first", "<b>" + r.here + "</b>") + (via
+      ? '<div class="fact sub2"><span>' + via + " via unrecorded pipe ends</span><span></span></div>"
+      : "");
   }
 
   const row2 = (k, v) => '<div class="fact"><span>' + esc(k) + "</span><span>" + v +
