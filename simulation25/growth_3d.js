@@ -21,7 +21,7 @@ window.Growth3D = (function () {
   let built = false, onPick = null, onHover = null, focusRing = null, outletLabel = null;
   let houseGeo = null, houseColours = null, houseHi = null, houseRim = null, houseUp = null,
       sleeves = null;
-  let siteLabel = null, bottleneckMesh = null, lastPipeState = null;
+  let siteLabel = null, bottleneckMesh = null, lastPipeState = null, region = null;
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
   const clock = { t0: performance.now() };
   const ZEXAG = 22.0;
@@ -59,6 +59,9 @@ window.Growth3D = (function () {
     sleeveOnAmber: 0xffe066,
     watched: 0x3fb950,             // sewage passes a proposed sensor on its way out
     bottleneck: 0xffffff,          // the fixed set of pipes find_bottlenecks() names
+    region: 0x4f5d75,              // the rest of the council network: solved, not a candidate
+    entryIn: 0xf0f6fc,             // an outside inflow joining the study area itself
+    entryOut: 0x8b949e,            // an outside inflow joining the rest of the network
   };
 
   function ensureThree() {
@@ -555,6 +558,48 @@ window.Growth3D = (function () {
     if (!siteName) { focusRing.visible = false; siteLabel.el.style.display = "none"; }
   }
 
+  /* The optional "Whole Walkerville" view: the rest of the network the whole-domain run
+     solves, greyed out, and where the outside inflows join. Built on first use and kept OUT
+     of the scene while hidden, because frame() sizes the view from everything in the scene. */
+  function buildRegion() {
+    const c = G().context;
+    if (!c) return null;
+    const grp = new THREE.Group(), pos = [];
+    for (let p = 0; p < c.nPipes; p++) {
+      const a = c.ptr[p], b = c.ptr[p + 1], n = b - a;
+      for (let i = a; i < b - 1; i++) {
+        const f0 = (i - a) / (n - 1), f1 = (i + 1 - a) / (n - 1);
+        const v0 = P(c.px[i], c.py[i], c.zu[p] + (c.zd[p] - c.zu[p]) * f0);
+        const v1 = P(c.px[i + 1], c.py[i + 1], c.zu[p] + (c.zd[p] - c.zu[p]) * f1);
+        pos.push(v0.x, v0.y, v0.z, v1.x, v1.y, v1.z);
+      }
+    }
+    const lg = new THREE.BufferGeometry();
+    lg.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    grp.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: COL.region })));
+    [true, false].forEach(into => {
+      const ep = [];
+      c.entries.filter(e => e.into === into).forEach(e => {
+        const v = P(e.x, e.y, e.z); ep.push(v.x, v.y, v.z);
+      });
+      if (!ep.length) return;
+      const eg = new THREE.BufferGeometry();
+      eg.setAttribute("position", new THREE.Float32BufferAttribute(ep, 3));
+      grp.add(new THREE.Points(eg, new THREE.PointsMaterial({
+        color: into ? COL.entryIn : COL.entryOut, size: into ? 70 : 45, sizeAttenuation: true })));
+    });
+    return grp;
+  }
+
+  function showRegion(show) {
+    if (!built) return false;
+    if (show && !region) region = buildRegion();
+    if (!region) return false;
+    if (show) scene.add(region); else scene.remove(region);
+    frame(null);
+    return true;
+  }
+
   function frame(tightOn) {
     if (!built) return;
     const box = new THREE.Box3().setFromObject(scene);
@@ -580,5 +625,5 @@ window.Growth3D = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { build, paint, highlight, reach, showBottlenecks, frame, resize, ZEXAG };
+  return { build, paint, highlight, reach, showBottlenecks, showRegion, frame, resize, ZEXAG };
 })();

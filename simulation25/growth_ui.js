@@ -452,6 +452,15 @@ window.GrowthUI = (function () {
     };
     $("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").hidden = true; };
     $("#fitAll").onclick = () => Growth3D.frame(null);
+    // Off by default: the page is about the 71 study manholes, and the whole network makes
+    // them a fifth of the view. On demand it shows what "whole council network" means.
+    $("#toggleRegion").onclick = () => {
+      st.showRegion = !st.showRegion;
+      if (!Growth3D.showRegion(st.showRegion)) { st.showRegion = false; return; }
+      $("#toggleRegion").classList.toggle("primary", st.showRegion);
+      $("#toggleRegion").textContent = st.showRegion ? "Study area only" : "Whole Walkerville";
+      $("#regionKey").hidden = !st.showRegion;
+    };
     $("#fitSite").onclick = () => Growth3D.frame(nameOf(st.site));
     $("#toggleSensors").onclick = () => {
       st.showSensors = !st.showSensors;
