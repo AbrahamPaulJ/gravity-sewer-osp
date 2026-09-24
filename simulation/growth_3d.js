@@ -29,7 +29,8 @@ window.Growth3D = (function () {
      background and was unreadable: every state looked like every other state. On a dark
      ground a saturated colour carries, so the three pipe states separate at a glance and
      the markers stop competing with the pipes for attention. */
-  const HI_MIN = 16, HI_MAX = 20, RIM = 5;   // linked-home dot sizes; RIM is the white edge
+  const HI_MIN = 18, HI_MAX = 21, RIM = 5;   // linked-home dot sizes; RIM is the white edge
+  const UP_MIN = 15, UP_MAX = 17;            // upstream homes: as clearly apart from plain (4.5)
   const COL = {
     bg: 0x0d1117,
     ok: [0x4c, 0x8b, 0xf5],        // blue, has room
@@ -110,7 +111,12 @@ window.Growth3D = (function () {
           houseHi.material.size = sz; houseHi.material.opacity = 0.9 + 0.1 * beat;
           houseRim.material.size = sz + RIM; houseRim.material.opacity = 0.8 + 0.2 * beat;
         }
-        if (houseUp) { houseUp.material.opacity = 0.5 + 0.35 * Math.sin(t * 3.4 + 0.7); }
+        // Upstream homes get the same floor: never below UP_MIN or 80% while blinking.
+        if (houseUp) {
+          const b2 = 0.5 + 0.5 * Math.sin(t * 3.4 + 0.7);
+          houseUp.material.size = UP_MIN + (UP_MAX - UP_MIN) * b2;
+          houseUp.material.opacity = 0.8 + 0.2 * b2;
+        }
         if (sleeves) sleeves.material.opacity = 0.20 + 0.22 * (0.5 + 0.5 * beat);
         renderer.render(scene, camera);
         [outletLabel, siteLabel].forEach(lbl => {
@@ -166,7 +172,7 @@ window.Growth3D = (function () {
       // Bigger than the plain layer, and blinking (the render loop below pulses their
       // opacity and size), because a same-size, same-brightness dot in a field of 643
       // others is easy to lose the moment you move the mouse.
-      houseUp = overlay(COL.houseUp, 9);
+      houseUp = overlay(COL.houseUp, UP_MIN);
       houseRim = overlay(COL.houseRim, HI_MIN + RIM, 3);   // drawn under the blue, a size up
       houseHi = overlay(COL.houseHere, HI_MIN, 4);
     }
