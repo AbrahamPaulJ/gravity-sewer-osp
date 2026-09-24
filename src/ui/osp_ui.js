@@ -951,7 +951,12 @@ async function run() {
        placed, the chambers growth NEWLY surcharges are the target, because those
        are the ones a future rollout has to catch; otherwise it is the ones already
        surcharging today. */
+    /* extra is declared here, beside objective, because the objective blocks below
+       write into it. It used to be declared after them, which meant selecting the
+       growth objective hit the temporal dead zone and threw "Cannot access 'extra'
+       before initialization" instead of running. */
     let objective = S.objective, marked = null;
+    const extra = {};
     if (S.objective === "growth") {
       /* Weight a chamber by how many potential connection points announce
          themselves there. Several sites share one binding reach, so covering
@@ -997,7 +1002,6 @@ async function run() {
       objective = { w };
     }
 
-    const extra = {};
     /* The weight vector the topology heuristics aggregate over. Null under the
        plain node objective, which lets them reuse their cached unweighted results
        and reduce exactly to the counting versions they have always been. */
