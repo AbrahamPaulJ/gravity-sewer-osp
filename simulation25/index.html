@@ -63,8 +63,22 @@ h4{margin:14px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.
 .quiet{color:var(--faint); font-size:12px; margin:4px 0}
 #baseNote{margin-top:12px; padding:9px 10px; border-radius:7px; background:#2a1f08;
   border:1px solid var(--amber); color:#ffcf7a; font-size:11.5px; line-height:1.45}
-#sensorList{margin-top:14px; padding:11px; border:1px solid var(--line); border-radius:8px;
+#sensorBox{margin-top:14px; padding:11px; border:1px solid var(--line); border-radius:8px;
   background:var(--panel-2); font-size:12.5px}
+#sensorBox h4{margin-top:0}
+#kRange{width:100%; accent-color:var(--accent)}
+#objKnob{margin-top:8px}
+/* The coverage curve. Series colours are the reference categorical slots 1 and 2 (dark
+   steps), validated against this panel; text stays in text colours. */
+#curve{position:relative; margin-top:10px; --worst:#d95926; --mean:#3987e5}
+#curve svg{display:block; width:100%; height:auto; overflow:visible}
+#curve .lg{display:flex; gap:14px; font-size:11px; color:var(--dim); margin-bottom:4px}
+#curve .lg i{display:inline-block; width:14px; height:2px; vertical-align:3px; margin-right:5px}
+#curveTip{position:absolute; pointer-events:none; background:#0d1117; border:1px solid var(--line);
+  border-radius:6px; padding:5px 8px; font-size:11px; color:var(--ink); white-space:nowrap;
+  transform:translate(-50%,-110%)}
+#curveTip[hidden]{display:none}
+#sensorList{margin-top:10px; font-size:12.5px}
 #sensorList p{margin:0 0 8px}
 #sensorList ol{margin:0 0 8px; padding-left:20px}
 #sensorList table{width:100%; border-collapse:collapse; font-size:12px}
@@ -72,8 +86,12 @@ h4{margin:14px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.
 #sensorList td:last-child{text-align:right; color:var(--faint)}
 main{display:flex; flex-direction:column; min-width:0; overflow:hidden;
   position:relative}   /* the assumptions pane is absolutely positioned inside it */
-nav{display:flex; gap:5px; align-items:center; padding:8px 13px;
+nav{display:flex; flex-direction:column; gap:6px; padding:8px 13px;
   border-bottom:1px solid var(--line); background:var(--panel)}
+.navrow{display:flex; gap:5px; align-items:center; flex-wrap:wrap}
+.navlbl{width:42px; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--faint)}
+.navsep{width:1px; height:22px; background:var(--line); margin:0 6px}
 nav button{font:inherit; padding:6px 13px; border:1px solid var(--line);
   background:var(--panel-2); border-radius:6px; cursor:pointer; color:var(--ink)}
 nav button:disabled{opacity:.4; cursor:not-allowed}
@@ -97,6 +115,9 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   font-size:11.5px; display:flex; gap:7px 18px; flex-wrap:wrap; align-items:center}
 .legend b{color:#c9d1d9; font-weight:600; margin-right:2px}
 .legend .grp[hidden]{display:none}
+.heatbar{display:inline-flex; align-items:center; gap:6px}
+.heatbar i{display:inline-block; width:120px; height:9px; border-radius:2px;
+  background:linear-gradient(90deg,#104281,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb)}
 .legend .grp{display:flex; gap:14px; align-items:center; flex-wrap:wrap}
 .legend .k{display:inline-block; width:11px; height:11px; border-radius:50%;
   vertical-align:-2px; margin-right:6px}
@@ -225,21 +246,40 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   <div id="siteFacts"></div>
   <div id="tipList"></div>
   <div id="baseNote"></div>
-  <div id="sensorList"></div>
+  <div id="sensorBox">
+    <h4>Sensors, chosen once across all 12 cases</h4>
+    <label class="fld" for="kRange">Number of sensors: <b id="kVal"></b></label>
+    <input type="range" id="kRange" min="1" max="10" step="1">
+    <div class="knob" id="objKnob">
+      <button data-o="worst" title="Each sensor is the one that most raises the WORST case of the 12">Best worst case</button>
+      <button data-o="mean" title="Each sensor is the one that most raises the AVERAGE over the 12 cases">Best average</button>
+    </div>
+    <div class="quiet" id="objNote"></div>
+    <div id="curve"></div>
+    <div id="sensorList"></div>
+  </div>
 </aside>
 
 <div id="grip" title="Drag to resize"></div>
 
 <main>
+  <!-- Two rows: what is on the map, then what there is to read. -->
   <nav>
-    <button id="fitAll">Whole catchment</button>
-    <button id="toggleRegion" title="Show the rest of the council network the model solves">Whole Walkerville</button>
-    <button id="fitSite">Zoom to the growth</button>
-    <button id="toggleSensors">Show proposed sensors</button>
-    <button id="tab-ref">Assumptions</button>
-    <button id="toggleRobust">Show robust pair</button>
-    <button id="tab-qa">Findings</button>
-    <button id="btn-info" class="info">About this model</button>
+    <div class="navrow">
+      <span class="navlbl">Map</span>
+      <button id="fitAll">Whole catchment</button>
+      <button id="fitSite">Zoom to the growth</button>
+      <button id="toggleRegion" title="Show the rest of the council network the model solves">Whole Walkerville</button>
+      <span class="navsep"></span>
+      <button id="toggleSensors">Show sensors</button>
+      <button id="toggleHeat" title="Colour every manhole by how much growth it would see on its own">Heatmap</button>
+    </div>
+    <div class="navrow">
+      <span class="navlbl">Read</span>
+      <button id="tab-ref">Assumptions</button>
+      <button id="tab-qa">Findings</button>
+      <button id="btn-info" class="info">About this model</button>
+    </div>
   </nav>
   <div id="stageWrap">
     <div id="stage"></div>
@@ -247,6 +287,12 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   </div>
 
   <div class="legend">
+    <div class="grp" id="heatKey" hidden><b>Heatmap</b>
+      <span>share of detectable growth a manhole sees on its own, <span id="heatWhich"></span>:</span>
+      <span class="heatbar"><span>0%</span><i></i><span id="heatTop"></span></span>
+      <span>(scale runs to the highest manhole)</span>
+      <span>pipes greyed while it is on</span>
+    </div>
     <div class="grp" id="regionKey" hidden><b>Whole Walkerville</b>
       <span><span class="kl" style="background:#4f5d75"></span>rest of the council network: solved with the study area, not a growth site or sensor candidate</span>
       <span><span class="k" style="background:#f0f6fc"></span>outside inflow into the study area</span>
@@ -279,11 +325,11 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=28"></script>
-<script src="data/growth.js?v=28"></script>
-<script src="data/index.js?v=28"></script>
-<script src="growth_3d.js?v=28"></script>
-<script src="growth_ui.js?v=28"></script>
+<script src="data/catchment.js?v=29"></script>
+<script src="data/growth.js?v=29"></script>
+<script src="data/index.js?v=29"></script>
+<script src="growth_3d.js?v=29"></script>
+<script src="growth_ui.js?v=29"></script>
 <script type="module">
   GrowthUI.init();
 </script>

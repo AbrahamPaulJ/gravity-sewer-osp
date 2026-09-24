@@ -62,6 +62,7 @@ window.Growth3D = (function () {
     region: 0x4f5d75,              // the rest of the council network: solved, not a candidate
     entryIn: 0xf0f6fc,             // an outside inflow joining the study area itself
     entryOut: 0x8b949e,            // an outside inflow joining the rest of the network
+    heatPipe: [0x3a, 0x42, 0x50],  // pipes while the heatmap is on: neutral, out of the way
   };
 
   function ensureThree() {
@@ -457,9 +458,11 @@ window.Growth3D = (function () {
       const up = upstream(spec.names);
       pipes = up.pipes;
       let watched = 0;
+      // Counted, not drawn: big highlighted homes over the green sensors were too busy.
+      // Every home is a faint dot here; the homes box still gives the count.
       for (let i = 0; i < n; i++) {
-        paintHouse(i, COL.house);
-        if (up.nodes.has(g.hn[i])) { copy(hiPos, nHi++, i); watched++; }
+        paintHouse(i, COL.houseDim);
+        if (up.nodes.has(g.hn[i])) watched++;
       }
       out = { mode: "sensors", watched, unwatched: n - watched, total: n };
     } else {
@@ -506,6 +509,7 @@ window.Growth3D = (function () {
     sleeves.count = k;
     sleeves.instanceMatrix.needsUpdate = true;
     if (sleeves.instanceColor) sleeves.instanceColor.needsUpdate = true;
+    out.drawn = nHi + nUp;          // highlighted homes actually on screen
     return out;
   }
 
@@ -514,7 +518,19 @@ window.Growth3D = (function () {
   }
 
   /* Recolour for one scenario. `state` maps a chamber name to "tip" | "was" | "ok". */
-  function paint(state, siteName, sensors) {
+  /* Heatmap colour: one hue (the reference sequential blue), dark near 0 so a manhole that
+     sees little recedes into the dark background, light near 100%. */
+  const HEAT_RAMP = [0x104281, 0x184f95, 0x1c5cab, 0x256abf, 0x2a78d6, 0x3987e5,
+                     0x5598e7, 0x6da7ec, 0x86b6ef, 0x9ec5f4, 0xb7d3f6, 0xcde2fb];
+  function heatHex(v) {
+    const x = Math.max(0, Math.min(1, v)) * (HEAT_RAMP.length - 1), i = Math.floor(x);
+    if (i >= HEAT_RAMP.length - 1) return HEAT_RAMP[HEAT_RAMP.length - 1];
+    const a = HEAT_RAMP[i], b = HEAT_RAMP[i + 1], f = x - i, ch = s => (h => (h >> s) & 255);
+    const mix = s => Math.round(ch(s)(a) + (ch(s)(b) - ch(s)(a)) * f);
+    return (mix(16) << 16) | (mix(8) << 8) | mix(0);
+  }
+
+  function paint(state, siteName, sensors, heat) {
     if (!built) return;
     const g = G();
     const nodeState = name => state[name] || "ok";
@@ -530,7 +546,8 @@ window.Growth3D = (function () {
     }
     lastPipeState = pipeCol;   // read by highlight() to keep a sleeve off cyan-on-amber
     for (let s = 0; s < segPipe.length; s++) {
-      const c = COL[pipeCol[segPipe[s]] === "tip" ? "tip"
+      // Heatmap on: pipes go neutral so the only colour on screen is the manholes' score.
+      const c = heat ? COL.heatPipe : COL[pipeCol[segPipe[s]] === "tip" ? "tip"
         : pipeCol[segPipe[s]] === "was" ? "was" : "ok"];
       for (let k = 0; k < 2; k++) {
         const o = (s * 2 + k) * 3;
@@ -544,9 +561,10 @@ window.Growth3D = (function () {
       const nm = m.userData.node.name;
       const st = nodeState(nm);
       const c = sensorSet.has(nm) ? COL.sensor
+        : heat ? heatHex(heat[nm] || 0)
         : st === "tip" ? 0xff2d55 : st === "was" ? 0xffa500 : COL.chamber;
       m.material.color.setHex(c);
-      m.scale.setScalar(sensorSet.has(nm) ? 2.1 : st === "ok" ? 1 : 1.6);
+      m.scale.setScalar(sensorSet.has(nm) ? 2.1 : heat ? 1.5 : st === "ok" ? 1 : 1.6);
       if (nm === siteName) {
         focusRing.position.copy(m.position);
         focusRing.visible = true;
@@ -625,5 +643,6 @@ window.Growth3D = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { build, paint, highlight, reach, showBottlenecks, showRegion, frame, resize, ZEXAG };
+  return { build, paint, highlight, reach, showBottlenecks, showRegion, frame, resize, heatHex,
+           ZEXAG };
 })();

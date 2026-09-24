@@ -13,7 +13,9 @@ window.GrowthUI = (function () {
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
   // ii = case index; add = growth size index; rule = detection rule index (25 mm rise).
-  const st = { site: 0, showSensors: false, showRobust: false, ii: 1, add: 3, rule: 2,
+  // k and obj drive the sensor set: k sensors chosen once across all 12 cases, for the best
+  // worst case or the best average. showHeat colours the manholes by their own coverage.
+  const st = { site: 0, showSensors: false, showHeat: false, k: 3, obj: "worst", ii: 1, add: 3, rule: 2,
                hover: null };                                  // a manhole NAME, or null
 
   const runs = () => window.GROWTH_RUNS;
@@ -36,16 +38,22 @@ window.GrowthUI = (function () {
   const graded = () => ruleId() !== "alarm";
   const caseLabel = () => runs().cases[st.ii].label;
 
-  /* The one pair chosen across ALL twelve cases for the current rise rule (Sim 2.5's main
-     result). None exists for the alarm rule: there the choice moves with every case. */
-  function robustSensors() {
-    const rb = runs().robust[ruleId()];
-    return rb && rb.holds ? rb.pair.map(i => nameOf(i)) : [];
-  }
+  /* The sensor set: the first k of the order chosen across ALL twelve cases for the current
+     rule and objective. The order is nested, so sensor k+1 is always added to the first k. */
+  const placement = () => runs().sensors[ruleId()][st.obj];
+  const sensorSet = () => placement().order.slice(0, st.k).map(i => nameOf(i));
+  function shownSensors() { return st.showSensors ? sensorSet() : []; }
 
-  function shownSensors(c) {
-    if (st.showRobust) return robustSensors();
-    return st.showSensors ? c.coverage.chosen.map(x => nameOf(+x.chamber)) : [];
+  /* name -> the manhole's coverage on its own, for the heatmap, or null when it is off. */
+  /* Coloured 0% to the highest value present, not 0 to 100%: in the worst case most manholes
+     see under a tenth on their own, and a fixed scale left the whole map one dark blue. The
+     legend states the top of the scale, so the stretch is never hidden. */
+  const heatMax = () => Math.max(1e-9, ...runs().heat[ruleId()][st.obj]);
+  function heatValues() {
+    if (!st.showHeat) return null;
+    const v = runs().heat[ruleId()][st.obj], top = heatMax(), out = {};
+    v.forEach((x, i) => { out[nameOf(i)] = x / top; });
+    return out;
   }
 
   function rowFor(c, siteIdx) {
@@ -75,12 +83,16 @@ window.GrowthUI = (function () {
     // Growth3D works in chamber NAMES, so translate once, here.
     const named = {};
     for (const k in byIdx) named[nameOf(+k)] = byIdx[k];
-    const sensors = shownSensors(c);
-    Growth3D.paint(named, nameOf(st.site), sensors);
+    const sensors = shownSensors();
+    Growth3D.paint(named, nameOf(st.site), sensors, heatValues());
     renderHomes(sensors);
     $("#site").value = String(st.site);
     renderPanel(c, row);
-    renderSensors(c);
+    renderSensors();
+    $("#heatKey").hidden = !st.showHeat;
+    $("#heatTop").textContent = Math.round(100 * heatMax()) + "%";
+    $("#heatWhich").textContent = (st.obj === "worst" ? "worst of the 12 cases" : "average of the 12 cases") +
+      ", " + runs().rules[st.rule].label.toLowerCase();
     renderKnobs();
   }
 
@@ -105,7 +117,7 @@ window.GrowthUI = (function () {
     if (st.hover) {
       spec = { mode: "site", name: st.hover };
       lead = "Homes behind " + esc(mhName(st.hover));
-    } else if ((st.showSensors || st.showRobust) && sensors.length) {
+    } else if (st.showSensors && sensors.length) {
       spec = { mode: "sensors", names: sensors };
     } else {
       spec = { mode: "site", name: nameOf(st.site) };
@@ -115,14 +127,22 @@ window.GrowthUI = (function () {
     if (!r) { put("", "", "", "", ""); return; }
     if (r.mode === "sensors") {
       const pct = Math.round(100 * r.watched / r.total);
-      put("Homes and the proposed sensors",
+      put("Homes and the " + sensors.length + " sensor" + (sensors.length === 1 ? "" : "s"),
         row("#3fb950", "<strong>" + r.watched + "</strong> of " + r.total +
             " drain past a sensor (" + pct + "%)"),
-        row("#ff6f9c", "<strong>" + r.unwatched + "</strong> do not"),
+        row("", "<strong>" + r.unwatched + "</strong> do not"),
         row("", "&nbsp;"),
         "Green sleeves: pipes feeding a sensor");
       return;
     }
+    // Heatmap on: the hint line carries the hovered (or selected) manhole's own score.
+    const heatHint = () => {
+      const nm = st.hover || nameOf(st.site), R = runs(), i = R.chambers.indexOf(nm);
+      if (i < 0) return "Not a study manhole";
+      const h = R.heat[ruleId()];
+      return "On its own it sees " + Math.round(100 * h.mean[i]) + "% on average, " +
+        Math.round(100 * h.worst[i]) + "% in the worst case";
+    };
     put(lead,
       // The panel's "connected here" counts only the manhole's own pipe. The rest come in
       // through pipe ends with no manhole on record; saying so stops the numbers disagreeing.
@@ -131,8 +151,9 @@ window.GrowthUI = (function () {
         true),
       row("#7dc4e0", "<strong>" + r.through + "</strong> drain through it from further up"),
       row("#3a2430", "<strong>" + r.elsewhere + "</strong> elsewhere"),
-      st.hover ? "Previewing. Click to move the growth here."
-               : "Hover any manhole to preview its homes");
+      st.showHeat ? heatHint()
+        : st.hover ? "Previewing. Click to move the growth here."
+                   : "Hover any manhole to preview its homes");
   }
 
   function label(i) {
@@ -241,53 +262,86 @@ window.GrowthUI = (function () {
     "</span></div>";
 
   /* ------------------------------------------------------------- sensors */
-  function renderSensors(c) {
-    const R = runs(), cov = c.coverage;
-    const scen = c.rows.filter(r => r.tip.length).length;
-    const rb = R.robust[ruleId()];
-    const pct = x => Math.round(x * 100) + "%";
-    // A consensus pair exists for every rise rule, but at 50 mm its worst case keeps 0%:
-    // offering it as "robust" would be the opposite of the finding.
-    const robustHtml = rb && !rb.holds
-      ? "<h4>Robust pair</h4><p class=quiet>None at this rise. The best pair chosen across " +
-        "all 12 cases keeps only <b>" + pct(rb.keptMin) + "</b> of a case's own best " +
-        "coverage in the worst case (mean " + pct(rb.keptMean) + "): at this rise, some cases " +
-        "have too few growth sites that reach it. Try 10 or 25 mm.</p>"
-      : rb
-      ? "<h4>Robust pair, all 12 cases</h4><p><b>" + rb.pair.map(i => esc(label(i))).join(" + ") +
-        "</b>, chosen once across every case, keeps <b>" + Math.round(rb.keptMin * 100) +
-        "% to " + Math.round(rb.keptMax * 100) + "%</b> (mean " + Math.round(rb.keptMean * 100) +
-        "%) of the coverage each case's own best pair gets.</p>"
-      : "<h4>Robust pair</h4><p class=quiet>None under the alarm rule: the best manhole " +
-        "changes from case to case, because it is whichever one sits just under the alarm " +
-        "before any growth. Switch to a rise rule.</p>";
-    $("#toggleRobust").disabled = !(rb && rb.holds);
-    if (!cov.chosen.length) {
-      $("#sensorList").innerHTML = robustHtml +
-        "<p class=quiet>In this case, at +" + R.growthLevels[st.add] + " dwellings, no " +
-        "manhole passes the rule. There is nothing for a sensor to catch here.</p>";
-      return;
-    }
-    $("#sensorList").innerHTML = robustHtml + "<h4>Best for this case only</h4>" +
-      "<p>Fewest manholes that would see <b>every</b> one of the " + scen + " growth sites " +
-      "that trigger the rule, in this case and at this development size. Greedy set " +
-      "cover.</p>" +
-      "<ol>" + cov.chosen.map(x =>
-        "<li><b>" + esc(label(+x.chamber)) + "</b> covers " + x.newlyCovered +
-        " more</li>").join("") + "</ol>" +
-      "<p class=quiet><b>" + cov.chosen.length + "</b> sensor" +
-      (cov.chosen.length === 1 ? "" : "s") + " for <b>" + scen + "</b> sites." +
-      (cov.uncoverable && cov.uncoverable.length
-        ? " " + cov.uncoverable.length + " sites tip nothing here and are excluded rather " +
-          "than counted as covered." : "") + "</p>" +
-      (cov.best_single && cov.best_single.length
-        ? "<h4>Best single chambers</h4><table>" + cov.best_single.slice(0, 6).map(
-          ([idx, k]) => "<tr><td>" + esc(label(+idx)) + "</td><td>" + k +
-            " sites</td></tr>").join("") + "</table>"
-        : "") +
-      "<p class=quiet>On the map, green homes drain past a proposed sensor. That means " +
-      "their flow is in what it measures, not that a problem at their own street would " +
-      "show up there.</p>";
+  const OBJ_NOTE = {
+    worst: "Each sensor added is the one that most raises the worst of the 12 cases: " +
+           "whatever the unknowns turn out to be, at least this much is caught.",
+    mean: "Each sensor added is the one that most raises the average over the 12 cases. " +
+          "Catches more on average, but can leave one case poorly covered.",
+  };
+  const pct = x => Math.round(x * 100) + "%";
+
+  function renderSensors() {
+    const pl = placement(), k = st.k;
+    $("#kRange").value = String(k);
+    $("#kVal").textContent = String(k);
+    document.querySelectorAll("#objKnob button").forEach(b =>
+      b.classList.toggle("on", b.dataset.o === st.obj));
+    $("#objNote").textContent = OBJ_NOTE[st.obj];
+    renderCurve(pl, k);
+    const alarmNote = ruleId() === "alarm"
+      ? "<p class=quiet>Under the alarm rule the worst case is the dry one, where only one " +
+        "growth scenario passes the alarm at all, at one manhole. Until that manhole is " +
+        "chosen, the worst case stays at 0%.</p>" : "";
+    $("#sensorList").innerHTML =
+      "<p><b>" + k + "</b> sensor" + (k === 1 ? "" : "s") + " catch <b>" + pct(pl.worst[k - 1]) +
+      "</b> of detectable growth in the worst case and <b>" + pct(pl.mean[k - 1]) +
+      "</b> on average (all five growth sizes, " + esc(runs().rules[st.rule].label.toLowerCase()) +
+      ").</p><ol>" + pl.order.slice(0, k).map((m, j) =>
+        "<li><b>" + esc(label(m)) + "</b> <span class=quiet>worst " + pct(pl.worst[j]) +
+        ", average " + pct(pl.mean[j]) + "</span></li>").join("") + "</ol>" + alarmNote +
+      "<p class=quiet>Chosen one at a time, so the set for " + (k + 1) + " is this set plus " +
+      "one. Detectable growth: growth scenarios that at least one manhole sees.</p>";
+  }
+
+  /* Worst case and average against the number of sensors. One axis (percent), two series,
+     legend plus direct labels at the right end, the current count marked, hover per count. */
+  function renderCurve(pl, k) {
+    const W = 290, H = 132, L = 30, Rr = 50, T = 8, B = 22, n = pl.worst.length;
+    const x = i => L + (W - L - Rr) * i / (n - 1), y = v => T + (H - T - B) * (1 - v);
+    const line = arr => arr.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1)).join(" ");
+    const grid = [0, 0.5, 1].map(v => '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + y(v) +
+      '" y2="' + y(v) + '" stroke="#22314d" stroke-width="1"/><text x="' + (L - 5) + '" y="' +
+      (y(v) + 3.5) + '" text-anchor="end" font-size="10" fill="#6f81a3">' + (v * 100) + "%</text>").join("");
+    const ticks = pl.worst.map((_, i) => '<text x="' + x(i) + '" y="' + (H - 6) +
+      '" text-anchor="middle" font-size="10" fill="' + (i === k - 1 ? "#e7edf7" : "#6f81a3") + '">' +
+      (i + 1) + "</text>").join("");
+    const dots = (arr, col) => arr.map((v, i) => '<circle cx="' + x(i) + '" cy="' + y(v) + '" r="' +
+      (i === k - 1 ? 5 : 3) + '" fill="' + col + '" stroke="#16233a" stroke-width="2"/>').join("");
+    const hits = pl.worst.map((_, i) => '<rect class="hit" data-i="' + i + '" x="' + (x(i) - 12) +
+      '" y="' + T + '" width="24" height="' + (H - T - B + 16) + '" fill="transparent"/>').join("");
+    // Worst and average meet at the top, so their end labels are pushed apart if they collide.
+    let ew = y(pl.worst[n - 1]), em = y(pl.mean[n - 1]);
+    if (Math.abs(ew - em) < 11) { if (ew >= em) ew = em + 11; else em = ew + 11; }
+    $("#curve").innerHTML =
+      '<div class="lg"><span><i style="background:var(--worst)"></i>Worst case</span>' +
+      '<span><i style="background:var(--mean)"></i>Average</span></div>' +
+      '<svg viewBox="0 0 ' + W + " " + (H + 10) + '" role="img" aria-label="Share of detectable growth ' +
+      'caught against number of sensors">' + grid +
+      '<line x1="' + x(k - 1) + '" x2="' + x(k - 1) + '" y1="' + T + '" y2="' + (H - B) +
+      '" stroke="#a9b8d4" stroke-width="1" stroke-dasharray="3 3"/>' +
+      '<path d="' + line(pl.mean) + '" fill="none" stroke="var(--mean)" stroke-width="2"/>' +
+      '<path d="' + line(pl.worst) + '" fill="none" stroke="var(--worst)" stroke-width="2"/>' +
+      dots(pl.mean, "var(--mean)") + dots(pl.worst, "var(--worst)") +
+      '<text x="' + (x(n - 1) + 8) + '" y="' + (ew + 3.5) + '" font-size="10.5" fill="#a9b8d4">worst</text>' +
+      '<text x="' + (x(n - 1) + 8) + '" y="' + (em + 3.5) + '" font-size="10.5" fill="#a9b8d4">average</text>' +
+      ticks + '<text x="' + ((L + W - Rr) / 2) + '" y="' + (H + 7) + '" text-anchor="middle" ' +
+      'font-size="10" fill="#6f81a3">sensors</text>' + hits + "</svg>" +
+      '<div id="curveTip" hidden></div>';
+    const tip = $("#curveTip"), svg = $("#curve svg");
+    svg.querySelectorAll(".hit").forEach(r => {
+      const i = +r.dataset.i;
+      r.style.cursor = "pointer";
+      r.onmouseenter = () => {
+        const bx = svg.getBoundingClientRect(), cx = $("#curve").getBoundingClientRect();
+        tip.innerHTML = "<b>" + (i + 1) + " sensor" + (i ? "s" : "") + "</b>: worst " +
+          pct(pl.worst[i]) + ", average " + pct(pl.mean[i]);
+        tip.style.left = (bx.left - cx.left + x(i) * bx.width / W) + "px";
+        tip.style.top = (bx.top - cx.top + y(pl.worst[i]) * bx.height / (H + 10)) + "px";
+        tip.hidden = false;
+      };
+      r.onmouseleave = () => { tip.hidden = true; };
+      r.onclick = () => { st.k = i + 1; repaint(); };
+    });
   }
 
   /* ---------------------------------------------------- assumptions tab */
@@ -420,7 +474,7 @@ window.GrowthUI = (function () {
       const name = nd && nd.name !== nameOf(st.site) ? nd.name : null;
       if (name === st.hover) return;
       st.hover = name;
-      renderHomes(shownSensors(cell()));
+      renderHomes(shownSensors());
     }).then(() => {
       buildKnobs();
       const order = buildList();
@@ -439,17 +493,6 @@ window.GrowthUI = (function () {
     $("#refClose").onclick = () => setTab("map");
     $("#tab-qa").onclick = () => setTab($("#pane-qa").hidden ? "qa" : "map");
     $("#qaClose").onclick = () => setTab("map");
-    $("#toggleRobust").onclick = () => {
-      st.showRobust = !st.showRobust;
-      if (st.showRobust && st.showSensors) {       // one set of sensors on the map at a time
-        st.showSensors = false;
-        $("#toggleSensors").classList.remove("primary");
-        $("#toggleSensors").textContent = "Show proposed sensors";
-      }
-      $("#toggleRobust").classList.toggle("primary", st.showRobust);
-      $("#toggleRobust").textContent = st.showRobust ? "Hide robust pair" : "Show robust pair";
-      repaint();
-    };
     $("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").hidden = true; };
     $("#fitAll").onclick = () => Growth3D.frame(null);
     // Off by default: the page is about the 71 study manholes, and the whole network makes
@@ -464,15 +507,27 @@ window.GrowthUI = (function () {
     $("#fitSite").onclick = () => Growth3D.frame(nameOf(st.site));
     $("#toggleSensors").onclick = () => {
       st.showSensors = !st.showSensors;
-      if (st.showSensors && st.showRobust) {
-        st.showRobust = false;
-        $("#toggleRobust").classList.remove("primary");
-        $("#toggleRobust").textContent = "Show robust pair";
-      }
       $("#toggleSensors").classList.toggle("primary", st.showSensors);
-      $("#toggleSensors").textContent = st.showSensors ? "Hide proposed sensors"
-                                                       : "Show proposed sensors";
+      $("#toggleSensors").textContent = st.showSensors ? "Hide sensors" : "Show sensors";
       repaint();
+    };
+    $("#toggleHeat").onclick = () => {
+      st.showHeat = !st.showHeat;
+      $("#toggleHeat").classList.toggle("primary", st.showHeat);
+      $("#toggleHeat").textContent = st.showHeat ? "Hide heatmap" : "Heatmap";
+      repaint();
+    };
+    // Moving the slider or the objective shows the sensors: that is what it is asking to see.
+    const showThem = () => {
+      if (st.showSensors) return;
+      st.showSensors = true;
+      $("#toggleSensors").classList.add("primary");
+      $("#toggleSensors").textContent = "Hide sensors";
+    };
+    $("#kRange").oninput = () => { st.k = +$("#kRange").value; showThem(); repaint(); };
+    $("#objKnob").onclick = e => {
+      const b = e.target.closest("button"); if (!b) return;
+      st.obj = b.dataset.o; showThem(); repaint();
     };
     document.addEventListener("keydown", e => {
       if (e.key !== "Escape") return;
