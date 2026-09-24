@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sewer Growth and Sensor Placement</title>
+<title>Sim 2.5 Sensor Placement</title>
 <script type="importmap">
 {
   "imports": {
@@ -44,6 +44,10 @@ h1{font-size:15px; margin:0 0 3px}
 .knob button .knobNum{display:block; font-size:9.5px; font-weight:400; opacity:.72;
   margin-top:3px; font-variant-numeric:tabular-nums}
 .knob button.on .knobNum{opacity:.85}
+/* Twelve cases and four rules do not fit one row of a 330 px sidebar: unwrapped, eight
+   cases sat off-screen behind a scrollbar. Wrap, two per row, labels allowed to break. */
+#iiKnob,#ruleKnob{flex-wrap:wrap}
+#iiKnob button,#ruleKnob button{flex:1 1 calc(50% - 4px); white-space:normal; line-height:1.25}
 #iiNote{margin:5px 0 0; min-height:2.6em; font-size:11.5px}
 select{width:100%; padding:7px; font:inherit; border:1px solid var(--line);
   border-radius:7px; background:var(--panel-2); color:var(--ink)}
@@ -56,9 +60,6 @@ h4{margin:14px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.
 #tipList ul{margin:0; padding-left:18px; font-size:12.5px; columns:2; column-gap:14px}
 #tipList li{margin-bottom:2px}
 .quiet{color:var(--faint); font-size:12px; margin:4px 0}
-#superseded{margin:0 0 12px; padding:9px 10px; border-radius:7px; background:#2b0d14;
-  border:1px solid var(--warn); color:#ff9aac; font-size:11.5px; line-height:1.45}
-#superseded a{color:#fff}
 #baseNote{margin-top:12px; padding:9px 10px; border-radius:7px; background:#2a1f08;
   border:1px solid var(--amber); color:#ffcf7a; font-size:11.5px; line-height:1.45}
 #sensorList{margin-top:14px; padding:11px; border:1px solid var(--line); border-radius:8px;
@@ -74,6 +75,7 @@ nav{display:flex; gap:5px; align-items:center; padding:8px 13px;
   border-bottom:1px solid var(--line); background:var(--panel)}
 nav button{font:inherit; padding:6px 13px; border:1px solid var(--line);
   background:var(--panel-2); border-radius:6px; cursor:pointer; color:var(--ink)}
+nav button:disabled{opacity:.4; cursor:not-allowed}
 nav button.primary{background:var(--accent); border-color:var(--accent); color:#06131f}
 nav button.info{margin-left:auto; border-color:var(--accent); color:var(--accent); font-weight:600}
 nav button.info:hover{background:var(--accent); color:#06131f}
@@ -200,20 +202,20 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 <body>
 
 <aside id="side">
-  <div id="superseded"><b>Superseded by Simulation 2.5.</b> This model misses about 2.7 km
-  of sewer draining in from outside the catchment, and its "dry weather" setting is 1.7 times
-  the utility's design envelope. Kept for the record; for results, use
-  <a href="../#sim25" target="_top">Simulation 2.5</a>.</div>
-  <h1>Growth and sensor placement</h1>
-  <p class="sub">Where does new development use up the network's headroom, and where would
-  a sensor notice?</p>
+  <h1>Sim 2.5: growth and sensor placement</h1>
+  <p class="sub">Where does new development show up in the water level, and which manholes
+  would see it whatever the unknowns turn out to be?</p>
 
-  <label class="fld">Wet weather</label>
+  <label class="fld">Case (what cannot be measured yet)</label>
   <div class="knob" id="iiKnob"></div>
   <div class="quiet" id="iiNote"></div>
 
   <label class="fld">New dwellings added</label>
   <div class="knob" id="addKnob"></div>
+
+  <label class="fld">A sensor sees growth when</label>
+  <div class="knob" id="ruleKnob"></div>
+  <div class="quiet" id="ruleNote"></div>
 
   <label class="fld" for="site">Connected at</label>
   <select id="site"></select>
@@ -232,8 +234,8 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
     <button id="fitSite">Zoom to the growth</button>
     <button id="toggleSensors">Show proposed sensors</button>
     <button id="tab-ref">Assumptions</button>
-    <button id="tab-qa">Discussion Q&amp;A</button>
-    <button id="toggleBottlenecks">Show bottleneck pipes</button>
+    <button id="toggleRobust">Show robust pair</button>
+    <button id="tab-qa">Findings</button>
     <button id="btn-info" class="info">About this model</button>
   </nav>
   <div id="stageWrap">
@@ -244,8 +246,8 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   <div class="legend">
     <div class="grp"><b>Pipes</b>
       <span><span class="kl" style="background:#4c8bf5"></span>room to spare</span>
-      <span><span class="kl" style="background:#ffa500"></span>already surcharged, not growth</span>
-      <span><span class="kl" style="background:#ff2d55"></span>tipped by this growth</span>
+      <span><span class="kl" style="background:#ffa500"></span>already over the alarm before growth (alarm rule)</span>
+      <span><span class="kl" style="background:#ff2d55"></span>sees this growth</span>
     </div>
     <div class="grp"><b>Points</b>
       <span><span class="k" style="background:#c9d1d9"></span>manhole, a sensor could go here</span>
@@ -254,9 +256,6 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
       <span><span class="k" style="background:#00d4ff"></span>where the new dwellings connect</span>
       <span><span class="k" style="background:#3fb950"></span>proposed sensor</span>
       <span><span class="k" style="background:#a371f7"></span>outlet, everything drains through it</span>
-    </div>
-    <div class="grp"><b>Bottleneck pipes</b>
-      <span><span class="kl" style="background:#ffffff"></span>where the growth-capacity figure actually changes crossing it (toggle above), 7 in this catchment</span>
     </div>
   </div>
   <div id="scale"></div>
