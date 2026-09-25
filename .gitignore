@@ -10,3 +10,7 @@ tools/build_public_demo.py
 # still in it, and it will be served by Pages and found by every grep.
 *.orig
 *.rej
+
+# Default output of the public Sim 2.5 reproduction build.
+reproduced_simulation25/
+__pycache__/

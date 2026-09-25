@@ -20,10 +20,16 @@ Everything runs in the browser. No server, no build step, no tracking.
 | `src/ui/` | `osp_ui.js`, the sandbox page's state, canvas and controls; `osp_3d.js`, the optional relief view. |
 | `src/docs/` | `osp_docs.js`, the assumptions register, method, Q&A and illustrated glossary, generated from the loaded data. |
 | `data/` | `osp_data.js`, the generated dataset. Never edited by hand. |
-| `tools/` | `test_sandbox.js` regression suite (`node tools/test_sandbox.js`); `format_data.py` rewrites the data readable. The harvester and sanitiser live in the private repository. See `ARCHITECTURE.md`. |
+| `simulation25/` | Simulation 2.5, the browser view of the growth and sensor-placement grid. |
+| `simulation_src/` | EPA SWMM source, the exact public-data snapshot, saved outputs and full reproduction commands for Simulations 1, 2 and 2.5. |
+| `tools/` | Regression tests, data formatting, and the public Sim 2.5 browser builder. The source-data harvester and sanitiser remain private. See `ARCHITECTURE.md`. |
 
 Both explainers are standalone and need no data file. If the vocabulary is new, start with
 `manhole_anatomy.html`.
+
+To reproduce Sim 2.5 from the committed SWMM outputs, run
+`python tools/build_sim25_web.py --check`. For a fresh 4,260-run solver reproduction and the
+complete setup instructions, see [`simulation_src/README.md`](simulation_src/README.md).
 
 ## The problem
 

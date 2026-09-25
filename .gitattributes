@@ -1,0 +1,2 @@
+# Generated payloads are written with LF on every platform so --check is byte-exact.
+simulation25/data/*.js text eol=lf
