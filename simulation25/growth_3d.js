@@ -564,7 +564,8 @@ window.Growth3D = (function () {
         : heat ? heatHex(heat[nm] || 0)
         : st === "tip" ? 0xff2d55 : st === "was" ? 0xffa500 : COL.chamber;
       m.material.color.setHex(c);
-      m.scale.setScalar(sensorSet.has(nm) ? 2.1 : heat ? 1.5 : st === "ok" ? 1 : 1.6);
+      m.scale.setScalar(sensorSet.has(nm) ? 2.1 : heat ? 0.9 + 1.4 * (heat[nm] || 0)
+        : st === "ok" ? 1 : 1.6);
       if (nm === siteName) {
         focusRing.position.copy(m.position);
         focusRing.visible = true;

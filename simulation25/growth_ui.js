@@ -45,14 +45,23 @@ window.GrowthUI = (function () {
   function shownSensors() { return st.showSensors ? sensorSet() : []; }
 
   /* name -> the manhole's coverage on its own, for the heatmap, or null when it is off. */
-  /* Coloured 0% to the highest value present, not 0 to 100%: in the worst case most manholes
-     see under a tenth on their own, and a fixed scale left the whole map one dark blue. The
-     legend states the top of the scale, so the stretch is never hidden. */
-  const heatMax = () => Math.max(1e-9, ...runs().heat[ruleId()][st.obj]);
+  /* Coloured by RANK among the 71, not by the raw share: in the worst case most manholes see
+     under a tenth on their own, so any value scale left the map one colour. Rank spreads the
+     71 evenly from darkest to lightest; ties share a rank. The real percentages are in the
+     hover line and the sensor list, so nothing is hidden by the ranking. */
+  function heatRanks() {
+    // Dense rank: each distinct value is one colour step, so 0% is always the darkest and the
+    // top value the lightest, however many manholes tie (many share 0% in the worst case).
+    const v = runs().heat[ruleId()][st.obj];
+    const levels = [...new Set(v)].sort((a, b) => a - b), n = levels.length;
+    return v.map(x => n > 1 ? levels.indexOf(x) / (n - 1) : 1);
+  }
+  // Competition rank for the hover line: 1 + how many manholes score strictly higher.
+  const rankOf = i => { const v = runs().heat[ruleId()][st.obj]; return 1 + v.filter(x => x > v[i]).length; };
   function heatValues() {
     if (!st.showHeat) return null;
-    const v = runs().heat[ruleId()][st.obj], top = heatMax(), out = {};
-    v.forEach((x, i) => { out[nameOf(i)] = x / top; });
+    const r = heatRanks(), out = {};
+    r.forEach((x, i) => { out[nameOf(i)] = x; });
     return out;
   }
 
@@ -90,7 +99,7 @@ window.GrowthUI = (function () {
     renderPanel(c, row);
     renderSensors();
     $("#heatKey").hidden = !st.showHeat;
-    $("#heatTop").textContent = Math.round(100 * heatMax()) + "%";
+
     $("#heatWhich").textContent = (st.obj === "worst" ? "worst of the 12 cases" : "average of the 12 cases") +
       ", " + runs().rules[st.rule].label.toLowerCase();
     renderKnobs();
@@ -140,8 +149,8 @@ window.GrowthUI = (function () {
       const nm = st.hover || nameOf(st.site), R = runs(), i = R.chambers.indexOf(nm);
       if (i < 0) return "Not a study manhole";
       const h = R.heat[ruleId()];
-      return "On its own it sees " + Math.round(100 * h.mean[i]) + "% on average, " +
-        Math.round(100 * h.worst[i]) + "% in the worst case";
+      return "Rank " + rankOf(i) + " of 71. Alone: " + Math.round(100 * h.mean[i]) + "% average, " +
+        Math.round(100 * h.worst[i]) + "% worst case";
     };
     put(lead,
       // The panel's "connected here" counts only the manhole's own pipe. The rest come in

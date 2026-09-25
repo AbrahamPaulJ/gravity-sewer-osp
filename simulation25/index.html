@@ -288,9 +288,9 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
   <div class="legend">
     <div class="grp" id="heatKey" hidden><b>Heatmap</b>
-      <span>share of detectable growth a manhole sees on its own, <span id="heatWhich"></span>:</span>
-      <span class="heatbar"><span>0%</span><i></i><span id="heatTop"></span></span>
-      <span>(scale runs to the highest manhole)</span>
+      <span>manholes ranked by the share of detectable growth each sees on its own, <span id="heatWhich"></span>:</span>
+      <span class="heatbar"><span>lowest</span><i></i><span>highest</span></span>
+      <span>bigger = higher rank; hover a manhole for its real percentages</span>
       <span>pipes greyed while it is on</span>
     </div>
     <div class="grp" id="regionKey" hidden><b>Whole Walkerville</b>
@@ -325,11 +325,11 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=29"></script>
-<script src="data/growth.js?v=29"></script>
-<script src="data/index.js?v=29"></script>
-<script src="growth_3d.js?v=29"></script>
-<script src="growth_ui.js?v=29"></script>
+<script src="data/catchment.js?v=30"></script>
+<script src="data/growth.js?v=30"></script>
+<script src="data/index.js?v=30"></script>
+<script src="growth_3d.js?v=30"></script>
+<script src="growth_ui.js?v=30"></script>
 <script type="module">
   GrowthUI.init();
 </script>
