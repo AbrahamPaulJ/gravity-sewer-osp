@@ -92,7 +92,7 @@
    A reader is entitled to disagree with that and move the sliders; the point is
    that the choice is visible. Everything sums to 1 so a weight reads as "share of
    the answer this factor is responsible for". */
-const DEFAULT_WEIGHTS = { // todo
+const DEFAULT_WEIGHTS = {
   age: 0.30,        // [Ma25] rank 1 by mutual information, 0.124. Deterioration,
                     //   root entry, and rising roughness with age per [MM20].
   diameter: 0.25,   // [Ma25] rank 2, 0.032. [DP22]: "most blockages occur in small
@@ -131,7 +131,7 @@ const DEFAULT_WEIGHTS = { // todo
    THE NUMBERS ARE NOT FROM ANY SOURCE. No paper in the corpus gives a
    per-material blockage propensity. That clay is 3.3x uPVC rather than 2x is
    judgement, and it is the weakest link in this module. */
-const MATERIAL_RISK = { VC: 1.0, RC: 0.7, PVCU: 0.3 }; // todo
+const MATERIAL_RISK = { VC: 1.0, RC: 0.7, PVCU: 0.3 };
 
 /* Per-joint-type propensity.
 
@@ -147,7 +147,7 @@ const MATERIAL_RISK = { VC: 1.0, RC: 0.7, PVCU: 0.3 }; // todo
    THE NUMBERS ARE NOT FROM ANY SOURCE, as with MATERIAL_RISK above. Joint type is
    also published on only 54% of records here, which is why the blend gives it
    0.05: a factor known for half the network cannot carry much of the answer. */
-const JOINT_RISK = { BIT: 1.0, SCJ: 0.8, PLAST: 0.4, RRJ: 0.3 }; // todo
+const JOINT_RISK = { BIT: 1.0, SCJ: 0.8, PLAST: 0.4, RRJ: 0.3 };
 
 /* Reference points for the two factors that need one. A gradient at or above
    GRADE_REF is treated as comfortably self-cleansing and scores zero; the figure

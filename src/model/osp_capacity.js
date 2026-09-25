@@ -63,7 +63,7 @@
    Keyed by the material strings the publisher uses, so an unrecognised code falls
    back rather than guessing. */
 const DEFAULT_N = 0.013;
-const MATERIAL_N = { VC: 0.013, PVCU: 0.010, RC: 0.013 }; // todo
+const MATERIAL_N = { VC: 0.013, PVCU: 0.010, RC: 0.013 };
 
 /* A reach with no fall cannot be solved by Manning. Some are genuinely flat, some
    are data error: the invert fields are flow-anchored and a mis-set record can read

@@ -1196,22 +1196,22 @@ const GLOSS_FIGS = {
     + gln(60, 40, 63, 45, GF.bad, 1.5) + gln(110, 40, 108, 45, GF.bad, 1.5) + gln(80, 45, 80, 40, GF.faint, 2)
     + [[58,28],[62,22],[108,30],[112,24],[80,26],[30,30],[130,32]].map(([x,y]) => `<path d="M${x},${y} q-3,5 0,7 q3,-2 0,-7z" fill="${GF.water}"/>`).join("")
     + gt(80, 88, "groundwater and rain get in", { a: "middle", c: GF.water, s: 6.5 })),
-  "Nominal diameter": gsvg("Nominal size versus the internal bore inside the wall", // todo
+  "Nominal diameter": gsvg("Nominal size versus the internal bore inside the wall",
     gcircle(0, gln(46, 52, 114, 52, GF.dim, 1.2) + gt(80, 48, "nominal", { a: "middle", c: GF.dim, s: 6.5 })
       + gln(52, 60, 108, 60, GF.good, 1.2) + gt(80, 70, "internal bore", { a: "middle", c: GF.good, s: 6.5 })
-      + gt(80, 96, "the wall is the difference", { a: "middle", s: 6.5 }))), // todo
+      + gt(80, 96, "the wall is the difference", { a: "middle", s: 6.5 }))),
   "Vitrified clay": gsvg("Clay pipe: short fired sections, joints every couple of metres, roots at the joints",
     `<rect x="0" y="0" width="160" height="100" fill="${GF.soil}"/>`
     + [0, 52, 104].map(x => `<rect x="${x}" y="40" width="50" height="26" fill="${GF.wall}" rx="1"/><rect x="${x}" y="45" width="50" height="16" fill="${GF.inner}"/>`).join("")
     + [50, 102].map(x => `<rect x="${x}" y="37" width="6" height="32" fill="${GF.lid}"/>`).join("")
     + `<path d="M53,37 q-6,-14 -14,-18 M53,37 q4,-16 12,-20" fill="none" stroke="${GF.root}" stroke-width="1.5"/>`
     + gt(80, 88, "strong pipe, weak joints", { a: "middle", s: 6.5 })),
-  "Gradient": gsvg("Gradient: fall over length, as a percentage", // todo
+  "Gradient": gsvg("Gradient: fall over length, as a percentage",
     (() => { const L = glong({ slope: 0.2 });
       return L.o + gln(20, L.inv(20), 140, L.inv(20), GF.dim, 1, "3 2") + gln(140, L.inv(20), 140, L.inv(140), GF.dim, 1.2)
         + gt(80, L.inv(20) - 4, "length", { a: "middle", c: GF.dim }) + gt(144, (L.inv(20) + L.inv(140)) / 2 + 3, "fall", { c: GF.dim })
         + gt(30, 92, "gradient = fall / length", { c: GF.ink, s: 6.5 }); })()),
-  "Joint type": gsvg("A socket joint: where two sections meet, and where roots and water get in", // todo
+  "Joint type": gsvg("A socket joint: where two sections meet, and where roots and water get in",
     `<rect x="0" y="0" width="160" height="100" fill="${GF.soil}"/>`
     + `<rect x="0" y="42" width="78" height="22" fill="${GF.wall}"/><rect x="0" y="47" width="78" height="12" fill="${GF.inner}"/>`
     + `<rect x="70" y="36" width="90" height="34" fill="${GF.wall}"/><rect x="78" y="42" width="82" height="22" fill="${GF.wall}" opacity=".6"/><rect x="78" y="47" width="82" height="12" fill="${GF.inner}"/>`

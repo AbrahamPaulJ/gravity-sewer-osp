@@ -92,6 +92,22 @@ console.log("repository hygiene");
     }
   });
   check("scripts load in dependency order", misordered, []);
+
+  /* The data files are generated, and tools/format_data.py reads them by pulling
+     the object text out and handing it to a JSON parser. A JS comment inside that
+     object is legal JavaScript, so the page and these tests load it happily, and
+     the formatter dies on it. That is exactly what happened: a stray "// todo"
+     left in an editor was swept into a commit by git add -A and broke the
+     formatter while every other check stayed green. */
+  const generated = tracked.filter(f => f.startsWith("data/") && f.endsWith(".js"));
+  const unparseable = generated.filter(f => {
+    const t = fs.readFileSync(path.join(ROOT, f), "utf8");
+    const at = t.indexOf("window.");
+    if (at < 0) return true;
+    try { JSON.parse(t.slice(t.indexOf("{", at)).trim().replace(/;\s*$/, "")); return false; }
+    catch (e) { return true; }
+  });
+  check("generated data parses as JSON, not just as JS", unparseable, []);
 }
 
 console.log("graph");
