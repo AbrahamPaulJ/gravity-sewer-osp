@@ -302,7 +302,7 @@ class Sim25Model:
             used.add(label)
             role = "exit" if pi in exits else "study"
             self.links.append(SimLink(label, label, role, up, dn, p.inv_up, p.inv_down,
-                                      p.dia, p.length, p.line))
+                                      p.dia, p.length, p.line, p.material))
             info = PipeInfo(label, p.asset_id, role, up, dn, p.dia, p.length, p.slope,
                             p.material, p.year)
             info.links.append(label)

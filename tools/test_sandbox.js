@@ -92,6 +92,22 @@ console.log("repository hygiene");
     }
   });
   check("scripts load in dependency order", misordered, []);
+
+  /* The data files are generated, and tools/format_data.py reads them by pulling
+     the object text out and handing it to a JSON parser. A JS comment inside that
+     object is legal JavaScript, so the page and these tests load it happily, and
+     the formatter dies on it. That is exactly what happened: a stray "// todo"
+     left in an editor was swept into a commit by git add -A and broke the
+     formatter while every other check stayed green. */
+  const generated = tracked.filter(f => f.startsWith("data/") && f.endsWith(".js"));
+  const unparseable = generated.filter(f => {
+    const t = fs.readFileSync(path.join(ROOT, f), "utf8");
+    const at = t.indexOf("window.");
+    if (at < 0) return true;
+    try { JSON.parse(t.slice(t.indexOf("{", at)).trim().replace(/;\s*$/, "")); return false; }
+    catch (e) { return true; }
+  });
+  check("generated data parses as JSON, not just as JS", unparseable, []);
 }
 
 console.log("graph");
@@ -114,6 +130,32 @@ check("reaches rescued by published grade", geo.fromGrade, 3);
 const ladder = [0.05, 0.1, 0.2, 0.4, 0.9].map(l =>
   K.capacityState(g, C, { perNode: l, peakFactor: 1, geo }).summary.nodesSurcharged);
 check("surcharge ladder 0.05 .. 0.9 L/s", ladder, [0, 3, 30, 80, 132]);
+
+console.log("growth headroom");
+{
+  const st = K.capacityState(g, C, { perNode: 0.05, peakFactor: 1, geo });
+  const H = K.growthHeadroom(g, C, st);
+  check("every chamber gets a headroom or an outlet", H.summary.withLimit, 992);
+  check("none already over at the default load", H.summary.underOneLitre, 0);
+
+  // Exactness: superposition says the first tip lands exactly at the headroom.
+  // Pushing just under leaves the network clear, just over tips one reach.
+  const v = [...H.head.keys()].filter(i => isFinite(H.head[i]))
+              .sort((a, b) => H.head[a] - H.head[b])[0];
+  const over = add => {
+    const l = Float64Array.from(st.own); l[v] += add;
+    return K.capacityState(g, C, { loads: l, peakFactor: 1, geo }).summary.edgesOver;
+  };
+  check("tightest site: nothing over just below its headroom", over(H.head[v] * 0.99), 0);
+  check("tightest site: one reach over just above it", over(H.head[v] * 1.01), 1);
+  check("the binding reach surcharges the chamber above it",
+        H.surchargeAt[v], g.edges[H.bind[v]][0]);
+
+  const cov = K.growthCover(g, H);
+  check("growth cover marks fewer chambers than sites", cov.summary.chambers < cov.summary.sites, true);
+  check("weights are a count, so they sum to the site total",
+        Math.round(cov.w.reduce((a, b) => a + b, 0)), cov.summary.sites);
+}
 
 console.log("blockage likelihood");
 const rs = R.likelihood(g, { matCodes: mc, jointCodes: jc, aggregate: "intensity" });
@@ -171,8 +213,9 @@ window.OSPDocs.render({ DATA: D.regions, VALID: D.validation, META: D.meta, CODE
 const all = Object.values(slots).map(s => s.innerHTML).join("");
 check("no undefined or NaN in any pane", /undefined|NaN/.test(all), false);
 check("Part D rendered", all.includes("Part D"), true);
+  check("Part F rendered", all.includes("Part F. Growth headroom"), true);
 const gl = slots["doc-glossary"].innerHTML;
-check("glossary terms", (gl.match(/<dt>/g) || []).length, 33);
+check("glossary terms", (gl.match(/<dt>/g) || []).length, 35);
 check("glossary figures", (gl.match(/<figure class="gl-fig">/g) || []).length, 31);
 check("every figure titled", (gl.match(/<svg /g) || []).length === (gl.match(/<title>/g) || []).length, true);
 

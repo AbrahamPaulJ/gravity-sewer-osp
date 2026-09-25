@@ -10,3 +10,31 @@ tools/build_public_demo.py
 # still in it, and it will be served by Pages and found by every grep.
 *.orig
 *.rej
+*.gitignore
+
+
+# 1 = more likely to block
+
+# Factor	            Rule
+# Bore	                inverted and normalised over the network's own range — the smallest pipe scores 1
+# Age	                same, the oldest scores 1
+# Gradient	            (1% − grade) / 1%, so at or above self-cleansing it scores 0, flatter scores higher
+# Material	            table lookup: VC 1.0, RC 0.7, uPVC 0.3
+# Joint	                table lookup: BIT 1.0, SCJ 0.8, PLAST 0.4, RRJ 0.3
+# Length	            saturating at 100 m — a 400 m reach isn't four times the problem
+
+
+
+Array	    Source field	            Meaning
+dia	        NOMINALDIA	                named size, mm → m
+idia	    INTERNALDI	                actual bore; carried, unused
+mat	        MATERIAL + MATERIALUN	    VC / PVCU / RC, as a code index
+year	    CONST_YEAR	                construction year
+grade	    GRADE	                    the publisher's own gradient, %
+joint	    JOINTTYPE	                RRJ / SCJ / PLAST / BIT
+
+
+
+next step: adding sample complaint data layer to chambers
+implement with existing attributes which are already used by other layers
+optimizations

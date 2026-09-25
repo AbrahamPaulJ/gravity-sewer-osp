@@ -157,7 +157,7 @@ class Catchment:
             info = PipeInfo(label, p.asset_id, role, up, down, p.dia, p.length, p.slope,
                             p.material, p.year)
             lk = SimLink(label, label, role, up, down, p.inv_up, p.inv_down,
-                         p.dia, p.length, p.line)
+                         p.dia, p.length, p.line, p.material)
             self.links.append(lk)
             info.links.append(lk.name)
             self.pipes.append(info)
