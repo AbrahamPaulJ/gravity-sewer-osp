@@ -1,0 +1,1604 @@
+{
+ "rise_mm": [
+  10,
+  25,
+  50
+ ],
+ "cases": [
+  "ii0.00_flat_uniform_b1_sfree",
+  "ii0.11_flat_uniform_b0.5_sfree",
+  "ii0.11_flat_uniform_b1.5_sfree",
+  "ii0.11_flat_uniform_b1_sfree",
+  "ii0.11_flat_weighted_b1_sfree",
+  "ii0.11_harmon_uniform_b1_sfree",
+  "ii0.25_flat_uniform_b0.5_sfree",
+  "ii0.25_flat_uniform_b1.5_sfree",
+  "ii0.25_flat_uniform_b1_sfree",
+  "ii0.25_flat_weighted_b1_sfree",
+  "ii0.25_harmon_uniform_b1_sfree",
+  "ii0.40_flat_uniform_b1_sfree"
+ ],
+ "by_r": {
+  "10": {
+   "per_case": [
+    {
+     "case": "ii0.00_flat_uniform_b1_sfree",
+     "detectable": 185,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4448419"
+      ],
+      "covered": 77
+     },
+     "k2": {
+      "chosen": [
+       "4448419",
+       "4450193"
+      ],
+      "covered": 108
+     },
+     "k3": {
+      "chosen": [
+       "4448419",
+       "4450193",
+       "4429107"
+      ],
+      "covered": 122
+     }
+    },
+    {
+     "case": "ii0.11_flat_uniform_b0.5_sfree",
+     "detectable": 167,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4450193"
+      ],
+      "covered": 71
+     },
+     "k2": {
+      "chosen": [
+       "4450193",
+       "4429312"
+      ],
+      "covered": 85
+     },
+     "k3": {
+      "chosen": [
+       "4450193",
+       "4429312",
+       "4448853"
+      ],
+      "covered": 99
+     }
+    },
+    {
+     "case": "ii0.11_flat_uniform_b1.5_sfree",
+     "detectable": 280,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4448345"
+      ],
+      "covered": 279
+     },
+     "k2": {
+      "chosen": [
+       "4448345",
+       "4449866"
+      ],
+      "covered": 280
+     },
+     "k3": {
+      "chosen": [
+       "4448345",
+       "4449866"
+      ],
+      "covered": 280
+     }
+    },
+    {
+     "case": "ii0.11_flat_uniform_b1_sfree",
+     "detectable": 173,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4450193"
+      ],
+      "covered": 139
+     },
+     "k2": {
+      "chosen": [
+       "4450193",
+       "4449849"
+      ],
+      "covered": 145
+     },
+     "k3": {
+      "chosen": [
+       "4450193",
+       "4449849",
+       "4428995"
+      ],
+      "covered": 148
+     }
+    },
+    {
+     "case": "ii0.11_flat_weighted_b1_sfree",
+     "detectable": 169,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4449849"
+      ],
+      "covered": 78
+     },
+     "k2": {
+      "chosen": [
+       "4449849",
+       "4429312"
+      ],
+      "covered": 95
+     },
+     "k3": {
+      "chosen": [
+       "4449849",
+       "4429312",
+       "4448853"
+      ],
+      "covered": 109
+     }
+    },
+    {
+     "case": "ii0.11_harmon_uniform_b1_sfree",
+     "detectable": 319,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4447394"
+      ],
+      "covered": 319
+     },
+     "k2": {
+      "chosen": [
+       "4447394"
+      ],
+      "covered": 319
+     },
+     "k3": {
+      "chosen": [
+       "4447394"
+      ],
+      "covered": 319
+     }
+    },
+    {
+     "case": "ii0.25_flat_uniform_b0.5_sfree",
+     "detectable": 353,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4429136"
+      ],
+      "covered": 353
+     },
+     "k2": {
+      "chosen": [
+       "4429136"
+      ],
+      "covered": 353
+     },
+     "k3": {
+      "chosen": [
+       "4429136"
+      ],
+      "covered": 353
+     }
+    },
+    {
+     "case": "ii0.25_flat_uniform_b1.5_sfree",
+     "detectable": 316,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4428636"
+      ],
+      "covered": 293
+     },
+     "k2": {
+      "chosen": [
+       "4428636",
+       "4428836"
+      ],
+      "covered": 300
+     },
+     "k3": {
+      "chosen": [
+       "4428636",
+       "4428836",
+       "4449118"
+      ],
+      "covered": 307
+     }
+    },
+    {
+     "case": "ii0.25_flat_uniform_b1_sfree",
+     "detectable": 313,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4429312"
+      ],
+      "covered": 296
+     },
+     "k2": {
+      "chosen": [
+       "4429312",
+       "4449118"
+      ],
+      "covered": 303
+     },
+     "k3": {
+      "chosen": [
+       "4429312",
+       "4449118",
+       "4450100"
+      ],
+      "covered": 308
+     }
+    },
+    {
+     "case": "ii0.25_flat_weighted_b1_sfree",
+     "detectable": 302,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4447394"
+      ],
+      "covered": 295
+     },
+     "k2": {
+      "chosen": [
+       "4447394",
+       "4429013"
+      ],
+      "covered": 297
+     },
+     "k3": {
+      "chosen": [
+       "4447394",
+       "4429013",
+       "4449860"
+      ],
+      "covered": 299
+     }
+    },
+    {
+     "case": "ii0.25_harmon_uniform_b1_sfree",
+     "detectable": 334,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4429645"
+      ],
+      "covered": 311
+     },
+     "k2": {
+      "chosen": [
+       "4429645",
+       "4428583"
+      ],
+      "covered": 322
+     },
+     "k3": {
+      "chosen": [
+       "4429645",
+       "4428583",
+       "4450100"
+      ],
+      "covered": 329
+     }
+    },
+    {
+     "case": "ii0.40_flat_uniform_b1_sfree",
+     "detectable": 284,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4429312"
+      ],
+      "covered": 216
+     },
+     "k2": {
+      "chosen": [
+       "4429312",
+       "4428583"
+      ],
+      "covered": 244
+     },
+     "k3": {
+      "chosen": [
+       "4429312",
+       "4428583",
+       "4428713"
+      ],
+      "covered": 253
+     }
+    }
+   ],
+   "consensus": {
+    "k1": {
+     "chosen": [
+      "4448419"
+     ],
+     "per_case": [
+      {
+       "case": "ii0.00_flat_uniform_b1_sfree",
+       "covered": 77,
+       "case_best": 77
+      },
+      {
+       "case": "ii0.11_flat_uniform_b0.5_sfree",
+       "covered": 40,
+       "case_best": 71
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1.5_sfree",
+       "covered": 278,
+       "case_best": 279
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1_sfree",
+       "covered": 77,
+       "case_best": 139
+      },
+      {
+       "case": "ii0.11_flat_weighted_b1_sfree",
+       "covered": 40,
+       "case_best": 78
+      },
+      {
+       "case": "ii0.11_harmon_uniform_b1_sfree",
+       "covered": 318,
+       "case_best": 319
+      },
+      {
+       "case": "ii0.25_flat_uniform_b0.5_sfree",
+       "covered": 353,
+       "case_best": 353
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1.5_sfree",
+       "covered": 269,
+       "case_best": 293
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1_sfree",
+       "covered": 266,
+       "case_best": 296
+      },
+      {
+       "case": "ii0.25_flat_weighted_b1_sfree",
+       "covered": 262,
+       "case_best": 295
+      },
+      {
+       "case": "ii0.25_harmon_uniform_b1_sfree",
+       "covered": 310,
+       "case_best": 311
+      },
+      {
+       "case": "ii0.40_flat_uniform_b1_sfree",
+       "covered": 198,
+       "case_best": 216
+      }
+     ]
+    },
+    "k2": {
+     "chosen": [
+      "4448419",
+      "4450193"
+     ],
+     "per_case": [
+      {
+       "case": "ii0.00_flat_uniform_b1_sfree",
+       "covered": 108,
+       "case_best": 108
+      },
+      {
+       "case": "ii0.11_flat_uniform_b0.5_sfree",
+       "covered": 71,
+       "case_best": 85
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1.5_sfree",
+       "covered": 278,
+       "case_best": 280
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1_sfree",
+       "covered": 139,
+       "case_best": 145
+      },
+      {
+       "case": "ii0.11_flat_weighted_b1_sfree",
+       "covered": 71,
+       "case_best": 95
+      },
+      {
+       "case": "ii0.11_harmon_uniform_b1_sfree",
+       "covered": 318,
+       "case_best": 319
+      },
+      {
+       "case": "ii0.25_flat_uniform_b0.5_sfree",
+       "covered": 353,
+       "case_best": 353
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1.5_sfree",
+       "covered": 271,
+       "case_best": 300
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1_sfree",
+       "covered": 266,
+       "case_best": 303
+      },
+      {
+       "case": "ii0.25_flat_weighted_b1_sfree",
+       "covered": 264,
+       "case_best": 297
+      },
+      {
+       "case": "ii0.25_harmon_uniform_b1_sfree",
+       "covered": 310,
+       "case_best": 322
+      },
+      {
+       "case": "ii0.40_flat_uniform_b1_sfree",
+       "covered": 202,
+       "case_best": 244
+      }
+     ]
+    },
+    "k3": {
+     "chosen": [
+      "4448419",
+      "4450193",
+      "4429312"
+     ],
+     "per_case": [
+      {
+       "case": "ii0.00_flat_uniform_b1_sfree",
+       "covered": 108,
+       "case_best": 122
+      },
+      {
+       "case": "ii0.11_flat_uniform_b0.5_sfree",
+       "covered": 85,
+       "case_best": 99
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1.5_sfree",
+       "covered": 278,
+       "case_best": 280
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1_sfree",
+       "covered": 139,
+       "case_best": 148
+      },
+      {
+       "case": "ii0.11_flat_weighted_b1_sfree",
+       "covered": 85,
+       "case_best": 109
+      },
+      {
+       "case": "ii0.11_harmon_uniform_b1_sfree",
+       "covered": 318,
+       "case_best": 319
+      },
+      {
+       "case": "ii0.25_flat_uniform_b0.5_sfree",
+       "covered": 353,
+       "case_best": 353
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1.5_sfree",
+       "covered": 295,
+       "case_best": 307
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1_sfree",
+       "covered": 296,
+       "case_best": 308
+      },
+      {
+       "case": "ii0.25_flat_weighted_b1_sfree",
+       "covered": 293,
+       "case_best": 299
+      },
+      {
+       "case": "ii0.25_harmon_uniform_b1_sfree",
+       "covered": 312,
+       "case_best": 329
+      },
+      {
+       "case": "ii0.40_flat_uniform_b1_sfree",
+       "covered": 221,
+       "case_best": 253
+      }
+     ]
+    }
+   },
+   "k1_frequency": {
+    "4450193": 2,
+    "4447394": 2,
+    "4429312": 2,
+    "4448419": 1,
+    "4448345": 1,
+    "4449849": 1,
+    "4429136": 1,
+    "4428636": 1,
+    "4429645": 1
+   }
+  },
+  "25": {
+   "per_case": [
+    {
+     "case": "ii0.00_flat_uniform_b1_sfree",
+     "detectable": 85,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4450193"
+      ],
+      "covered": 70
+     },
+     "k2": {
+      "chosen": [
+       "4450193",
+       "4449849"
+      ],
+      "covered": 76
+     },
+     "k3": {
+      "chosen": [
+       "4450193",
+       "4449849",
+       "4428995"
+      ],
+      "covered": 79
+     }
+    },
+    {
+     "case": "ii0.11_flat_uniform_b0.5_sfree",
+     "detectable": 78,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4450193"
+      ],
+      "covered": 70
+     },
+     "k2": {
+      "chosen": [
+       "4450193",
+       "4450332"
+      ],
+      "covered": 74
+     },
+     "k3": {
+      "chosen": [
+       "4450193",
+       "4450332",
+       "4449882"
+      ],
+      "covered": 76
+     }
+    },
+    {
+     "case": "ii0.11_flat_uniform_b1.5_sfree",
+     "detectable": 245,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4448345"
+      ],
+      "covered": 245
+     },
+     "k2": {
+      "chosen": [
+       "4448345"
+      ],
+      "covered": 245
+     },
+     "k3": {
+      "chosen": [
+       "4448345"
+      ],
+      "covered": 245
+     }
+    },
+    {
+     "case": "ii0.11_flat_uniform_b1_sfree",
+     "detectable": 78,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4450193"
+      ],
+      "covered": 70
+     },
+     "k2": {
+      "chosen": [
+       "4450193",
+       "4450332"
+      ],
+      "covered": 74
+     },
+     "k3": {
+      "chosen": [
+       "4450193",
+       "4450332",
+       "4449882"
+      ],
+      "covered": 76
+     }
+    },
+    {
+     "case": "ii0.11_flat_weighted_b1_sfree",
+     "detectable": 78,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4450193"
+      ],
+      "covered": 70
+     },
+     "k2": {
+      "chosen": [
+       "4450193",
+       "4450332"
+      ],
+      "covered": 74
+     },
+     "k3": {
+      "chosen": [
+       "4450193",
+       "4450332",
+       "4449882"
+      ],
+      "covered": 76
+     }
+    },
+    {
+     "case": "ii0.11_harmon_uniform_b1_sfree",
+     "detectable": 258,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4447394"
+      ],
+      "covered": 256
+     },
+     "k2": {
+      "chosen": [
+       "4447394",
+       "4448853"
+      ],
+      "covered": 258
+     },
+     "k3": {
+      "chosen": [
+       "4447394",
+       "4448853"
+      ],
+      "covered": 258
+     }
+    },
+    {
+     "case": "ii0.25_flat_uniform_b0.5_sfree",
+     "detectable": 306,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4429312"
+      ],
+      "covered": 299
+     },
+     "k2": {
+      "chosen": [
+       "4429312",
+       "4429136"
+      ],
+      "covered": 306
+     },
+     "k3": {
+      "chosen": [
+       "4429312",
+       "4429136"
+      ],
+      "covered": 306
+     }
+    },
+    {
+     "case": "ii0.25_flat_uniform_b1.5_sfree",
+     "detectable": 273,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4428636"
+      ],
+      "covered": 246
+     },
+     "k2": {
+      "chosen": [
+       "4428636",
+       "4428583"
+      ],
+      "covered": 255
+     },
+     "k3": {
+      "chosen": [
+       "4428636",
+       "4428583",
+       "4429320"
+      ],
+      "covered": 261
+     }
+    },
+    {
+     "case": "ii0.25_flat_uniform_b1_sfree",
+     "detectable": 261,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4429312"
+      ],
+      "covered": 237
+     },
+     "k2": {
+      "chosen": [
+       "4429312",
+       "4428836"
+      ],
+      "covered": 244
+     },
+     "k3": {
+      "chosen": [
+       "4429312",
+       "4428836",
+       "4429471"
+      ],
+      "covered": 250
+     }
+    },
+    {
+     "case": "ii0.25_flat_weighted_b1_sfree",
+     "detectable": 249,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4429013"
+      ],
+      "covered": 226
+     },
+     "k2": {
+      "chosen": [
+       "4429013",
+       "4449118"
+      ],
+      "covered": 233
+     },
+     "k3": {
+      "chosen": [
+       "4429013",
+       "4449118",
+       "4429136"
+      ],
+      "covered": 238
+     }
+    },
+    {
+     "case": "ii0.25_harmon_uniform_b1_sfree",
+     "detectable": 292,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4428636"
+      ],
+      "covered": 263
+     },
+     "k2": {
+      "chosen": [
+       "4428636",
+       "4428583"
+      ],
+      "covered": 277
+     },
+     "k3": {
+      "chosen": [
+       "4428636",
+       "4428583",
+       "4429136"
+      ],
+      "covered": 284
+     }
+    },
+    {
+     "case": "ii0.40_flat_uniform_b1_sfree",
+     "detectable": 239,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4428268"
+      ],
+      "covered": 180
+     },
+     "k2": {
+      "chosen": [
+       "4428268",
+       "4428583"
+      ],
+      "covered": 201
+     },
+     "k3": {
+      "chosen": [
+       "4428268",
+       "4428583",
+       "4428606"
+      ],
+      "covered": 212
+     }
+    }
+   ],
+   "consensus": {
+    "k1": {
+     "chosen": [
+      "4449785"
+     ],
+     "per_case": [
+      {
+       "case": "ii0.00_flat_uniform_b1_sfree",
+       "covered": 66,
+       "case_best": 70
+      },
+      {
+       "case": "ii0.11_flat_uniform_b0.5_sfree",
+       "covered": 66,
+       "case_best": 70
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1.5_sfree",
+       "covered": 205,
+       "case_best": 245
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1_sfree",
+       "covered": 68,
+       "case_best": 70
+      },
+      {
+       "case": "ii0.11_flat_weighted_b1_sfree",
+       "covered": 68,
+       "case_best": 70
+      },
+      {
+       "case": "ii0.11_harmon_uniform_b1_sfree",
+       "covered": 210,
+       "case_best": 256
+      },
+      {
+       "case": "ii0.25_flat_uniform_b0.5_sfree",
+       "covered": 282,
+       "case_best": 299
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1.5_sfree",
+       "covered": 196,
+       "case_best": 246
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1_sfree",
+       "covered": 195,
+       "case_best": 237
+      },
+      {
+       "case": "ii0.25_flat_weighted_b1_sfree",
+       "covered": 192,
+       "case_best": 226
+      },
+      {
+       "case": "ii0.25_harmon_uniform_b1_sfree",
+       "covered": 199,
+       "case_best": 263
+      },
+      {
+       "case": "ii0.40_flat_uniform_b1_sfree",
+       "covered": 32,
+       "case_best": 180
+      }
+     ]
+    },
+    "k2": {
+     "chosen": [
+      "4449785",
+      "4447394"
+     ],
+     "per_case": [
+      {
+       "case": "ii0.00_flat_uniform_b1_sfree",
+       "covered": 68,
+       "case_best": 76
+      },
+      {
+       "case": "ii0.11_flat_uniform_b0.5_sfree",
+       "covered": 67,
+       "case_best": 74
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1.5_sfree",
+       "covered": 205,
+       "case_best": 245
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1_sfree",
+       "covered": 68,
+       "case_best": 74
+      },
+      {
+       "case": "ii0.11_flat_weighted_b1_sfree",
+       "covered": 68,
+       "case_best": 74
+      },
+      {
+       "case": "ii0.11_harmon_uniform_b1_sfree",
+       "covered": 258,
+       "case_best": 258
+      },
+      {
+       "case": "ii0.25_flat_uniform_b0.5_sfree",
+       "covered": 283,
+       "case_best": 306
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1.5_sfree",
+       "covered": 236,
+       "case_best": 255
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1_sfree",
+       "covered": 235,
+       "case_best": 244
+      },
+      {
+       "case": "ii0.25_flat_weighted_b1_sfree",
+       "covered": 223,
+       "case_best": 233
+      },
+      {
+       "case": "ii0.25_harmon_uniform_b1_sfree",
+       "covered": 247,
+       "case_best": 277
+      },
+      {
+       "case": "ii0.40_flat_uniform_b1_sfree",
+       "covered": 178,
+       "case_best": 201
+      }
+     ]
+    },
+    "k3": {
+     "chosen": [
+      "4449785",
+      "4447394",
+      "4450332"
+     ],
+     "per_case": [
+      {
+       "case": "ii0.00_flat_uniform_b1_sfree",
+       "covered": 72,
+       "case_best": 79
+      },
+      {
+       "case": "ii0.11_flat_uniform_b0.5_sfree",
+       "covered": 71,
+       "case_best": 76
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1.5_sfree",
+       "covered": 205,
+       "case_best": 245
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1_sfree",
+       "covered": 72,
+       "case_best": 76
+      },
+      {
+       "case": "ii0.11_flat_weighted_b1_sfree",
+       "covered": 72,
+       "case_best": 76
+      },
+      {
+       "case": "ii0.11_harmon_uniform_b1_sfree",
+       "covered": 258,
+       "case_best": 258
+      },
+      {
+       "case": "ii0.25_flat_uniform_b0.5_sfree",
+       "covered": 283,
+       "case_best": 306
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1.5_sfree",
+       "covered": 236,
+       "case_best": 261
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1_sfree",
+       "covered": 235,
+       "case_best": 250
+      },
+      {
+       "case": "ii0.25_flat_weighted_b1_sfree",
+       "covered": 223,
+       "case_best": 238
+      },
+      {
+       "case": "ii0.25_harmon_uniform_b1_sfree",
+       "covered": 247,
+       "case_best": 284
+      },
+      {
+       "case": "ii0.40_flat_uniform_b1_sfree",
+       "covered": 178,
+       "case_best": 212
+      }
+     ]
+    }
+   },
+   "k1_frequency": {
+    "4450193": 4,
+    "4429312": 2,
+    "4428636": 2,
+    "4448345": 1,
+    "4447394": 1,
+    "4429013": 1,
+    "4428268": 1
+   }
+  },
+  "50": {
+   "per_case": [
+    {
+     "case": "ii0.00_flat_uniform_b1_sfree",
+     "detectable": 59,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4429312"
+      ],
+      "covered": 14
+     },
+     "k2": {
+      "chosen": [
+       "4429312",
+       "4448853"
+      ],
+      "covered": 28
+     },
+     "k3": {
+      "chosen": [
+       "4429312",
+       "4448853",
+       "4449118"
+      ],
+      "covered": 35
+     }
+    },
+    {
+     "case": "ii0.11_flat_uniform_b0.5_sfree",
+     "detectable": 40,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4429107"
+      ],
+      "covered": 7
+     },
+     "k2": {
+      "chosen": [
+       "4429107",
+       "4449118"
+      ],
+      "covered": 14
+     },
+     "k3": {
+      "chosen": [
+       "4429107",
+       "4449118",
+       "4429499"
+      ],
+      "covered": 20
+     }
+    },
+    {
+     "case": "ii0.11_flat_uniform_b1.5_sfree",
+     "detectable": 184,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4448345"
+      ],
+      "covered": 184
+     },
+     "k2": {
+      "chosen": [
+       "4448345"
+      ],
+      "covered": 184
+     },
+     "k3": {
+      "chosen": [
+       "4448345"
+      ],
+      "covered": 184
+     }
+    },
+    {
+     "case": "ii0.11_flat_uniform_b1_sfree",
+     "detectable": 69,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4450193"
+      ],
+      "covered": 68
+     },
+     "k2": {
+      "chosen": [
+       "4450193",
+       "4449882"
+      ],
+      "covered": 69
+     },
+     "k3": {
+      "chosen": [
+       "4450193",
+       "4449882"
+      ],
+      "covered": 69
+     }
+    },
+    {
+     "case": "ii0.11_flat_weighted_b1_sfree",
+     "detectable": 69,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4450193"
+      ],
+      "covered": 68
+     },
+     "k2": {
+      "chosen": [
+       "4450193",
+       "4449882"
+      ],
+      "covered": 69
+     },
+     "k3": {
+      "chosen": [
+       "4450193",
+       "4449882"
+      ],
+      "covered": 69
+     }
+    },
+    {
+     "case": "ii0.11_harmon_uniform_b1_sfree",
+     "detectable": 213,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4429499"
+      ],
+      "covered": 190
+     },
+     "k2": {
+      "chosen": [
+       "4429499",
+       "4448853"
+      ],
+      "covered": 204
+     },
+     "k3": {
+      "chosen": [
+       "4429499",
+       "4448853",
+       "4449849"
+      ],
+      "covered": 210
+     }
+    },
+    {
+     "case": "ii0.25_flat_uniform_b0.5_sfree",
+     "detectable": 270,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4429136"
+      ],
+      "covered": 257
+     },
+     "k2": {
+      "chosen": [
+       "4429136",
+       "4429357"
+      ],
+      "covered": 268
+     },
+     "k3": {
+      "chosen": [
+       "4429136",
+       "4429357",
+       "4429312"
+      ],
+      "covered": 270
+     }
+    },
+    {
+     "case": "ii0.25_flat_uniform_b1.5_sfree",
+     "detectable": 224,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4428636"
+      ],
+      "covered": 170
+     },
+     "k2": {
+      "chosen": [
+       "4428636",
+       "4428713"
+      ],
+      "covered": 210
+     },
+     "k3": {
+      "chosen": [
+       "4428636",
+       "4428713",
+       "4428606"
+      ],
+      "covered": 217
+     }
+    },
+    {
+     "case": "ii0.25_flat_uniform_b1_sfree",
+     "detectable": 220,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4429013"
+      ],
+      "covered": 195
+     },
+     "k2": {
+      "chosen": [
+       "4429013",
+       "4428836"
+      ],
+      "covered": 206
+     },
+     "k3": {
+      "chosen": [
+       "4429013",
+       "4428836",
+       "4429136"
+      ],
+      "covered": 213
+     }
+    },
+    {
+     "case": "ii0.25_flat_weighted_b1_sfree",
+     "detectable": 216,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4429013"
+      ],
+      "covered": 185
+     },
+     "k2": {
+      "chosen": [
+       "4429013",
+       "4429107"
+      ],
+      "covered": 192
+     },
+     "k3": {
+      "chosen": [
+       "4429013",
+       "4429107",
+       "4429136"
+      ],
+      "covered": 198
+     }
+    },
+    {
+     "case": "ii0.25_harmon_uniform_b1_sfree",
+     "detectable": 244,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4449503"
+      ],
+      "covered": 201
+     },
+     "k2": {
+      "chosen": [
+       "4449503",
+       "4428636"
+      ],
+      "covered": 221
+     },
+     "k3": {
+      "chosen": [
+       "4449503",
+       "4428636",
+       "4429136"
+      ],
+      "covered": 227
+     }
+    },
+    {
+     "case": "ii0.40_flat_uniform_b1_sfree",
+     "detectable": 202,
+     "of": 355,
+     "k1": {
+      "chosen": [
+       "4428268"
+      ],
+      "covered": 146
+     },
+     "k2": {
+      "chosen": [
+       "4428268",
+       "4428836"
+      ],
+      "covered": 164
+     },
+     "k3": {
+      "chosen": [
+       "4428268",
+       "4428836",
+       "4448345"
+      ],
+      "covered": 176
+     }
+    }
+   ],
+   "consensus": {
+    "k1": {
+     "chosen": [
+      "4448419"
+     ],
+     "per_case": [
+      {
+       "case": "ii0.00_flat_uniform_b1_sfree",
+       "covered": 0,
+       "case_best": 14
+      },
+      {
+       "case": "ii0.11_flat_uniform_b0.5_sfree",
+       "covered": 0,
+       "case_best": 7
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1.5_sfree",
+       "covered": 184,
+       "case_best": 184
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1_sfree",
+       "covered": 37,
+       "case_best": 68
+      },
+      {
+       "case": "ii0.11_flat_weighted_b1_sfree",
+       "covered": 37,
+       "case_best": 68
+      },
+      {
+       "case": "ii0.11_harmon_uniform_b1_sfree",
+       "covered": 187,
+       "case_best": 190
+      },
+      {
+       "case": "ii0.25_flat_uniform_b0.5_sfree",
+       "covered": 254,
+       "case_best": 257
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1.5_sfree",
+       "covered": 154,
+       "case_best": 170
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1_sfree",
+       "covered": 177,
+       "case_best": 195
+      },
+      {
+       "case": "ii0.25_flat_weighted_b1_sfree",
+       "covered": 166,
+       "case_best": 185
+      },
+      {
+       "case": "ii0.25_harmon_uniform_b1_sfree",
+       "covered": 195,
+       "case_best": 201
+      },
+      {
+       "case": "ii0.40_flat_uniform_b1_sfree",
+       "covered": 137,
+       "case_best": 146
+      }
+     ]
+    },
+    "k2": {
+     "chosen": [
+      "4448419",
+      "4450193"
+     ],
+     "per_case": [
+      {
+       "case": "ii0.00_flat_uniform_b1_sfree",
+       "covered": 0,
+       "case_best": 28
+      },
+      {
+       "case": "ii0.11_flat_uniform_b0.5_sfree",
+       "covered": 0,
+       "case_best": 14
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1.5_sfree",
+       "covered": 184,
+       "case_best": 184
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1_sfree",
+       "covered": 68,
+       "case_best": 69
+      },
+      {
+       "case": "ii0.11_flat_weighted_b1_sfree",
+       "covered": 68,
+       "case_best": 69
+      },
+      {
+       "case": "ii0.11_harmon_uniform_b1_sfree",
+       "covered": 187,
+       "case_best": 204
+      },
+      {
+       "case": "ii0.25_flat_uniform_b0.5_sfree",
+       "covered": 254,
+       "case_best": 268
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1.5_sfree",
+       "covered": 154,
+       "case_best": 210
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1_sfree",
+       "covered": 177,
+       "case_best": 206
+      },
+      {
+       "case": "ii0.25_flat_weighted_b1_sfree",
+       "covered": 168,
+       "case_best": 192
+      },
+      {
+       "case": "ii0.25_harmon_uniform_b1_sfree",
+       "covered": 197,
+       "case_best": 221
+      },
+      {
+       "case": "ii0.40_flat_uniform_b1_sfree",
+       "covered": 137,
+       "case_best": 164
+      }
+     ]
+    },
+    "k3": {
+     "chosen": [
+      "4448419",
+      "4450193",
+      "4429312"
+     ],
+     "per_case": [
+      {
+       "case": "ii0.00_flat_uniform_b1_sfree",
+       "covered": 14,
+       "case_best": 35
+      },
+      {
+       "case": "ii0.11_flat_uniform_b0.5_sfree",
+       "covered": 0,
+       "case_best": 20
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1.5_sfree",
+       "covered": 184,
+       "case_best": 184
+      },
+      {
+       "case": "ii0.11_flat_uniform_b1_sfree",
+       "covered": 68,
+       "case_best": 69
+      },
+      {
+       "case": "ii0.11_flat_weighted_b1_sfree",
+       "covered": 68,
+       "case_best": 69
+      },
+      {
+       "case": "ii0.11_harmon_uniform_b1_sfree",
+       "covered": 187,
+       "case_best": 210
+      },
+      {
+       "case": "ii0.25_flat_uniform_b0.5_sfree",
+       "covered": 256,
+       "case_best": 270
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1.5_sfree",
+       "covered": 170,
+       "case_best": 217
+      },
+      {
+       "case": "ii0.25_flat_uniform_b1_sfree",
+       "covered": 194,
+       "case_best": 213
+      },
+      {
+       "case": "ii0.25_flat_weighted_b1_sfree",
+       "covered": 185,
+       "case_best": 198
+      },
+      {
+       "case": "ii0.25_harmon_uniform_b1_sfree",
+       "covered": 217,
+       "case_best": 227
+      },
+      {
+       "case": "ii0.40_flat_uniform_b1_sfree",
+       "covered": 154,
+       "case_best": 176
+      }
+     ]
+    }
+   },
+   "k1_frequency": {
+    "4450193": 2,
+    "4429013": 2,
+    "4429312": 1,
+    "4429107": 1,
+    "4448345": 1,
+    "4429499": 1,
+    "4429136": 1,
+    "4428636": 1,
+    "4449503": 1,
+    "4428268": 1
+   }
+  }
+ }
+}

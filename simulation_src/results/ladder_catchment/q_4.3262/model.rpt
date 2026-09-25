@@ -1,0 +1,214 @@
+
+  EPA STORM WATER MANAGEMENT MODEL - VERSION 5.2 (Build 5.2.4)
+  PYSWMM TOOLKIT API - VERSION v1.0 (2026-02-26)
+  ------------------------------------------------------------
+
+  
+  ****************
+  Analysis Options
+  ****************
+  Flow Units ............... LPS
+  Process Models:
+    Rainfall/Runoff ........ NO
+    RDII ................... NO
+    Snowmelt ............... NO
+    Groundwater ............ NO
+    Flow Routing ........... YES
+    Ponding Allowed ........ NO
+    Water Quality .......... NO
+  Flow Routing Method ...... DYNWAVE
+  Surcharge Method ......... SLOT
+  Starting Date ............ 01/01/2026 00:00:00
+  Ending Date .............. 01/01/2026 02:00:00
+  Antecedent Dry Days ...... 0.0
+  Report Time Step ......... 00:00:10
+  Routing Time Step ........ 0.50 sec
+  Variable Time Step ....... YES
+  Maximum Trials ........... 8
+  Number of Threads ........ 1
+  Head Tolerance ........... 0.001524 m
+  
+  
+  **************************        Volume        Volume
+  Flow Routing Continuity        hectare-m      10^6 ltr
+  **************************     ---------     ---------
+  Dry Weather Inflow .......         0.000         0.000
+  Wet Weather Inflow .......         0.000         0.000
+  Groundwater Inflow .......         0.000         0.000
+  RDII Inflow ..............         0.000         0.000
+  External Inflow ..........         0.248         2.482
+  External Outflow .........         0.069         0.692
+  Flooding Loss ............         0.177         1.773
+  Evaporation Loss .........         0.000         0.000
+  Exfiltration Loss ........         0.000         0.000
+  Initial Stored Volume ....         0.000         0.000
+  Final Stored Volume ......         0.002         0.017
+  Continuity Error (%) .....         0.012
+  
+  
+  ***************************
+  Time-Step Critical Elements
+  ***************************
+  None
+  
+  
+  ********************************
+  Highest Flow Instability Indexes
+  ********************************
+  All links are stable.
+  
+  
+  *********************************
+  Most Frequent Nonconverging Nodes
+  *********************************
+  Convergence obtained at all time steps.
+  
+  
+  *************************
+  Routing Time Step Summary
+  *************************
+  Minimum Time Step           :     0.50 sec
+  Average Time Step           :     0.50 sec
+  Maximum Time Step           :     0.50 sec
+  % of Time in Steady State   :     0.00
+  Average Iterations per Step :     2.00
+  % of Steps Not Converging   :     0.01
+  Time Step Frequencies       :
+      0.500 -  0.500 sec      :   100.00 %
+      0.500 -  0.500 sec      :     0.00 %
+      0.500 -  0.500 sec      :     0.00 %
+      0.500 -  0.500 sec      :     0.00 %
+      0.500 -  0.500 sec      :     0.00 %
+  
+  
+  ******************
+  Node Depth Summary
+  ******************
+  
+  ---------------------------------------------------------------------------------
+                                 Average  Maximum  Maximum  Time of Max    Reported
+                                   Depth    Depth      HGL   Occurrence   Max Depth
+  Node                 Type       Meters   Meters   Meters  days hr:min      Meters
+  ---------------------------------------------------------------------------------
+  A                    STORAGE      4.37     4.38    41.95     0  00:00        4.38
+  B                    STORAGE      1.81     1.85    40.86     0  00:25        1.85
+  J                    STORAGE      3.34     3.38    40.81     0  00:24        3.38
+  D                    STORAGE      1.45     1.47    38.68     0  00:24        1.47
+  OUT                  OUTFALL      0.22     0.23    37.33     0  00:01        0.22
+  
+  
+  *******************
+  Node Inflow Summary
+  *******************
+  
+  -------------------------------------------------------------------------------------------------
+                                  Maximum  Maximum                  Lateral       Total        Flow
+                                  Lateral    Total  Time of Max      Inflow      Inflow     Balance
+                                   Inflow   Inflow   Occurrence      Volume      Volume       Error
+  Node                 Type           LPS      LPS  days hr:min    10^6 ltr    10^6 ltr     Percent
+  -------------------------------------------------------------------------------------------------
+  A                    STORAGE     338.36   338.36     0  00:00        2.44        2.44       0.056
+  B                    STORAGE       3.94    21.14     0  00:01      0.0283      0.0297       2.161
+  J                    STORAGE       2.49   165.93     0  00:00       0.018       0.703       0.734
+  D                    STORAGE       0.00    97.13     0  00:24           0       0.694       0.134
+  OUT                  OUTFALL       0.00    97.13     0  00:24           0       0.692       0.000
+  
+  
+  **********************
+  Node Surcharge Summary
+  **********************
+  
+  No nodes were surcharged.
+  
+  
+  *********************
+  Node Flooding Summary
+  *********************
+  
+  Flooding refers to all water that overflows a node, whether it ponds or not.
+  --------------------------------------------------------------------------
+                                                             Total   Maximum
+                                 Maximum   Time of Max       Flood    Ponded
+                        Hours       Rate    Occurrence      Volume     Depth
+  Node                 Flooded       LPS   days hr:min    10^6 ltr    Meters
+  --------------------------------------------------------------------------
+  A                       1.99    247.66      0  00:24       1.773     0.000
+  
+  
+  **********************
+  Storage Volume Summary
+  **********************
+  
+  ------------------------------------------------------------------------------------------------
+                         Average    Avg   Evap  Exfil     Maximum    Max    Time of Max    Maximum
+                          Volume   Pcnt   Pcnt   Pcnt      Volume   Pcnt     Occurrence    Outflow
+  Storage Unit           1000 m³   Full   Loss   Loss     1000 m³   Full    days hr:min        LPS
+  ------------------------------------------------------------------------------------------------
+  A                        0.004   99.9    0.0    0.0       0.004  100.0       0  00:00     162.27
+  B                        0.002   68.2    0.0    0.0       0.002   69.5       0  00:25       3.94
+  J                        0.003   74.5    0.0    0.0       0.003   75.3       0  00:24     105.61
+  D                        0.001   30.9    0.0    0.0       0.001   31.3       0  00:24      97.13
+  
+  
+  ***********************
+  Outfall Loading Summary
+  ***********************
+  
+  -----------------------------------------------------------
+                         Flow       Avg       Max       Total
+                         Freq      Flow      Flow      Volume
+  Outfall Node           Pcnt       LPS       LPS    10^6 ltr
+  -----------------------------------------------------------
+  OUT                   99.75     96.30     97.13       0.692
+  -----------------------------------------------------------
+  System                99.75     96.30     97.13       0.692
+  
+  
+  ********************
+  Link Flow Summary
+  ********************
+  
+  -----------------------------------------------------------------------------
+                                 Maximum  Time of Max   Maximum    Max/    Max/
+                                  |Flow|   Occurrence   |Veloc|    Full    Full
+  Link                 Type          LPS  days hr:min     m/sec    Flow   Depth
+  -----------------------------------------------------------------------------
+  A-J                  CONDUIT    162.27     0  00:00      4.08    6.28    1.00
+  B-J                  CONDUIT     17.20     0  00:01      0.97    0.88    1.00
+  J-D                  CONDUIT     97.13     0  00:24      2.44    3.75    1.00
+  D-out                CONDUIT     97.13     0  00:24      2.44    3.73    1.00
+  
+  
+  ***************************
+  Flow Classification Summary
+  ***************************
+  
+  -------------------------------------------------------------------------------------
+                      Adjusted    ---------- Fraction of Time in Flow Class ---------- 
+                       /Actual         Up    Down  Sub   Sup   Up    Down  Norm  Inlet 
+  Conduit               Length    Dry  Dry   Dry   Crit  Crit  Crit  Crit  Ltd   Ctrl  
+  -------------------------------------------------------------------------------------
+  A-J                     1.00   0.00  0.00  0.00  1.00  0.00  0.00  0.00  0.00  0.00
+  B-J                     1.00   0.00  0.00  0.00  1.00  0.00  0.00  0.00  0.01  0.00
+  J-D                     1.00   0.00  0.00  0.00  0.99  0.00  0.00  0.01  0.00  0.00
+  D-out                   1.00   0.00  0.00  0.00  1.00  0.00  0.00  0.00  0.00  0.00
+  
+  
+  *************************
+  Conduit Surcharge Summary
+  *************************
+  
+  ----------------------------------------------------------------------------
+                                                           Hours        Hours 
+                         --------- Hours Full --------   Above Full   Capacity
+  Conduit                Both Ends  Upstream  Dnstream   Normal Flow   Limited
+  ----------------------------------------------------------------------------
+  A-J                         1.99      2.00      1.99      2.00         2.00
+  B-J                         1.97      1.97      1.99      0.01         0.01
+  J-D                         1.98      1.99      1.98      1.99         1.99
+  D-out                       1.97      1.98      1.97      1.98         1.98
+  
+
+  Analysis begun on:  Wed Sep 16 00:43:18 2026
+  Analysis ended on:  Wed Sep 16 00:43:19 2026
+  Total elapsed time: 00:00:01

@@ -50,12 +50,16 @@ select{width:100%; padding:7px; font:inherit; border:1px solid var(--line);
 .fact{display:flex; justify-content:space-between; gap:10px; padding:5px 0;
   border-bottom:1px solid var(--line); font-size:12.5px}
 .fact span:first-child{color:var(--faint)}
+.fact.sub2{border-bottom:0; padding:0 0 5px 12px; margin-top:-3px; font-size:11.5px}
 .fact b.bad{color:var(--warn)}
 h4{margin:14px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.05em;
   color:var(--dim)}
 #tipList ul{margin:0; padding-left:18px; font-size:12.5px; columns:2; column-gap:14px}
 #tipList li{margin-bottom:2px}
 .quiet{color:var(--faint); font-size:12px; margin:4px 0}
+#superseded{margin:0 0 12px; padding:9px 10px; border-radius:7px; background:#2b0d14;
+  border:1px solid var(--warn); color:#ff9aac; font-size:11.5px; line-height:1.45}
+#superseded a{color:#fff}
 #baseNote{margin-top:12px; padding:9px 10px; border-radius:7px; background:#2a1f08;
   border:1px solid var(--amber); color:#ffcf7a; font-size:11.5px; line-height:1.45}
 #sensorList{margin-top:14px; padding:11px; border:1px solid var(--line); border-radius:8px;
@@ -108,7 +112,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 #homeKey strong{color:#e7edf7; font-variant-numeric:tabular-nums}
 #homeKey .k{display:inline-block; width:11px; height:11px; border-radius:50%;
   vertical-align:-2px; margin-right:6px}
-#homeKey .k.ring{box-shadow:0 0 0 2px #0d1117, 0 0 0 3px #00d4ff}
+#homeKey .k.ring{box-shadow:0 0 0 2px #ffffff}
 #homeKey .quiet2{color:#6e7681; font-size:11px}
 #scale{padding:2px 14px 10px; font-size:10.5px; color:#6e7681; background:#0d1117}
 /* The assumptions tab. It replaces the stage rather than sitting beside it, and
@@ -197,6 +201,10 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 <body>
 
 <aside id="side">
+  <div id="superseded"><b>Superseded by Simulation 2.5.</b> This model misses about 2.7 km
+  of sewer draining in from outside the catchment, and its "dry weather" setting is 1.7 times
+  the utility's design envelope. Kept for the record; for results, use
+  <a href="../#sim25" target="_top">Simulation 2.5</a>.</div>
   <h1>Growth and sensor placement</h1>
   <p class="sub">Where does new development use up the network's headroom, and where would
   a sensor notice?</p>
@@ -265,11 +273,11 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=24"></script>
-<script src="data/growth.js?v=24"></script>
-<script src="data/index.js?v=24"></script>
-<script src="growth_3d.js?v=24"></script>
-<script src="growth_ui.js?v=24"></script>
+<script src="data/catchment.js?v=27"></script>
+<script src="data/growth.js?v=27"></script>
+<script src="data/index.js?v=27"></script>
+<script src="growth_3d.js?v=27"></script>
+<script src="growth_ui.js?v=27"></script>
 <script type="module">
   GrowthUI.init();
 </script>

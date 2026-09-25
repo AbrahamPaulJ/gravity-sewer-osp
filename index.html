@@ -65,7 +65,8 @@ footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);
     <button data-tab="anatomy">What a maintenance hole is</button>
     <button data-tab="observability">Why observability is limited</button>
     <button data-tab="sim1">Simulation 1</button>
-    <button data-tab="sim2">Simulation 2 (latest)</button>
+    <button data-tab="sim2">Simulation 2 (superseded)</button>
+    <button data-tab="sim25">Simulation 2.5 (latest)</button>
   </nav>
 </header>
 
@@ -75,7 +76,7 @@ footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);
 <div class="wrap">
 
 <h1>Optimal sensor placement in gravity sewers</h1>
-<p class="sub">An interactive sandbox and two explainers, built on openly published South
+<p class="sub">An interactive sandbox, three simulations and two explainers, built on openly published South
 Australian network data.</p>
 
 <p>Water utilities put level sensors in sewer maintenance holes to catch blockages before they
@@ -91,8 +92,18 @@ This is a working tool for exploring that, running on a real network rather than
     for your own JavaScript. Includes an assumptions register, the method and its sources, and a
     glossary.</p>
   </a>
-  <a class="card big" href="#sim2" data-tab="sim2">
-    <span class="tag">Interactive</span>
+  <a class="card big" href="#sim25" data-tab="sim25">
+    <span class="tag">Interactive, latest</span>
+    <h3>Simulation 2.5: which manholes see growth, whatever the unknowns</h3>
+    <p>The growth model rebuilt on the whole council network below the catchment, solved in
+    EPA SWMM, with outside inflows where other areas join. Twelve cases vary what cannot yet be
+    measured: infiltration, peaking, older pipes leaking more, and outside inflow. The finding:
+    under a fixed 150 mm alarm the best sensor moves with every case, but judged on a rise of
+    10 or 25 mm over each manhole's own level, one pair of sensors keeps most of the achievable
+    coverage in all twelve. The threshold itself is what real level records would settle.</p>
+  </a>
+  <a class="card" href="#sim2" data-tab="sim2">
+    <span class="tag">Superseded by 2.5</span>
     <h3>Growth and sensor placement</h3>
     <p>A whole drainage catchment in 3D, 157 pipes and 71 chambers, solved in EPA SWMM with
     the connected properties counted from the published record rather than assumed. Choose
@@ -189,11 +200,12 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
      document across a normal reload of this page, so a visitor who saw an earlier
      version keeps seeing it after a deploy. Changing the number is what forces the
      refetch. Bump it whenever an embedded page changes. -->
-<div class="pane" id="pane-sandbox" hidden><iframe data-src="osp_sandbox.html?v=27#sandbox" title="OSP Sandbox"></iframe></div>
-<div class="pane" id="pane-anatomy" hidden><iframe data-src="manhole_anatomy.html?v=27" title="What a maintenance hole is"></iframe></div>
-<div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html?v=27" title="Why observability is limited"></iframe></div>
-<div class="pane" id="pane-sim1" hidden><iframe data-src="simulation_legacy/index.html?v=27" title="Simulation 1: warning time"></iframe></div>
-<div class="pane" id="pane-sim2" hidden><iframe data-src="simulation/index.html?v=27" title="Simulation 2: growth and sensor placement"></iframe></div>
+<div class="pane" id="pane-sandbox" hidden><iframe data-src="osp_sandbox.html?v=31#sandbox" title="OSP Sandbox"></iframe></div>
+<div class="pane" id="pane-anatomy" hidden><iframe data-src="manhole_anatomy.html?v=31" title="What a maintenance hole is"></iframe></div>
+<div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html?v=31" title="Why observability is limited"></iframe></div>
+<div class="pane" id="pane-sim1" hidden><iframe data-src="simulation_legacy/index.html?v=31" title="Simulation 1: warning time"></iframe></div>
+<div class="pane" id="pane-sim2" hidden><iframe data-src="simulation/index.html?v=31" title="Simulation 2: growth and sensor placement"></iframe></div>
+<div class="pane" id="pane-sim25" hidden><iframe data-src="simulation25/index.html?v=31" title="Simulation 2.5: growth and sensor placement"></iframe></div>
 
 </div>
 

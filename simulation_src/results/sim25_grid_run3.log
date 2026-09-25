@@ -1,0 +1,43 @@
+12 cases (6 nested); 2136 segment runs (~3.5 s each) + 2162 whole runs (~20 s each) on 6 workers: about 141 min
+    ii0.00_flat_uniform_b1_sfree nested
+    ii0.11_flat_uniform_b1_sfree nested
+    ii0.25_flat_uniform_b1_sfree whole
+    ii0.40_flat_uniform_b1_sfree whole
+    ii0.11_harmon_uniform_b1_sfree nested
+    ii0.11_flat_weighted_b1_sfree nested
+    ii0.11_flat_uniform_b0.5_sfree nested
+    ii0.11_flat_uniform_b1.5_sfree nested
+    ii0.25_harmon_uniform_b1_sfree whole
+    ii0.25_flat_weighted_b1_sfree whole
+    ii0.25_flat_uniform_b0.5_sfree whole
+    ii0.25_flat_uniform_b1.5_sfree whole
+  ii0.00_flat_uniform_b1_sfree: already done, kept
+  ii0.11_flat_uniform_b1_sfree: already done, kept
+  ii0.25_flat_uniform_b1_sfree: already done, kept
+  ii0.40_flat_uniform_b1_sfree: already done, kept
+  ii0.11_harmon_uniform_b1_sfree: already done, kept
+  ii0.11_flat_weighted_b1_sfree: already done, kept
+  ii0.11_flat_uniform_b0.5_sfree: already done, kept
+  ii0.11_flat_uniform_b1.5_sfree: already done, kept
+  ii0.25_harmon_uniform_b1_sfree: already done, kept
+  ii0.25_flat_weighted_b1_sfree: already done, kept
+  ii0.25_flat_uniform_b0.5_sfree: 355 growth runs, baseline alarm 22 surcharged 22; sensors alarm [4447128] surcharge [4447128] (2107 s)
+  ii0.25_flat_uniform_b1.5_sfree: 355 growth runs, baseline alarm 41 surcharged 41; sensors alarm [4428765] surcharge [4428765] (1926 s)
+  corridor ii0.00_flat_uniform_b1_sfree +80: outlet rises 0.0 mm, max study rise 0.0 mm, newly alarm [], surcharge []
+  corridor ii0.00_flat_uniform_b1_sfree +150: outlet rises 0.0 mm, max study rise 0.0 mm, newly alarm [], surcharge []
+  corridor ii0.00_flat_uniform_b1_sfree +390: outlet rises 0.0 mm, max study rise 0.0 mm, newly alarm [], surcharge []
+  corridor ii0.00_flat_uniform_b1_sfree +485: outlet rises 0.0 mm, max study rise 0.0 mm, newly alarm [], surcharge []
+  corridor ii0.11_flat_uniform_b1_sfree +80: outlet rises 0.0 mm, max study rise 0.0 mm, newly alarm [], surcharge []
+  corridor ii0.11_flat_uniform_b1_sfree +150: outlet rises 0.0 mm, max study rise 0.0 mm, newly alarm [], surcharge []
+  corridor ii0.11_flat_uniform_b1_sfree +390: outlet rises 0.0 mm, max study rise 0.0 mm, newly alarm [], surcharge []
+  corridor ii0.11_flat_uniform_b1_sfree +485: outlet rises 0.0 mm, max study rise 0.0 mm, newly alarm [], surcharge []
+  corridor ii0.25_flat_uniform_b1_sfree +80: outlet rises 8.3 mm, max study rise 7.4 mm, newly alarm [4428836], surcharge [4428836]
+  corridor ii0.25_flat_uniform_b1_sfree +150: outlet rises 15.6 mm, max study rise 13.8 mm, newly alarm [4428836], surcharge [4428836]
+  corridor ii0.25_flat_uniform_b1_sfree +390: outlet rises 40.9 mm, max study rise 36.3 mm, newly alarm [4428836], surcharge [4428836]
+  corridor ii0.25_flat_uniform_b1_sfree +485: outlet rises 50.8 mm, max study rise 45.1 mm, newly alarm [4428836], surcharge [4428836]
+  corridor ii0.40_flat_uniform_b1_sfree +80: outlet rises 0.1 mm, max study rise 0.1 mm, newly alarm [], surcharge []
+  corridor ii0.40_flat_uniform_b1_sfree +150: outlet rises 0.2 mm, max study rise 0.2 mm, newly alarm [], surcharge []
+  corridor ii0.40_flat_uniform_b1_sfree +390: outlet rises 0.7 mm, max study rise 0.5 mm, newly alarm [], surcharge []
+  corridor ii0.40_flat_uniform_b1_sfree +485: outlet rises 0.8 mm, max study rise 0.6 mm, newly alarm [], surcharge []
+alarm: MH4448419 2/12, MH4428765 2/12, MH4449882 1/12, MH4449103 1/12, MH4428836 1/12, MH4428268 1/12, MH4429499 1/12, MH4449173 1/12, MH4450193 1/12, MH4447394 1/12
+surcharge: MH4449882 2/12, MH4449785 2/12, MH4429499 2/12, MH4428765 2/12, MH4428836 1/12, MH4428268 1/12, MH4448345 1/12, MH4449503 1/12, MH4429645 1/12, MH4450100 1/12

@@ -1,0 +1,92 @@
+{
+ "experiment": "growth",
+ "split": "along",
+ "unit_label": "L/s per 100 m of sewer",
+ "base": 0.15,
+ "already": {
+  "half pipe": [],
+  "surcharge": [],
+  "half shaft": [],
+  "spill": []
+ },
+ "rows": {
+  "A": {
+   "surcharge": {
+    "lps": 17.25,
+    "where": [
+     "A"
+    ]
+   },
+   "spill": {
+    "lps": 84.0,
+    "where": [
+     "A"
+    ]
+   }
+  },
+  "B": {
+   "surcharge": {
+    "lps": 18.25,
+    "where": [
+     "J"
+    ]
+   },
+   "spill": {
+    "lps": 34.0,
+    "where": [
+     "B"
+    ]
+   }
+  },
+  "J": {
+   "surcharge": {
+    "lps": 18.25,
+    "where": [
+     "J"
+    ]
+   },
+   "spill": {
+    "lps": 100.0,
+    "where": [
+     "B"
+    ]
+   }
+  },
+  "D": {
+   "surcharge": {
+    "lps": 20.25,
+    "where": [
+     "D"
+    ]
+   },
+   "spill": {
+    "lps": 176.0,
+    "where": [
+     "B"
+    ]
+   }
+  }
+ },
+ "runs": 80,
+ "text": [
+  "GROWTH, split = along",
+  "",
+  "Base load 0.15 L/s per 100 m of sewer (= 2.0 x indicative dry weather flow), held constant.",
+  "Extra constant load added at one chamber at a time; 120 min per run.",
+  "Already at base: surcharge at none; spilling at none",
+  "",
+  "Added L/s at site before a NEW chamber surcharges / spills, and which one:",
+  "site   surcharge (where)          spill (where)        spill as sewer at base",
+  "  A       17.2 L/s (A    )           84 L/s (A    )   56.0 km",
+  "  B       18.2 L/s (J    )           34 L/s (B    )   22.7 km",
+  "  J       18.2 L/s (J    )          100 L/s (B    )   66.7 km",
+  "  D       20.2 L/s (D    )          176 L/s (B    )   117.3 km",
+  "",
+  "'as sewer at base' = how much new sewer, loaded like the existing network,",
+  "would add that flow. A rough development-size equivalent, nothing more.",
+  "",
+  "Worst SWMM flow continuity error across all runs: -0.26%"
+ ],
+ "default_run": "site_B",
+ "worst_continuity_error_pct": -0.263
+}

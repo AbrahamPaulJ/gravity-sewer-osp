@@ -1,0 +1,54 @@
+
+=== detection = rise >= 10 mm ===
+  ii0.00_flat_uniform_b1_sfree     detectable 185/355 | best 1 MH['4448419'] covers 77 | best 3 ['4448419', '4450193', '4429107'] covers 122
+  ii0.11_flat_uniform_b0.5_sfree   detectable 167/355 | best 1 MH['4450193'] covers 71 | best 3 ['4450193', '4429312', '4448853'] covers 99
+  ii0.11_flat_uniform_b1.5_sfree   detectable 280/355 | best 1 MH['4448345'] covers 279 | best 3 ['4448345', '4449866'] covers 280
+  ii0.11_flat_uniform_b1_sfree     detectable 173/355 | best 1 MH['4450193'] covers 139 | best 3 ['4450193', '4449849', '4428995'] covers 148
+  ii0.11_flat_weighted_b1_sfree    detectable 169/355 | best 1 MH['4449849'] covers 78 | best 3 ['4449849', '4429312', '4448853'] covers 109
+  ii0.11_harmon_uniform_b1_sfree   detectable 319/355 | best 1 MH['4447394'] covers 319 | best 3 ['4447394'] covers 319
+  ii0.25_flat_uniform_b0.5_sfree   detectable 353/355 | best 1 MH['4429136'] covers 353 | best 3 ['4429136'] covers 353
+  ii0.25_flat_uniform_b1.5_sfree   detectable 316/355 | best 1 MH['4428636'] covers 293 | best 3 ['4428636', '4428836', '4449118'] covers 307
+  ii0.25_flat_uniform_b1_sfree     detectable 313/355 | best 1 MH['4429312'] covers 296 | best 3 ['4429312', '4449118', '4450100'] covers 308
+  ii0.25_flat_weighted_b1_sfree    detectable 302/355 | best 1 MH['4447394'] covers 295 | best 3 ['4447394', '4429013', '4449860'] covers 299
+  ii0.25_harmon_uniform_b1_sfree   detectable 334/355 | best 1 MH['4429645'] covers 311 | best 3 ['4429645', '4428583', '4450100'] covers 329
+  ii0.40_flat_uniform_b1_sfree     detectable 284/355 | best 1 MH['4429312'] covers 216 | best 3 ['4429312', '4428583', '4428713'] covers 253
+  single-sensor choice frequency: {'4450193': 2, '4447394': 2, '4429312': 2, '4448419': 1, '4448345': 1, '4449849': 1, '4429136': 1, '4428636': 1, '4429645': 1}
+  consensus 1 sensor(s) ['4448419']: keeps 51% to 100% of each case's own best (mean 85%)
+  consensus 2 sensor(s) ['4448419', '4450193']: keeps 75% to 100% of each case's own best (mean 92%)
+  consensus 3 sensor(s) ['4448419', '4450193', '4429312']: keeps 78% to 100% of each case's own best (mean 93%)
+
+=== detection = rise >= 25 mm ===
+  ii0.00_flat_uniform_b1_sfree     detectable  85/355 | best 1 MH['4450193'] covers 70 | best 3 ['4450193', '4449849', '4428995'] covers 79
+  ii0.11_flat_uniform_b0.5_sfree   detectable  78/355 | best 1 MH['4450193'] covers 70 | best 3 ['4450193', '4450332', '4449882'] covers 76
+  ii0.11_flat_uniform_b1.5_sfree   detectable 245/355 | best 1 MH['4448345'] covers 245 | best 3 ['4448345'] covers 245
+  ii0.11_flat_uniform_b1_sfree     detectable  78/355 | best 1 MH['4450193'] covers 70 | best 3 ['4450193', '4450332', '4449882'] covers 76
+  ii0.11_flat_weighted_b1_sfree    detectable  78/355 | best 1 MH['4450193'] covers 70 | best 3 ['4450193', '4450332', '4449882'] covers 76
+  ii0.11_harmon_uniform_b1_sfree   detectable 258/355 | best 1 MH['4447394'] covers 256 | best 3 ['4447394', '4448853'] covers 258
+  ii0.25_flat_uniform_b0.5_sfree   detectable 306/355 | best 1 MH['4429312'] covers 299 | best 3 ['4429312', '4429136'] covers 306
+  ii0.25_flat_uniform_b1.5_sfree   detectable 273/355 | best 1 MH['4428636'] covers 246 | best 3 ['4428636', '4428583', '4429320'] covers 261
+  ii0.25_flat_uniform_b1_sfree     detectable 261/355 | best 1 MH['4429312'] covers 237 | best 3 ['4429312', '4428836', '4429471'] covers 250
+  ii0.25_flat_weighted_b1_sfree    detectable 249/355 | best 1 MH['4429013'] covers 226 | best 3 ['4429013', '4449118', '4429136'] covers 238
+  ii0.25_harmon_uniform_b1_sfree   detectable 292/355 | best 1 MH['4428636'] covers 263 | best 3 ['4428636', '4428583', '4429136'] covers 284
+  ii0.40_flat_uniform_b1_sfree     detectable 239/355 | best 1 MH['4428268'] covers 180 | best 3 ['4428268', '4428583', '4428606'] covers 212
+  single-sensor choice frequency: {'4450193': 4, '4429312': 2, '4428636': 2, '4448345': 1, '4447394': 1, '4429013': 1, '4428268': 1}
+  consensus 1 sensor(s) ['4449785']: keeps 18% to 97% of each case's own best (mean 82%)
+  consensus 2 sensor(s) ['4449785', '4447394']: keeps 84% to 100% of each case's own best (mean 92%)
+  consensus 3 sensor(s) ['4449785', '4447394', '4450332']: keeps 84% to 100% of each case's own best (mean 92%)
+
+=== detection = rise >= 50 mm ===
+  ii0.00_flat_uniform_b1_sfree     detectable  59/355 | best 1 MH['4429312'] covers 14 | best 3 ['4429312', '4448853', '4449118'] covers 35
+  ii0.11_flat_uniform_b0.5_sfree   detectable  40/355 | best 1 MH['4429107'] covers 7 | best 3 ['4429107', '4449118', '4429499'] covers 20
+  ii0.11_flat_uniform_b1.5_sfree   detectable 184/355 | best 1 MH['4448345'] covers 184 | best 3 ['4448345'] covers 184
+  ii0.11_flat_uniform_b1_sfree     detectable  69/355 | best 1 MH['4450193'] covers 68 | best 3 ['4450193', '4449882'] covers 69
+  ii0.11_flat_weighted_b1_sfree    detectable  69/355 | best 1 MH['4450193'] covers 68 | best 3 ['4450193', '4449882'] covers 69
+  ii0.11_harmon_uniform_b1_sfree   detectable 213/355 | best 1 MH['4429499'] covers 190 | best 3 ['4429499', '4448853', '4449849'] covers 210
+  ii0.25_flat_uniform_b0.5_sfree   detectable 270/355 | best 1 MH['4429136'] covers 257 | best 3 ['4429136', '4429357', '4429312'] covers 270
+  ii0.25_flat_uniform_b1.5_sfree   detectable 224/355 | best 1 MH['4428636'] covers 170 | best 3 ['4428636', '4428713', '4428606'] covers 217
+  ii0.25_flat_uniform_b1_sfree     detectable 220/355 | best 1 MH['4429013'] covers 195 | best 3 ['4429013', '4428836', '4429136'] covers 213
+  ii0.25_flat_weighted_b1_sfree    detectable 216/355 | best 1 MH['4429013'] covers 185 | best 3 ['4429013', '4429107', '4429136'] covers 198
+  ii0.25_harmon_uniform_b1_sfree   detectable 244/355 | best 1 MH['4449503'] covers 201 | best 3 ['4449503', '4428636', '4429136'] covers 227
+  ii0.40_flat_uniform_b1_sfree     detectable 202/355 | best 1 MH['4428268'] covers 146 | best 3 ['4428268', '4428836', '4448345'] covers 176
+  single-sensor choice frequency: {'4450193': 2, '4429013': 2, '4429312': 1, '4429107': 1, '4448345': 1, '4429499': 1, '4429136': 1, '4428636': 1, '4449503': 1, '4428268': 1}
+  consensus 1 sensor(s) ['4448419']: keeps 0% to 100% of each case's own best (mean 72%)
+  consensus 2 sensor(s) ['4448419', '4450193']: keeps 0% to 100% of each case's own best (mean 75%)
+  consensus 3 sensor(s) ['4448419', '4450193', '4429312']: keeps 0% to 100% of each case's own best (mean 81%)

@@ -1,0 +1,23 @@
+12 cases (6 nested); 2136 segment runs (~3.5 s each) + 2162 whole runs (~20 s each) on 11 workers: about 77 min
+    ii0.00_flat_uniform_b1_sfree nested
+    ii0.11_flat_uniform_b1_sfree nested
+    ii0.25_flat_uniform_b1_sfree whole
+    ii0.40_flat_uniform_b1_sfree whole
+    ii0.11_harmon_uniform_b1_sfree nested
+    ii0.11_flat_weighted_b1_sfree nested
+    ii0.11_flat_uniform_b0.5_sfree nested
+    ii0.11_flat_uniform_b1.5_sfree nested
+    ii0.25_harmon_uniform_b1_sfree whole
+    ii0.25_flat_weighted_b1_sfree whole
+    ii0.25_flat_uniform_b0.5_sfree whole
+    ii0.25_flat_uniform_b1.5_sfree whole
+  ii0.00_flat_uniform_b1_sfree: 355 growth runs, baseline alarm 0 surcharged 0; sensors alarm [4449882] surcharge [4449882] (330 s)
+  ii0.11_flat_uniform_b1_sfree: 355 growth runs, baseline alarm 2 surcharged 0; sensors alarm [4448419, 4449103] surcharge [4449785] (341 s)
+  ii0.25_flat_uniform_b1_sfree: 355 growth runs, baseline alarm 33 surcharged 33; sensors alarm [4428836] surcharge [4428836] (1512 s)
+  ii0.40_flat_uniform_b1_sfree: 355 growth runs, baseline alarm 45 surcharged 45; sensors alarm [4428268] surcharge [4428268] (1433 s)
+  ii0.11_harmon_uniform_b1_sfree: 355 growth runs, baseline alarm 9 surcharged 9; sensors alarm [4429499] surcharge [4429499] (325 s)
+  ii0.11_flat_weighted_b1_sfree: 355 growth runs, baseline alarm 2 surcharged 0; sensors alarm [4448419, 4449173] surcharge [4449785] (339 s)
+  ii0.11_flat_uniform_b0.5_sfree: 355 growth runs, baseline alarm 0 surcharged 0; sensors alarm [4450193] surcharge [4429499, 4449882] (310 s)
+  ii0.11_flat_uniform_b1.5_sfree: 355 growth runs, baseline alarm 7 surcharged 6; sensors alarm [4447394, 4448853] surcharge [4448345] (334 s)
+  ii0.25_harmon_uniform_b1_sfree: 355 growth runs, baseline alarm 38 surcharged 38; sensors alarm [4428765, 4449503, 4429645, 4450100] surcharge [4428765, 4449503, 4429645, 4450100] (1471 s)
+  ii0.25_flat_weighted_b1_sfree: 355 growth runs, baseline alarm 31 surcharged 31; sensors alarm [4447880] surcharge [4447880] (1538 s)

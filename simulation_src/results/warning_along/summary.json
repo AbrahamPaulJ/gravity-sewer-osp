@@ -1,0 +1,170 @@
+{
+ "experiment": "warning",
+ "split": "along",
+ "unit_label": "L/s per 100 m of sewer",
+ "base": 0.15,
+ "spill_load": 1.215034375,
+ "level_delta": 0.1,
+ "events": [
+  {
+   "peak": 10.13,
+   "factor": 1.25,
+   "run": "peak_x10.13",
+   "err": -0.051,
+   "first_spill": 85.66666666666667,
+   "first_spill_at": "A",
+   "chambers": {
+    "A": {
+     "base_depth": 0.10617227500363624,
+     "level_alarm": 65.16666666666667,
+     "float_alarm": 65.66666666666667,
+     "float_tripped_at_base": false,
+     "level_lead": 20.5,
+     "float_lead": 20.0
+    },
+    "B": {
+     "base_depth": 0.003606443224007815,
+     "level_alarm": 78.0,
+     "float_alarm": 78.33333333333333,
+     "float_tripped_at_base": false,
+     "level_lead": 7.666666666666671,
+     "float_lead": 7.333333333333343
+    },
+    "J": {
+     "base_depth": 0.10703322639992668,
+     "level_alarm": 66.16666666666667,
+     "float_alarm": 66.66666666666667,
+     "float_tripped_at_base": false,
+     "level_lead": 19.5,
+     "float_lead": 19.0
+    },
+    "D": {
+     "base_depth": 0.10884011378867428,
+     "level_alarm": 67.66666666666667,
+     "float_alarm": 68.16666666666667,
+     "float_tripped_at_base": false,
+     "level_lead": 18.0,
+     "float_lead": 17.5
+    }
+   }
+  },
+  {
+   "peak": 16.2,
+   "factor": 2.0,
+   "run": "peak_x16.2",
+   "err": -0.035,
+   "first_spill": 76.33333333333333,
+   "first_spill_at": "A",
+   "chambers": {
+    "A": {
+     "base_depth": 0.10617227500363624,
+     "level_alarm": 63.333333333333336,
+     "float_alarm": 63.666666666666664,
+     "float_tripped_at_base": false,
+     "level_lead": 12.999999999999993,
+     "float_lead": 12.666666666666664
+    },
+    "B": {
+     "base_depth": 0.003606443224007815,
+     "level_alarm": 72.0,
+     "float_alarm": 72.16666666666667,
+     "float_tripped_at_base": false,
+     "level_lead": 4.333333333333329,
+     "float_lead": 4.166666666666657
+    },
+    "J": {
+     "base_depth": 0.10703322639992668,
+     "level_alarm": 64.16666666666667,
+     "float_alarm": 64.5,
+     "float_tripped_at_base": false,
+     "level_lead": 12.166666666666657,
+     "float_lead": 11.833333333333329
+    },
+    "D": {
+     "base_depth": 0.10884011378867428,
+     "level_alarm": 65.33333333333333,
+     "float_alarm": 65.66666666666667,
+     "float_tripped_at_base": false,
+     "level_lead": 11.0,
+     "float_lead": 10.666666666666657
+    }
+   }
+  },
+  {
+   "peak": 24.3,
+   "factor": 3.0,
+   "run": "peak_x24.3",
+   "err": -0.023,
+   "first_spill": 71.33333333333333,
+   "first_spill_at": "A",
+   "chambers": {
+    "A": {
+     "base_depth": 0.10617227500363624,
+     "level_alarm": 62.333333333333336,
+     "float_alarm": 62.5,
+     "float_tripped_at_base": false,
+     "level_lead": 8.999999999999993,
+     "float_lead": 8.833333333333329
+    },
+    "B": {
+     "base_depth": 0.003606443224007815,
+     "level_alarm": 68.83333333333333,
+     "float_alarm": 68.83333333333333,
+     "float_tripped_at_base": false,
+     "level_lead": 2.5,
+     "float_lead": 2.5
+    },
+    "J": {
+     "base_depth": 0.10703322639992668,
+     "level_alarm": 63.166666666666664,
+     "float_alarm": 63.333333333333336,
+     "float_tripped_at_base": false,
+     "level_lead": 8.166666666666664,
+     "float_lead": 7.999999999999993
+    },
+    "D": {
+     "base_depth": 0.10884011378867428,
+     "level_alarm": 64.16666666666667,
+     "float_alarm": 64.33333333333333,
+     "float_tripped_at_base": false,
+     "level_lead": 7.166666666666657,
+     "float_lead": 7.0
+    }
+   }
+  }
+ ],
+ "text": [
+  "WARNING TIME, split = along",
+  "",
+  "Base 0.15 L/s per 100 m of sewer for 60 min, then an event: rise 30 min to the peak, hold 30,",
+  "fall 60. Peaks are multiples of the steady load that first spills anywhere (1.22 L/s per 100 m of sewer).",
+  "Level sensor alarms at +0.1 m above its base level. Float switch trips at its outlet pipe crown.",
+  "Lead = minutes between the alarm and the first spill anywhere. Times from event start.",
+  "",
+  "Peak x10.13 base (1.25 x spill load): first spill at A, 25.7 min into the event",
+  "   sensor at   level alarm  lead      float alarm  lead",
+  "      A            5.2     20.5          5.7     20.0",
+  "      B           18.0      7.7         18.3      7.3",
+  "      J            6.2     19.5          6.7     19.0",
+  "      D            7.7     18.0          8.2     17.5",
+  "",
+  "Peak x16.2 base (2 x spill load): first spill at A, 16.3 min into the event",
+  "   sensor at   level alarm  lead      float alarm  lead",
+  "      A            3.3     13.0          3.7     12.7",
+  "      B           12.0      4.3         12.2      4.2",
+  "      J            4.2     12.2          4.5     11.8",
+  "      D            5.3     11.0          5.7     10.7",
+  "",
+  "Peak x24.3 base (3 x spill load): first spill at A, 11.3 min into the event",
+  "   sensor at   level alarm  lead      float alarm  lead",
+  "      A            2.3      9.0          2.5      8.8",
+  "      B            8.8      2.5          8.8      2.5",
+  "      J            3.2      8.2          3.3      8.0",
+  "      D            4.2      7.2          4.3      7.0",
+  "",
+  "",
+  "Worst SWMM flow continuity error across all runs: -0.05%"
+ ],
+ "default_run": "peak_x16.2",
+ "worst_continuity_error_pct": -0.051
+}

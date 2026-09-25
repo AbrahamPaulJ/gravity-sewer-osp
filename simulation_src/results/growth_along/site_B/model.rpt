@@ -1,0 +1,299 @@
+
+  EPA STORM WATER MANAGEMENT MODEL - VERSION 5.2 (Build 5.2.4)
+  PYSWMM TOOLKIT API - VERSION v1.0 (2026-02-26)
+  ------------------------------------------------------------
+
+  WARNING 03: negative offset ignored for Link B-J~4
+  WARNING 03: negative offset ignored for Link B-J~5
+  WARNING 02: maximum depth increased for Node A-J.1
+  WARNING 02: maximum depth increased for Node A-J.2
+  WARNING 02: maximum depth increased for Node B-J.1
+  WARNING 02: maximum depth increased for Node B-J.2
+  WARNING 02: maximum depth increased for Node B-J.3
+  WARNING 02: maximum depth increased for Node B-J.4
+  WARNING 02: maximum depth increased for Node B-J.5
+  WARNING 02: maximum depth increased for Node B-J.6
+  WARNING 02: maximum depth increased for Node J-D.1
+  WARNING 02: maximum depth increased for Node J-D.2
+  WARNING 02: maximum depth increased for Node J-D.3
+  
+  ****************
+  Analysis Options
+  ****************
+  Flow Units ............... LPS
+  Process Models:
+    Rainfall/Runoff ........ NO
+    RDII ................... NO
+    Snowmelt ............... NO
+    Groundwater ............ NO
+    Flow Routing ........... YES
+    Ponding Allowed ........ NO
+    Water Quality .......... NO
+  Flow Routing Method ...... DYNWAVE
+  Surcharge Method ......... SLOT
+  Starting Date ............ 01/01/2026 00:00:00
+  Ending Date .............. 01/01/2026 02:00:00
+  Antecedent Dry Days ...... 0.0
+  Report Time Step ......... 00:00:10
+  Routing Time Step ........ 0.50 sec
+  Variable Time Step ....... YES
+  Maximum Trials ........... 8
+  Number of Threads ........ 1
+  Head Tolerance ........... 0.001524 m
+  
+  
+  **************************        Volume        Volume
+  Flow Routing Continuity        hectare-m      10^6 ltr
+  **************************     ---------     ---------
+  Dry Weather Inflow .......         0.000         0.000
+  Wet Weather Inflow .......         0.000         0.000
+  Groundwater Inflow .......         0.000         0.000
+  RDII Inflow ..............         0.000         0.000
+  External Inflow ..........         0.034         0.343
+  External Outflow .........         0.032         0.319
+  Flooding Loss ............         0.001         0.014
+  Evaporation Loss .........         0.000         0.000
+  Exfiltration Loss ........         0.000         0.000
+  Initial Stored Volume ....         0.000         0.000
+  Final Stored Volume ......         0.001         0.011
+  Continuity Error (%) .....         0.016
+  
+  
+  ***************************
+  Time-Step Critical Elements
+  ***************************
+  None
+  
+  
+  ********************************
+  Highest Flow Instability Indexes
+  ********************************
+  All links are stable.
+  
+  
+  *********************************
+  Most Frequent Nonconverging Nodes
+  *********************************
+  Node B-J.1 (0.01%)
+  Node OUT (0.01%)
+  
+  
+  *************************
+  Routing Time Step Summary
+  *************************
+  Minimum Time Step           :     0.50 sec
+  Average Time Step           :     0.50 sec
+  Maximum Time Step           :     0.50 sec
+  % of Time in Steady State   :     0.00
+  Average Iterations per Step :     2.00
+  % of Steps Not Converging   :     0.01
+  Time Step Frequencies       :
+      0.500 -  0.500 sec      :   100.00 %
+      0.500 -  0.500 sec      :     0.00 %
+      0.500 -  0.500 sec      :     0.00 %
+      0.500 -  0.500 sec      :     0.00 %
+      0.500 -  0.500 sec      :     0.00 %
+  
+  
+  ******************
+  Node Depth Summary
+  ******************
+  
+  ---------------------------------------------------------------------------------
+                                 Average  Maximum  Maximum  Time of Max    Reported
+                                   Depth    Depth      HGL   Occurrence   Max Depth
+  Node                 Type       Meters   Meters   Meters  days hr:min      Meters
+  ---------------------------------------------------------------------------------
+  A-J.1                JUNCTION     0.64     0.67    38.19     0  01:35        0.67
+  A-J.2                JUNCTION     0.68     0.70    38.18     0  01:27        0.70
+  B-J.1                JUNCTION     2.38     2.43    41.22     0  01:22        2.43
+  B-J.2                JUNCTION     2.14     2.19    40.77     0  01:14        2.19
+  B-J.3                JUNCTION     1.88     1.93    40.30     0  01:30        1.93
+  B-J.4                JUNCTION     1.61     1.65    39.80     0  00:55        1.65
+  B-J.5                JUNCTION     1.31     1.35    39.29     0  01:23        1.35
+  B-J.6                JUNCTION     0.99     1.02    38.75     0  01:44        1.02
+  J-D.1                JUNCTION     0.62     0.65    38.03     0  01:55        0.65
+  J-D.2                JUNCTION     0.53     0.55    37.89     0  00:55        0.55
+  J-D.3                JUNCTION     0.44     0.46    37.75     0  01:28        0.46
+  A                    STORAGE      0.61     0.63    38.20     0  01:40        0.63
+  B                    STORAGE      2.60     2.65    41.66     0  00:07        2.65
+  J                    STORAGE      0.72     0.74    38.17     0  01:41        0.74
+  D                    STORAGE      0.38     0.39    37.60     0  01:29        0.39
+  OUT                  OUTFALL      0.17     0.18    37.28     0  00:40        0.18
+  
+  
+  *******************
+  Node Inflow Summary
+  *******************
+  
+  -------------------------------------------------------------------------------------------------
+                                  Maximum  Maximum                  Lateral       Total        Flow
+                                  Lateral    Total  Time of Max      Inflow      Inflow     Balance
+                                   Inflow   Inflow   Occurrence      Volume      Volume       Error
+  Node                 Type           LPS      LPS  days hr:min    10^6 ltr    10^6 ltr     Percent
+  -------------------------------------------------------------------------------------------------
+  A-J.1                JUNCTION      0.02    11.99     0  00:01    0.000146      0.0834       0.594
+  A-J.2                JUNCTION      0.02    11.73     0  00:40    0.000146      0.0831       0.711
+  B-J.1                JUNCTION      0.02    34.01     0  00:07     0.00014       0.241       0.165
+  B-J.2                JUNCTION      0.02    34.00     0  00:07     0.00014       0.241       0.123
+  B-J.3                JUNCTION      0.02    34.00     0  00:07     0.00014       0.241       0.075
+  B-J.4                JUNCTION      0.02    34.00     0  00:07     0.00014       0.241       0.117
+  B-J.5                JUNCTION      0.02    34.00     0  00:07     0.00014       0.241       0.161
+  B-J.6                JUNCTION      0.02    34.01     0  00:07     0.00014        0.24       0.119
+  J-D.1                JUNCTION      0.02    45.61     0  01:17    0.000156       0.322       0.194
+  J-D.2                JUNCTION      0.02    45.63     0  01:47    0.000156       0.321       0.193
+  J-D.3                JUNCTION      0.02    45.65     0  00:41    0.000156       0.321       0.275
+  A                    STORAGE      11.69    11.69     0  00:00      0.0842      0.0842       0.428
+  B                    STORAGE      35.72    35.72     0  00:00       0.257       0.257       0.070
+  J                    STORAGE       0.02    45.58     0  00:39    0.000156       0.323       0.199
+  D                    STORAGE       0.00    45.65     0  01:05           0        0.32       0.252
+  OUT                  OUTFALL       0.00    45.65     0  00:40           0       0.319       0.000
+  
+  
+  **********************
+  Node Surcharge Summary
+  **********************
+  
+  Surcharging occurs when water rises above the top of the highest conduit.
+  ---------------------------------------------------------------------
+                                               Max. Height   Min. Depth
+                                   Hours       Above Crown    Below Rim
+  Node                 Type      Surcharged         Meters       Meters
+  ---------------------------------------------------------------------
+  A-J.1                JUNCTION        1.94          0.442        0.000
+  A-J.2                JUNCTION        1.95          0.478        0.000
+  B-J.1                JUNCTION        1.99          2.278        0.000
+  B-J.2                JUNCTION        1.99          2.037        0.000
+  B-J.3                JUNCTION        1.99          1.778        0.000
+  B-J.4                JUNCTION        1.99          1.499        0.000
+  B-J.5                JUNCTION        1.98          1.198        0.000
+  B-J.6                JUNCTION        1.98          0.871        0.000
+  J-D.1                JUNCTION        1.95          0.421        0.000
+  J-D.2                JUNCTION        1.94          0.327        0.000
+  J-D.3                JUNCTION        1.93          0.230        0.000
+  
+  
+  *********************
+  Node Flooding Summary
+  *********************
+  
+  Flooding refers to all water that overflows a node, whether it ponds or not.
+  --------------------------------------------------------------------------
+                                                             Total   Maximum
+                                 Maximum   Time of Max       Flood    Ponded
+                        Hours       Rate    Occurrence      Volume     Depth
+  Node                 Flooded       LPS   days hr:min    10^6 ltr    Meters
+  --------------------------------------------------------------------------
+  B                       1.88      2.01      0  01:52       0.014     0.000
+  
+  
+  **********************
+  Storage Volume Summary
+  **********************
+  
+  ------------------------------------------------------------------------------------------------
+                         Average    Avg   Evap  Exfil     Maximum    Max    Time of Max    Maximum
+                          Volume   Pcnt   Pcnt   Pcnt      Volume   Pcnt     Occurrence    Outflow
+  Storage Unit           1000 m³   Full   Loss   Loss     1000 m³   Full    days hr:min        LPS
+  ------------------------------------------------------------------------------------------------
+  A                        0.001   13.9    0.0    0.0       0.001   14.4       0  01:40      11.97
+  B                        0.002   98.0    0.0    0.0       0.002  100.0       0  00:07      33.99
+  J                        0.001   15.9    0.0    0.0       0.001   16.5       0  01:41      45.58
+  D                        0.000    8.1    0.0    0.0       0.000    8.4       0  01:29      45.65
+  
+  
+  ***********************
+  Outfall Loading Summary
+  ***********************
+  
+  -----------------------------------------------------------
+                         Flow       Avg       Max       Total
+                         Freq      Flow      Flow      Volume
+  Outfall Node           Pcnt       LPS       LPS    10^6 ltr
+  -----------------------------------------------------------
+  OUT                   98.34     45.01     45.65       0.319
+  -----------------------------------------------------------
+  System                98.34     45.01     45.65       0.319
+  
+  
+  ********************
+  Link Flow Summary
+  ********************
+  
+  -----------------------------------------------------------------------------
+                                 Maximum  Time of Max   Maximum    Max/    Max/
+                                  |Flow|   Occurrence   |Veloc|    Full    Full
+  Link                 Type          LPS  days hr:min     m/sec    Flow   Depth
+  -----------------------------------------------------------------------------
+  A-J~0                CONDUIT     11.97     0  00:01      0.69    0.46    1.00
+  A-J~1                CONDUIT     11.71     0  00:40      0.76    0.46    1.00
+  A-J~2                CONDUIT     11.73     0  00:39      0.81    0.45    1.00
+  B-J~0                CONDUIT     33.99     0  00:07      1.92    1.74    1.00
+  B-J~1                CONDUIT     33.98     0  00:07      1.92    1.74    1.00
+  B-J~2                CONDUIT     33.98     0  00:07      1.92    1.74    1.00
+  B-J~3                CONDUIT     33.98     0  00:07      1.92    1.74    1.00
+  B-J~4                CONDUIT     33.98     0  00:07      1.92    1.74    1.00
+  B-J~5                CONDUIT     33.99     0  00:07      1.92    1.74    1.00
+  B-J~6                CONDUIT     34.00     0  00:07      1.92    1.74    1.00
+  J-D~0                CONDUIT     45.58     0  01:17      1.15    1.76    1.00
+  J-D~1                CONDUIT     45.61     0  01:47      1.15    1.76    1.00
+  J-D~2                CONDUIT     45.63     0  00:41      1.16    1.76    1.00
+  J-D~3                CONDUIT     45.65     0  01:05      1.15    1.76    1.00
+  D-out                CONDUIT     45.65     0  00:40      1.15    1.75    1.00
+  
+  
+  ***************************
+  Flow Classification Summary
+  ***************************
+  
+  -------------------------------------------------------------------------------------
+                      Adjusted    ---------- Fraction of Time in Flow Class ---------- 
+                       /Actual         Up    Down  Sub   Sup   Up    Down  Norm  Inlet 
+  Conduit               Length    Dry  Dry   Dry   Crit  Crit  Crit  Crit  Ltd   Ctrl  
+  -------------------------------------------------------------------------------------
+  A-J~0                   1.00   0.00  0.00  0.00  1.00  0.00  0.00  0.00  0.00  0.00
+  A-J~1                   1.00   0.00  0.00  0.00  1.00  0.00  0.00  0.00  0.00  0.00
+  A-J~2                   1.00   0.00  0.00  0.00  1.00  0.00  0.00  0.00  0.00  0.00
+  B-J~0                   1.00   0.00  0.00  0.00  1.00  0.00  0.00  0.00  0.00  0.00
+  B-J~1                   1.00   0.00  0.00  0.00  1.00  0.00  0.00  0.00  0.00  0.00
+  B-J~2                   1.00   0.00  0.00  0.00  1.00  0.00  0.00  0.00  0.00  0.00
+  B-J~3                   1.00   0.00  0.00  0.00  1.00  0.00  0.00  0.00  0.00  0.00
+  B-J~4                   1.00   0.00  0.00  0.00  0.99  0.01  0.00  0.00  0.00  0.00
+  B-J~5                   1.00   0.00  0.00  0.00  0.99  0.00  0.00  0.01  0.00  0.00
+  B-J~6                   1.00   0.00  0.00  0.00  0.98  0.00  0.00  0.02  0.00  0.00
+  J-D~0                   1.00   0.00  0.00  0.00  1.00  0.00  0.00  0.00  0.00  0.00
+  J-D~1                   1.00   0.00  0.00  0.00  1.00  0.00  0.00  0.00  0.00  0.00
+  J-D~2                   1.00   0.00  0.00  0.00  1.00  0.00  0.00  0.00  0.00  0.00
+  J-D~3                   1.00   0.00  0.00  0.00  0.97  0.00  0.00  0.03  0.00  0.00
+  D-out                   1.00   0.00  0.00  0.00  1.00  0.00  0.00  0.00  0.00  0.00
+  
+  
+  *************************
+  Conduit Surcharge Summary
+  *************************
+  
+  ----------------------------------------------------------------------------
+                                                           Hours        Hours 
+                         --------- Hours Full --------   Above Full   Capacity
+  Conduit                Both Ends  Upstream  Dnstream   Normal Flow   Limited
+  ----------------------------------------------------------------------------
+  A-J~0                       1.94      1.94      1.94      0.01         0.01
+  A-J~1                       1.94      1.94      1.95      0.01         0.01
+  A-J~2                       1.95      1.95      1.96      0.01         0.01
+  B-J~0                       1.99      2.00      1.99      2.00         2.00
+  B-J~1                       1.99      1.99      1.99      1.99         1.99
+  B-J~2                       1.99      1.99      1.99      1.99         1.99
+  B-J~3                       1.99      1.99      1.99      1.99         1.99
+  B-J~4                       1.98      1.99      1.98      1.99         1.98
+  B-J~5                       1.98      1.98      1.98      1.98         1.98
+  B-J~6                       1.96      1.98      1.96      1.98         1.98
+  J-D~0                       1.95      1.96      1.95      1.97         1.95
+  J-D~1                       1.94      1.95      1.94      1.97         1.95
+  J-D~2                       1.93      1.94      1.93      1.97         1.94
+  J-D~3                       1.92      1.93      1.92      1.95         1.93
+  D-out                       0.01      1.93      0.01      1.95         1.92
+  
+
+  Analysis begun on:  Wed Sep 16 00:41:56 2026
+  Analysis ended on:  Wed Sep 16 00:41:56 2026
+  Total elapsed time: < 1 sec
