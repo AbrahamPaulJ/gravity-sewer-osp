@@ -46,11 +46,24 @@
    table instead: still a declared value per material, but no longer one value for
    a network that is nine parts clay to one part plastic.
 
-   Values are conventional design figures, not measurements. Clay and concrete sit
-   at 0.013; uPVC is smoother and sits at 0.010. Keyed by the material strings the
-   publisher uses, so an unrecognised code falls back rather than guessing. */
+   Values are conventional design figures, not measurements, and unlike everything
+   else declared in this project they ARE citable: 0.013 for concrete and vitrified
+   clay and 0.010 for smooth plastic are the standard open-channel roughness values.
+
+     Chow, V.T. (1959) Open-Channel Hydraulics, McGraw-Hill, Table 5-6.
+     Reproduced in the SWMM reference manual and in every water-authority design
+     manual; SWMM itself defaults to 0.013 for concrete pipe.
+
+   Alshami et al. (2023), IEEE Access 11, DOI 10.1109/ACCESS.2023.3305275, note the
+   practice and its weakness in the same breath: Manning is applied with "a
+   roughness coefficient that is usually assumed rather than measured", which is
+   why their 72% flow error is a disagreement between two estimates rather than a
+   measured error. The same caution applies here.
+
+   Keyed by the material strings the publisher uses, so an unrecognised code falls
+   back rather than guessing. */
 const DEFAULT_N = 0.013;
-const MATERIAL_N = { VC: 0.013, PVCU: 0.010, RC: 0.013 };
+const MATERIAL_N = { VC: 0.013, PVCU: 0.010, RC: 0.013 }; // todo
 
 /* A reach with no fall cannot be solved by Manning. Some are genuinely flat, some
    are data error: the invert fields are flow-anchored and a mis-set record can read

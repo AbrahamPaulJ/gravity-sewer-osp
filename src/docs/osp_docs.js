@@ -468,6 +468,18 @@ function riskRegister(ctx) {
             and additively, which is certainly false in detail.</td>
         <td>A model fitted to incident history, most plausibly the Bayesian network of Ma 2025,
             which represents dependence between factors instead of assuming it away.</td></tr>
+      <tr><td>D1b</td><td><b>The weights follow Ma 2025's ordering but not its
+            magnitudes</b></td>
+        <td>Ma et al. (2025) learned a Bayesian network over 23,000 Hong Kong pipe records and
+            measured mutual information of 0.124 for age against 0.032 for diameter, close to a
+            4:1 ratio. The weights here are 0.30 and 0.25, about 1.2:1. Two reasons, both
+            arguable: that study and Malek Mohammadi et al. (2020) both conclude condition models
+            are fitted to local geography and their thresholds should not be imported; and on this
+            network age and bore rank-correlate at &minus;0.32, because the 1896 sewers are the
+            trunk mains and the small-bore reticulation came later, so a ratio measured where
+            small pipe is also old pipe describes a relationship that does not hold here.</td>
+        <td>Re-deriving the ranking on this network, which needs incident history. Until then the
+            honest statement is that the order is borrowed and the spacing is chosen.</td></tr>
       <tr><td>D2</td><td><b>Factors normalise over this network's own range</b></td>
         <td>The oldest pipe here scores 1 on age, the smallest scores 1 on bore. It avoids
             importing an absolute cutoff from another city, which Malek Mohammadi 2020 shows is
@@ -476,8 +488,14 @@ function riskRegister(ctx) {
             <b>scores are not comparable between regions</b>, only within one.</td></tr>
       <tr><td>D3</td><td><b>Material and joint propensity are table lookups</b>
             (${esc(Object.keys(K.MATERIAL_RISK).join(", "))})</td>
-        <td>Vitrified clay is jointed and root-prone, uPVC is smooth with fewer joints, concrete
-            sits between. The ordering is well supported; the spacing between the numbers is not.</td>
+        <td>Ordering from Malek Mohammadi et al. (2020), which sets out how materials differ in
+            resistance, and from Drenoyanis &amp; Prackwieser (2022), who report that most Sydney
+            Water blockages are tree roots, wipes and grease. Ranked here on <i>root intrusion</i>
+            rather than structural decay, which deliberately inverts part of the first source:
+            it calls reinforced concrete the most resistant structurally, while this table puts
+            uPVC lowest because roots enter at joints and clay comes in short jointed sections.
+            <b>The ordering is cited; the spacing between the numbers is not.</b> No paper in the
+            corpus gives a per-material propensity figure.</td>
         <td>Root-intrusion or CCTV defect records by material. The network operator names root
             intrusion as the dominant mechanism in these suburbs, so this is the factor most worth
             measuring.</td></tr>
@@ -1178,22 +1196,22 @@ const GLOSS_FIGS = {
     + gln(60, 40, 63, 45, GF.bad, 1.5) + gln(110, 40, 108, 45, GF.bad, 1.5) + gln(80, 45, 80, 40, GF.faint, 2)
     + [[58,28],[62,22],[108,30],[112,24],[80,26],[30,30],[130,32]].map(([x,y]) => `<path d="M${x},${y} q-3,5 0,7 q3,-2 0,-7z" fill="${GF.water}"/>`).join("")
     + gt(80, 88, "groundwater and rain get in", { a: "middle", c: GF.water, s: 6.5 })),
-  "Nominal diameter": gsvg("Nominal size versus the internal bore inside the wall",
+  "Nominal diameter": gsvg("Nominal size versus the internal bore inside the wall", // todo
     gcircle(0, gln(46, 52, 114, 52, GF.dim, 1.2) + gt(80, 48, "nominal", { a: "middle", c: GF.dim, s: 6.5 })
       + gln(52, 60, 108, 60, GF.good, 1.2) + gt(80, 70, "internal bore", { a: "middle", c: GF.good, s: 6.5 })
-      + gt(80, 96, "the wall is the difference", { a: "middle", s: 6.5 }))),
+      + gt(80, 96, "the wall is the difference", { a: "middle", s: 6.5 }))), // todo
   "Vitrified clay": gsvg("Clay pipe: short fired sections, joints every couple of metres, roots at the joints",
     `<rect x="0" y="0" width="160" height="100" fill="${GF.soil}"/>`
     + [0, 52, 104].map(x => `<rect x="${x}" y="40" width="50" height="26" fill="${GF.wall}" rx="1"/><rect x="${x}" y="45" width="50" height="16" fill="${GF.inner}"/>`).join("")
     + [50, 102].map(x => `<rect x="${x}" y="37" width="6" height="32" fill="${GF.lid}"/>`).join("")
     + `<path d="M53,37 q-6,-14 -14,-18 M53,37 q4,-16 12,-20" fill="none" stroke="${GF.root}" stroke-width="1.5"/>`
     + gt(80, 88, "strong pipe, weak joints", { a: "middle", s: 6.5 })),
-  "Gradient": gsvg("Gradient: fall over length, as a percentage",
+  "Gradient": gsvg("Gradient: fall over length, as a percentage", // todo
     (() => { const L = glong({ slope: 0.2 });
       return L.o + gln(20, L.inv(20), 140, L.inv(20), GF.dim, 1, "3 2") + gln(140, L.inv(20), 140, L.inv(140), GF.dim, 1.2)
         + gt(80, L.inv(20) - 4, "length", { a: "middle", c: GF.dim }) + gt(144, (L.inv(20) + L.inv(140)) / 2 + 3, "fall", { c: GF.dim })
         + gt(30, 92, "gradient = fall / length", { c: GF.ink, s: 6.5 }); })()),
-  "Joint type": gsvg("A socket joint: where two sections meet, and where roots and water get in",
+  "Joint type": gsvg("A socket joint: where two sections meet, and where roots and water get in", // todo
     `<rect x="0" y="0" width="160" height="100" fill="${GF.soil}"/>`
     + `<rect x="0" y="42" width="78" height="22" fill="${GF.wall}"/><rect x="0" y="47" width="78" height="12" fill="${GF.inner}"/>`
     + `<rect x="70" y="36" width="90" height="34" fill="${GF.wall}"/><rect x="78" y="42" width="82" height="22" fill="${GF.wall}" opacity=".6"/><rect x="78" y="47" width="82" height="12" fill="${GF.inner}"/>`

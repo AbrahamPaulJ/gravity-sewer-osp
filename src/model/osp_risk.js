@@ -44,35 +44,110 @@
 })(typeof self !== "undefined" ? self : this, function () {
 "use strict";
 
-/* Default blend. Ordered to follow the only ranking in the corpus that was
-   measured rather than asserted: Ma 2025 learned a Bayesian network over 23,000
-   Hong Kong pipes and ranked age well clear of the field by mutual information
-   (0.124), then diameter (0.032). The ORDER is borrowed; the numbers are not,
-   because that study's thresholds are Hong Kong's geology and asset stock.
+/* SOURCES FOR EVERY DECLARED NUMBER BELOW
+   ---------------------------------------
+   [MM20]  Malek Mohammadi, M., Najafi, M., Kermanshachi, S., Kaushal, V. and
+           Serajiantehrani, R. (2020). Factors Influencing the Condition of Sewer
+           Pipes: State-of-the-Art Review. Journal of Pipeline Systems Engineering
+           and Practice 11(4), 03120002. DOI 10.1061/(ASCE)PS.1949-1204.0000483
+   [Ma25]  Ma, S., Zayed, T., Xing, J. and Ren, Z. (2025). Analyzing factors
+           influencing defect-based conditions for sewer pipes using Bayesian
+           networks. Reliability Engineering & System Safety 262, 111243.
+           DOI 10.1016/j.ress.2025.111243
+   [DP22]  Drenoyanis, A. and Prackwieser, C. (2022). Detecting Wastewater
+           Blockages with Digital Water Meters? A Survey of Methods Used by Sydney
+           Water. Water e-Journal, Australian Water Association, 11 May 2022.
+   [Al23]  Alshami, A., Elsayed, M., Ali, E., Eltoukhy, A.E.E. and Zayed, T.
+           (2023). Monitoring Blockage and Overflow Events in Small-Sized Sewer
+           Network Using Contactless Flow Sensors in Hong Kong. IEEE Access 11.
+           DOI 10.1109/ACCESS.2023.3305275
 
-   Everything sums to 1 so the score stays in [0,1] and a weight can be read as
-   "share of the answer this factor is responsible for". */
-const DEFAULT_WEIGHTS = {
-  age: 0.30,        // Ma 2025 rank 1. Deterioration, root entry, roughness.
-  diameter: 0.25,   // Ma 2025 rank 2. Drenoyanis and Alshami both find blockages
-                    //   concentrate in small-diameter reticulation.
-  gradient: 0.20,   // Malek Mohammadi: flat -> low velocity -> deposition -> H2S.
-  material: 0.15,   // Resistance to abrasion, acid and root penetration.
-  joint: 0.05,      // Joints are the usual root entry point, but published on
-                    //   barely half the records, so it cannot carry much weight.
-  length: 0.05,     // Longer reaches hold more joints and more lateral connections.
+   What those sources do and do not establish, stated once so no table below has
+   to repeat it: they support the DIRECTION of every factor and the ORDER of the
+   first two. None of them gives a per-material or per-joint propensity number,
+   and none gives a weighting for combining factors. Every numeric value below is
+   therefore declared. See agreement() for how much that decision is worth: on
+   this network no single factor reproduces the blend, so the weighting is the
+   method rather than a detail of it. */
+
+/* Default blend.
+
+   ORDER from [Ma25], which learned a Bayesian network over 23,000 Hong Kong pipe
+   records and is the only ranking in the corpus that was measured rather than
+   asserted. Its mutual information: pipe age 0.124, diameter 0.032, population
+   0.027, soil type 0.024, everything else below 0.02.
+
+   SPACING is not from [Ma25] and deliberately does not follow it. Their measured
+   ratio between age and diameter is close to 4:1; the weights here are 1.2:1. Two
+   reasons, both arguable, so they are written down rather than implied:
+
+     - [Ma25]'s own conclusion, echoing [MM20], is that condition models are
+       fitted to local geography and their thresholds should not be imported.
+       Their age effect is a Hong Kong asset stock, not this one.
+     - On this network age and bore rank-correlate at -0.32, because the 1896
+       sewers are the TRUNK mains and the small-bore reticulation came later.
+       Reproducing a 4:1 ratio measured where small pipe is also old pipe would
+       import a relationship that does not hold here.
+
+   A reader is entitled to disagree with that and move the sliders; the point is
+   that the choice is visible. Everything sums to 1 so a weight reads as "share of
+   the answer this factor is responsible for". */
+const DEFAULT_WEIGHTS = { // todo
+  age: 0.30,        // [Ma25] rank 1 by mutual information, 0.124. Deterioration,
+                    //   root entry, and rising roughness with age per [MM20].
+  diameter: 0.25,   // [Ma25] rank 2, 0.032. [DP22]: "most blockages occur in small
+                    //   diameter pipes, the so-called wastewater reticulation
+                    //   network". [Al23] finds the same concentration in Hong Kong.
+                    //   NOTE [MM20] reports the literature CONTRADICTS itself on
+                    //   diameter, which is a reason to keep this weight moderate.
+  gradient: 0.20,   // [MM20]: "Flat slopes -> low velocity -> wastewater sits
+                    //   longer -> hydrogen sulfide forms -> converts to sulfuric
+                    //   acid -> attacks concrete and mortar pipes."
+  material: 0.15,   // [MM20] on material resistance; see MATERIAL_RISK below.
+  joint: 0.05,      // [MM20]: "joints are especially vulnerable to failure".
+                    //   Published on barely half the records here, so it cannot
+                    //   carry much weight whatever the literature says.
+  length: 0.05,     // [MM20]: "Longer pipes have more joints... additionally,
+                    //   longer pipes are more vulnerable to blockages and sediment
+                    //   deposition."
 };
 
-/* Per-material blockage propensity, 0 to 1. Declared, and the reasoning is the
-   only thing defending them: vitrified clay is jointed, brittle and the classic
-   root-entry material; uPVC is smooth, has far fewer joints per length and
-   resists roots; reinforced concrete sits between, durable but subject to acid
-   attack in flat reaches where sulphides form. */
-const MATERIAL_RISK = { VC: 1.0, RC: 0.7, PVCU: 0.3 };
+/* Per-material blockage propensity, 0 to 1.
 
-/* Per-joint-type propensity. Rigid and bituminous joints open up as ground moves
-   and are where roots get in; rubber ring joints are the modern flexible answer. */
-const JOINT_RISK = { BIT: 1.0, SCJ: 0.8, PLAST: 0.4, RRJ: 0.3 };
+   ORDER from [MM20]: "Different materials react differently to soil type and
+   water table. Concrete resists abrasion; clay resists acids; PVC and HDPE resist
+   acidic and alkaline waste; reinforced concrete is the most resistant because
+   the steel prevents structural deterioration."
+
+   RANKED ON ROOT INTRUSION, NOT STRUCTURAL DECAY, and that is a choice worth
+   stating because it inverts part of [MM20]. That review calls reinforced concrete
+   most resistant structurally; this table puts uPVC lowest instead, because the
+   failure this project is about is blockage, and [DP22] reports that at Sydney
+   Water "most blockages are caused by tree roots penetrating pipes and access
+   chambers, wet wipes, fat/oil/grease". Roots enter at joints, and clay comes in
+   short jointed sections while uPVC does not. A reader ranking on structural
+   condition would order these differently and would not be wrong.
+
+   THE NUMBERS ARE NOT FROM ANY SOURCE. No paper in the corpus gives a
+   per-material blockage propensity. That clay is 3.3x uPVC rather than 2x is
+   judgement, and it is the weakest link in this module. */
+const MATERIAL_RISK = { VC: 1.0, RC: 0.7, PVCU: 0.3 }; // todo
+
+/* Per-joint-type propensity.
+
+   DIRECTION from [MM20], which identifies joints as the vulnerable element:
+   "Longer pipes have more joints, and joints are especially vulnerable to
+   failure", and lateral connections as "a cause of structural damage". [DP22]
+   supplies the mechanism that matters here, roots entering the pipe.
+
+   The ordering is the engineering one: bitumen and rigid spigot-and-socket joints
+   open as ground moves, plastic sleeves are tighter, and rubber ring joints are
+   the modern flexible answer designed to stay sealed through movement.
+
+   THE NUMBERS ARE NOT FROM ANY SOURCE, as with MATERIAL_RISK above. Joint type is
+   also published on only 54% of records here, which is why the blend gives it
+   0.05: a factor known for half the network cannot carry much of the answer. */
+const JOINT_RISK = { BIT: 1.0, SCJ: 0.8, PLAST: 0.4, RRJ: 0.3 }; // todo
 
 /* Reference points for the two factors that need one. A gradient at or above
    GRADE_REF is treated as comfortably self-cleansing and scores zero; the figure
