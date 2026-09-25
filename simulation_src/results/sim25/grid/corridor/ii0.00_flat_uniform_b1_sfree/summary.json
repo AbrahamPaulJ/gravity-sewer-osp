@@ -4,13 +4,14 @@
   "pf": "flat",
   "age": "uniform",
   "bfac": 1.0,
-  "stage": null
+  "stage": null,
+  "hour": "peak"
  },
  "corridor_nodes": 68,
  "rows": [
   {
    "dwellings": 80,
-   "added_lps": 0.8518518518518517,
+   "added_lps": 0.8518518518518514,
    "outlet_head_rise_m": 0.0,
    "alarm": [],
    "surcharge": [],
@@ -18,7 +19,7 @@
   },
   {
    "dwellings": 150,
-   "added_lps": 1.5972222222222223,
+   "added_lps": 1.5972222222222217,
    "outlet_head_rise_m": 0.0,
    "alarm": [],
    "surcharge": [],
@@ -26,7 +27,7 @@
   },
   {
    "dwellings": 390,
-   "added_lps": 4.152777777777779,
+   "added_lps": 4.152777777777778,
    "outlet_head_rise_m": 0.0,
    "alarm": [],
    "surcharge": [],
@@ -34,7 +35,7 @@
   },
   {
    "dwellings": 485,
-   "added_lps": 5.164351851851853,
+   "added_lps": 5.164351851851852,
    "outlet_head_rise_m": 0.0,
    "alarm": [],
    "surcharge": [],

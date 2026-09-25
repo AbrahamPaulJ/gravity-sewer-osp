@@ -4,41 +4,42 @@
   "pf": "flat",
   "age": "uniform",
   "bfac": 1.0,
-  "stage": null
+  "stage": null,
+  "hour": "peak"
  },
  "corridor_nodes": 68,
  "rows": [
   {
    "dwellings": 80,
-   "added_lps": 0.8518518518518517,
-   "outlet_head_rise_m": 0.0001327429198312302,
+   "added_lps": 0.8518518518518514,
+   "outlet_head_rise_m": 0.000132756965911085,
    "alarm": [],
    "surcharge": [],
-   "max_depth_rise_m": 9.970773732170812e-05
+   "max_depth_rise_m": 9.972423000093045e-05
   },
   {
    "dwellings": 150,
-   "added_lps": 1.5972222222222223,
-   "outlet_head_rise_m": 0.00024920473678946564,
+   "added_lps": 1.5972222222222217,
+   "outlet_head_rise_m": 0.00024923067569915247,
    "alarm": [],
    "surcharge": [],
-   "max_depth_rise_m": 0.00018719377063680653
+   "max_depth_rise_m": 0.00018722423770434204
   },
   {
    "dwellings": 390,
-   "added_lps": 4.152777777777779,
-   "outlet_head_rise_m": 0.00065067946842845,
+   "added_lps": 4.152777777777778,
+   "outlet_head_rise_m": 0.0006507432373936695,
    "alarm": [],
    "surcharge": [],
-   "max_depth_rise_m": 0.0004888352733267709
+   "max_depth_rise_m": 0.0004889102693366176
   },
   {
    "dwellings": 485,
-   "added_lps": 5.164351851851853,
-   "outlet_head_rise_m": 0.0008105254386947536,
+   "added_lps": 5.164351851851852,
+   "outlet_head_rise_m": 0.0008106032907164717,
    "alarm": [],
    "surcharge": [],
-   "max_depth_rise_m": 0.0006089561518072273
+   "max_depth_rise_m": 0.0006090477346019085
   }
  ]
 }

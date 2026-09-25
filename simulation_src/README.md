@@ -47,16 +47,37 @@ code is missing or unrecognised. Conventional design values from Chow (1959) Tab
 table the SWMM reference reproduces and from which SWMM takes its own concrete default.
 
 On this catchment that is 907 clay, 94 uPVC and 1 reinforced concrete, so **94 of 1,002
-reaches move from 0.013 to 0.010** and carry slightly more flow than before. The layer also
-publishes a ROUGHNESS field, which would settle this from data rather than a table; it is
+reaches move from 0.013 to 0.010** and carry slightly more flow than before. Of the 890 links
+the whole domain actually routes, 83 are uPVC; of the 161 in the segment, 9 are. The layer
+also publishes a ROUGHNESS field, which would settle this from data rather than a table; it is
 populated on no record here.
 
-**`results/` predates this change.** Everything committed under `results/` was run with a
-single n = 0.013 and has not been regenerated. Re-run the grids to bring them into line:
+Reaching those counts takes both material fields. MATERIAL is the coded value and reads UNKN
+on 456 of the 1,002 mains; MATERIALUN is the free text, and on every one of those 456 it reads
+VC. The layer is not saying the material is unknown, only that the code is, so `network._material`
+falls back to MATERIALUN and those 456 reaches are clay rather than fallback. It makes no
+difference to the roughness here, since clay and the fallback are both 0.013, but it is what
+the published network in `../data/osp_data.js` does, and it keeps the two in step if the table
+ever changes.
+
+**Simulation 2.5 has been re-run; Simulations 1 and 2 have not.** Under `results/sim25/` the
+12-case grid, the corridor runs, `robustness.json`, `graded.json`, `graded_report.txt` and
+`daily.json` were all regenerated with per-material n. Everything else under `results/` —
+`ladder_*`, `growth_*`, `catchment/`, `warning_along/`, `runs/`, `compare/` — still holds the
+uniform-n answers, and so do the packed page files in `../simulation25/data/`.
 
 ```
-python sim25_grid.py --cases all --workers 6     # about 77 minutes
+python sim25_grid.py --cases all --workers 9    # 2 h 18 m measured, not the 94 min it predicts
+python sim25_graded.py > results/sim25/graded_report.txt
+python sim25_daily.py                           # about 2.5 min
 ```
 
-Until then the published pages show the uniform-n answers, and `meta.manning_used` in a fresh
-run is how to tell which you are looking at.
+The grid's own estimate assumes 20 s per whole-domain run. That holds at low I&I; at 0.25 and
+0.40 the network surcharges and a run takes about 30 s, so the four high-I&I cases take 18-20
+minutes each rather than the predicted 13.
+
+To tell which roughness an output came from: Simulation 1 records it, in the `manning_used`
+and `manning_by_material` keys of the meta that `model.Result.save` writes. Simulation 2.5
+does not — `sim25.py` writes its own `summary.json` and never calls that writer, so its
+outputs carry no provenance at all, not even the pyswmm version or the routing error. Date
+the files against this section until that is fixed.
