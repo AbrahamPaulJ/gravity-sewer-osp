@@ -33,7 +33,27 @@ from pyswmm import Simulation, Nodes, Links
 HERE = os.path.dirname(os.path.abspath(__file__))
 RESULTS = os.path.join(HERE, "results")
 
-MANNING_N = 0.013                        # H3
+MANNING_N = 0.013                        # H3, the fallback where material is unknown
+
+# Manning's n by the publisher's material code. Conventional design values, not
+# measurements: Chow (1959) Open-Channel Hydraulics Table 5-6, the same table the
+# SWMM reference manual reproduces and from which SWMM takes its own 0.013 default
+# for concrete pipe. Vitrified clay and reinforced concrete sit at 0.013, uPVC is
+# smoother at 0.010.
+#
+# The layer publishes a ROUGHNESS field, which would settle this from data. It is
+# populated on no record in this catchment, so this stays a declared table keyed to
+# a published attribute rather than a measurement. MATERIAL itself is published on
+# every record once MATERIALUN is read alongside it.
+#
+# Walkerville is roughly nine parts clay to one part uPVC, so this moves a tenth of
+# the network and leaves the rest where it was.
+MANNING_BY_MATERIAL = {"VC": 0.013, "PVCU": 0.010, "RC": 0.013}
+
+
+def manning_of(material):
+    """Roughness for a pipe, falling back to MANNING_N for an unknown code."""
+    return MANNING_BY_MATERIAL.get((material or "").strip().upper(), MANNING_N)
 CHAMBER_AREA = math.pi * 0.525 ** 2      # H8, m2, 1050 mm chamber
 INLINE_AREA = 0.02                       # H10, m2, token area at in-pipe segment nodes
 SEG_LEN = 15.0                           # L3, m, target segment length for `along`
@@ -76,6 +96,7 @@ class SimLink:
     dia: float
     length: float
     line: list
+    material: str = ""   # carried so the conduit writer can pick a roughness
 
 
 @dataclass
@@ -162,7 +183,7 @@ class Neighbourhood:
                              names[i + 1],
                              p.inv_up + (p.inv_down - p.inv_up) * fr[i],
                              p.inv_up + (p.inv_down - p.inv_up) * fr[i + 1],
-                             p.dia, p.length / k, pieces[i])
+                             p.dia, p.length / k, pieces[i], p.material)
                 self.links.append(lk)
                 info.links.append(lk.name)
             self.pipes.append(info)
@@ -309,7 +330,8 @@ def write_inp(path, nh, sc):
 
     w("\n[CONDUITS]\n;;Name From To Length N InOffset OutOffset InitFlow")
     for lk in nh.links:
-        w(f"{lk.name} {lk.up} {lk.down} {lk.length:.3f} {MANNING_N} {lk.inv_up:.4f} {lk.inv_down:.4f} 0")
+        n = manning_of(getattr(lk, "material", ""))
+        w(f"{lk.name} {lk.up} {lk.down} {lk.length:.3f} {n} {lk.inv_up:.4f} {lk.inv_down:.4f} 0")
 
     w("\n[XSECTIONS]\n;;Link Shape Geom1 Geom2 Geom3 Geom4 Barrels")
     for lk in nh.links:
@@ -453,7 +475,10 @@ class Result:
         meta = {
             "junction": nh.junction, "split": nh.split, "unit_label": UNIT_LABEL[nh.split],
             "scenario": asdict(sc), "scenario_text": sc.describe(nh.split),
-            "manning_n": MANNING_N, "report_s": REPORT_S, "route_s": ROUTE_S,
+            "manning_n": MANNING_N, "manning_by_material": MANNING_BY_MATERIAL,
+            "manning_used": sorted({manning_of(getattr(lk, "material", ""))
+                                    for lk in nh.links}),
+            "report_s": REPORT_S, "route_s": ROUTE_S,
             "seg_len": SEG_LEN, "adwf_ref": ADWF_REF,
             "pyswmm": pyswmm.__version__, "data_fetched": fetched,
             "routing_error_pct": self.err,
