@@ -209,7 +209,27 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 
 </div>
 
+<!-- config.js decides which pages this site offers. It carries its own cache key for
+     the same reason the iframes do: it is a script, and a browser will reuse the copy
+     it has. Bump it when the config changes. -->
+<script src="config.js?v=32"></script>
 <script>
+// Drop the pages config.js turns off, before anything is wired up. Removing the button
+// is what makes a deep link to a hidden page fall back to the overview: showTab looks
+// the button up and returns false when it is gone.
+(function (pages) {
+  Object.keys(pages).forEach(function (name) {
+    if (pages[name] !== false) return;
+    var btn = document.querySelector('#tabs button[data-tab="' + name + '"]');
+    if (btn) btn.remove();
+    var pane = document.getElementById('pane-' + name);
+    if (pane) pane.remove();
+    document.querySelectorAll('a.card[data-tab="' + name + '"]').forEach(function (a) {
+      a.remove();
+    });
+  });
+})(window.OSP_PAGES || {});
+
 function showTab(name){
   var btn = document.querySelector('#tabs button[data-tab="'+name+'"]');
   if (!btn) return false;

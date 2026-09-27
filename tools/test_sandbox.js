@@ -110,6 +110,46 @@ console.log("repository hygiene");
   check("generated data parses as JSON, not just as JS", unparseable, []);
 }
 
+/* config.js turns pages off. Its failure mode is silence: a key that names no tab
+   removes nothing and reports nothing, so the page you meant to hide is still
+   published. These checks tie every key to the markup it is supposed to act on. */
+console.log("page configuration");
+{
+  const fs = require("fs");
+  require(path.join(ROOT, "config.js"));
+  const pages = window.OSP_PAGES;
+  const home = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+
+  check("config.js defines OSP_PAGES", pages && typeof pages === "object", true);
+  check("every page flag is a boolean",
+    Object.keys(pages).filter(k => typeof pages[k] !== "boolean"), []);
+
+  const nav = home.match(/<nav[^>]*id="tabs"[\s\S]*?<\/nav>/);
+  check("index.html has a tab bar to configure", !!nav, true);
+  const tabs = [...nav[0].matchAll(/data-tab="([^"]+)"/g)].map(m => m[1]);
+  check("every configured page names a real tab",
+    Object.keys(pages).filter(k => !tabs.includes(k)), []);
+  check("every configured page has a pane to remove",
+    Object.keys(pages).filter(k => !home.includes(`id="pane-${k}"`)), []);
+
+  /* Overview is the fallback every unknown route lands on, and the overview prose
+     links into the sandbox mid-sentence, so neither is hideable. Listing one here
+     would promise something config.js does not deliver. */
+  check("overview and sandbox are not configurable",
+    ["overview", "sandbox"].filter(k => k in pages), []);
+
+  check("index.html loads config.js with a cache key",
+    /<script src="config\.js\?v=\d+"><\/script>/.test(home), true);
+  check("config.js is read before the tabs are wired",
+    home.indexOf('src="config.js') < home.indexOf("function showTab"), true);
+}
+
+/* An InstancedMesh only compiles the per-instance colour path into its shader if
+   instanceColor exists when the material first compiles. Add the mesh to the scene
+   uncoloured and the first frame compiles without it; every later setColorAt then
+   writes to an attribute the shader never reads, and the tubes render white forever.
+   That is not a crash, a parse error or a failed request, so nothing else here would
+   notice: it is caught by looking at the page, which is how it was found. */
 console.log("instanced colour is set before first compile");
 {
   const fs = require("fs");
