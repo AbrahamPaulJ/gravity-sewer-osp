@@ -110,6 +110,31 @@ console.log("repository hygiene");
   check("generated data parses as JSON, not just as JS", unparseable, []);
 }
 
+console.log("instanced colour is set before first compile");
+{
+  const fs = require("fs");
+  ["simulation25/growth_3d.js", "simulation/growth_3d.js"].forEach(rel => {
+    const file = path.join(ROOT, rel);
+    if (!fs.existsSync(file)) return;
+    const src = fs.readFileSync(file, "utf8");
+    /* Two ways to be safe, and both are in use here. Either colour every instance before
+       the mesh reaches the scene (pipeBodies, which are permanent scenery), or add it
+       showing nothing and let the first draw wait until colours are set (sleeves, which
+       start at count 0 because they only appear on a selection). A mesh that is never
+       coloured at all is not in question. */
+    for (const m of src.matchAll(/(\w+)\s*=\s*new THREE\.InstancedMesh/g)) {
+      const name = m[1];
+      const coloured = src.indexOf(`${name}.setColorAt`);
+      if (coloured < 0) continue;
+      const added = src.indexOf(`scene.add(${name})`);
+      if (added < 0) continue;
+      const emptied = src.search(new RegExp(`${name}\\.count\\s*=\\s*0\\s*;`));
+      check(`${rel}: ${name} cannot compile uncoloured`,
+        coloured < added || (emptied > -1 && emptied < added), true);
+    }
+  });
+}
+
 console.log("graph");
 check("nodes", g.n, 1010);
 check("edges", g.edges.length, 1001);

@@ -18,6 +18,7 @@ window.Growth3D = (function () {
   let THREE = null, OrbitControls = null, loadPromise = null;
   let renderer, scene, camera, controls, ray, pointer;
   let pipeGeo = null, pipeColours = null, chamberMeshes = [], labelLayer = null;
+  let pipeBodies = null, bodyTint = null;
   let built = false, onPick = null, onHover = null, focusRing = null, outletLabel = null;
   let houseGeo = null, houseColours = null, houseHi = null, houseRim = null, houseUp = null,
       sleeves = null;
@@ -221,6 +222,81 @@ window.Growth3D = (function () {
     pipeGeo.userData.segPipe = segPipe;
     scene.add(new THREE.LineSegments(pipeGeo,
       new THREE.LineBasicMaterial({ vertexColors: true })));
+
+    /* Pipe bodies: one instanced cylinder per segment, its radius the pipe's own bore.
+       WebGL ignores LineBasicMaterial.linewidth, as the sleeve note below says, so a line
+       cannot be made thicker and the bore has to be drawn as geometry.
+
+       Radius goes as sqrt(d), normalised over this network's own range, which is what the
+       sandbox map does and for the same two reasons: sqrt tracks flow area rather than
+       bore, and normalising is what keeps the sizes apart at all. This catchment is
+       143 mm, 150 mm and 225 mm only, so at true relative scale it would all look one
+       width. Normalised, the seventeen 225 mm reaches read as the trunk they are.
+
+       Colour is left to paint(), which writes the scenario colour here as well as on the
+       lines, so widening a pipe never changes what it says.
+
+       TWO TRAPS, both of which rendered the whole network unreadable before they were
+       found by screenshotting the page rather than by any check in tools/.
+
+       vertexColors STAYS FALSE. A per-instance colour arrives through instanceColor and
+       the USE_INSTANCING_COLOR path, which is a different mechanism from vertex colours.
+       Turning vertexColors on makes the shader also multiply by the geometry's own colour
+       attribute; CylinderGeometry has none, MeshBasicMaterial carries no default for it,
+       so the attribute reads 0 and every tube renders BLACK over the lines.
+
+       AND EVERY INSTANCE IS COLOURED BELOW, BEFORE THE MESH REACHES THE SCENE. An
+       InstancedMesh only gets the instanceColor path compiled into its shader if
+       instanceColor exists when the material first compiles. Leave it to the first
+       paint() and the first frame compiles without it, and every later setColorAt writes
+       to an attribute the shader never reads. The sleeve dodges this by starting at
+       count 0; these are permanent scenery, so they are painted up front instead. */
+    {
+      const dia = g.dia || [];
+      let dlo = Infinity, dhi = -Infinity;
+      for (let p = 0; p < g.nPipes; p++) {
+        const d = dia[p];
+        if (!(d > 0)) continue;
+        if (d < dlo) dlo = d;
+        if (d > dhi) dhi = d;
+      }
+      const spread = dhi > dlo;
+      const rlo = Math.sqrt(dlo), rspan = Math.max(1e-6, Math.sqrt(dhi) - rlo);
+      const R_MIN = 1.5, R_MAX = 3.4;
+      const radiusOf = p => {
+        const d = dia[p];
+        if (!(d > 0) || !spread) return R_MIN;
+        return R_MIN + (R_MAX - R_MIN) * ((Math.sqrt(d) - rlo) / rspan);
+      };
+      pipeBodies = new THREE.InstancedMesh(
+        new THREE.CylinderGeometry(1, 1, 1, 6, 1, true),
+        new THREE.MeshBasicMaterial({ color: 0xffffff }),   // see the vertexColors note above
+        Math.max(1, segEnds.length));
+      pipeBodies.count = segEnds.length;
+      pipeBodies.frustumCulled = false;
+      bodyTint = new THREE.Color();
+      const m = new THREE.Matrix4(), q = new THREE.Quaternion();
+      const yAxis = new THREE.Vector3(0, 1, 0);
+      const dir = new THREE.Vector3(), mid = new THREE.Vector3(), scl = new THREE.Vector3();
+      const ok = COL.ok;   // the build-time colour; paint() overwrites it on first draw
+      for (let s = 0; s < segEnds.length; s++) {
+        pipeBodies.setColorAt(s, bodyTint.setRGB(ok[0] / 255, ok[1] / 255, ok[2] / 255));
+        const [a, b] = segEnds[s];
+        dir.subVectors(b, a);
+        const len = dir.length();
+        if (len < 1e-6) { m.makeScale(0, 0, 0); pipeBodies.setMatrixAt(s, m); continue; }
+        q.setFromUnitVectors(yAxis, dir.clone().divideScalar(len));
+        mid.addVectors(a, b).multiplyScalar(0.5);
+        const r = radiusOf(segPipe[s]);
+        scl.set(r, len, r);
+        m.compose(mid, q, scl);
+        pipeBodies.setMatrixAt(s, m);
+      }
+      pipeBodies.instanceMatrix.needsUpdate = true;
+      if (pipeBodies.instanceColor) pipeBodies.instanceColor.needsUpdate = true;
+      scene.add(pipeBodies);
+    }
+
 
     // Sleeves: a translucent tube around every pipe in the highlighted catchment. WebGL
     // ignores line width, so a line cannot be made thicker, and recolouring the pipe itself
@@ -553,8 +629,10 @@ window.Growth3D = (function () {
         const o = (s * 2 + k) * 3;
         arr[o] = c[0] / 255; arr[o + 1] = c[1] / 255; arr[o + 2] = c[2] / 255;
       }
+      if (pipeBodies) pipeBodies.setColorAt(s, bodyTint.setRGB(c[0] / 255, c[1] / 255, c[2] / 255));
     }
     pipeColours.needsUpdate = true;
+    if (pipeBodies && pipeBodies.instanceColor) pipeBodies.instanceColor.needsUpdate = true;
 
     const sensorSet = new Set(sensors || []);
     chamberMeshes.forEach(m => {
