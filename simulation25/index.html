@@ -247,12 +247,12 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   <div id="tipList"></div>
   <div id="baseNote"></div>
   <div id="sensorBox">
-    <h4>Sensors, chosen once across all 12 cases</h4>
+    <h4>Sensors, chosen once across all <span id="nCases">12</span> cases</h4>
     <label class="fld" for="kRange">Number of sensors: <b id="kVal"></b></label>
     <input type="range" id="kRange" min="1" max="10" step="1">
     <div class="knob" id="objKnob">
       <button data-o="worst" title="Each sensor is the one that most raises the WORST case of the 12">Best worst case</button>
-      <button data-o="mean" title="Each sensor is the one that most raises the AVERAGE over the 12 cases">Best average</button>
+      <button data-o="mean" title="Each sensor is the one that most raises the AVERAGE over all the cases">Best average</button>
     </div>
     <div class="quiet" id="objNote"></div>
     <div id="curve"></div>
@@ -325,11 +325,11 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=33"></script>
-<script src="data/growth.js?v=33"></script>
-<script src="data/index.js?v=33"></script>
-<script src="growth_3d.js?v=33"></script>
-<script src="growth_ui.js?v=33"></script>
+<script src="data/catchment.js?v=36"></script>
+<script src="data/growth.js?v=36"></script>
+<script src="data/index.js?v=36"></script>
+<script src="growth_3d.js?v=36"></script>
+<script src="growth_ui.js?v=36"></script>
 <script type="module">
   GrowthUI.init();
 </script>

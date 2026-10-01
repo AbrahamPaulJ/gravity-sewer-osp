@@ -13,7 +13,7 @@ window.GrowthUI = (function () {
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
   // ii = case index; add = growth size index; rule = detection rule index (25 mm rise).
-  // k and obj drive the sensor set: k sensors chosen once across all 12 cases, for the best
+  // k and obj drive the sensor set: k sensors chosen once across all cases, for the best
   // worst case or the best average. showHeat colours the manholes by their own coverage.
   const st = { site: 0, showSensors: false, showHeat: false, k: 3, obj: "worst", ii: 1, add: 3, rule: 2,
                hover: null };                                  // a manhole NAME, or null
@@ -37,8 +37,10 @@ window.GrowthUI = (function () {
   const ruleId = () => runs().rules[st.rule].id;
   const graded = () => ruleId() !== "alarm";
   const caseLabel = () => runs().cases[st.ii].label;
+  // How many cases the build published. cases.json decides it, so nothing here may say 12.
+  const nCases = () => runs().cases.length;
 
-  /* The sensor set: the first k of the order chosen across ALL twelve cases for the current
+  /* The sensor set: the first k of the order chosen across ALL cases for the current
      rule and objective. The order is nested, so sensor k+1 is always added to the first k. */
   const placement = () => runs().sensors[ruleId()][st.obj];
   const sensorSet = () => placement().order.slice(0, st.k).map(i => nameOf(i));
@@ -100,7 +102,7 @@ window.GrowthUI = (function () {
     renderSensors();
     $("#heatKey").hidden = !st.showHeat;
 
-    $("#heatWhich").textContent = (st.obj === "worst" ? "worst of the 12 cases" : "average of the 12 cases") +
+    $("#heatWhich").textContent = (st.obj === "worst" ? "worst of the " : "average of the ") + nCases() + " cases" +
       ", " + runs().rules[st.rule].label.toLowerCase();
     renderKnobs();
   }
@@ -272,9 +274,9 @@ window.GrowthUI = (function () {
 
   /* ------------------------------------------------------------- sensors */
   const OBJ_NOTE = {
-    worst: "Each sensor added is the one that most raises the worst of the 12 cases: " +
+    worst: "Each sensor added is the one that most raises the worst of the {n} cases: " +
            "whatever the unknowns turn out to be, at least this much is caught.",
-    mean: "Each sensor added is the one that most raises the average over the 12 cases. " +
+    mean: "Each sensor added is the one that most raises the average over the {n} cases. " +
           "Catches more on average, but can leave one case poorly covered.",
   };
   const pct = x => Math.round(x * 100) + "%";
@@ -285,7 +287,8 @@ window.GrowthUI = (function () {
     $("#kVal").textContent = String(k);
     document.querySelectorAll("#objKnob button").forEach(b =>
       b.classList.toggle("on", b.dataset.o === st.obj));
-    $("#objNote").textContent = OBJ_NOTE[st.obj];
+    $("#objNote").textContent = OBJ_NOTE[st.obj].replace("{n}", nCases());
+    $("#nCases").textContent = nCases();
     renderCurve(pl, k);
     const alarmNote = ruleId() === "alarm"
       ? "<p class=quiet>Under the alarm rule the worst case is the dry one, where only one " +

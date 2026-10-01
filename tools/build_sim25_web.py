@@ -32,14 +32,14 @@ sys.path.insert(0, SIM)
 
 PAGE_FILES = ["index.html", "growth_ui.js", "growth_3d.js"]
 MAX_SENSORS = 10
-WEATHER_LABEL = {0.0: "Dry", 0.11: "Design wet", 0.25: "Beyond design", 0.40: "Severe"}
-WEATHER_NOTE = {
-    0.0: "Sewage only, no infiltration: a genuinely dry day.",
-    0.11: "Infiltration at the level that just meets the utility's own design rating for "
-          "these pipes.",
-    0.25: "1.7 times the design envelope: an old network on a wet day.",
-    0.40: "2.4 times the design envelope: a heavy wet period.",
-}
+# Case names and notes come from the same cases.json the grid ran from, so what the page
+# calls a case can never drift from what was actually solved.
+CASES_FILE = os.path.join(SIM, "cases.json")
+with io.open(CASES_FILE, encoding="utf-8") as _f:
+    _CASES = json.load(_f)
+WEATHER_LABEL = {round(w["ii"], 2): w["label"] for w in _CASES["weather"]}
+WEATHER_NOTE = {round(w["ii"], 2): w["note"] for w in _CASES["weather"]}
+VARIANTS = (_CASES.get("sensitivity") or {}).get("variants", [])
 RULES = [
     ("alarm", "150 mm alarm", "Seen when the depth newly passes 150 mm above the pipe floor "
      "(the low alarm used in a real deployment)."),
@@ -65,14 +65,12 @@ def write_js(path, varname, payload):
 
 
 def case_label(case):
+    """Weather name, plus the label of every configured variant this case matches. A case
+    matches a variant when it carries every field that variant sets, so the label is
+    rebuilt from what the summary.json says was run, not from a separate list of names."""
     label = WEATHER_LABEL.get(round(case["ii"], 2), f"I&I {case['ii']}")
-    extra = []
-    if case["pf"] == "harmon":
-        extra.append("Harmon peaking")
-    if case["age"] == "weighted":
-        extra.append("age-weighted I&I")
-    if case["bfac"] != 1.0:
-        extra.append(f"outside inflow x{case['bfac']:g}")
+    extra = [v["label"] for v in VARIANTS
+             if all(case.get(k) == val for k, val in v["set"].items())]
     return label + (" + " + ", ".join(extra) if extra else "")
 
 
@@ -240,12 +238,22 @@ def build_runs():
     order = [case.tag() for case in sim25_grid.cases("all")]
     missing = [tag for tag in order if tag not in summaries]
     if missing:
-        sys.exit("missing grid cases: " + ", ".join(missing))
+        sys.exit("\ncases.json lists cases that have never been solved, so there is nothing to "
+                 "publish for them:\n" + "".join(f"  {tag}\n" for tag in missing) +
+                 "Run them first, from simulation_src/ (each is about 4 to 20 minutes):\n"
+                 "  python sim25_grid.py --cases all --resume\n"
+                 "--resume skips every case that already has results.")
 
+    # The corridor runs one case per weather level, so publish only the levels cases.json
+    # still lists. Globbing everything on disk would keep showing a level after it was
+    # removed from the config, which is the same mistake the grid order above avoids.
+    levels = {round(ii, 2) for ii, _ in sim25.WEATHER}
     corridor = []
     pattern = os.path.join(GRID, "corridor", "*", "summary.json")
     for filename in sorted(glob.glob(pattern)):
-        corridor.append(json.load(io.open(filename, encoding="utf-8")))
+        item = json.load(io.open(filename, encoding="utf-8"))
+        if round(item["case"]["ii"], 2) in levels:
+            corridor.append(item)
 
     geometry = catchment_geometry(sim25.SEGMENT_OUTLET)
     geometry["context"] = region_context(geometry)
@@ -327,11 +335,60 @@ def compare_output(output):
     return True
 
 
+def bump_cache_keys():
+    """Move every Sim 2.5 cache key to one new number, past the highest in use.
+
+    simulation25/index.html says its script keys must match the landing page's iframe key
+    and that both are bumped together on every publish. Going past the highest rather than
+    adding one to each keeps them equal even if they had drifted, and never reuses a number
+    a browser may already hold a stale copy under."""
+    import re
+    page, home = os.path.join(TEMPLATE, "index.html"), os.path.join(ROOT, "index.html")
+    page_src = io.open(page, encoding="utf-8").read()
+    home_src = io.open(home, encoding="utf-8").read()
+    script = re.compile(r'(<script src="(?:data/)?[\w.]+\.js)\?v=(\d+)"')
+    iframe = re.compile(r'(simulation25/index\.html)\?v=(\d+)')
+    used = [int(m.group(2)) for m in script.finditer(page_src)]
+    used += [int(m.group(2)) for m in iframe.finditer(home_src)]
+    new = max(used) + 1
+    page_src = script.sub(lambda m: f'{m.group(1)}?v={new}"', page_src)
+    home_src = iframe.sub(lambda m: f"{m.group(1)}?v={new}", home_src)
+    io.open(page, "w", encoding="utf-8", newline="\n").write(page_src)
+    io.open(home, "w", encoding="utf-8", newline="\n").write(home_src)
+    return new
+
+
+def publish(output, runs):
+    """Copy the two generated data files into the tracked page, and bump the keys.
+
+    Only data/catchment.js and data/growth.js are copied. The HTML and UI modules are the
+    templates this build reads, so they already are what is published."""
+    changed = []
+    for name in ("catchment.js", "growth.js"):
+        src = os.path.join(output, "data", name)
+        dst = os.path.join(TEMPLATE, "data", name)
+        if not os.path.exists(dst) or not filecmp.cmp(src, dst, shallow=False):
+            shutil.copyfile(src, dst)
+            changed.append("data/" + name)
+    if not changed:
+        print("\nPublished page already matches this build; nothing copied, keys unchanged.")
+        return
+    key = bump_cache_keys()
+    print(f"\nPublished into simulation25/: {', '.join(changed)}; cache keys now v={key}.")
+    print(f"{len(runs['cases'])} cases on the page:")
+    for case in runs["cases"]:
+        print(f"  - {case['label']}")
+    print("Reload the Simulation 2.5 tab to see them.")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", default=os.path.join(ROOT, "reproduced_simulation25"))
     parser.add_argument("--check", action="store_true",
                         help="compare the rebuilt files with the tracked published page")
+    parser.add_argument("--publish", action="store_true",
+                        help="after building, copy the data into simulation25/ and bump its "
+                             "cache keys, so the page you are viewing shows this build")
     args = parser.parse_args()
     output = os.path.abspath(args.out)
     if output == os.path.abspath(TEMPLATE):
@@ -339,7 +396,11 @@ def main():
 
     data_dir = os.path.join(output, "data")
     os.makedirs(data_dir, exist_ok=True)
-    geometry, runs, cell_count = build_runs()
+    try:
+        geometry, runs, cell_count = build_runs()
+    except ValueError as e:
+        # A mistake in cases.json. Say so plainly rather than with a traceback.
+        sys.exit(f"\ncases.json is not valid, so nothing was built or published:\n  {e}")
     sizes = {
         "data/catchment.js": write_js(os.path.join(data_dir, "catchment.js"),
                                       "GROWTH_GEOM", geometry),
@@ -360,6 +421,8 @@ def main():
     print("-> " + output)
     if args.check and not compare_output(output):
         sys.exit(1)
+    if args.publish:
+        publish(output, runs)
 
 
 if __name__ == "__main__":

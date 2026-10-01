@@ -32,6 +32,36 @@ python sim25_daily.py                                # the daily-cycle check
 python test_simulation.py                            # the test suite
 ```
 
+### Choosing the cases
+
+The cases — "what cannot be measured yet" on the page — are defined in **`cases.json`** and
+nowhere else. `sim25.py`, `sim25_grid.py` and `../tools/build_sim25_web.py` all read it, so
+adding or removing a case is an edit to that one file:
+
+- `weather` is the nominal sweep, one case per infiltration level, each with the label and
+  note the page shows. The corridor runs use these levels too.
+- `sensitivity.at_ii` names which weather levels get the variants; each variant overrides one
+  field of `Case` (`pf`, `age`, `bfac`, `stage`, `hour`) and carries the words added to its label.
+
+As committed that is 4 weather levels plus 4 variants at 2 of them, 12 cases. Each case is 355
+SWMM runs, so the count is the main lever on run time.
+
+The file is checked when `sim25` is imported, so a misspelt field, an `at_ii` that is not a
+weather level, or two cases sharing an infiltration level fails immediately with a message
+saying which, rather than partway through a two-hour grid.
+
+**Editing it does not change the page by itself.** The page reads generated data, so after an
+edit, publish it from the repository root:
+
+```
+python tools/build_sim25_web.py --publish
+```
+
+That checks `cases.json`, rebuilds, copies the data into `simulation25/` and bumps the cache
+keys, then lists the cases now on the page. It publishes nothing if the file is invalid. If
+the file names a case that has never been solved, it stops and says which; run those first
+with `python sim25_grid.py --cases all --resume`, which skips every case already solved.
+
 Outputs land in `results/sim25/`: one folder per case with `summary.json`, plus `graded.json`,
 `robustness.json`, the corridor runs and the SWMM `.inp`, `.rpt` and `.out` files. The published
 page reads these through its own data files in `../simulation25/data/`.

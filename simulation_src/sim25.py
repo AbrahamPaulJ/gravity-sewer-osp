@@ -50,9 +50,39 @@ PF_NOMINAL = 2.0                    # P02
 # factor itself, so the existing runs ARE the peak of the day.
 TROUGH_FACTOR = 0.2
 
+# The cases live in cases.json and nowhere else; see that file for what each one means.
 # P04: I&I rate, L/s per 100 m. 0.11 meets the design envelope implied by the utility's own
 # DN225 rating (docs/15 s2.3); the others are multiples beyond design.
-WEATHER = [(0.0, "Dry"), (0.11, "Design wet"), (0.25, "Beyond design"), (0.40, "Severe")]
+CASES_FILE = os.path.join(HERE, "cases.json")
+
+
+def load_cases(path=CASES_FILE):
+    """The case configuration, checked, so a typo fails here rather than two hours in."""
+    with open(path, encoding="utf-8") as f:
+        cfg = json.load(f)
+    fields = set(Case.__dataclass_fields__)
+    weather = cfg.get("weather") or []
+    if not weather:
+        raise ValueError(f"{path}: 'weather' must list at least one case")
+    iis = [w["ii"] for w in weather]
+    if len(set(iis)) != len(iis):
+        raise ValueError(f"{path}: two weather cases share an ii, which would share a tag")
+    sens = cfg.get("sensitivity") or {"at_ii": [], "variants": []}
+    missing = [ii for ii in sens.get("at_ii", []) if ii not in iis]
+    if missing:
+        raise ValueError(f"{path}: sensitivity at_ii {missing} is not a weather level")
+    for v in sens.get("variants", []):
+        bad = set(v["set"]) - fields
+        if bad:
+            raise ValueError(f"{path}: variant '{v['label']}' sets unknown field(s) {sorted(bad)}; "
+                             f"a Case has {sorted(fields)}")
+    return cfg
+
+
+# Read at import, because the tag of every result directory depends on it: a run and the
+# page built from it must agree on what the cases were.
+CASE_CONFIG = None     # set below, once Case exists to validate against
+WEATHER = []
 
 # P26: sensitivity only; nominal is uniform. Upper bound of each era (construction year).
 AGE_BANDS = [(1929, 1.5), (1959, 1.2), (1989, 0.8), (9999, 0.5)]
@@ -87,6 +117,10 @@ class Case:
         st = "free" if self.stage is None else f"{self.stage:.3f}"
         t = f"ii{self.ii:.2f}_{self.pf}_{self.age}_b{self.bfac:g}_s{st}"
         return t if self.hour == "peak" else t + "_trough"
+
+
+CASE_CONFIG = load_cases()
+WEATHER = [(w["ii"], w["label"]) for w in CASE_CONFIG["weather"]]
 
 
 # ====================================================================== the network

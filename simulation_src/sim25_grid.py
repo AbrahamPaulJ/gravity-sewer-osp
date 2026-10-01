@@ -44,13 +44,16 @@ CORRIDOR_SIZES = [80, 150, 390, 485]   # P05; 390 / 485 = projected 2021-41 medi
 
 
 def cases(which):
+    """The cases to run, read from cases.json: the weather sweep, then each sensitivity
+    variant at each weather level the config names. Order is weather first, then by level,
+    then by variant, which is the order the page lists them in."""
     nominal = [Case(ii=ii) for ii, _ in sim25.WEATHER]
     if which == "nominal":
         return nominal
-    sens = []
-    for ii in (0.11, 0.25):                   # design wet and beyond design
-        sens += [Case(ii=ii, pf="harmon"), Case(ii=ii, age="weighted"),
-                 Case(ii=ii, bfac=0.5), Case(ii=ii, bfac=1.5)]
+    sens_cfg = sim25.CASE_CONFIG.get("sensitivity") or {}
+    sens = [Case(ii=ii, **v["set"])
+            for ii in sens_cfg.get("at_ii", [])
+            for v in sens_cfg.get("variants", [])]
     return nominal + sens
 
 
