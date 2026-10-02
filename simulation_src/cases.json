@@ -20,6 +20,14 @@
     "             Fields: pf (flat|harmon), age (uniform|weighted), bfac, stage, hour."
   ],
 
+  "_study_area": [
+    "Where growth is tested and sensors may go. segment: the 71 manholes above node 583,",
+    "the corner every result before this setting was run on, results in results/sim25/grid.",
+    "whole: all 328 published manholes in the model domain, results in results/sim25/grid_whole.",
+    "Leave it out and it means segment."
+  ],
+  "study_area": "whole",
+
   "weather": [
     {
       "ii": 0.0,

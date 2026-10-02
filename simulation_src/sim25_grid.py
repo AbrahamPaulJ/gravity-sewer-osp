@@ -36,7 +36,15 @@ import sim25
 from sim25 import Case, Sim25Model, solve
 import growth_osp
 
-OUT = os.path.join(sim25.OUT_DIR, "grid")
+# Each study area has its own results folder, so a whole-area grid can never overwrite the
+# segment results committed before the setting existed, and --resume never mistakes one
+# area's summary.json for the other's.
+OUT = os.path.join(sim25.OUT_DIR, "grid" if sim25.STUDY_AREA == "segment" else "grid_whole")
+# In the whole area a rise is kept only where it reaches this, mm. 328 manholes in every one
+# of 1,641 runs a case is about 13 MB of JSON, nearly all of it 0.0 at manholes the growth
+# never reaches; the smallest published detection rule is 10 mm, so dropping rises below 1 mm
+# loses nothing the page or the placement can use. The segment keeps every value, unchanged.
+WHOLE_RISE_FLOOR_MM = 1.0
 MINUTES = 480            # R2: settled within 0.2 mm by 480 min at every weather level tested
 NEST_MAX_II = 0.11       # X4: nesting validated up to design wet only
 CORRIDOR_BUFFER_M = 25.0
@@ -85,7 +93,7 @@ def _whole_task(args):
         shutil.rmtree(run_dir, ignore_errors=True)
     return head, m.growth_lps, res.err, {
         c: {k: st[c][k] for k in ("depth", "alarm", "surcharged", "spilled")}
-        for c in m.study_chambers}
+        for c in m.candidates}
 
 
 def corridor_nodes():
@@ -117,12 +125,15 @@ def run_case(case, pool, sites_limit, sizes):
     base_dir = os.path.join(OUT, tag)
     os.makedirs(base_dir, exist_ok=True)
     t0 = time.time()
-    probe = Sim25Model(case, whole=False, outlet_head=0.0)
-    seg = probe.study_chambers
+    whole_area = sim25.STUDY_AREA == "whole"
+    probe = Sim25Model(case, whole=whole_area, outlet_head=None if whole_area else 0.0)
+    seg = probe.candidates
     mh_of = {c: probe.nodes[c].manhole_id for c in seg}
 
     sites = [mh_of[c] for c in seg][: sites_limit or None]
-    nested = case.ii <= NEST_MAX_II
+    # Nesting solves only the segment with its outlet level handed down (X4), so it cannot
+    # hold growth placed anywhere else: a whole-area grid is whole-domain runs throughout.
+    nested = case.ii <= NEST_MAX_II and not whole_area
     if nested:
         # The baseline whole run hands its levels to the segment runs.
         head_run = Sim25Model(case, whole=True)
@@ -151,8 +162,9 @@ def run_case(case, pool, sites_limit, sizes):
                      "spilled": sorted(mh_of[c] for c in seg if st[c]["spilled"]),
                      # Depth rise at every study manhole, mm. The graded observability
                      # matrix (docs/17 s1) is built from this, not from the yes/no sets.
-                     "rise_mm": {str(mh_of[c]): round((st[c]["depth"] - base[c]["depth"]) * 1000, 2)
-                                 for c in seg}})
+                     "rise_mm": {str(mh_of[c]): r for c in seg
+                                 for r in [round((st[c]["depth"] - base[c]["depth"]) * 1000, 2)]
+                                 if not whole_area or r >= WHOLE_RISE_FLOOR_MM}})
     placement = {}
     for rule in ("alarm", "surcharge"):
         cover = growth_osp.greedy_cover([{"site": f"{r['site']}+{r['dwellings']}",
@@ -186,8 +198,9 @@ def run_corridor(case, pool):
                       os.path.join(d, f"g{n}")))
     res = list(pool.map(_whole_task, tasks))
     base = res[0][3]
-    probe = Sim25Model(case, whole=False, outlet_head=0.0)
-    mh_of = {c: probe.nodes[c].manhole_id for c in probe.study_chambers}
+    whole_area = sim25.STUDY_AREA == "whole"
+    probe = Sim25Model(case, whole=whole_area, outlet_head=None if whole_area else 0.0)
+    mh_of = {c: probe.nodes[c].manhole_id for c in probe.candidates}
     rows = []
     for n, (head, glps, err, st) in zip(CORRIDOR_SIZES, res[1:]):
         rows.append({"dwellings": n, "added_lps": glps, "outlet_head_rise_m": head - res[0][0],
@@ -227,17 +240,21 @@ def main():
     args = ap.parse_args()
     cs = cases(args.cases)
     sizes = sim25.GROWTH_DWELLINGS + [sim25.STRESS_DWELLINGS]
-    n_sites = args.sites or 71
+    whole_area = sim25.STUDY_AREA == "whole"
+    n_sites = args.sites or (328 if whole_area else 71)
     per_case = 1 + n_sites * len(sizes)
-    nest = [c for c in cs if c.ii <= NEST_MAX_II]
+    nest = [] if whole_area else [c for c in cs if c.ii <= NEST_MAX_II]
     seg_runs = len(nest) * per_case
+    # 28.6 s is the measured mean of a whole-domain run on the Sim 2.5 grid of 25 Sep (the
+    # old 20 s guess held only at low infiltration and put the grid at 94 min, not 2 h 18 m).
     whole_runs = (len(nest) + (len(cs) - len(nest)) * per_case
-                  + (0 if args.no_corridor else 4 * (1 + len(CORRIDOR_SIZES))))
+                  + (0 if args.no_corridor else len(sim25.WEATHER) * (1 + len(CORRIDOR_SIZES))))
+    print(f"study area: {sim25.STUDY_AREA}, {n_sites} growth sites; results in {OUT}")
     print(f"{len(cs)} cases ({len(nest)} nested); {seg_runs} segment runs (~3.5 s each) + "
-          f"{whole_runs} whole runs (~20 s each) on {args.workers} workers: about "
-          f"{(seg_runs * 3.5 + whole_runs * 20) / args.workers / 60:.0f} min")
+          f"{whole_runs} whole runs (~28.6 s each) on {args.workers} workers: about "
+          f"{(seg_runs * 3.5 + whole_runs * 28.6) / args.workers / 60:.0f} min")
     for c in cs:
-        print("   ", c.tag(), "nested" if c.ii <= NEST_MAX_II else "whole")
+        print("   ", c.tag(), "nested" if c in nest else "whole")
     if args.plan:
         return
     os.makedirs(OUT, exist_ok=True)

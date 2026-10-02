@@ -76,7 +76,16 @@ def load_cases(path=CASES_FILE):
         if bad:
             raise ValueError(f"{path}: variant '{v['label']}' sets unknown field(s) {sorted(bad)}; "
                              f"a Case has {sorted(fields)}")
+    area = cfg.get("study_area", "segment")
+    if area not in STUDY_AREAS:
+        raise ValueError(f"{path}: study_area '{area}' is not one of {sorted(STUDY_AREAS)}")
     return cfg
+
+
+# Where growth is tested and sensors may go. "segment" is X2, the 71 manholes above node 583,
+# and is what every committed result before this setting was run on. "whole" is all 328
+# published manholes in the model domain. Absent from the file means "segment".
+STUDY_AREAS = {"segment", "whole"}
 
 
 # Read at import, because the tag of every result directory depends on it: a run and the
@@ -121,6 +130,7 @@ class Case:
 
 CASE_CONFIG = load_cases()
 WEATHER = [(w["ii"], w["label"]) for w in CASE_CONFIG["weather"]]
+STUDY_AREA = CASE_CONFIG.get("study_area", "segment")
 
 
 # ====================================================================== the network
@@ -474,6 +484,21 @@ class Sim25Model:
         seg = set(self.net.upstream_pipes(SEGMENT_OUTLET))
         seg_nodes = {self.net.pipes[i].up for i in seg} | {SEGMENT_OUTLET}
         return sorted(c for c, nid in self.chambers.items() if nid in seg_nodes)
+
+    @property
+    def candidates(self):
+        """The growth sites and sensor candidates for the configured study area.
+
+        "segment" is X2, the 71 manholes above node 583, and is exactly study_chambers.
+        "whole" is every published manhole in the model domain, 328 of them, which only a
+        whole-domain model contains; a segment model has no chambers outside X2 to offer.
+        study_chambers itself is left alone, because the nesting, the corridor and the tests
+        are all defined against X2 whatever area the placement is run over."""
+        if STUDY_AREA == "whole":
+            if not self.whole:
+                raise ValueError("study_area 'whole' needs a whole-domain model")
+            return sorted(self.chambers)
+        return self.study_chambers
 
 
 # ====================================================================== running

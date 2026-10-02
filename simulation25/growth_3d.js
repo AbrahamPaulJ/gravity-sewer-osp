@@ -23,6 +23,8 @@ window.Growth3D = (function () {
   let houseGeo = null, houseColours = null, houseHi = null, houseRim = null, houseUp = null,
       sleeves = null;
   let siteLabel = null, bottleneckMesh = null, lastPipeState = null, region = null;
+  let scaleLabels = [];             // the height ruler's tick labels, projected like the rest
+  let houseJ = null, latHi = null, latUp = null;   // where each home joins its main; the laterals drawn
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
   const clock = { t0: performance.now() };
   const ZEXAG = 22.0;
@@ -47,6 +49,9 @@ window.Growth3D = (function () {
     sensor: 0x3fb950,              // green, a proposed sensor
     houseDim: 0x3a2430,            // a property with nothing to do with the selection
     houseUp: 0x7dc4e0,             // drains THROUGH the selected manhole, from further up
+    // A home's own connection pipe down to its main. Lighter than the royal-blue dot it
+    // hangs from, because a one-pixel line in that blue vanishes on the dark ground.
+    lateralHere: 0x6f95ff,
     // Royal blue, not the cyan of the growth marker: "these homes reach this manhole first"
     // and "the new dwellings connect here" are different facts. A white rim keeps a dark
     // blue readable on the near-black background and apart from the blue pipes.
@@ -64,6 +69,7 @@ window.Growth3D = (function () {
     entryIn: 0xf0f6fc,             // an outside inflow joining the study area itself
     entryOut: 0x8b949e,            // an outside inflow joining the rest of the network
     heatPipe: [0x3a, 0x42, 0x50],  // pipes while the heatmap is on: neutral, out of the way
+    datum: 0x8b949e,               // the height ruler and datum plane: present, never loud
   };
 
   function ensureThree() {
@@ -124,7 +130,7 @@ window.Growth3D = (function () {
         }
         if (sleeves) sleeves.material.opacity = 0.20 + 0.22 * (0.5 + 0.5 * beat);
         renderer.render(scene, camera);
-        [outletLabel, siteLabel].forEach(lbl => {
+        [outletLabel, siteLabel, ...scaleLabels].forEach(lbl => {
           if (!lbl) return;
           const v = lbl.at.clone().project(camera);
           const el = renderer.domElement;
@@ -298,6 +304,43 @@ window.Growth3D = (function () {
     }
 
 
+    /* Each home's connection to its main. The data records where every property's own
+       connection pipe meets a main (layer 7, median 6.2 m long). That point is snapped
+       here onto the nearest drawn pipe segment rather than placed by its published level,
+       so the line ends on the pipe as it is drawn, exaggeration and all. It runs from the
+       home, drawn 2 m above its main, down to that point: mostly a drop, which is what a
+       lateral is. Built once; highlight() draws only the ones for the homes it lights. */
+    if (houseGeo && g.jx && g.jx.length === g.hx.length && segEnds.length) {
+      const n = g.hx.length;
+      houseJ = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const j = P(g.jx[i], g.jy[i], 0);              // only x and z matter here
+        let best = Infinity, bx = j.x, by = 0, bz = j.z;
+        for (let s2 = 0; s2 < segEnds.length; s2++) {
+          const [a, b] = segEnds[s2];
+          const dx = b.x - a.x, dz = b.z - a.z, L2 = dx * dx + dz * dz;
+          let t = L2 > 0 ? ((j.x - a.x) * dx + (j.z - a.z) * dz) / L2 : 0;
+          t = t < 0 ? 0 : t > 1 ? 1 : t;
+          const qx = a.x + t * dx, qz = a.z + t * dz;
+          const d = (j.x - qx) * (j.x - qx) + (j.z - qz) * (j.z - qz);
+          if (d < best) { best = d; bx = qx; bz = qz; by = a.y + t * (b.y - a.y); }
+        }
+        houseJ[i * 3] = bx; houseJ[i * 3 + 1] = by; houseJ[i * 3 + 2] = bz;
+      }
+      const lateral = (col, opacity) => {
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(n * 6), 3));
+        geo.setDrawRange(0, 0);
+        const ls = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
+          color: col, transparent: true, opacity }));
+        ls.frustumCulled = false;
+        scene.add(ls);
+        return ls;
+      };
+      latHi = lateral(COL.lateralHere, 0.95);
+      latUp = lateral(COL.houseUp, 0.5);     // fainter: there can be hundreds of these
+    }
+
     // Sleeves: a translucent tube around every pipe in the highlighted catchment. WebGL
     // ignores line width, so a line cannot be made thicker, and recolouring the pipe itself
     // would overwrite the blue, amber and red the page's argument depends on. A sleeve
@@ -364,7 +407,7 @@ window.Growth3D = (function () {
     // orbit, is genuinely hard to find from its colour alone; the stalk is what makes the
     // growth site locatable without hunting for it.
     // The outlet. Everything on screen drains through this one chamber, so it gets a
-    // marker of its own rather than being one white dot among 71.
+    // marker of its own rather than being one white dot among the rest.
     if (g.outletName) {
       const on = g.nodes.find(n => n.name === g.outletName);
       if (on) {
@@ -375,10 +418,68 @@ window.Growth3D = (function () {
         scene.add(ring);
         const lbl = document.createElement("div");
         lbl.className = "lbl outlet";
-        lbl.textContent = "outlet, MH " + on.mh;
+        // The whole-area domain ends at an outfall where the council data stops, which
+        // has no manhole number; "MH null" is what the bare concatenation printed.
+        lbl.textContent = on.mh ? "outlet, MH " + on.mh : "outlet, where the council network ends";
         labelLayer.appendChild(lbl);
         outletLabel = { el: lbl, at: P(on.x, on.y, on.inv) };
       }
+    }
+
+    /* The height datum, made visible. Every level on this map is drawn relative to the
+       lowest invert in the model (g.oz) and exaggerated ZEXAG times, and neither number
+       was on screen, so heights could be compared with each other but not read. A ruler at
+       the corner of the network, ticked in real metres, and a faint plane at its foot give
+       them something to be measured against. The ruler is drawn through P() like every
+       pipe, so it carries the same exaggeration and reads off directly.
+
+       The levels are as published, in metres above the survey datum. The council layer
+       does not name the datum; cover levels come from the government 1 m contours and
+       cover minus invert gives credible chamber depths, so both share one datum, which
+       for South Australian survey levels is AHD. The label says "consistent with AHD"
+       rather than claiming what the data does not state. */
+    {
+      const lv = g.nodes.map(n => g.oz + n.inv / 100);
+      const top = g.nodes.map(n => g.oz + n.inv / 100 + (n.depth || 0));
+      const lo = Math.min(...lv), hi = Math.max(...top);
+      const step = hi - lo > 40 ? 10 : 5;
+      const base = Math.floor(lo / step) * step, peak = Math.ceil(hi / step) * step;
+      const cm = level => (level - g.oz) * 100;          // real metres -> P()'s z units
+      const xs = g.nodes.map(n => n.x), ys = g.nodes.map(n => n.y);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      const pad = 0.04 * Math.max(x1 - x0, y1 - y0);
+      const rx = x0 - pad, ry = y0 - pad, tick = 0.025 * Math.max(x1 - x0, y1 - y0);
+
+      const seg = [];
+      const add = (a, b) => seg.push(a.x, a.y, a.z, b.x, b.y, b.z);
+      add(P(rx, ry, cm(base)), P(rx, ry, cm(peak)));
+      for (let L = base; L <= peak + 1e-9; L += step) {
+        add(P(rx, ry, cm(L)), P(rx + tick, ry, cm(L)));
+        const el = document.createElement("div");
+        el.className = "lbl scale";
+        // The foot of the ruler is the datum plane, so its tick says so rather than
+        // leaving the plane a grid with no name.
+        el.textContent = L === base ? L + " m \u2190 datum plane (100 m grid)" : L + " m";
+        labelLayer.appendChild(el);
+        scaleLabels.push({ el, at: P(rx + tick, ry, cm(L)) });
+      }
+      const cap = document.createElement("div");
+      cap.className = "lbl scale cap";
+      cap.textContent = "height above datum, m (consistent with AHD) \u00b7 vertical \u00d7" + ZEXAG;
+      labelLayer.appendChild(cap);
+      // Under the foot of the ruler, not above its top: the top sits in the corner the
+      // "homes behind" box covers, and a caption you cannot read explains nothing.
+      scaleLabels.push({ el: cap, at: P(rx, ry, cm(base)) });
+
+      // The datum plane at the ruler's foot: the network's outline plus a 100 m grid.
+      const z = cm(base), gx = 1000;                     // 1000 dm = 100 m
+      const X0 = rx, X1 = x1 + pad, Y0 = ry, Y1 = y1 + pad;
+      for (let x = Math.ceil(X0 / gx) * gx; x <= X1; x += gx) add(P(x, Y0, z), P(x, Y1, z));
+      for (let y = Math.ceil(Y0 / gx) * gx; y <= Y1; y += gx) add(P(X0, y, z), P(X1, y, z));
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(seg, 3));
+      scene.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
+        color: COL.datum, transparent: true, opacity: 0.35 })));
     }
 
     siteLabel = { el: document.createElement("div"), at: new THREE.Vector3() };
@@ -519,6 +620,14 @@ window.Growth3D = (function () {
       dst[k * 3] = src[i * 3]; dst[k * 3 + 1] = src[i * 3 + 1]; dst[k * 3 + 2] = src[i * 3 + 2];
     };
     let nHi = 0, nUp = 0, nDirect = 0, out, pipes = null;
+    // A home's lateral, from the home to where it joins its main, written into slot k.
+    const hiLat = latHi && latHi.geometry.attributes.position.array;
+    const upLat = latUp && latUp.geometry.attributes.position.array;
+    const lat = (dst, k, i) => {
+      if (!dst) return;
+      dst.set(src.subarray(i * 3, i * 3 + 3), k * 6);
+      dst.set(houseJ.subarray(i * 3, i * 3 + 3), k * 6 + 3);
+    };
 
     if (spec && spec.mode === "site" && spec.name in t.idxOf) {
       const me = t.idxOf[spec.name], up = upstream([spec.name]);
@@ -526,8 +635,8 @@ window.Growth3D = (function () {
       for (let i = 0; i < n; i++) {
         const node = g.hn[i];
         paintHouse(i, COL.houseDim);
-        if (t.firstMh[node] === me) { copy(hiPos, nHi++, i); if (node === me) nDirect++; }
-        else if (up.nodes.has(node)) copy(upPos, nUp++, i);
+        if (t.firstMh[node] === me) { lat(hiLat, nHi, i); copy(hiPos, nHi++, i); if (node === me) nDirect++; }
+        else if (up.nodes.has(node)) { lat(upLat, nUp, i); copy(upPos, nUp++, i); }
       }
       out = { mode: "site", here: nHi, direct: nDirect, through: nUp, elsewhere: n - nHi - nUp, total: n };
     } else if (spec && spec.mode === "sensors" && spec.names.length) {
@@ -553,6 +662,13 @@ window.Growth3D = (function () {
       pts.geometry.setDrawRange(0, k);
       pts.geometry.attributes.position.needsUpdate = true;
       pts.frustumCulled = false;
+    });
+    // Laterals only for the homes lit in "site" mode; every other mode clears them, since
+    // nHi and nUp are only counted there.
+    [[latHi, nHi], [latUp, nUp]].forEach(([ls, k]) => {
+      if (!ls) return;
+      ls.geometry.setDrawRange(0, k * 2);
+      ls.geometry.attributes.position.needsUpdate = true;
     });
 
     // Sleeves around the pipes that carry it. Coloured per instance, not once for the

@@ -305,20 +305,28 @@ class Network:
         # what turns an abstract network into a recognisable suburb, and a count cannot be
         # un-summed later.
         self.connections = []
+        # Where each of those properties joins its main, aligned with self.connections: the
+        # end of its own connection line where it has one, else the nearest point on the main
+        # it was attributed to. Kept as a separate list so every reader that unpacks
+        # (x, y, pipe) from self.connections is unchanged.
+        self.connection_junctions = []
         self.attributed_by = {"connection": 0, "proximity": 0}
         for k, ((px, py), d, i) in enumerate(zip(xy, dist, idx)):
-            pipe = None
+            pipe = junction = None
             if ci is not None and cd[k] <= CONN_MATCH_TOL:
                 pipe = end_pipe[ci[k]]
+                junction = tuple(end_xy[ci[k]])
                 self.attributed_by["connection"] += 1
             elif d <= IP_MATCH_TOL:
                 pipe = sp[i]
+                junction = (sx[i], sy[i])
                 self.attributed_by["proximity"] += 1
             if pipe is None:
                 self.skipped["property with neither a connection nor a nearby main"] += 1
                 continue
             self.pipes[pipe].dwellings += 1
             self.connections.append((px, py, pipe))
+            self.connection_junctions.append(junction)
 
     def dwellings_upstream(self, node_id):
         """Connected properties draining to node_id, through any path."""

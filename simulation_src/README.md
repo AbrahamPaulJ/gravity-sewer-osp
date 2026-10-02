@@ -46,6 +46,22 @@ adding or removing a case is an edit to that one file:
 As committed that is 4 weather levels plus 4 variants at 2 of them, 12 cases. Each case is 355
 SWMM runs, so the count is the main lever on run time.
 
+`study_area` in the same file sets where growth is tested and sensors may go:
+
+- `"segment"` (the default if absent): the 71 manholes above node 583, a corner of the council
+  area. Results in `results/sim25/grid/`. Low-infiltration cases are nested, so a case takes
+  4 to 20 minutes.
+- `"whole"`: all 328 published manholes in the model domain. Results in
+  `results/sim25/grid_whole/`, so the two never overwrite each other. Growth can land
+  anywhere, which the nested shortcut cannot hold, so every run is whole-domain: 1,641 runs
+  and about 87 minutes a case on 9 workers. Depth rises below 1 mm are not stored, since the
+  smallest published rule is 10 mm. Measured on the first whole-area grid (1 Oct 2026): 0.8 to
+  2 MB a case, wetter cases larger since more manholes rise, against roughly 13 MB had every manhole in every run been kept, almost all
+  of it zeros. That grid of 5 cases took 8 h 22 m, about 35 s a run rather than 28.6.
+
+The map follows the setting: a whole-area build draws the whole domain as the study area,
+and the "Whole Walkerville" button is hidden because there is nothing left for it to add.
+
 The file is checked when `sim25` is imported, so a misspelt field, an `at_ii` that is not a
 weather level, or two cases sharing an infiltration level fails immediately with a message
 saying which, rather than partway through a two-hour grid.

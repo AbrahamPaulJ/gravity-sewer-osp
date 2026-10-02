@@ -151,7 +151,7 @@ window.GrowthUI = (function () {
       const nm = st.hover || nameOf(st.site), R = runs(), i = R.chambers.indexOf(nm);
       if (i < 0) return "Not a study manhole";
       const h = R.heat[ruleId()];
-      return "Rank " + rankOf(i) + " of 71. Alone: " + Math.round(100 * h.mean[i]) + "% average, " +
+      return "Rank " + rankOf(i) + " of " + R.chambers.length + ". Alone: " + Math.round(100 * h.mean[i]) + "% average, " +
         Math.round(100 * h.worst[i]) + "% worst case";
     };
     put(lead,
@@ -227,6 +227,18 @@ window.GrowthUI = (function () {
     $("#ruleNote").textContent = R.rules[st.rule].note;
   }
 
+  /* The selected manhole's real levels, in metres above datum, so a height on the map can
+     be read as a number: the map draws levels relative to its lowest invert and
+     exaggerated, and the ruler beside it is the only other place real metres appear. */
+  function levelRow() {
+    const g = geom(), nm = nameOf(st.site);
+    const n = g && g.nodes.find(x => x.name === nm);
+    if (!n) return "";
+    const inv = g.oz + n.inv / 100;
+    return row2("Pipe floor / ground", inv.toFixed(2) + " / " + (inv + n.depth).toFixed(2) +
+      ' m <span class="quiet">(' + n.depth.toFixed(1) + " m deep)</span>");
+  }
+
   function renderPanel(c, row) {
     const R = runs();
     const add = R.growthLevels[st.add];
@@ -235,6 +247,7 @@ window.GrowthUI = (function () {
 
     $("#siteFacts").innerHTML =
       reachRow() +
+      levelRow() +
       row2("Adding", "<b>+" + add + "</b> dwellings") +
       row2("Manholes that see it", tipped.length
         ? '<b class="bad">' + tipped.length + "</b>"
@@ -509,6 +522,9 @@ window.GrowthUI = (function () {
     $("#fitAll").onclick = () => Growth3D.frame(null);
     // Off by default: the page is about the 71 study manholes, and the whole network makes
     // them a fifth of the view. On demand it shows what "whole council network" means.
+    // A whole-area build already draws the whole network as the study area, so the button
+    // would add nothing but inflow markers; it is hidden rather than left to mislead.
+    if (runs().studyArea === "whole") $("#toggleRegion").hidden = true;
     $("#toggleRegion").onclick = () => {
       st.showRegion = !st.showRegion;
       if (!Growth3D.showRegion(st.showRegion)) { st.showRegion = false; return; }
