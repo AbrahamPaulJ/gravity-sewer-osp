@@ -183,6 +183,7 @@ def catchment_geometry(outlet):
         "px": px, "py": py, "ptr": ptr, "zu": zu, "zd": zd, "dia": dia,
         "up": up, "down": down, "nodes": nodes,
         "hx": hx, "hy": hy, "hz": hz, "hn": hn,
+        **link_details(model),
         # Where each property joins its main: the lateral the page draws from the house.
         "jx": jx, "jy": jy,
         "bottlenecks": [],
@@ -190,6 +191,40 @@ def catchment_geometry(outlet):
         "nHouses": len(hx), "baseDwellings": model.base_dwellings,
         "metres": round(sum(model.metres.values()), 1),
     }
+
+
+def link_details(model):
+    """What a click on a pipe shows: one entry per drawn link, from the pipe it belongs to.
+
+    A long pipe may be split into several links; each carries its whole pipe's details,
+    so clicking any piece of it reads the same. Capacity is full-bore Manning, the
+    pipe's own published grade and the roughness model.py gives its material, the same n
+    SWMM solves with. A flat or adverse grade has no gravity full-bore capacity, so it is
+    left empty rather than shown as zero."""
+    import math
+    import model as swmm_model
+
+    by_label = {pipe.label: pipe for pipe in model.pipes}
+    out = {"pid": [], "pmat": [], "pyr": [], "plen": [], "pslope": [], "pcap": []}
+    for link in model.links:
+        pipe = by_label.get(link.pipe)
+        if pipe is None:                       # an outfall dummy: no published pipe
+            for key in out:
+                out[key].append(None)
+            continue
+        d, s = pipe.dia, pipe.slope
+        cap = None
+        if d and s and s > 0:
+            n = swmm_model.manning_of(pipe.material)
+            area, radius = math.pi * d * d / 4, d / 4
+            cap = round(1000 * area * radius ** (2 / 3) * math.sqrt(s) / n, 1)
+        out["pid"].append(pipe.asset_id)
+        out["pmat"].append(pipe.material or None)
+        out["pyr"].append(pipe.year or None)
+        out["plen"].append(round(pipe.length, 1))
+        out["pslope"].append(round(100 * s, 2) if s is not None else None)
+        out["pcap"].append(cap)
+    return out
 
 
 def domain_geometry():
@@ -268,6 +303,7 @@ def domain_geometry():
         "px": px, "py": py, "ptr": ptr, "zu": zu, "zd": zd, "dia": dia,
         "up": up, "down": down, "nodes": nodes,
         "hx": hx, "hy": hy, "hz": hz, "hn": hn,
+        **link_details(model),
         # Where each property joins its main: the lateral the page draws from the house.
         "jx": jx, "jy": jy,
         "bottlenecks": [],

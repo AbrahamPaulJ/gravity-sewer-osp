@@ -24,6 +24,7 @@ window.Growth3D = (function () {
       sleeves = null;
   let siteLabel = null, bottleneckMesh = null, lastPipeState = null, region = null;
   let scaleLabels = [];             // the height ruler's tick labels, projected like the rest
+  let pipeLines = null, pipeCard = null;          // pipes as pickable lines; the details card
   let houseJ = null, latHi = null, latUp = null;   // where each home joins its main; the laterals drawn
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
   const clock = { t0: performance.now() };
@@ -226,18 +227,25 @@ window.Growth3D = (function () {
     pipeColours = new THREE.Float32BufferAttribute(col, 3);
     pipeGeo.setAttribute("color", pipeColours);
     pipeGeo.userData.segPipe = segPipe;
-    scene.add(new THREE.LineSegments(pipeGeo,
-      new THREE.LineBasicMaterial({ vertexColors: true })));
+    pipeLines = new THREE.LineSegments(pipeGeo,
+      new THREE.LineBasicMaterial({ vertexColors: true }));
+    scene.add(pipeLines);
 
     /* Pipe bodies: one instanced cylinder per segment, its radius the pipe's own bore.
        WebGL ignores LineBasicMaterial.linewidth, as the sleeve note below says, so a line
        cannot be made thicker and the bore has to be drawn as geometry.
 
-       Radius goes as sqrt(d), normalised over this network's own range, which is what the
-       sandbox map does and for the same two reasons: sqrt tracks flow area rather than
-       bore, and normalising is what keeps the sizes apart at all. This catchment is
-       143 mm, 150 mm and 225 mm only, so at true relative scale it would all look one
-       width. Normalised, the seventeen 225 mm reaches read as the trunk they are.
+       Radius is PROPORTIONAL to diameter: radius = d x R_MAX / (largest d), so the
+       largest main is R_MAX and every other pipe is drawn in its true ratio to it. A
+       450 mm trunk reads 3.15 times a 143 mm lateral main, as it is. Only the overall
+       size is exaggerated, which it has to be: at true scale a 450 mm pipe would be about
+       half a unit wide on a map measured in metres, and invisible.
+
+       It was sqrt(d) normalised between a floor and a ceiling until 2 Oct 2026, justified
+       as "sqrt tracks flow area". It does not: flow area goes as d squared, so tracking it
+       would spread the widths further, not compress them. sqrt and the floor together
+       drew that 450 mm main only 2.27 times the 143 mm, and a reader asking whether
+       widths are proportional deserves a yes.
 
        Colour is left to paint(), which writes the scenario colour here as well as on the
        lines, so widening a pipe never changes what it says.
@@ -266,13 +274,15 @@ window.Growth3D = (function () {
         if (d < dlo) dlo = d;
         if (d > dhi) dhi = d;
       }
-      const spread = dhi > dlo;
-      const rlo = Math.sqrt(dlo), rspan = Math.max(1e-6, Math.sqrt(dhi) - rlo);
-      const R_MIN = 1.5, R_MAX = 3.4;
+      // R_MAX stays under the bottleneck tube at 4.4 and the chamber at 5.6.
+      const R_MAX = 3.4, R_NONE = 1.5;
+      const k = dhi > 0 && isFinite(dhi) ? R_MAX / dhi : 0;
+      // A link with no published diameter (an outfall dummy, say) is drawn at the smallest
+      // real pipe's radius rather than inventing a size for it.
       const radiusOf = p => {
         const d = dia[p];
-        if (!(d > 0) || !spread) return R_MIN;
-        return R_MIN + (R_MAX - R_MIN) * ((Math.sqrt(d) - rlo) / rspan);
+        if (!(d > 0) || !k) return isFinite(dlo) && k ? k * dlo : R_NONE;
+        return k * d;
       };
       pipeBodies = new THREE.InstancedMesh(
         new THREE.CylinderGeometry(1, 1, 1, 6, 1, true),
@@ -516,13 +526,84 @@ window.Growth3D = (function () {
     const hit = ray.intersectObjects(chamberMeshes, false)[0];
     return hit ? hit.object.userData.node : null;
   }
+  /* The pipe under the pointer, as an index into the geometry's links, or -1. Picked on
+     the centre lines rather than the tubes, with a tolerance of a few screen pixels turned
+     into world units at the clicked depth, so a 150 mm pipe can still be clicked from a
+     view of the whole area where its tube is narrower than a pixel. */
+  function pipeAt(e) {
+    if (!pipeLines) return -1;
+    const r = renderer.domElement.getBoundingClientRect();
+    pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    pointer.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+    ray.setFromCamera(pointer, camera);
+    const dist = camera.position.distanceTo(controls.target);
+    const perPx = 2 * dist * Math.tan((camera.fov * Math.PI / 180) / 2) / r.height;
+    ray.params.Line = { threshold: 6 * perPx };
+    const hit = ray.intersectObject(pipeLines, false)[0];
+    if (!hit || hit.index == null) return -1;
+    return pipeGeo.userData.segPipe[Math.floor(hit.index / 2)];
+  }
+
   function onUp(e) {
     if (!downAt) return;
     const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
     downAt = null;
-    if (moved > 4 || !onPick) return;
+    if (moved > 4) return;                             // an orbit, not a click
+    // A chamber wins over the pipes that meet at it: clicking a manhole still moves the
+    // growth there, exactly as before. Only a click on a pipe away from any chamber opens
+    // the pipe's card, and a click on empty ground closes it.
     const nd = chamberAt(e);
-    if (nd) onPick(nd);
+    if (nd) { closePipe(); if (onPick) onPick(nd); return; }
+    const p = pipeAt(e);
+    if (p >= 0) showPipe(p, e.clientX, e.clientY);
+    else closePipe();
+  }
+
+  const MATERIAL = { VC: "vitrified clay", PVCU: "uPVC", RC: "reinforced concrete" };
+  const STATE = {
+    ok: ["#4c8bf5", "room to spare"],
+    was: ["#ffa500", "already over the alarm before growth"],
+    tip: ["#ff2d55", "sees this growth"],
+  };
+  function closePipe() { if (pipeCard) pipeCard.hidden = true; }
+  function showPipe(p, cx, cy) {
+    const g = G();
+    const host = renderer.domElement.parentElement;
+    if (!pipeCard) {
+      pipeCard = document.createElement("div");
+      pipeCard.className = "pipeCard";
+      host.appendChild(pipeCard);
+      document.addEventListener("keydown", ev => { if (ev.key === "Escape") closePipe(); });
+    }
+    const at = i => g.nodes[i];
+    const end = n => n.mh ? "MH " + n.mh : (n.kind === "outfall" ? "outfall" : "unrecorded pipe end");
+    const lvl = cm => (g.oz + cm / 100).toFixed(2);
+    const v = (arr, f = x => x) => (g[arr] && g[arr][p] != null) ? f(g[arr][p]) : null;
+    const mat = v("pmat", m => (MATERIAL[m] || m) + (MATERIAL[m] ? " (" + m + ")" : ""));
+    const st = lastPipeState && STATE[lastPipeState[p]];
+    const row = (k, val) => val == null ? "" :
+      '<div class="r"><span>' + k + "</span><b>" + val + "</b></div>";
+    pipeCard.innerHTML =
+      '<button class="x" title="Close (Esc)">\u00d7</button>' +
+      "<h4>" + (v("pid") ? "Pipe " + v("pid") : "Pipe, no published record") + "</h4>" +
+      '<div class="sub">' + end(at(g.up[p])) + " \u2192 " + end(at(g.down[p])) + "</div>" +
+      row("Diameter", g.dia[p] ? g.dia[p] + " mm" : null) +
+      row("Material", mat) +
+      row("Built", v("pyr") || "not recorded") +
+      row("Length", v("plen", x => x.toFixed(1) + " m")) +
+      row("Grade", v("pslope", x => x.toFixed(2) + " %")) +
+      row("Pipe floor, up \u2192 down", lvl(g.zu[p]) + " \u2192 " + lvl(g.zd[p]) + " m") +
+      row("Full-bore capacity", v("pcap", x => x.toFixed(1) + " L/s")) +
+      (st ? '<div class="state"><i style="background:' + st[0] + '"></i>This case: ' + st[1] + "</div>" : "") +
+      '<div class="note">Capacity is Manning full-bore at the published grade, with the ' +
+      "roughness for its material. Levels in metres above datum.</div>";
+    pipeCard.querySelector(".x").onclick = closePipe;
+    pipeCard.hidden = false;
+    // Beside the click, kept inside the map so it never opens half off-screen.
+    const r = host.getBoundingClientRect();
+    const w = pipeCard.offsetWidth, h = pipeCard.offsetHeight;
+    pipeCard.style.left = Math.max(8, Math.min(cx - r.left + 14, r.width - w - 8)) + "px";
+    pipeCard.style.top = Math.max(8, Math.min(cy - r.top + 14, r.height - h - 8)) + "px";
   }
 
   /* Hover previews a manhole's homes without moving the growth there. Mouse only: a touch

@@ -105,6 +105,22 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 #stage{position:absolute; inset:0}
 #stage canvas{display:block; width:100%; height:100%}
 .labels{position:absolute; inset:0; pointer-events:none}
+/* The card a click on a pipe opens, beside the click. */
+.pipeCard{position:absolute; z-index:5; width:270px; padding:12px 14px 10px;
+  background:#111c2fee; border:1px solid #22314d; border-radius:10px; color:#a9b8d4;
+  font-size:12.5px; box-shadow:0 8px 28px #0008}
+.pipeCard[hidden]{display:none}
+.pipeCard h4{margin:0 22px 2px 0; color:#e7edf7; font-size:14px; text-transform:none; letter-spacing:0}
+.pipeCard .sub{color:#6f81a3; margin-bottom:8px}
+.pipeCard .r{display:flex; justify-content:space-between; gap:10px; padding:3px 0;
+  border-top:1px solid #1a2840}
+.pipeCard .r b{color:#e7edf7; font-weight:600; text-align:right}
+.pipeCard .state{display:flex; align-items:center; gap:7px; margin-top:8px; color:#e7edf7}
+.pipeCard .state i{width:10px; height:10px; border-radius:50%; flex:none}
+.pipeCard .note{margin-top:8px; color:#6f81a3; font-size:11px; line-height:1.4}
+.pipeCard .x{position:absolute; top:6px; right:8px; background:none; border:0;
+  color:#6f81a3; font-size:18px; cursor:pointer; line-height:1}
+.pipeCard .x:hover{color:#e7edf7}
 .labels .lbl{position:absolute; transform:translate(-50%,-165%); white-space:nowrap;
   font-size:11px; font-weight:600; color:#c9a3ff;
   text-shadow:0 0 4px #0d1117, 0 0 4px #0d1117}
@@ -329,11 +345,11 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=39"></script>
-<script src="data/growth.js?v=39"></script>
-<script src="data/index.js?v=39"></script>
-<script src="growth_3d.js?v=39"></script>
-<script src="growth_ui.js?v=39"></script>
+<script src="data/catchment.js?v=42"></script>
+<script src="data/growth.js?v=42"></script>
+<script src="data/index.js?v=42"></script>
+<script src="growth_3d.js?v=42"></script>
+<script src="growth_ui.js?v=42"></script>
 <script type="module">
   GrowthUI.init();
 </script>

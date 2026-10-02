@@ -291,10 +291,13 @@ let _pipeW = null, _pipeWKey = null;
    rather than hiding behind a dedicated mode, because "which of these is a trunk
    main" is a question you have while looking at every other view.
 
-   Width goes as sqrt(d), so it tracks flow area rather than bore, and it is
-   normalised over the region's own range: this network runs 150 mm to 450 mm and
-   would be unreadable at true relative scale. Regions with no pipe data fall back
-   to a constant, which is what every view used to do everywhere. */
+   Width goes as sqrt(d), normalised over the region's own range. That is a
+   COMPRESSION, chosen so the many small pipes stay visible beside the few large ones,
+   and it is not proportional: a 450 mm main draws well under three times a 150 mm one.
+   (An earlier version of this comment said sqrt "tracks flow area"; it does not, flow
+   area goes as d squared and would spread the widths further.) The Sim 2.5 map draws
+   width proportional to diameter instead. Regions with no pipe data fall back to a
+   constant, which is what every view used to do everywhere. */
 function pipeWidths(scale) {
   const key = S.region + "|" + scale;
   if (_pipeW && _pipeWKey === key) return _pipeW;
