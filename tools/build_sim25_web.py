@@ -126,6 +126,7 @@ def catchment_geometry(outlet):
 
     network = Network()
     model = catchment.Catchment(network, outlet)
+    years = manhole_years()
     xs = [point[0] for link in model.links for point in link.line]
     ys = [point[1] for link in model.links for point in link.line]
     zs = [value for link in model.links for value in (link.inv_up, link.inv_down)]
@@ -158,6 +159,8 @@ def catchment_geometry(outlet):
             "depth": round(node.max_depth, 3),
             "mh": node.manhole_id,
             "dw": model.dwellings.get(name, 0),
+            "yr": years.get(node.manhole_id) if node.manhole_id else None,
+            "cs": getattr(node, "cover_src", None),
         })
 
     study_assets = {pipe.asset_id for pipe in model.pipes if pipe.role == "study"}
@@ -191,6 +194,16 @@ def catchment_geometry(outlet):
         "nHouses": len(hx), "baseDwellings": model.base_dwellings,
         "metres": round(sum(model.metres.values()), 1),
     }
+
+
+def manhole_years():
+    """Construction year per manhole asset ID, from the council manhole layer (359 of 360
+    published). Only the year is taken: the layer also names the owning utility, which this
+    public page never shows."""
+    path = os.path.join(SIM, "data", "raw", "manholes.json")
+    with io.open(path, encoding="utf-8") as f:
+        feats = json.load(f)["features"]
+    return {f["attributes"]["ID"]: f["attributes"].get("CONST_YEAR") or None for f in feats}
 
 
 def link_details(model):
@@ -239,6 +252,7 @@ def domain_geometry():
     model = sim25.Sim25Model(sim25.Case(), whole=True)
     network = model.net
     links = model.links
+    years = manhole_years()
     xs = [point[0] for link in links for point in link.line]
     ys = [point[1] for link in links for point in link.line]
     zs = [value for link in links for value in (link.inv_up, link.inv_down)]
@@ -275,6 +289,8 @@ def domain_geometry():
         "x": int(round((node.x - ox) * 10)), "y": int(round((node.y - oy) * 10)),
         "inv": int(round((node.invert - oz) * 100)), "depth": round(node.max_depth, 3),
         "mh": node.manhole_id, "dw": dwellings.get(name, 0),
+        "yr": years.get(node.manhole_id) if node.manhole_id else None,
+        "cs": getattr(node, "cover_src", None),
     } for name, node in model.nodes.items()]
 
     in_model = set(model._pipe_ids)
@@ -468,6 +484,18 @@ def build_runs():
         } for row in item["rows"]],
     } for item in corridor]
 
+    # The water each manhole carries before any growth, per case: the depth in mm, and
+    # which manholes are already over the alarm or surcharged. The grid has always stored
+    # this; nothing showed it. It is what a manhole's headroom is measured from.
+    base_depth, base_over, base_sur = [], [], []
+    for tag in order:
+        summary = summaries[tag]
+        depth = summary.get("baseline_depth_m", {})
+        base_depth.append([round(1000 * depth[str(mh)]) if str(mh) in depth else None
+                           for mh in (int(name[2:]) for name in names)])
+        base_over.append(sorted(manhole_index[m] for m in summary["baseline"]["alarm"]))
+        base_sur.append(sorted(manhole_index[m] for m in summary["baseline"]["surcharged"]))
+
     runs = {
         "outlet": sim25.DOMAIN_END if whole_area else sim25.SEGMENT_OUTLET,
         "chambers": names,
@@ -478,6 +506,7 @@ def build_runs():
         "rules": [{"id": rule, "label": label, "note": note}
                   for rule, label, note in RULES],
         "cells": cells, "heat": heat, "sensors": sensors, "corridor": corridor_rows,
+        "baseDepthMm": base_depth, "baseOver": base_over, "baseSurcharged": base_sur,
     }
     if whole_area:
         # Only the whole area says so, so a segment build stays byte-identical to the page

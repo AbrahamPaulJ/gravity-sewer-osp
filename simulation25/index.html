@@ -18,14 +18,18 @@
 :root{
   --bg:#0d1117; --panel:#111c2f; --panel-2:#16233a; --ink:#e7edf7; --dim:#a9b8d4;
   --faint:#6f81a3; --line:#22314d; --accent:#38bdf8; --warn:#ff2d55; --amber:#ffa500;
-  --green:#3fb950; --side:330px;
+  --green:#3fb950; --side:330px; --rside:290px;
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
 body{background:var(--bg); color:var(--ink);
   font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;
-  display:grid; grid-template-columns:var(--side) 6px 1fr; height:100vh; overflow:hidden}
+  display:grid; grid-template-columns:var(--side) 6px 1fr var(--rside); height:100vh; overflow:hidden}
 aside{border-right:1px solid var(--line); background:var(--panel); padding:15px; overflow-y:auto}
+/* The right panel: the selected manhole as an asset. A grid column, not an overlay, so the map
+   is sized to the space it really has and the network is never framed under the panel. */
+#mhSide{border-right:0; border-left:1px solid var(--line)}
+#mhSide h4:first-child{margin-top:0}
 #grip{cursor:col-resize; position:relative}
 #grip::after{content:""; position:absolute; inset:0 2px; background:var(--line); border-radius:2px}
 #grip:hover::after,#grip.on::after{background:var(--accent)}
@@ -239,6 +243,8 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   body{grid-template-columns:1fr; grid-template-rows:auto 6px 1fr}
   #grip{display:none}
   aside{border-right:0; border-bottom:1px solid var(--line); max-height:46vh}
+  body{grid-template-rows:auto 6px 1fr auto}
+  #mhSide{border-left:0; border-top:1px solid var(--line); max-height:40vh}
 }
 </style>
 </head>
@@ -341,15 +347,19 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
     <div id="qa"></div></section>
 </main>
 
+<aside id="mhSide" aria-label="The selected manhole">
+  <div id="mhFacts"></div>
+</aside>
+
 <div id="modal" hidden><div class="box" id="modalBox"></div></div>
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=42"></script>
-<script src="data/growth.js?v=42"></script>
-<script src="data/index.js?v=42"></script>
-<script src="growth_3d.js?v=42"></script>
-<script src="growth_ui.js?v=42"></script>
+<script src="data/catchment.js?v=46"></script>
+<script src="data/growth.js?v=46"></script>
+<script src="data/index.js?v=46"></script>
+<script src="growth_3d.js?v=46"></script>
+<script src="growth_ui.js?v=46"></script>
 <script type="module">
   GrowthUI.init();
 </script>

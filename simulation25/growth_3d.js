@@ -555,8 +555,11 @@ window.Growth3D = (function () {
     const nd = chamberAt(e);
     if (nd) { closePipe(); if (onPick) onPick(nd); return; }
     const p = pipeAt(e);
-    if (p >= 0) showPipe(p, e.clientX, e.clientY);
-    else closePipe();
+    if (p >= 0) { showPipe(p, e.clientX, e.clientY); return; }
+    // Empty ground: close any pipe card and clear the selected manhole. onPick(null) is how
+    // the page hears "nothing selected", the same channel a manhole click comes through.
+    closePipe();
+    if (onPick) onPick(null);
   }
 
   const MATERIAL = { VC: "vitrified clay", PVCU: "uPVC", RC: "reinforced concrete" };
