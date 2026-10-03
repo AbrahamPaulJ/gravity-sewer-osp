@@ -24,7 +24,9 @@ window.Growth3D = (function () {
       sleeves = null;
   let siteLabel = null, bottleneckMesh = null, lastPipeState = null, region = null;
   let scaleLabels = [];             // the height ruler's tick labels, projected like the rest
-  let pipeLines = null, pipeCard = null;          // pipes as pickable lines; the details card
+  let pipeLines = null, pipeCard = null;
+  let stationMeshes = [], risingLines = [];          // pump stations and their rising mains
+  let pumpsOn = false, pumpLabels = [], pumpTubes = null, pumpSleeves = null;   // the chip          // pipes as pickable lines; the details card
   let houseJ = null, latHi = null, latUp = null;   // where each home joins its main; the laterals drawn
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
   const clock = { t0: performance.now() };
@@ -71,6 +73,11 @@ window.Growth3D = (function () {
     entryOut: 0x8b949e,            // an outside inflow joining the rest of the network
     heatPipe: [0x3a, 0x42, 0x50],  // pipes while the heatmap is on: neutral, out of the way
     datum: 0x8b949e,               // the height ruler and datum plane: present, never loud
+    // Pumped, not gravity. Gold, which nothing else on the map uses, and told apart by shape
+    // as well as colour: a cube where every other node is a sphere or a dot, a dashed
+    // line where every gravity main is a solid tube. Dimmed where the model leaves it out.
+    pump: 0xe3b341,
+    pumpOff: 0x6e5a2a,
   };
 
   function ensureThree() {
@@ -131,7 +138,11 @@ window.Growth3D = (function () {
         }
         if (sleeves) sleeves.material.opacity = 0.20 + 0.22 * (0.5 + 0.5 * beat);
         renderer.render(scene, camera);
-        [outletLabel, siteLabel, ...scaleLabels].forEach(lbl => {
+        if (pumpsOn) {
+          const sc = 2.0 + 0.45 * (0.5 + 0.5 * beat);    // in phase with the linked homes
+          stationMeshes.forEach(m => m.scale.setScalar(sc));
+        }
+        [outletLabel, siteLabel, ...scaleLabels, ...(pumpsOn ? pumpLabels : [])].forEach(lbl => {
           if (!lbl) return;
           const v = lbl.at.clone().project(camera);
           const el = renderer.domElement;
@@ -492,6 +503,104 @@ window.Growth3D = (function () {
         color: COL.datum, transparent: true, opacity: 0.35 })));
     }
 
+    /* Pump stations and their rising mains. A gravity main falls; a rising main is pumped
+       uphill under pressure, so it is drawn as a dashed line, never a tube, and its station
+       as a cube at the wet well. The route is the published one; its depth is not
+       published, so it runs from the wet well's invert to the discharge's, linearly, and
+       the card says it is schematic. A station the model leaves out is drawn dimmed. */
+    stationMeshes = []; risingLines = [];
+    (g.pumps || []).forEach((ps, k) => {
+      const col = ps.modelled ? COL.pump : COL.pumpOff;
+      const pts = ps.px.map((x, j) => P(x, ps.py[j], ps.pz[j]));
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineDashedMaterial({ color: col, dashSize: 7, gapSize: 5 }));
+      line.computeLineDistances();             // dashes need distances along the line
+      line.userData.pump = k;
+      scene.add(line);
+      risingLines.push(line);
+      const box = new THREE.Mesh(new THREE.BoxGeometry(12, 12, 12),
+        new THREE.MeshBasicMaterial({ color: col }));
+      box.position.copy(P(ps.x, ps.y, ps.z));
+      box.userData.pump = k;
+      // A dark edge so the cube reads as a cube, not a square dot, from any angle.
+      box.add(new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry),
+        new THREE.LineBasicMaterial({ color: 0x0d1117 })));
+      scene.add(box);
+      stationMeshes.push(box);
+    });
+    const pumpKey = document.getElementById("pumpKey");
+    if (pumpKey) pumpKey.hidden = !stationMeshes.length;   // no key for a map with no pumps
+
+    /* What the "Pump stations" chip switches on, built once and kept hidden: the rising
+       mains as thick gold tubes, a gold sleeve over every pipe that drains to a modelled
+       station's wet well (the part of the catchment that depends on pumping), and a label
+       per station. Instance colours are set before the meshes reach the scene and the
+       material has no vertexColors, for the two reasons the pipe-body note gives. */
+    if (stationMeshes.length) {
+      const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), yAxis = new THREE.Vector3(0, 1, 0);
+      const dir = new THREE.Vector3(), mid = new THREE.Vector3(), scl = new THREE.Vector3();
+      const tint = new THREE.Color();
+      const place = (mesh, k, a, b, r) => {
+        dir.subVectors(b, a);
+        const len = dir.length();
+        if (len < 1e-6) m4.makeScale(0, 0, 0);
+        else {
+          q.setFromUnitVectors(yAxis, dir.clone().divideScalar(len));
+          mid.addVectors(a, b).multiplyScalar(0.5);
+          scl.set(r, len, r);
+          m4.compose(mid, q, scl);
+        }
+        mesh.setMatrixAt(k, m4);
+      };
+      const rm = [];
+      g.pumps.forEach(ps => {
+        for (let j = 0; j < ps.px.length - 1; j++)
+          rm.push([P(ps.px[j], ps.py[j], ps.pz[j]), P(ps.px[j + 1], ps.py[j + 1], ps.pz[j + 1]),
+                   ps.modelled ? COL.pump : COL.pumpOff]);
+      });
+      pumpTubes = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 8, 1, true),
+        new THREE.MeshBasicMaterial({ color: 0xffffff }), Math.max(1, rm.length));
+      rm.forEach(([a, b, col], k) => { place(pumpTubes, k, a, b, 2.8); pumpTubes.setColorAt(k, tint.setHex(col)); });
+      pumpTubes.instanceMatrix.needsUpdate = true;
+      pumpTubes.visible = false;
+      pumpTubes.frustumCulled = false;
+      scene.add(pumpTubes);
+
+      // Pipes draining to each modelled wet well: walk the links upstream from it.
+      const into = g.nodes.map(() => []);
+      for (let l = 0; l < g.up.length; l++) into[g.down[l]].push(l);
+      const served = new Set();
+      g.pumps.forEach(ps => {
+        if (ps.node == null) return;
+        const seen = new Set([ps.node]), stack = [ps.node];
+        while (stack.length) for (const l of into[stack.pop()]) {
+          served.add(l);
+          if (!seen.has(g.up[l])) { seen.add(g.up[l]); stack.push(g.up[l]); }
+        }
+      });
+      const segPipeAll = pipeGeo.userData.segPipe, segs = [];
+      for (let k = 0; k < segPipeAll.length; k++) if (served.has(segPipeAll[k])) segs.push(k);
+      pumpSleeves = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 8, 1, true),
+        new THREE.MeshBasicMaterial({ color: COL.pump, transparent: true, opacity: 0.3, depthWrite: false }),
+        Math.max(1, segs.length));
+      segs.forEach((k, j) => { const [a, b] = segEnds[k]; place(pumpSleeves, j, a, b, 5.5); });
+      pumpSleeves.count = segs.length;
+      pumpSleeves.instanceMatrix.needsUpdate = true;
+      pumpSleeves.visible = false;
+      pumpSleeves.frustumCulled = false;
+      scene.add(pumpSleeves);
+
+      pumpLabels = g.pumps.map(ps => {
+        const el = document.createElement("div");
+        el.className = "lbl pump";
+        el.textContent = (ps.id ? "Pump station " + ps.id : "Pump station") +
+          (ps.to ? " \u2192 MH " + ps.to : ps.modelled ? "" : " (not modelled)");
+        el.style.display = "none";
+        labelLayer.appendChild(el);
+        return { el, at: P(ps.x, ps.y, ps.z) };
+      });
+    }
+
     siteLabel = { el: document.createElement("div"), at: new THREE.Vector3() };
     siteLabel.el.className = "lbl site";
     siteLabel.el.style.display = "none";
@@ -544,6 +653,22 @@ window.Growth3D = (function () {
     return pipeGeo.userData.segPipe[Math.floor(hit.index / 2)];
   }
 
+  /* A pump station or its rising main under the pointer, as an index into g.pumps, or -1.
+     The cube is hit as a mesh; the dashed line with the same pixel tolerance as the pipes. */
+  function pumpAt(e) {
+    if (!stationMeshes.length) return -1;
+    const r = renderer.domElement.getBoundingClientRect();
+    pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    pointer.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+    ray.setFromCamera(pointer, camera);
+    const box = ray.intersectObjects(stationMeshes, false)[0];
+    if (box) return box.object.userData.pump;
+    const dist = camera.position.distanceTo(controls.target);
+    ray.params.Line = { threshold: 6 * 2 * dist * Math.tan((camera.fov * Math.PI / 180) / 2) / r.height };
+    const line = ray.intersectObjects(risingLines, false)[0];
+    return line ? line.object.userData.pump : -1;
+  }
+
   function onUp(e) {
     if (!downAt) return;
     const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
@@ -554,6 +679,8 @@ window.Growth3D = (function () {
     // the pipe's card, and a click on empty ground closes it.
     const nd = chamberAt(e);
     if (nd) { closePipe(); if (onPick) onPick(nd); return; }
+    const k = pumpAt(e);
+    if (k >= 0) { showPump(k, e.clientX, e.clientY); return; }
     const p = pipeAt(e);
     if (p >= 0) { showPipe(p, e.clientX, e.clientY); return; }
     // Empty ground: close any pipe card and clear the selected manhole. onPick(null) is how
@@ -568,7 +695,55 @@ window.Growth3D = (function () {
     was: ["#ffa500", "already over the alarm before growth"],
     tip: ["#ff2d55", "sees this growth"],
   };
+  /* Turn the pump-station highlight on or off. False if the map has no stations, so the
+     page can hide its chip rather than offer a switch that does nothing. */
+  function showPumps(on) {
+    if (!stationMeshes.length) return false;
+    pumpsOn = !!on;
+    if (pumpTubes) pumpTubes.visible = pumpsOn;
+    if (pumpSleeves) pumpSleeves.visible = pumpsOn;
+    if (!pumpsOn) {
+      stationMeshes.forEach(m => m.scale.setScalar(1));
+      pumpLabels.forEach(l => { l.el.style.display = "none"; });
+    }
+    return true;
+  }
   function closePipe() { if (pipeCard) pipeCard.hidden = true; }
+  function cardAt(html, cx, cy) {
+    const host = renderer.domElement.parentElement;
+    if (!pipeCard) {
+      pipeCard = document.createElement("div");
+      pipeCard.className = "pipeCard";
+      host.appendChild(pipeCard);
+      document.addEventListener("keydown", ev => { if (ev.key === "Escape") closePipe(); });
+    }
+    pipeCard.innerHTML = '<button class="x" title="Close (Esc)">\u00d7</button>' + html;
+    pipeCard.querySelector(".x").onclick = closePipe;
+    pipeCard.hidden = false;
+    const r = host.getBoundingClientRect();
+    const w = pipeCard.offsetWidth, h = pipeCard.offsetHeight;
+    pipeCard.style.left = Math.max(8, Math.min(cx - r.left + 14, r.width - w - 8)) + "px";
+    pipeCard.style.top = Math.max(8, Math.min(cy - r.top + 14, r.height - h - 8)) + "px";
+  }
+  function showPump(k, cx, cy) {
+    const ps = G().pumps[k];
+    const row = (a, b) => '<div class="r"><span>' + a + "</span><b>" + b + "</b></div>";
+    cardAt(
+      "<h4>" + (ps.id ? "Pump station " + ps.id : "Pump station, no structure record") + "</h4>" +
+      '<div class="sub">' + (ps.to ? "pumps to MH " + ps.to : "pumps out of the modelled area") + "</div>" +
+      row("Rising main", ps.dia.join(", ") + " mm, " + ps.len.toFixed(1) + " m" +
+        (ps.risingMains.length > 1 ? " in " + ps.risingMains.length + " pieces" : "")) +
+      row("Homes it serves", ps.homes) +
+      row("In the model", ps.modelled ? "yes, as an ideal pump" : "no") +
+      '<div class="note">' + (ps.modelled
+        ? "An ideal pump passes everything reaching the wet well straight on, with no pump " +
+          "rate, storage or cycling. A real station delivers in bursts, so the peak at the " +
+          "manhole it pumps to can be higher than the model shows."
+        : "It discharges outside the model's area, so its flow never reaches the network " +
+          "solved here.") +
+      " The rising main's route is published, its depth is not: it is drawn schematically " +
+      "from the wet well to where it discharges.</div>", cx, cy);
+  }
   function showPipe(p, cx, cy) {
     const g = G();
     const host = renderer.domElement.parentElement;
@@ -922,6 +1097,6 @@ window.Growth3D = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { build, paint, highlight, reach, showBottlenecks, showRegion, frame, resize, heatHex,
+  return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, frame, resize, heatHex,
            ZEXAG };
 })();

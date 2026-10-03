@@ -639,6 +639,15 @@ window.GrowthUI = (function () {
       $("#toggleSensors").textContent = st.showSensors ? "Hide sensors" : "Show sensors";
       repaint();
     };
+    // Pump stations: only offered where the map has any, which a whole-area build does.
+    const hasPumps = !!(geom() && geom().pumps && geom().pumps.length);
+    $("#togglePumps").hidden = !hasPumps;
+    $("#togglePumps").onclick = () => {
+      st.showPumps = !st.showPumps;
+      if (!Growth3D.showPumps(st.showPumps)) { st.showPumps = false; return; }
+      $("#togglePumps").classList.toggle("primary", st.showPumps);
+      $("#togglePumps").textContent = st.showPumps ? "Hide pump stations" : "Pump stations";
+    };
     $("#toggleHeat").onclick = () => {
       st.showHeat = !st.showHeat;
       $("#toggleHeat").classList.toggle("primary", st.showHeat);

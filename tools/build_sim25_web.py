@@ -240,6 +240,84 @@ def link_details(model):
     return out
 
 
+def pump_stations(model, ox, oy, oz, index=None):
+    """The council area's pump stations, each with its rising main traced to where it
+    discharges, for drawing apart from the gravity mains.
+
+    Stations are found the way sim25.pump_links finds them: rising-main pieces chained end
+    to end, a chain starting at a dead end of the gravity network being a wet well. Each
+    chain is traced again here to keep its full route, which pump_links does not return.
+    All three are published; the one the model leaves out, because it discharges outside
+    the domain, is marked so rather than hidden.
+
+    A rising main's route is published, its depth is not. It is drawn from the wet well's
+    invert to the discharge node's invert, linearly along its length: schematic, and the
+    card says so."""
+    import math
+    import sim25
+    import overlap_check as oc
+
+    net = model.net
+    rec = []
+    for f in oc.load("rising_mains")["features"]:
+        a = f["attributes"]
+        line = [tuple(pt) for path in f["geometry"]["paths"] for pt in path]
+        if a.get("FLOWDIRECT") == 2:
+            line = line[::-1]
+        rec.append((a["ID"], a.get("NOMINALDIA"), line))
+    key = lambda xy: (round(xy[0], 1), round(xy[1], 1))
+    starts = {key(line[0]): i for i, (_, _, line) in enumerate(rec)}
+
+    path = os.path.join(SIM, "data", "raw", "rising_structures.json")
+    with io.open(path, encoding="utf-8") as f:
+        structures = [(s["attributes"]["ID"], s["geometry"]["x"], s["geometry"]["y"])
+                      for s in json.load(f)["features"] if s["attributes"].get("SUBTYPE") == 3]
+
+    modelled = {name[1:] for name, _, _ in model.pumps}       # "P4433449" -> "4433449"
+    out = []
+    for wet, dis, rid in sim25.pump_links(net):
+        i = next(k for k, r in enumerate(rec) if r[0] == rid)
+        chain, seen = [i], {i}
+        while key(rec[chain[-1]][2][-1]) in starts and starts[key(rec[chain[-1]][2][-1])] not in seen:
+            nxt = starts[key(rec[chain[-1]][2][-1])]
+            chain.append(nxt)
+            seen.add(nxt)
+        pts = []
+        for k in chain:
+            for pt in rec[k][2]:
+                if not pts or math.dist(pts[-1], pt) > 1e-6:
+                    pts.append(pt)
+        cum = [0.0]
+        for a, b in zip(pts, pts[1:]):
+            cum.append(cum[-1] + math.dist(a, b))
+        total = cum[-1] or 1.0
+        w, d = net.nodes[wet], net.nodes[dis]
+        z_of = lambda s: w.invert + (d.invert - w.invert) * s / total
+        station = min(structures, key=lambda s: math.dist((s[1], s[2]), (w.x, w.y)), default=None)
+        if station and math.dist((station[1], station[2]), (w.x, w.y)) > 2.0:
+            station = None
+        to_name = model.node_of.get(dis)
+        wet_name = model.node_of.get(wet)
+        out.append({
+            # The wet well as an index into this map's nodes, so the page can trace the
+            # pipes draining to it; None for a station outside the modelled network.
+            "node": (index or {}).get(wet_name),
+            "id": station[0] if station else None,
+            "risingMains": [rec[k][0] for k in chain],
+            "dia": sorted({rec[k][1] for k in chain if rec[k][1]}),
+            "len": round(cum[-1], 1),
+            "homes": int(sum(net.pipes[p].dwellings for p in net.upstream_pipes(wet))),
+            "modelled": str(rid) in modelled,
+            "to": model.nodes[to_name].manhole_id if to_name in model.nodes else None,
+            "x": int(round((w.x - ox) * 10)), "y": int(round((w.y - oy) * 10)),
+            "z": int(round((w.invert - oz) * 100)),
+            "px": [int(round((x - ox) * 10)) for x, _ in pts],
+            "py": [int(round((y - oy) * 10)) for _, y in pts],
+            "pz": [int(round((z_of(s) - oz) * 100)) for s in cum],
+        })
+    return out
+
+
 def domain_geometry():
     """Drawing geometry for the whole study area: the model domain SWMM itself solves.
 
@@ -323,6 +401,7 @@ def domain_geometry():
         # Where each property joins its main: the lateral the page draws from the house.
         "jx": jx, "jy": jy,
         "bottlenecks": [],
+        "pumps": pump_stations(model, ox, oy, oz, index),
         "nPipes": len(links), "nChambers": len(model.chambers),
         "nHouses": len(hx), "baseDwellings": sum(dwellings.values()),
         "metres": round(sum(link.length for link in links), 1),

@@ -131,6 +131,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 /* Pushed below the point rather than above, so a growth site chosen at (or right next
    to) the outlet does not overlap the outlet's own fixed label. */
 .labels .lbl.site{color:#7dd8ff; transform:translate(-50%, 42%)}
+.labels .lbl.pump{color:#e3b341; transform:translate(-50%,-230%)}
 /* The height ruler: beside its tick, not above it, and quieter than anything the page is
    about, so it is there to read off without competing with the pipes. */
 .labels .lbl.scale{color:#8b949e; font-weight:500; font-size:10.5px; transform:translate(6px,-50%)}
@@ -147,6 +148,12 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   vertical-align:-2px; margin-right:6px}
 .legend .kl{display:inline-block; width:16px; height:3px; border-radius:2px;
   vertical-align:3px; margin-right:6px}
+/* Pumped: a square for the station (every other node is round) and a dashed swatch for the
+   rising main (every gravity main is solid), so the key matches the map's own distinction. */
+.legend .ksq{display:inline-block; width:10px; height:10px; border-radius:1px;
+  border:1px solid #0d1117; outline:1px solid #e3b34166; vertical-align:-1px; margin-right:6px}
+.legend .kd{display:inline-block; width:18px; height:2px; vertical-align:3px; margin-right:6px;
+  background:repeating-linear-gradient(90deg,#e3b341 0 5px,transparent 5px 8px)}
 /* The homes key: an overlay on the map, fixed width, so its text changing on hover
    cannot move anything. It ignores the pointer, so hovering through it still works. */
 #homeKey{position:absolute; left:12px; top:12px; z-index:3; width:330px; height:112px;
@@ -299,6 +306,7 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
       <span class="navsep"></span>
       <button id="toggleSensors">Show sensors</button>
       <button id="toggleHeat" title="Colour every manhole by how much growth it would see on its own">Heatmap</button>
+      <button id="togglePumps" title="Highlight the pump stations, their rising mains and the pipes that drain to them">Pump stations</button>
     </div>
     <div class="navrow">
       <span class="navlbl">Read</span>
@@ -329,6 +337,13 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
       <span><span class="kl" style="background:#ffa500"></span>already over the alarm before growth (alarm rule)</span>
       <span><span class="kl" style="background:#ff2d55"></span>sees this growth</span>
     </div>
+    <!-- Shown only when the map has pump stations, which a whole-area build does. -->
+    <div class="grp" id="pumpKey" hidden><b>Pumped</b>
+      <span><span class="ksq" style="background:#e3b341"></span>pump station</span>
+      <span><span class="kd"></span>rising main, pumped under pressure, not gravity</span>
+      <span><span class="ksq" style="background:#6e5a2a"></span>dimmed: not in the model</span>
+      <span>click either for details</span>
+    </div>
     <div class="grp"><b>Points</b>
       <span><span class="k" style="background:#c9d1d9"></span>manhole, a sensor could go here</span>
       <span><span class="k" style="background:#30363d"></span>pipe end, no manhole recorded</span>
@@ -355,11 +370,11 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=46"></script>
-<script src="data/growth.js?v=46"></script>
-<script src="data/index.js?v=46"></script>
-<script src="growth_3d.js?v=46"></script>
-<script src="growth_ui.js?v=46"></script>
+<script src="data/catchment.js?v=48"></script>
+<script src="data/growth.js?v=48"></script>
+<script src="data/index.js?v=48"></script>
+<script src="growth_3d.js?v=48"></script>
+<script src="growth_ui.js?v=48"></script>
 <script type="module">
   GrowthUI.init();
 </script>
