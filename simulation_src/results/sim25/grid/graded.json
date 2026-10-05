@@ -49,7 +49,7 @@
     },
     {
      "case": "ii0.11_flat_uniform_b0.5_sfree",
-     "detectable": 167,
+     "detectable": 168,
      "of": 355,
      "k1": {
       "chosen": [
@@ -100,7 +100,7 @@
     },
     {
      "case": "ii0.11_flat_uniform_b1_sfree",
-     "detectable": 173,
+     "detectable": 174,
      "of": 355,
      "k1": {
       "chosen": [
@@ -111,17 +111,17 @@
      "k2": {
       "chosen": [
        "4450193",
-       "4449849"
+       "4447726"
       ],
       "covered": 145
      },
      "k3": {
       "chosen": [
        "4450193",
-       "4449849",
-       "4428995"
+       "4447726",
+       "4449849"
       ],
-      "covered": 148
+      "covered": 151
      }
     },
     {
@@ -254,20 +254,20 @@
      "of": 355,
      "k1": {
       "chosen": [
-       "4447394"
+       "4447880"
       ],
       "covered": 295
      },
      "k2": {
       "chosen": [
-       "4447394",
+       "4447880",
        "4429013"
       ],
       "covered": 297
      },
      "k3": {
       "chosen": [
-       "4447394",
+       "4447880",
        "4429013",
        "4449860"
       ],
@@ -280,24 +280,24 @@
      "of": 355,
      "k1": {
       "chosen": [
-       "4429645"
+       "4448345"
       ],
-      "covered": 311
+      "covered": 310
      },
      "k2": {
       "chosen": [
-       "4429645",
+       "4448345",
        "4428583"
       ],
-      "covered": 322
+      "covered": 321
      },
      "k3": {
       "chosen": [
-       "4429645",
+       "4448345",
        "4428583",
        "4450100"
       ],
-      "covered": 329
+      "covered": 328
      }
     },
     {
@@ -308,14 +308,14 @@
       "chosen": [
        "4429312"
       ],
-      "covered": 216
+      "covered": 217
      },
      "k2": {
       "chosen": [
        "4429312",
        "4428583"
       ],
-      "covered": 244
+      "covered": 245
      },
      "k3": {
       "chosen": [
@@ -323,7 +323,7 @@
        "4428583",
        "4428713"
       ],
-      "covered": 253
+      "covered": 254
      }
     }
    ],
@@ -386,12 +386,12 @@
       {
        "case": "ii0.25_harmon_uniform_b1_sfree",
        "covered": 310,
-       "case_best": 311
+       "case_best": 310
       },
       {
        "case": "ii0.40_flat_uniform_b1_sfree",
        "covered": 198,
-       "case_best": 216
+       "case_best": 217
       }
      ]
     },
@@ -454,12 +454,12 @@
       {
        "case": "ii0.25_harmon_uniform_b1_sfree",
        "covered": 310,
-       "case_best": 322
+       "case_best": 321
       },
       {
        "case": "ii0.40_flat_uniform_b1_sfree",
        "covered": 202,
-       "case_best": 244
+       "case_best": 245
       }
      ]
     },
@@ -488,7 +488,7 @@
       {
        "case": "ii0.11_flat_uniform_b1_sfree",
        "covered": 139,
-       "case_best": 148
+       "case_best": 151
       },
       {
        "case": "ii0.11_flat_weighted_b1_sfree",
@@ -517,39 +517,39 @@
       },
       {
        "case": "ii0.25_flat_weighted_b1_sfree",
-       "covered": 293,
+       "covered": 292,
        "case_best": 299
       },
       {
        "case": "ii0.25_harmon_uniform_b1_sfree",
        "covered": 312,
-       "case_best": 329
+       "case_best": 328
       },
       {
        "case": "ii0.40_flat_uniform_b1_sfree",
-       "covered": 221,
-       "case_best": 253
+       "covered": 222,
+       "case_best": 254
       }
      ]
     }
    },
    "k1_frequency": {
     "4450193": 2,
-    "4447394": 2,
+    "4448345": 2,
     "4429312": 2,
     "4448419": 1,
-    "4448345": 1,
     "4449849": 1,
+    "4447394": 1,
     "4429136": 1,
     "4428636": 1,
-    "4429645": 1
+    "4447880": 1
    }
   },
   "25": {
    "per_case": [
     {
      "case": "ii0.00_flat_uniform_b1_sfree",
-     "detectable": 85,
+     "detectable": 83,
      "of": 355,
      "k1": {
       "chosen": [
@@ -778,26 +778,26 @@
     },
     {
      "case": "ii0.25_flat_weighted_b1_sfree",
-     "detectable": 249,
+     "detectable": 247,
      "of": 355,
      "k1": {
       "chosen": [
-       "4429013"
+       "4429136"
       ],
-      "covered": 226
+      "covered": 228
      },
      "k2": {
       "chosen": [
-       "4429013",
+       "4429136",
        "4449118"
       ],
-      "covered": 233
+      "covered": 235
      },
      "k3": {
       "chosen": [
-       "4429013",
+       "4429136",
        "4449118",
-       "4429136"
+       "4429013"
       ],
       "covered": 238
      }
@@ -909,7 +909,7 @@
       {
        "case": "ii0.25_flat_weighted_b1_sfree",
        "covered": 192,
-       "case_best": 226
+       "case_best": 228
       },
       {
        "case": "ii0.25_harmon_uniform_b1_sfree",
@@ -977,7 +977,7 @@
       {
        "case": "ii0.25_flat_weighted_b1_sfree",
        "covered": 223,
-       "case_best": 233
+       "case_best": 235
       },
       {
        "case": "ii0.25_harmon_uniform_b1_sfree",
@@ -1067,7 +1067,7 @@
     "4428636": 2,
     "4448345": 1,
     "4447394": 1,
-    "4429013": 1,
+    "4429136": 1,
     "4428268": 1
    }
   },
@@ -1263,14 +1263,14 @@
      "k2": {
       "chosen": [
        "4428636",
-       "4428713"
+       "4428765"
       ],
       "covered": 210
      },
      "k3": {
       "chosen": [
        "4428636",
-       "4428713",
+       "4428765",
        "4428606"
       ],
       "covered": 217
@@ -1419,7 +1419,7 @@
       },
       {
        "case": "ii0.25_flat_uniform_b0.5_sfree",
-       "covered": 254,
+       "covered": 252,
        "case_best": 257
       },
       {
@@ -1487,7 +1487,7 @@
       },
       {
        "case": "ii0.25_flat_uniform_b0.5_sfree",
-       "covered": 254,
+       "covered": 252,
        "case_best": 268
       },
       {
@@ -1556,7 +1556,7 @@
       },
       {
        "case": "ii0.25_flat_uniform_b0.5_sfree",
-       "covered": 256,
+       "covered": 254,
        "case_best": 270
       },
       {

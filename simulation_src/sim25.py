@@ -50,9 +50,48 @@ PF_NOMINAL = 2.0                    # P02
 # factor itself, so the existing runs ARE the peak of the day.
 TROUGH_FACTOR = 0.2
 
+# The cases live in cases.json and nowhere else; see that file for what each one means.
 # P04: I&I rate, L/s per 100 m. 0.11 meets the design envelope implied by the utility's own
 # DN225 rating (docs/15 s2.3); the others are multiples beyond design.
-WEATHER = [(0.0, "Dry"), (0.11, "Design wet"), (0.25, "Beyond design"), (0.40, "Severe")]
+CASES_FILE = os.path.join(HERE, "cases.json")
+
+
+def load_cases(path=CASES_FILE):
+    """The case configuration, checked, so a typo fails here rather than two hours in."""
+    with open(path, encoding="utf-8") as f:
+        cfg = json.load(f)
+    fields = set(Case.__dataclass_fields__)
+    weather = cfg.get("weather") or []
+    if not weather:
+        raise ValueError(f"{path}: 'weather' must list at least one case")
+    iis = [w["ii"] for w in weather]
+    if len(set(iis)) != len(iis):
+        raise ValueError(f"{path}: two weather cases share an ii, which would share a tag")
+    sens = cfg.get("sensitivity") or {"at_ii": [], "variants": []}
+    missing = [ii for ii in sens.get("at_ii", []) if ii not in iis]
+    if missing:
+        raise ValueError(f"{path}: sensitivity at_ii {missing} is not a weather level")
+    for v in sens.get("variants", []):
+        bad = set(v["set"]) - fields
+        if bad:
+            raise ValueError(f"{path}: variant '{v['label']}' sets unknown field(s) {sorted(bad)}; "
+                             f"a Case has {sorted(fields)}")
+    area = cfg.get("study_area", "segment")
+    if area not in STUDY_AREAS:
+        raise ValueError(f"{path}: study_area '{area}' is not one of {sorted(STUDY_AREAS)}")
+    return cfg
+
+
+# Where growth is tested and sensors may go. "segment" is X2, the 71 manholes above node 583,
+# and is what every committed result before this setting was run on. "whole" is all 328
+# published manholes in the model domain. Absent from the file means "segment".
+STUDY_AREAS = {"segment", "whole"}
+
+
+# Read at import, because the tag of every result directory depends on it: a run and the
+# page built from it must agree on what the cases were.
+CASE_CONFIG = None     # set below, once Case exists to validate against
+WEATHER = []
 
 # P26: sensitivity only; nominal is uniform. Upper bound of each era (construction year).
 AGE_BANDS = [(1929, 1.5), (1959, 1.2), (1989, 0.8), (9999, 0.5)]
@@ -87,6 +126,11 @@ class Case:
         st = "free" if self.stage is None else f"{self.stage:.3f}"
         t = f"ii{self.ii:.2f}_{self.pf}_{self.age}_b{self.bfac:g}_s{st}"
         return t if self.hour == "peak" else t + "_trough"
+
+
+CASE_CONFIG = load_cases()
+WEATHER = [(w["ii"], w["label"]) for w in CASE_CONFIG["weather"]]
+STUDY_AREA = CASE_CONFIG.get("study_area", "segment")
 
 
 # ====================================================================== the network
@@ -302,7 +346,7 @@ class Sim25Model:
             used.add(label)
             role = "exit" if pi in exits else "study"
             self.links.append(SimLink(label, label, role, up, dn, p.inv_up, p.inv_down,
-                                      p.dia, p.length, p.line))
+                                      p.dia, p.length, p.line, p.material))
             info = PipeInfo(label, p.asset_id, role, up, dn, p.dia, p.length, p.slope,
                             p.material, p.year)
             info.links.append(label)
@@ -440,6 +484,21 @@ class Sim25Model:
         seg = set(self.net.upstream_pipes(SEGMENT_OUTLET))
         seg_nodes = {self.net.pipes[i].up for i in seg} | {SEGMENT_OUTLET}
         return sorted(c for c, nid in self.chambers.items() if nid in seg_nodes)
+
+    @property
+    def candidates(self):
+        """The growth sites and sensor candidates for the configured study area.
+
+        "segment" is X2, the 71 manholes above node 583, and is exactly study_chambers.
+        "whole" is every published manhole in the model domain, 328 of them, which only a
+        whole-domain model contains; a segment model has no chambers outside X2 to offer.
+        study_chambers itself is left alone, because the nesting, the corridor and the tests
+        are all defined against X2 whatever area the placement is run over."""
+        if STUDY_AREA == "whole":
+            if not self.whole:
+                raise ValueError("study_area 'whole' needs a whole-domain model")
+            return sorted(self.chambers)
+        return self.study_chambers
 
 
 # ====================================================================== running

@@ -15,7 +15,7 @@
    "outlet_head_rise_m": 0.0,
    "alarm": [],
    "surcharge": [],
-   "max_depth_rise_m": 0.0
+   "max_depth_rise_m": 0.001856950371207533
   },
   {
    "dwellings": 150,
@@ -23,7 +23,7 @@
    "outlet_head_rise_m": 0.0,
    "alarm": [],
    "surcharge": [],
-   "max_depth_rise_m": 0.0
+   "max_depth_rise_m": 0.0034700973750370068
   },
   {
    "dwellings": 390,
@@ -31,7 +31,7 @@
    "outlet_head_rise_m": 0.0,
    "alarm": [],
    "surcharge": [],
-   "max_depth_rise_m": 0.0
+   "max_depth_rise_m": 0.008927381459959749
   },
   {
    "dwellings": 485,
@@ -39,7 +39,7 @@
    "outlet_head_rise_m": 0.0,
    "alarm": [],
    "surcharge": [],
-   "max_depth_rise_m": 0.0
+   "max_depth_rise_m": 0.011054605379200083
   }
  ]
 }

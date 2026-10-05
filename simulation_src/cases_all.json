@@ -1,0 +1,55 @@
+{
+  "_comment": [
+    "The cases Simulation 2.5 runs: 'what cannot be measured yet'. This file is the only",
+    "place they are defined. sim25.py, sim25_grid.py and tools/build_sim25_web.py all read",
+    "it, so adding or removing a case is an edit here and nowhere else.",
+    "",
+    "A case is one combination of the things we cannot measure on this network. Every case",
+    "is run against every growth site and size, so the count multiplies: each case is 355",
+    "SWMM runs, about 4 minutes nested or 20 minutes on the whole domain. Four nominal plus",
+    "eight sensitivities is 12 cases and about 2 h 20 m.",
+    "",
+    "AFTER EDITING THIS FILE THE COMMITTED RESULTS NO LONGER MATCH IT. The grid must be",
+    "re-run and the page rebuilt, or the page will simply show the cases that still have a",
+    "summary.json on disk. See README.md.",
+    "",
+    "weather      the nominal sweep, one case each, and the only levels the corridor runs use.",
+    "             ii is P04, infiltration in L/s per 100 m of pipe.",
+    "sensitivity  at_ii names which weather levels get the variants; each variant overrides",
+    "             one field of Case and carries the words appended to that case's label.",
+    "             Fields: pf (flat|harmon), age (uniform|weighted), bfac, stage, hour."
+  ],
+
+  "weather": [
+    {
+      "ii": 0.0,
+      "label": "Dry",
+      "note": "Sewage only, no infiltration: a genuinely dry day."
+    },
+    {
+      "ii": 0.11,
+      "label": "Design wet",
+      "note": "Infiltration at the level that just meets the utility's own design rating for these pipes."
+    },
+    {
+      "ii": 0.25,
+      "label": "Beyond design",
+      "note": "1.7 times the design envelope: an old network on a wet day."
+    },
+    {
+      "ii": 0.4,
+      "label": "Severe",
+      "note": "2.4 times the design envelope: a heavy wet period."
+    }
+  ],
+
+  "sensitivity": {
+    "at_ii": [0.11, 0.25],
+    "variants": [
+      { "label": "Harmon peaking",      "set": { "pf": "harmon" } },
+      { "label": "age-weighted I&I",    "set": { "age": "weighted" } },
+      { "label": "outside inflow x0.5", "set": { "bfac": 0.5 } },
+      { "label": "outside inflow x1.5", "set": { "bfac": 1.5 } }
+    ]
+  }
+}

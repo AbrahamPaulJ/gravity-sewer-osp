@@ -13,7 +13,7 @@ window.GrowthUI = (function () {
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
   // ii = case index; add = growth size index; rule = detection rule index (25 mm rise).
-  // k and obj drive the sensor set: k sensors chosen once across all 12 cases, for the best
+  // k and obj drive the sensor set: k sensors chosen once across all cases, for the best
   // worst case or the best average. showHeat colours the manholes by their own coverage.
   const st = { site: 0, showSensors: false, showHeat: false, k: 3, obj: "worst", ii: 1, add: 3, rule: 2,
                hover: null };                                  // a manhole NAME, or null
@@ -37,8 +37,10 @@ window.GrowthUI = (function () {
   const ruleId = () => runs().rules[st.rule].id;
   const graded = () => ruleId() !== "alarm";
   const caseLabel = () => runs().cases[st.ii].label;
+  // How many cases the build published. cases.json decides it, so nothing here may say 12.
+  const nCases = () => runs().cases.length;
 
-  /* The sensor set: the first k of the order chosen across ALL twelve cases for the current
+  /* The sensor set: the first k of the order chosen across ALL cases for the current
      rule and objective. The order is nested, so sensor k+1 is always added to the first k. */
   const placement = () => runs().sensors[ruleId()][st.obj];
   const sensorSet = () => placement().order.slice(0, st.k).map(i => nameOf(i));
@@ -81,6 +83,9 @@ window.GrowthUI = (function () {
   const mhOf = i => runs().manholeIds[i];
 
   /* --------------------------------------------------------------- select */
+  /* st.site is the selected manhole, which is also where the growth goes; null means none.
+     With nothing selected there is no growth anywhere: the map shows the network as it is,
+     manholes already over the alarm still amber, and both panels say how to pick one. */
   function select(siteIdx) {
     st.site = siteIdx;
     repaint();
@@ -95,12 +100,12 @@ window.GrowthUI = (function () {
     const sensors = shownSensors();
     Growth3D.paint(named, nameOf(st.site), sensors, heatValues());
     renderHomes(sensors);
-    $("#site").value = String(st.site);
+    $("#site").value = st.site == null ? "" : String(st.site);
     renderPanel(c, row);
     renderSensors();
     $("#heatKey").hidden = !st.showHeat;
 
-    $("#heatWhich").textContent = (st.obj === "worst" ? "worst of the 12 cases" : "average of the 12 cases") +
+    $("#heatWhich").textContent = (st.obj === "worst" ? "worst of the " : "average of the ") + nCases() + " cases" +
       ", " + runs().rules[st.rule].label.toLowerCase();
     renderKnobs();
   }
@@ -128,12 +133,22 @@ window.GrowthUI = (function () {
       lead = "Homes behind " + esc(mhName(st.hover));
     } else if (st.showSensors && sensors.length) {
       spec = { mode: "sensors", names: sensors };
+    } else if (st.site == null) {
+      spec = { mode: "none" };
     } else {
       spec = { mode: "site", name: nameOf(st.site) };
       lead = "Homes behind " + esc(mhName(nameOf(st.site)));
     }
     const r = Growth3D.highlight(spec);
     if (!r) { put("", "", "", "", ""); return; }
+    if (r.mode === "none") {
+      put("No manhole selected",
+        row("#ff6f9c", "<strong>" + r.total + "</strong> connected homes"),
+        row("", "No growth placed"),
+        row("", "&nbsp;"),
+        "Click a manhole to place the growth there");
+      return;
+    }
     if (r.mode === "sensors") {
       const pct = Math.round(100 * r.watched / r.total);
       put("Homes and the " + sensors.length + " sensor" + (sensors.length === 1 ? "" : "s"),
@@ -149,7 +164,7 @@ window.GrowthUI = (function () {
       const nm = st.hover || nameOf(st.site), R = runs(), i = R.chambers.indexOf(nm);
       if (i < 0) return "Not a study manhole";
       const h = R.heat[ruleId()];
-      return "Rank " + rankOf(i) + " of 71. Alone: " + Math.round(100 * h.mean[i]) + "% average, " +
+      return "Rank " + rankOf(i) + " of " + R.chambers.length + ". Alone: " + Math.round(100 * h.mean[i]) + "% average, " +
         Math.round(100 * h.worst[i]) + "% worst case";
     };
     put(lead,
@@ -178,10 +193,10 @@ window.GrowthUI = (function () {
     const homes = i => { const r = Growth3D.reach(nameOf(i)); return r ? r.here : (R.dwellingsAt[i] || 0); };
     const n = R.chambers.map((_, i) => homes(i));
     const order = R.chambers.map((_, i) => i).sort((a, b) => n[b] - n[a]);
-    sel.innerHTML = order.map(i =>
+    sel.innerHTML = '<option value="">No manhole selected</option>' + order.map(i =>
       "<option value=" + JSON.stringify(String(i)) + ">" + esc(label(i)) +
       "  (" + n[i] + " homes)</option>").join("");
-    sel.onchange = () => select(+sel.value);
+    sel.onchange = () => select(sel.value === "" ? null : +sel.value);   // +"" would be 0
     return order;
   }
 
@@ -225,12 +240,119 @@ window.GrowthUI = (function () {
     $("#ruleNote").textContent = R.rules[st.rule].note;
   }
 
+  /* "This manhole": the selected manhole as an asset, apart from what growth there does.
+     Water before growth and headroom lead, because they are what make a manhole a choke
+     point; the rest is what the council record and the model know about it. Everything
+     here follows the selected case and detection rule, as the rest of the panel does. */
+  const ALARM_MM = 150;                       // G6: the operator's low alarm, above invert
+  const GROUND = { contour: "from the 1 m contours", surveyed: "surveyed", none: "not known" };
+  let _incoming = null;
+  function upstreamOf(g, ni) {
+    if (!_incoming) {                          // links entering each node, built once
+      _incoming = g.nodes.map(() => []);
+      for (let l = 0; l < g.up.length; l++) _incoming[g.down[l]].push(l);
+    }
+    const seen = new Set([ni]), stack = [ni], pipes = new Set();
+    let chambers = 0, metres = 0;
+    while (stack.length) {
+      for (const l of _incoming[stack.pop()]) {
+        const key = g.pid && g.pid[l] != null ? g.pid[l] : "link" + l;
+        if (!pipes.has(key)) { pipes.add(key); metres += (g.plen && g.plen[l]) || 0; }
+        const up = g.up[l];
+        if (seen.has(up)) continue;
+        seen.add(up); stack.push(up);
+        if (g.nodes[up].kind === "chamber") chambers++;
+      }
+    }
+    return { chambers, metres };
+  }
+  function renderManhole() {
+    const box = $("#mhFacts");
+    if (!box) return;
+    if (st.site == null) {
+      box.innerHTML = "<h4>This manhole</h4>" +
+        '<p class="quiet">Click a manhole on the map to see its water level, headroom, ' +
+        "pipes and value as a sensor. Click empty ground to clear it.</p>";
+      return;
+    }
+    const R = runs(), g = geom(), i = st.site, nm = nameOf(i);
+    const ni = g ? g.nodes.findIndex(x => x.name === nm) : -1;
+    if (ni < 0) { box.innerHTML = ""; return; }
+    const n = g.nodes[ni];
+    const inv = g.oz + n.inv / 100;
+    const ins = [], outs = [];
+    for (let l = 0; l < g.up.length; l++) {
+      if (g.up[l] === ni) outs.push(l);
+      if (g.down[l] === ni) ins.push(l);
+    }
+    const mm = ls => [...new Set(ls.map(l => g.dia[l]).filter(Boolean))].sort((a, b) => a - b)
+      .join(", ") + " mm";
+    const out = outs[0];
+    const pipes = (ins.length ? ins.length + " in (" + mm(ins) + ")" : "none in, it is a top end") +
+      (out != null ? ", out " + g.dia[out] + " mm" + (g.pid && g.pid[out] ? " (pipe " + g.pid[out] + ")" : "") : "");
+    const up = upstreamOf(g, ni);
+
+    // Water before growth, in the selected case, and what is left above it.
+    const d = R.baseDepthMm ? R.baseDepthMm[st.ii][i] : null;
+    const over = R.baseOver && R.baseOver[st.ii].includes(i);
+    const sur = R.baseSurcharged && R.baseSurcharged[st.ii].includes(i);
+    let water = null, head = null;
+    if (d != null) {
+      water = "<b>" + d + " mm</b> deep";
+      const crown = out != null ? g.dia[out] : null;
+      head = sur ? '<b class="bad">surcharged</b>: above the top of its pipe already'
+        : over ? '<b class="bad">' + (d - ALARM_MM) + " mm over</b> the " + ALARM_MM + " mm alarm already"
+        : "<b>" + (ALARM_MM - d) + " mm</b> to the " + ALARM_MM + " mm alarm" +
+          (crown ? ", " + (crown - d) + " mm to the top of its pipe" : "");
+    }
+
+    // As a sensor, under the selected rule and objective.
+    const h = R.heat[ruleId()], chosen = placement().order.slice(0, st.k).includes(i);
+    // rankOf ranks by the objective the sensor list uses, worst case or average. Say which:
+    // shown beside the average, a worst-case rank read as wrong (43% and 9% averages both
+    // ranked 285th, tied at 0% worst case).
+    const by = st.obj === "worst" ? "worst case" : "average";
+    const sensor = pct(h.mean[i]) + " average, " + pct(h.worst[i]) + " worst case; rank " +
+      rankOf(i) + " of " + R.chambers.length + " by " + by +
+      (chosen ? ", <b>one of the " + st.k + " chosen</b>" : "");
+
+    box.innerHTML = "<h4>This manhole</h4>" +
+      row2("Asset", "MH " + n.mh + (n.yr ? ", built " + n.yr : ", year not recorded")) +
+      (water ? row2("Water before growth", water) : "") +
+      (head ? row2("Headroom", head) : "") +
+      row2("Pipe floor / ground", inv.toFixed(2) + " / " + (inv + n.depth).toFixed(2) +
+        ' m <span class="quiet">(' + n.depth.toFixed(1) + " m deep)</span>") +
+      row2("Pipes", pipes) +
+      row2("Drains through it", up.chambers + " manholes, " + (up.metres / 1000).toFixed(2) + " km of pipe") +
+      row2("As a sensor", sensor) +
+      '<p class="quiet">Water and headroom are for ' + esc(caseLabel()) + "; the sensor figures for " +
+      esc(R.rules[st.rule].label.toLowerCase()) + ". Ground level " + (GROUND[n.cs] || "not known") +
+      ". Manhole positions are schematic in the council record, not surveyed.</p>";
+  }
+
   function renderPanel(c, row) {
     const R = runs();
     const add = R.growthLevels[st.add];
     const tipped = row ? row.tip : [];
     const cs = R.cases[st.ii];
 
+    renderManhole();
+    // Depends on the case and rule only, so it is written whether or not a manhole is
+    // selected; with none selected it is the only account of the case on the panel.
+    $("#baseNote").innerHTML = graded()
+      ? "Graded rule: every manhole is judged against its own level before the growth, so " +
+        "nothing counts as already triggered."
+      : (c.base.length
+        ? "<b>" + c.base.length + "</b> of " + R.chambers.length + " manholes are already " +
+          "over the alarm in this case <b>before any houses are added</b>. They are amber and " +
+          "cannot report the growth."
+        : "No manhole is over the alarm before growth in this case.");
+    if (st.site == null) {
+      $("#siteFacts").innerHTML = '<p class="quiet">No manhole selected, so no growth is ' +
+        "placed. Click a manhole on the map, or choose one above.</p>";
+      $("#tipList").innerHTML = "";
+      return;
+    }
     $("#siteFacts").innerHTML =
       reachRow() +
       row2("Adding", "<b>+" + add + "</b> dwellings") +
@@ -245,14 +367,6 @@ window.GrowthUI = (function () {
       : "<p class=quiet>No manhole passes the rule at +" + add + " dwellings in this case. " +
         "Try more growth, a wetter case, or a smaller rise.</p>");
 
-    $("#baseNote").innerHTML = graded()
-      ? "Graded rule: every manhole is judged against its own level before the growth, so " +
-        "nothing counts as already triggered."
-      : (c.base.length
-        ? "<b>" + c.base.length + "</b> of " + R.chambers.length + " manholes are already " +
-          "over the alarm in this case <b>before any houses are added</b>. They are amber and " +
-          "cannot report the growth."
-        : "No manhole is over the alarm before growth in this case.");
   }
 
   /* Homes whose sewage reaches this manhole first. The model loads a home at the top of
@@ -272,9 +386,9 @@ window.GrowthUI = (function () {
 
   /* ------------------------------------------------------------- sensors */
   const OBJ_NOTE = {
-    worst: "Each sensor added is the one that most raises the worst of the 12 cases: " +
+    worst: "Each sensor added is the one that most raises the worst of the {n} cases: " +
            "whatever the unknowns turn out to be, at least this much is caught.",
-    mean: "Each sensor added is the one that most raises the average over the 12 cases. " +
+    mean: "Each sensor added is the one that most raises the average over the {n} cases. " +
           "Catches more on average, but can leave one case poorly covered.",
   };
   const pct = x => Math.round(x * 100) + "%";
@@ -285,7 +399,8 @@ window.GrowthUI = (function () {
     $("#kVal").textContent = String(k);
     document.querySelectorAll("#objKnob button").forEach(b =>
       b.classList.toggle("on", b.dataset.o === st.obj));
-    $("#objNote").textContent = OBJ_NOTE[st.obj];
+    $("#objNote").textContent = OBJ_NOTE[st.obj].replace("{n}", nCases());
+    $("#nCases").textContent = nCases();
     renderCurve(pl, k);
     const alarmNote = ruleId() === "alarm"
       ? "<p class=quiet>Under the alarm rule the worst case is the dry one, where only one " +
@@ -477,6 +592,7 @@ window.GrowthUI = (function () {
     Growth3D.build($("#stage"), nd => {
       // A click on the map gives a chamber NAME; everything else here works in indices.
       st.hover = null;
+      if (!nd) { if (st.site != null) select(null); return; }   // empty ground: deselect
       if (nd.name in idxOfName) select(idxOfName[nd.name]);
     }, nd => {
       // Hovering the manhole that is already selected previews nothing new.
@@ -506,6 +622,9 @@ window.GrowthUI = (function () {
     $("#fitAll").onclick = () => Growth3D.frame(null);
     // Off by default: the page is about the 71 study manholes, and the whole network makes
     // them a fifth of the view. On demand it shows what "whole council network" means.
+    // A whole-area build already draws the whole network as the study area, so the button
+    // would add nothing but inflow markers; it is hidden rather than left to mislead.
+    if (runs().studyArea === "whole") $("#toggleRegion").hidden = true;
     $("#toggleRegion").onclick = () => {
       st.showRegion = !st.showRegion;
       if (!Growth3D.showRegion(st.showRegion)) { st.showRegion = false; return; }
@@ -519,6 +638,15 @@ window.GrowthUI = (function () {
       $("#toggleSensors").classList.toggle("primary", st.showSensors);
       $("#toggleSensors").textContent = st.showSensors ? "Hide sensors" : "Show sensors";
       repaint();
+    };
+    // Pump stations: only offered where the map has any, which a whole-area build does.
+    const hasPumps = !!(geom() && geom().pumps && geom().pumps.length);
+    $("#togglePumps").hidden = !hasPumps;
+    $("#togglePumps").onclick = () => {
+      st.showPumps = !st.showPumps;
+      if (!Growth3D.showPumps(st.showPumps)) { st.showPumps = false; return; }
+      $("#togglePumps").classList.toggle("primary", st.showPumps);
+      $("#togglePumps").textContent = st.showPumps ? "Hide pump stations" : "Pump stations";
     };
     $("#toggleHeat").onclick = () => {
       st.showHeat = !st.showHeat;

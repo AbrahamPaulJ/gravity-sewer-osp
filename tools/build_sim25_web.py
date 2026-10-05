@@ -32,14 +32,19 @@ sys.path.insert(0, SIM)
 
 PAGE_FILES = ["index.html", "growth_ui.js", "growth_3d.js"]
 MAX_SENSORS = 10
-WEATHER_LABEL = {0.0: "Dry", 0.11: "Design wet", 0.25: "Beyond design", 0.40: "Severe"}
-WEATHER_NOTE = {
-    0.0: "Sewage only, no infiltration: a genuinely dry day.",
-    0.11: "Infiltration at the level that just meets the utility's own design rating for "
-          "these pipes.",
-    0.25: "1.7 times the design envelope: an old network on a wet day.",
-    0.40: "2.4 times the design envelope: a heavy wet period.",
-}
+# Case names and notes come from the same cases.json the grid ran from, so what the page
+# calls a case can never drift from what was actually solved.
+CASES_FILE = os.path.join(SIM, "cases.json")
+with io.open(CASES_FILE, encoding="utf-8") as _f:
+    _CASES = json.load(_f)
+# The study area decides which grid this build reads and what the map draws. Its results
+# live in a folder of their own, the same choice sim25_grid.py makes, so the two never mix.
+STUDY_AREA = _CASES.get("study_area", "segment")
+if STUDY_AREA == "whole":
+    GRID = os.path.join(SIM, "results", "sim25", "grid_whole")
+WEATHER_LABEL = {round(w["ii"], 2): w["label"] for w in _CASES["weather"]}
+WEATHER_NOTE = {round(w["ii"], 2): w["note"] for w in _CASES["weather"]}
+VARIANTS = (_CASES.get("sensitivity") or {}).get("variants", [])
 RULES = [
     ("alarm", "150 mm alarm", "Seen when the depth newly passes 150 mm above the pipe floor "
      "(the low alarm used in a real deployment)."),
@@ -65,14 +70,12 @@ def write_js(path, varname, payload):
 
 
 def case_label(case):
+    """Weather name, plus the label of every configured variant this case matches. A case
+    matches a variant when it carries every field that variant sets, so the label is
+    rebuilt from what the summary.json says was run, not from a separate list of names."""
     label = WEATHER_LABEL.get(round(case["ii"], 2), f"I&I {case['ii']}")
-    extra = []
-    if case["pf"] == "harmon":
-        extra.append("Harmon peaking")
-    if case["age"] == "weighted":
-        extra.append("age-weighted I&I")
-    if case["bfac"] != 1.0:
-        extra.append(f"outside inflow x{case['bfac']:g}")
+    extra = [v["label"] for v in VARIANTS
+             if all(case.get(k) == val for k, val in v["set"].items())]
     return label + (" + " + ", ".join(extra) if extra else "")
 
 
@@ -123,6 +126,7 @@ def catchment_geometry(outlet):
 
     network = Network()
     model = catchment.Catchment(network, outlet)
+    years = manhole_years()
     xs = [point[0] for link in model.links for point in link.line]
     ys = [point[1] for link in model.links for point in link.line]
     zs = [value for link in model.links for value in (link.inv_up, link.inv_down)]
@@ -155,18 +159,24 @@ def catchment_geometry(outlet):
             "depth": round(node.max_depth, 3),
             "mh": node.manhole_id,
             "dw": model.dwellings.get(name, 0),
+            "yr": years.get(node.manhole_id) if node.manhole_id else None,
+            "cs": getattr(node, "cover_src", None),
         })
 
     study_assets = {pipe.asset_id for pipe in model.pipes if pipe.role == "study"}
     in_model = {i for i, pipe in enumerate(network.pipes) if pipe.asset_id in study_assets}
-    hx, hy, hz, hn = [], [], [], []
-    for x, y, pipe_id in getattr(network, "connections", []):
+    hx, hy, hz, hn, jx, jy = [], [], [], [], [], []
+    junctions = getattr(network, "connection_junctions", None) or []
+    for k, (x, y, pipe_id) in enumerate(getattr(network, "connections", [])):
         if pipe_id in in_model:
             pipe = network.pipes[pipe_id]
             hx.append(int(round((x - ox) * 10)))
             hy.append(int(round((y - oy) * 10)))
             hz.append(int(round(((pipe.inv_up + pipe.inv_down) / 2 - oz) * 100)))
             hn.append(index[model.node_of[pipe.up]])
+            j = junctions[k] if k < len(junctions) and junctions[k] else (x, y)
+            jx.append(int(round((j[0] - ox) * 10)))
+            jy.append(int(round((j[1] - oy) * 10)))
 
     outlet_name = model.node_of.get(outlet)
     return {
@@ -176,11 +186,248 @@ def catchment_geometry(outlet):
         "px": px, "py": py, "ptr": ptr, "zu": zu, "zd": zd, "dia": dia,
         "up": up, "down": down, "nodes": nodes,
         "hx": hx, "hy": hy, "hz": hz, "hn": hn,
+        **link_details(model),
+        # Where each property joins its main: the lateral the page draws from the house.
+        "jx": jx, "jy": jy,
         "bottlenecks": [],
         "nPipes": len(model.links), "nChambers": len(model.chambers),
         "nHouses": len(hx), "baseDwellings": model.base_dwellings,
         "metres": round(sum(model.metres.values()), 1),
     }
+
+
+def manhole_years():
+    """Construction year per manhole asset ID, from the council manhole layer (359 of 360
+    published). Only the year is taken: the layer also names the owning utility, which this
+    public page never shows."""
+    path = os.path.join(SIM, "data", "raw", "manholes.json")
+    with io.open(path, encoding="utf-8") as f:
+        feats = json.load(f)["features"]
+    return {f["attributes"]["ID"]: f["attributes"].get("CONST_YEAR") or None for f in feats}
+
+
+def link_details(model):
+    """What a click on a pipe shows: one entry per drawn link, from the pipe it belongs to.
+
+    A long pipe may be split into several links; each carries its whole pipe's details,
+    so clicking any piece of it reads the same. Capacity is full-bore Manning, the
+    pipe's own published grade and the roughness model.py gives its material, the same n
+    SWMM solves with. A flat or adverse grade has no gravity full-bore capacity, so it is
+    left empty rather than shown as zero."""
+    import math
+    import model as swmm_model
+
+    by_label = {pipe.label: pipe for pipe in model.pipes}
+    out = {"pid": [], "pmat": [], "pyr": [], "plen": [], "pslope": [], "pcap": []}
+    for link in model.links:
+        pipe = by_label.get(link.pipe)
+        if pipe is None:                       # an outfall dummy: no published pipe
+            for key in out:
+                out[key].append(None)
+            continue
+        d, s = pipe.dia, pipe.slope
+        cap = None
+        if d and s and s > 0:
+            n = swmm_model.manning_of(pipe.material)
+            area, radius = math.pi * d * d / 4, d / 4
+            cap = round(1000 * area * radius ** (2 / 3) * math.sqrt(s) / n, 1)
+        out["pid"].append(pipe.asset_id)
+        out["pmat"].append(pipe.material or None)
+        out["pyr"].append(pipe.year or None)
+        out["plen"].append(round(pipe.length, 1))
+        out["pslope"].append(round(100 * s, 2) if s is not None else None)
+        out["pcap"].append(cap)
+    return out
+
+
+def pump_stations(model, ox, oy, oz, index=None):
+    """The council area's pump stations, each with its rising main traced to where it
+    discharges, for drawing apart from the gravity mains.
+
+    Stations are found the way sim25.pump_links finds them: rising-main pieces chained end
+    to end, a chain starting at a dead end of the gravity network being a wet well. Each
+    chain is traced again here to keep its full route, which pump_links does not return.
+    All three are published; the one the model leaves out, because it discharges outside
+    the domain, is marked so rather than hidden.
+
+    A rising main's route is published, its depth is not. It is drawn from the wet well's
+    invert to the discharge node's invert, linearly along its length: schematic, and the
+    card says so."""
+    import math
+    import sim25
+    import overlap_check as oc
+
+    net = model.net
+    rec = []
+    for f in oc.load("rising_mains")["features"]:
+        a = f["attributes"]
+        line = [tuple(pt) for path in f["geometry"]["paths"] for pt in path]
+        if a.get("FLOWDIRECT") == 2:
+            line = line[::-1]
+        rec.append((a["ID"], a.get("NOMINALDIA"), line))
+    key = lambda xy: (round(xy[0], 1), round(xy[1], 1))
+    starts = {key(line[0]): i for i, (_, _, line) in enumerate(rec)}
+
+    path = os.path.join(SIM, "data", "raw", "rising_structures.json")
+    with io.open(path, encoding="utf-8") as f:
+        structures = [(s["attributes"]["ID"], s["geometry"]["x"], s["geometry"]["y"])
+                      for s in json.load(f)["features"] if s["attributes"].get("SUBTYPE") == 3]
+
+    modelled = {name[1:] for name, _, _ in model.pumps}       # "P4433449" -> "4433449"
+    out = []
+    for wet, dis, rid in sim25.pump_links(net):
+        i = next(k for k, r in enumerate(rec) if r[0] == rid)
+        chain, seen = [i], {i}
+        while key(rec[chain[-1]][2][-1]) in starts and starts[key(rec[chain[-1]][2][-1])] not in seen:
+            nxt = starts[key(rec[chain[-1]][2][-1])]
+            chain.append(nxt)
+            seen.add(nxt)
+        pts = []
+        for k in chain:
+            for pt in rec[k][2]:
+                if not pts or math.dist(pts[-1], pt) > 1e-6:
+                    pts.append(pt)
+        cum = [0.0]
+        for a, b in zip(pts, pts[1:]):
+            cum.append(cum[-1] + math.dist(a, b))
+        total = cum[-1] or 1.0
+        w, d = net.nodes[wet], net.nodes[dis]
+        z_of = lambda s: w.invert + (d.invert - w.invert) * s / total
+        station = min(structures, key=lambda s: math.dist((s[1], s[2]), (w.x, w.y)), default=None)
+        if station and math.dist((station[1], station[2]), (w.x, w.y)) > 2.0:
+            station = None
+        to_name = model.node_of.get(dis)
+        wet_name = model.node_of.get(wet)
+        out.append({
+            # The wet well as an index into this map's nodes, so the page can trace the
+            # pipes draining to it; None for a station outside the modelled network.
+            "node": (index or {}).get(wet_name),
+            "id": station[0] if station else None,
+            "risingMains": [rec[k][0] for k in chain],
+            "dia": sorted({rec[k][1] for k in chain if rec[k][1]}),
+            "len": round(cum[-1], 1),
+            "homes": int(sum(net.pipes[p].dwellings for p in net.upstream_pipes(wet))),
+            "modelled": str(rid) in modelled,
+            "to": model.nodes[to_name].manhole_id if to_name in model.nodes else None,
+            "x": int(round((w.x - ox) * 10)), "y": int(round((w.y - oy) * 10)),
+            "z": int(round((w.invert - oz) * 100)),
+            "px": [int(round((x - ox) * 10)) for x, _ in pts],
+            "py": [int(round((y - oy) * 10)) for _, y in pts],
+            "pz": [int(round((z_of(s) - oz) * 100)) for s in cum],
+        })
+    return out
+
+
+def domain_geometry():
+    """Drawing geometry for the whole study area: the model domain SWMM itself solves.
+
+    catchment_geometry draws the gravity catchment above one node, which is right for the
+    segment but cannot hold the whole domain: three pump-station catchments join it through
+    rising mains, not gravity pipes. This reads the whole-domain Sim25Model instead, so the
+    map is exactly the network the grid ran on, in the format the page already reads."""
+    import sim25
+
+    model = sim25.Sim25Model(sim25.Case(), whole=True)
+    network = model.net
+    links = model.links
+    years = manhole_years()
+    xs = [point[0] for link in links for point in link.line]
+    ys = [point[1] for link in links for point in link.line]
+    zs = [value for link in links for value in (link.inv_up, link.inv_down)]
+    ox, oy, oz = min(xs), min(ys), min(zs)
+
+    # Dwellings per node, attached as sim25 attaches the sewage load: each pipe's connected
+    # dwellings at the pipe's upstream node, exit pipes excluded.
+    dwellings = {}
+    for pipe_id in model._pipe_ids:
+        if pipe_id in model._exits:
+            continue
+        pipe = network.pipes[pipe_id]
+        name = model.node_of.get(pipe.up)
+        if name is not None:
+            dwellings[name] = dwellings.get(name, 0) + pipe.dwellings
+
+    px, py, ptr, zu, zd, dia, up, down = [], [], [], [], [], [], [], []
+    names = list(model.nodes)
+    index = {name: i for i, name in enumerate(names)}
+    for link in links:
+        ptr.append(len(px))
+        for x, y in link.line:
+            px.append(int(round((x - ox) * 10)))
+            py.append(int(round((y - oy) * 10)))
+        zu.append(int(round((link.inv_up - oz) * 100)))
+        zd.append(int(round((link.inv_down - oz) * 100)))
+        dia.append(int(round(link.dia * 1000)))
+        up.append(index[link.up])
+        down.append(index[link.down])
+    ptr.append(len(px))
+
+    nodes = [{
+        "name": name, "kind": node.kind,
+        "x": int(round((node.x - ox) * 10)), "y": int(round((node.y - oy) * 10)),
+        "inv": int(round((node.invert - oz) * 100)), "depth": round(node.max_depth, 3),
+        "mh": node.manhole_id, "dw": dwellings.get(name, 0),
+        "yr": years.get(node.manhole_id) if node.manhole_id else None,
+        "cs": getattr(node, "cover_src", None),
+    } for name, node in model.nodes.items()]
+
+    in_model = set(model._pipe_ids)
+    hx, hy, hz, hn, jx, jy = [], [], [], [], [], []
+    junctions = getattr(network, "connection_junctions", None) or []
+    for k, (x, y, pipe_id) in enumerate(getattr(network, "connections", [])):
+        if pipe_id in in_model:
+            pipe = network.pipes[pipe_id]
+            name = model.node_of.get(pipe.up)
+            if name is None:
+                continue
+            hx.append(int(round((x - ox) * 10)))
+            hy.append(int(round((y - oy) * 10)))
+            hz.append(int(round(((pipe.inv_up + pipe.inv_down) / 2 - oz) * 100)))
+            hn.append(index[name])
+            j = junctions[k] if k < len(junctions) and junctions[k] else (x, y)
+            jx.append(int(round((j[0] - ox) * 10)))
+            jy.append(int(round((j[1] - oy) * 10)))
+
+    outlet_name = model.node_of.get(sim25.DOMAIN_END)
+    return {
+        "outletName": outlet_name,
+        # The domain ends where the council data does, at an outfall, not at a manhole.
+        "outletManhole": model.nodes[outlet_name].manhole_id if outlet_name else None,
+        "ox": round(ox, 2), "oy": round(oy, 2), "oz": round(oz, 3),
+        "px": px, "py": py, "ptr": ptr, "zu": zu, "zd": zd, "dia": dia,
+        "up": up, "down": down, "nodes": nodes,
+        "hx": hx, "hy": hy, "hz": hz, "hn": hn,
+        **link_details(model),
+        # Where each property joins its main: the lateral the page draws from the house.
+        "jx": jx, "jy": jy,
+        "bottlenecks": [],
+        "pumps": pump_stations(model, ox, oy, oz, index),
+        "nPipes": len(links), "nChambers": len(model.chambers),
+        "nHouses": len(hx), "baseDwellings": sum(dwellings.values()),
+        "metres": round(sum(link.length for link in links), 1),
+    }
+
+
+def whole_area_context(geometry):
+    """Context for the whole area. Every modelled pipe is already in the study area, so there
+    are no grey "rest of the network" pipes to draw: drawing the council pipes the model does
+    not contain under that legend would call them solved when they are not. What is left to
+    show is where outside pipes flow in, and in the whole area every one flows into it."""
+    import sim25
+
+    model = sim25.Sim25Model(sim25.Case(), whole=True)
+    ox, oy, oz = geometry["ox"], geometry["oy"], geometry["oz"]
+    entries = []
+    for entry in model.entries:
+        node = model.net.nodes[entry["node"]]
+        entries.append({
+            "x": int(round((node.x - ox) * 10)), "y": int(round((node.y - oy) * 10)),
+            "z": int(round((node.invert - oz) * 100)),
+            "m": round(entry["length_m"]), "into": True,
+        })
+    return {"px": [], "py": [], "ptr": [0], "zu": [], "zd": [], "nPipes": 0,
+            "nChambers": sum(1 for node in model.nodes.values() if node.kind == "chamber"),
+            "nLinks": len(model.links), "entries": entries}
 
 
 def region_context(geometry):
@@ -240,18 +487,34 @@ def build_runs():
     order = [case.tag() for case in sim25_grid.cases("all")]
     missing = [tag for tag in order if tag not in summaries]
     if missing:
-        sys.exit("missing grid cases: " + ", ".join(missing))
+        sys.exit("\ncases.json lists cases that have never been solved, so there is nothing to "
+                 "publish for them:\n" + "".join(f"  {tag}\n" for tag in missing) +
+                 "Run them first, from simulation_src/ (each is about 4 to 20 minutes):\n"
+                 "  python sim25_grid.py --cases all --resume\n"
+                 "--resume skips every case that already has results.")
 
+    # The corridor runs one case per weather level, so publish only the levels cases.json
+    # still lists. Globbing everything on disk would keep showing a level after it was
+    # removed from the config, which is the same mistake the grid order above avoids.
+    levels = {round(ii, 2) for ii, _ in sim25.WEATHER}
     corridor = []
     pattern = os.path.join(GRID, "corridor", "*", "summary.json")
     for filename in sorted(glob.glob(pattern)):
-        corridor.append(json.load(io.open(filename, encoding="utf-8")))
+        item = json.load(io.open(filename, encoding="utf-8"))
+        if round(item["case"]["ii"], 2) in levels:
+            corridor.append(item)
 
-    geometry = catchment_geometry(sim25.SEGMENT_OUTLET)
-    geometry["context"] = region_context(geometry)
+    whole_area = STUDY_AREA == "whole"
+    if whole_area:
+        geometry = domain_geometry()
+        geometry["context"] = whole_area_context(geometry)
+    else:
+        geometry = catchment_geometry(sim25.SEGMENT_OUTLET)
+        geometry["context"] = region_context(geometry)
     names = sorted(node["name"] for node in geometry["nodes"] if node["kind"] == "chamber")
     manhole_index = {int(name[2:]): i for i, name in enumerate(names)}
-    base_model = catchment.Catchment(Network(), sim25.SEGMENT_OUTLET)
+    base_model = None if whole_area else catchment.Catchment(Network(), sim25.SEGMENT_OUTLET)
+    node_dw = {node["name"]: node["dw"] for node in geometry["nodes"]}
     sizes = sorted({row["dwellings"] for row in summaries[order[0]]["rows"]})
 
     cases, cells, pooled = [], [], {}
@@ -300,15 +563,34 @@ def build_runs():
         } for row in item["rows"]],
     } for item in corridor]
 
+    # The water each manhole carries before any growth, per case: the depth in mm, and
+    # which manholes are already over the alarm or surcharged. The grid has always stored
+    # this; nothing showed it. It is what a manhole's headroom is measured from.
+    base_depth, base_over, base_sur = [], [], []
+    for tag in order:
+        summary = summaries[tag]
+        depth = summary.get("baseline_depth_m", {})
+        base_depth.append([round(1000 * depth[str(mh)]) if str(mh) in depth else None
+                           for mh in (int(name[2:]) for name in names)])
+        base_over.append(sorted(manhole_index[m] for m in summary["baseline"]["alarm"]))
+        base_sur.append(sorted(manhole_index[m] for m in summary["baseline"]["surcharged"]))
+
     runs = {
-        "outlet": sim25.SEGMENT_OUTLET, "chambers": names,
+        "outlet": sim25.DOMAIN_END if whole_area else sim25.SEGMENT_OUTLET,
+        "chambers": names,
         "manholeIds": [int(name[2:]) for name in names],
-        "dwellingsAt": [base_model.dwellings.get(name, 0) for name in names],
+        "dwellingsAt": ([node_dw.get(name, 0) for name in names] if whole_area
+                        else [base_model.dwellings.get(name, 0) for name in names]),
         "cases": cases, "growthLevels": sizes,
         "rules": [{"id": rule, "label": label, "note": note}
                   for rule, label, note in RULES],
         "cells": cells, "heat": heat, "sensors": sensors, "corridor": corridor_rows,
+        "baseDepthMm": base_depth, "baseOver": base_over, "baseSurcharged": base_sur,
     }
+    if whole_area:
+        # Only the whole area says so, so a segment build stays byte-identical to the page
+        # published before the setting existed.
+        runs["studyArea"] = "whole"
     return geometry, runs, len(cells)
 
 
@@ -327,11 +609,60 @@ def compare_output(output):
     return True
 
 
+def bump_cache_keys():
+    """Move every Sim 2.5 cache key to one new number, past the highest in use.
+
+    simulation25/index.html says its script keys must match the landing page's iframe key
+    and that both are bumped together on every publish. Going past the highest rather than
+    adding one to each keeps them equal even if they had drifted, and never reuses a number
+    a browser may already hold a stale copy under."""
+    import re
+    page, home = os.path.join(TEMPLATE, "index.html"), os.path.join(ROOT, "index.html")
+    page_src = io.open(page, encoding="utf-8").read()
+    home_src = io.open(home, encoding="utf-8").read()
+    script = re.compile(r'(<script src="(?:data/)?[\w.]+\.js)\?v=(\d+)"')
+    iframe = re.compile(r'(simulation25/index\.html)\?v=(\d+)')
+    used = [int(m.group(2)) for m in script.finditer(page_src)]
+    used += [int(m.group(2)) for m in iframe.finditer(home_src)]
+    new = max(used) + 1
+    page_src = script.sub(lambda m: f'{m.group(1)}?v={new}"', page_src)
+    home_src = iframe.sub(lambda m: f"{m.group(1)}?v={new}", home_src)
+    io.open(page, "w", encoding="utf-8", newline="\n").write(page_src)
+    io.open(home, "w", encoding="utf-8", newline="\n").write(home_src)
+    return new
+
+
+def publish(output, runs):
+    """Copy the two generated data files into the tracked page, and bump the keys.
+
+    Only data/catchment.js and data/growth.js are copied. The HTML and UI modules are the
+    templates this build reads, so they already are what is published."""
+    changed = []
+    for name in ("catchment.js", "growth.js"):
+        src = os.path.join(output, "data", name)
+        dst = os.path.join(TEMPLATE, "data", name)
+        if not os.path.exists(dst) or not filecmp.cmp(src, dst, shallow=False):
+            shutil.copyfile(src, dst)
+            changed.append("data/" + name)
+    if not changed:
+        print("\nPublished page already matches this build; nothing copied, keys unchanged.")
+        return
+    key = bump_cache_keys()
+    print(f"\nPublished into simulation25/: {', '.join(changed)}; cache keys now v={key}.")
+    print(f"{len(runs['cases'])} cases on the page:")
+    for case in runs["cases"]:
+        print(f"  - {case['label']}")
+    print("Reload the Simulation 2.5 tab to see them.")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", default=os.path.join(ROOT, "reproduced_simulation25"))
     parser.add_argument("--check", action="store_true",
                         help="compare the rebuilt files with the tracked published page")
+    parser.add_argument("--publish", action="store_true",
+                        help="after building, copy the data into simulation25/ and bump its "
+                             "cache keys, so the page you are viewing shows this build")
     args = parser.parse_args()
     output = os.path.abspath(args.out)
     if output == os.path.abspath(TEMPLATE):
@@ -339,7 +670,11 @@ def main():
 
     data_dir = os.path.join(output, "data")
     os.makedirs(data_dir, exist_ok=True)
-    geometry, runs, cell_count = build_runs()
+    try:
+        geometry, runs, cell_count = build_runs()
+    except ValueError as e:
+        # A mistake in cases.json. Say so plainly rather than with a traceback.
+        sys.exit(f"\ncases.json is not valid, so nothing was built or published:\n  {e}")
     sizes = {
         "data/catchment.js": write_js(os.path.join(data_dir, "catchment.js"),
                                       "GROWTH_GEOM", geometry),
@@ -360,6 +695,8 @@ def main():
     print("-> " + output)
     if args.check and not compare_output(output):
         sys.exit(1)
+    if args.publish:
+        publish(output, runs)
 
 
 if __name__ == "__main__":

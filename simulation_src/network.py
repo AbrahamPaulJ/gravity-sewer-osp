@@ -114,6 +114,22 @@ def _load(name):
         return json.load(f)["features"]
 
 
+def _material(a):
+    """MATERIAL, falling back to MATERIALUN where the code is UNKN.
+
+    The layer carries two fields. MATERIAL is the coded value and reads UNKN on 456 of the
+    1,002 mains; MATERIALUN is the free-text material, and on every one of those 456 it reads
+    VC. So the layer is not saying the material is unknown, it is saying the code is. Reading
+    only MATERIAL would leave 456 clay reaches on the roughness fallback rather than on clay's
+    own value, and would disagree with the published network in ../data/osp_data.js, which
+    resolves the pair the same way.
+    """
+    mat = (a.get("MATERIAL") or "").strip()
+    if mat.upper() in ("", "UNKN"):
+        mat = (a.get("MATERIALUN") or "").strip() or mat
+    return mat
+
+
 class Network:
     def __init__(self, include_overflow=False):
         # Overflow (relief) pipes, SUBTYPE 2, carry FLOWDIRECT 0 in this layer. Sim 2.5 keeps
@@ -196,7 +212,7 @@ class Network:
         dia, src = (internal, "internal") if internal else (nominal, "nominal")
         length = sum(math.dist(line[i], line[i + 1]) for i in range(len(line) - 1))
         p = Pipe(len(self.pipes), a.get("ID"), u, d, float(si), float(ei),
-                 dia / 1000.0, src, length, line, a.get("MATERIAL", "").strip(),
+                 dia / 1000.0, src, length, line, _material(a),
                  a.get("CONST_YEAR") or 0)
         self.pipes.append(p)
         self.nodes[u].outs.append(p.id)
@@ -289,20 +305,28 @@ class Network:
         # what turns an abstract network into a recognisable suburb, and a count cannot be
         # un-summed later.
         self.connections = []
+        # Where each of those properties joins its main, aligned with self.connections: the
+        # end of its own connection line where it has one, else the nearest point on the main
+        # it was attributed to. Kept as a separate list so every reader that unpacks
+        # (x, y, pipe) from self.connections is unchanged.
+        self.connection_junctions = []
         self.attributed_by = {"connection": 0, "proximity": 0}
         for k, ((px, py), d, i) in enumerate(zip(xy, dist, idx)):
-            pipe = None
+            pipe = junction = None
             if ci is not None and cd[k] <= CONN_MATCH_TOL:
                 pipe = end_pipe[ci[k]]
+                junction = tuple(end_xy[ci[k]])
                 self.attributed_by["connection"] += 1
             elif d <= IP_MATCH_TOL:
                 pipe = sp[i]
+                junction = (sx[i], sy[i])
                 self.attributed_by["proximity"] += 1
             if pipe is None:
                 self.skipped["property with neither a connection nor a nearby main"] += 1
                 continue
             self.pipes[pipe].dwellings += 1
             self.connections.append((px, py, pipe))
+            self.connection_junctions.append(junction)
 
     def dwellings_upstream(self, node_id):
         """Connected properties draining to node_id, through any path."""

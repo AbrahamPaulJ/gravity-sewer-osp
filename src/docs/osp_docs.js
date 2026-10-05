@@ -260,6 +260,49 @@ function assumptions(ctx) {
     </tbody>
   </table>
 
+  <h3>Part F. Growth headroom</h3>
+  <p>How much new load a chamber can take before something below it surcharges, and which reach
+  gives out first. It drives the <b>Growth headroom</b> view and the <b>watched growth capacity</b>
+  objective.</p>
+  <div class="card">
+    <h4>It is exact, and it needs no search</h4>
+    <p>Flow accumulation is linear: adding load at a chamber adds a fixed fraction of it to every
+    reach below, and that fraction does not depend on how much is added. So the headroom is a
+    minimum over the reaches below rather than something to iterate towards:</p>
+    <p><code>headroom(v) = min over downstream e of (qMax[e] &minus; q[e]) / f(v &rarr; e)</code></p>
+    <p>Checked against the full capacity solve by adding a real load and comparing every reach:
+    the two agree to <b>3.6 &times; 10<sup>&minus;14</sup> L/s</b>. Pushing a site to 0.99 of its
+    headroom leaves the network clear and 1.01 tips exactly one reach, which the test suite
+    asserts. All 1,010 chambers compute in about 8 ms, so it responds to the sliders.</p>
+  </div>
+  <table>
+    <thead><tr><th>#</th><th>Assumption</th><th>Why it is there</th><th>What removes it</th></tr></thead>
+    <tbody>
+      <tr><td>F1</td><td><b>Screening hydraulics, inherited from part B</b></td>
+        <td>Headroom is built on the same Manning normal-depth solve, so it carries every
+            limitation of it: no backwater, no storage, no time.</td>
+        <td>Nothing here. The SWMM simulation is the authority where the two disagree, and it
+            exists precisely because a screening calculation cannot show a chamber fill.</td></tr>
+      <tr><td>F2</td><td><b>New load is added at one chamber at a time</b></td>
+        <td>A development connects somewhere. Asking the question per connection point is what
+            makes the answer a map rather than a single number.</td>
+        <td>Nothing, for the question as posed. Several simultaneous developments are the sum of
+            their loads, which superposition already handles exactly.</td></tr>
+      <tr><td>F3</td><td><b>Headroom is reported in L/s, not dwellings</b></td>
+        <td>Converting needs a load per dwelling, and this model's demand is a slider rather than
+            a count. The chamber-equivalent figure shown beside it inherits that setting and is
+            derived, not measured.</td>
+        <td>Dwelling counts joined to the network. The SWMM simulation already does this properly
+            from 643 counted properties; the sandbox does not yet carry them.</td></tr>
+      <tr><td>F4</td><td><b>A site counts as watched if a sensor observes the chamber that
+            surcharges</b></td>
+        <td>When a reach gives out, the chamber above it fills. That is the event a level sensor
+            sees, and the observability model already says which sensors would see it.</td>
+        <td>Nothing. It is the same detection condition the rest of the tool uses, applied to a
+            different trigger.</td></tr>
+    </tbody>
+  </table>
+
   <h3>Part C. What is still assumed, stated plainly</h3>
   <div class="card bad">
     <h4>C1. Demand is a setting, not a measurement, and it drives the headline number</h4>
@@ -425,6 +468,18 @@ function riskRegister(ctx) {
             and additively, which is certainly false in detail.</td>
         <td>A model fitted to incident history, most plausibly the Bayesian network of Ma 2025,
             which represents dependence between factors instead of assuming it away.</td></tr>
+      <tr><td>D1b</td><td><b>The weights follow Ma 2025's ordering but not its
+            magnitudes</b></td>
+        <td>Ma et al. (2025) learned a Bayesian network over 23,000 Hong Kong pipe records and
+            measured mutual information of 0.124 for age against 0.032 for diameter, close to a
+            4:1 ratio. The weights here are 0.30 and 0.25, about 1.2:1. Two reasons, both
+            arguable: that study and Malek Mohammadi et al. (2020) both conclude condition models
+            are fitted to local geography and their thresholds should not be imported; and on this
+            network age and bore rank-correlate at &minus;0.32, because the 1896 sewers are the
+            trunk mains and the small-bore reticulation came later, so a ratio measured where
+            small pipe is also old pipe describes a relationship that does not hold here.</td>
+        <td>Re-deriving the ranking on this network, which needs incident history. Until then the
+            honest statement is that the order is borrowed and the spacing is chosen.</td></tr>
       <tr><td>D2</td><td><b>Factors normalise over this network's own range</b></td>
         <td>The oldest pipe here scores 1 on age, the smallest scores 1 on bore. It avoids
             importing an absolute cutoff from another city, which Malek Mohammadi 2020 shows is
@@ -433,8 +488,14 @@ function riskRegister(ctx) {
             <b>scores are not comparable between regions</b>, only within one.</td></tr>
       <tr><td>D3</td><td><b>Material and joint propensity are table lookups</b>
             (${esc(Object.keys(K.MATERIAL_RISK).join(", "))})</td>
-        <td>Vitrified clay is jointed and root-prone, uPVC is smooth with fewer joints, concrete
-            sits between. The ordering is well supported; the spacing between the numbers is not.</td>
+        <td>Ordering from Malek Mohammadi et al. (2020), which sets out how materials differ in
+            resistance, and from Drenoyanis &amp; Prackwieser (2022), who report that most Sydney
+            Water blockages are tree roots, wipes and grease. Ranked here on <i>root intrusion</i>
+            rather than structural decay, which deliberately inverts part of the first source:
+            it calls reinforced concrete the most resistant structurally, while this table puts
+            uPVC lowest because roots enter at joints and clay comes in short jointed sections.
+            <b>The ordering is cited; the spacing between the numbers is not.</b> No paper in the
+            corpus gives a per-material propensity figure.</td>
         <td>Root-intrusion or CCTV defect records by material. The network operator names root
             intrusion as the dominant mechanism in these suburbs, so this is the factor most worth
             measuring.</td></tr>
@@ -1239,6 +1300,8 @@ function glossary() {
     ["d/D, depth to diameter ratio", "How full a pipe is running, as a fraction of its diameter. The standard screening measure of capacity: utilities flag a sewer as capacity-deficient above a threshold d/D at the design storm."],
     ["Flow accumulation", "Adding up all the load that drains to each point, walking the network downhill. On a DAG this is one pass in topological order and it is exact."],
     ["Peak factor", "The multiplier from average dry weather flow to the peak condition capacity is judged at. Stands in for the daily peak, wet weather and infiltration together."],
+    ["Growth headroom", "How much new load a chamber can take before a reach below it exceeds capacity. A property of the network rather than of any sensor, and because flow adds linearly it is computed exactly rather than searched for."],
+    ["Binding reach", "The pipe that gives out first when load is added at a particular chamber, and therefore the real constraint on that connection point. Several sites usually share one, which is why a single sensor can watch many of them."],
     ["Tipped reach", "A reach that was under capacity before a growth scenario and over capacity after it. The set of tipped reaches is what growth caused, as distinct from what was already a problem."],
   ];
   return `

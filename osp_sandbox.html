@@ -128,10 +128,10 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
   border-radius:9px;padding:8px 11px;font-family:ui-monospace,Menlo,Consolas,monospace;
   font-size:11.5px;display:none;pointer-events:none;line-height:1.6;max-width:330px}
 #hud.on{display:block}
-#legend,#legend-cap,#legend-dia,#legend-risk{position:absolute;right:12px;bottom:12px;
+#legend,#legend-cap,#legend-dia,#legend-risk,#legend-head{position:absolute;right:12px;bottom:12px;
   background:rgba(17,28,47,.95);
   border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:11.5px}
-#legend div,#legend-cap div,#legend-dia div,#legend-risk div{display:flex;align-items:center;
+#legend div,#legend-cap div,#legend-dia div,#legend-risk div,#legend-head div{display:flex;align-items:center;
   gap:7px;margin:3px 0;color:var(--ink-dim)}
 .sw{width:16px;height:3px;border-radius:2px;display:inline-block}
 .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
@@ -268,6 +268,7 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
         <option value="length">Maximise pipe length observed</option>
         <option value="surcharge">Maximise surcharging chambers observed</option>
         <option value="risk" id="obj-risk">Maximise blockage risk observed</option>
+        <option value="growth" id="obj-growth">Maximise watched growth capacity</option>
       </select>
       <p class="hint" id="obj-hint" hidden>Targets the chambers that overcapacity
         actually threatens, taken from the capacity model, rather than treating
@@ -307,6 +308,7 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
         <option value="capacity">Capacity, d/D</option>
         <option value="diameter" id="opt-diameter">Pipe diameter</option>
         <option value="risk" id="opt-risk">Blockage likelihood</option>
+        <option value="headroom" id="opt-headroom">Growth headroom</option>
       </select>
       <div class="row" id="p-risk" hidden>
         <label for="riskblend">Likelihood weighting</label>
@@ -324,6 +326,7 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
         </select>
         <p class="hint" id="risk-hint" style="margin-top:7px"></p>
       </div>
+      <div id="p-headroom-info" hidden><p class="hint" id="head-hint"></p></div>
       <p class="hint" id="cap-hint" hidden></p>
       <!-- NOT class="row". This was a flex row, which laid the three sliders and the
            hint out as columns: the sliders collapsed to zero width and could not be
@@ -456,6 +459,13 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
           <span class="sw" style="background:#93a4c4;height:4px;margin-left:-3px"></span>
           &nbsp;width = pipe diameter</div>
       </div>
+      <div id="legend-head" hidden>
+        <div><span class="sw" style="background:#f43f5e"></span>little room left</div>
+        <div><span class="sw" style="background:#fbbf24"></span>some</div>
+        <div><span class="sw" style="background:#38bdf8"></span>ample</div>
+        <div><span class="sw" style="background:#a78bfa;height:4px"></span>binding reach</div>
+        <div><span class="dot" style="background:#f8fafc"></span>sensor</div>
+      </div>
       <div id="legend-risk" hidden>
         <div><span class="sw" style="background:#334155"></span>lower likelihood</div>
         <div><span class="sw" style="background:#38bdf8"></span>mid</div>
@@ -541,15 +551,15 @@ summary{cursor:pointer;color:var(--accent);font-size:12.5px}
      not enough: a browser refetches the document and happily reuses every script it
      loads, so a changed osp_docs.js can sit behind a fresh osp_sandbox.html. Bump all
      of them together; tools/build_public_demo.py checks they agree. -->
-<script src="data/osp_data.js?v=18"></script>
-<script src="data/osp_swmm.js?v=18"></script>
-<script src="src/model/osp_core.js?v=18"></script>
-<script src="src/model/osp_capacity.js?v=18"></script>
-<script src="src/model/osp_risk.js?v=18"></script>
-<script src="src/docs/osp_docs.js?v=18"></script>
-<script src="src/ui/osp_3d.js?v=18"></script>
-<script src="src/ui/osp_profile.js?v=18"></script>
-<script src="src/ui/osp_ui.js?v=18"></script>
+<script src="data/osp_data.js?v=31"></script>
+<script src="data/osp_swmm.js?v=31"></script>
+<script src="src/model/osp_core.js?v=31"></script>
+<script src="src/model/osp_capacity.js?v=31"></script>
+<script src="src/model/osp_risk.js?v=31"></script>
+<script src="src/docs/osp_docs.js?v=31"></script>
+<script src="src/ui/osp_3d.js?v=31"></script>
+<script src="src/ui/osp_profile.js?v=31"></script>
+<script src="src/ui/osp_ui.js?v=31"></script>
 
 </body>
 </html>

@@ -1,6 +1,6 @@
 {
  "case": {
-  "ii": 0.0,
+  "ii": 0.11,
   "pf": "flat",
   "age": "uniform",
   "bfac": 1.0,
@@ -15,7 +15,7 @@
    "outlet_head_rise_m": 0.0,
    "alarm": [],
    "surcharge": [],
-   "max_depth_rise_m": 0.0
+   "max_depth_rise_m": 0.006324466620412333
   },
   {
    "dwellings": 150,
@@ -23,7 +23,7 @@
    "outlet_head_rise_m": 0.0,
    "alarm": [],
    "surcharge": [],
-   "max_depth_rise_m": 0.0
+   "max_depth_rise_m": 0.01184633902022321
   },
   {
    "dwellings": 390,
@@ -31,7 +31,7 @@
    "outlet_head_rise_m": 0.0,
    "alarm": [],
    "surcharge": [],
-   "max_depth_rise_m": 0.0
+   "max_depth_rise_m": 0.031044934965551274
   },
   {
    "dwellings": 485,
@@ -39,7 +39,7 @@
    "outlet_head_rise_m": 0.0,
    "alarm": [],
    "surcharge": [],
-   "max_depth_rise_m": 0.0
+   "max_depth_rise_m": 0.038477097032301455
   }
  ]
 }

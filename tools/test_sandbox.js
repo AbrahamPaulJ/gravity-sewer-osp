@@ -92,6 +92,87 @@ console.log("repository hygiene");
     }
   });
   check("scripts load in dependency order", misordered, []);
+
+  /* The data files are generated, and tools/format_data.py reads them by pulling
+     the object text out and handing it to a JSON parser. A JS comment inside that
+     object is legal JavaScript, so the page and these tests load it happily, and
+     the formatter dies on it. That is exactly what happened: a stray "// todo"
+     left in an editor was swept into a commit by git add -A and broke the
+     formatter while every other check stayed green. */
+  const generated = tracked.filter(f => f.startsWith("data/") && f.endsWith(".js"));
+  const unparseable = generated.filter(f => {
+    const t = fs.readFileSync(path.join(ROOT, f), "utf8");
+    const at = t.indexOf("window.");
+    if (at < 0) return true;
+    try { JSON.parse(t.slice(t.indexOf("{", at)).trim().replace(/;\s*$/, "")); return false; }
+    catch (e) { return true; }
+  });
+  check("generated data parses as JSON, not just as JS", unparseable, []);
+}
+
+/* config.js turns pages off. Its failure mode is silence: a key that names no tab
+   removes nothing and reports nothing, so the page you meant to hide is still
+   published. These checks tie every key to the markup it is supposed to act on. */
+console.log("page configuration");
+{
+  const fs = require("fs");
+  require(path.join(ROOT, "config.js"));
+  const pages = window.OSP_PAGES;
+  const home = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+
+  check("config.js defines OSP_PAGES", pages && typeof pages === "object", true);
+  check("every page flag is a boolean",
+    Object.keys(pages).filter(k => typeof pages[k] !== "boolean"), []);
+
+  const nav = home.match(/<nav[^>]*id="tabs"[\s\S]*?<\/nav>/);
+  check("index.html has a tab bar to configure", !!nav, true);
+  const tabs = [...nav[0].matchAll(/data-tab="([^"]+)"/g)].map(m => m[1]);
+  check("every configured page names a real tab",
+    Object.keys(pages).filter(k => !tabs.includes(k)), []);
+  check("every configured page has a pane to remove",
+    Object.keys(pages).filter(k => !home.includes(`id="pane-${k}"`)), []);
+
+  /* Overview is the fallback every unknown route lands on, and the overview prose
+     links into the sandbox mid-sentence, so neither is hideable. Listing one here
+     would promise something config.js does not deliver. */
+  check("overview and sandbox are not configurable",
+    ["overview", "sandbox"].filter(k => k in pages), []);
+
+  check("index.html loads config.js with a cache key",
+    /<script src="config\.js\?v=\d+"><\/script>/.test(home), true);
+  check("config.js is read before the tabs are wired",
+    home.indexOf('src="config.js') < home.indexOf("function showTab"), true);
+}
+
+/* An InstancedMesh only compiles the per-instance colour path into its shader if
+   instanceColor exists when the material first compiles. Add the mesh to the scene
+   uncoloured and the first frame compiles without it; every later setColorAt then
+   writes to an attribute the shader never reads, and the tubes render white forever.
+   That is not a crash, a parse error or a failed request, so nothing else here would
+   notice: it is caught by looking at the page, which is how it was found. */
+console.log("instanced colour is set before first compile");
+{
+  const fs = require("fs");
+  ["simulation25/growth_3d.js", "simulation/growth_3d.js"].forEach(rel => {
+    const file = path.join(ROOT, rel);
+    if (!fs.existsSync(file)) return;
+    const src = fs.readFileSync(file, "utf8");
+    /* Two ways to be safe, and both are in use here. Either colour every instance before
+       the mesh reaches the scene (pipeBodies, which are permanent scenery), or add it
+       showing nothing and let the first draw wait until colours are set (sleeves, which
+       start at count 0 because they only appear on a selection). A mesh that is never
+       coloured at all is not in question. */
+    for (const m of src.matchAll(/(\w+)\s*=\s*new THREE\.InstancedMesh/g)) {
+      const name = m[1];
+      const coloured = src.indexOf(`${name}.setColorAt`);
+      if (coloured < 0) continue;
+      const added = src.indexOf(`scene.add(${name})`);
+      if (added < 0) continue;
+      const emptied = src.search(new RegExp(`${name}\\.count\\s*=\\s*0\\s*;`));
+      check(`${rel}: ${name} cannot compile uncoloured`,
+        coloured < added || (emptied > -1 && emptied < added), true);
+    }
+  });
 }
 
 console.log("graph");
@@ -114,6 +195,32 @@ check("reaches rescued by published grade", geo.fromGrade, 3);
 const ladder = [0.05, 0.1, 0.2, 0.4, 0.9].map(l =>
   K.capacityState(g, C, { perNode: l, peakFactor: 1, geo }).summary.nodesSurcharged);
 check("surcharge ladder 0.05 .. 0.9 L/s", ladder, [0, 3, 30, 80, 132]);
+
+console.log("growth headroom");
+{
+  const st = K.capacityState(g, C, { perNode: 0.05, peakFactor: 1, geo });
+  const H = K.growthHeadroom(g, C, st);
+  check("every chamber gets a headroom or an outlet", H.summary.withLimit, 992);
+  check("none already over at the default load", H.summary.underOneLitre, 0);
+
+  // Exactness: superposition says the first tip lands exactly at the headroom.
+  // Pushing just under leaves the network clear, just over tips one reach.
+  const v = [...H.head.keys()].filter(i => isFinite(H.head[i]))
+              .sort((a, b) => H.head[a] - H.head[b])[0];
+  const over = add => {
+    const l = Float64Array.from(st.own); l[v] += add;
+    return K.capacityState(g, C, { loads: l, peakFactor: 1, geo }).summary.edgesOver;
+  };
+  check("tightest site: nothing over just below its headroom", over(H.head[v] * 0.99), 0);
+  check("tightest site: one reach over just above it", over(H.head[v] * 1.01), 1);
+  check("the binding reach surcharges the chamber above it",
+        H.surchargeAt[v], g.edges[H.bind[v]][0]);
+
+  const cov = K.growthCover(g, H);
+  check("growth cover marks fewer chambers than sites", cov.summary.chambers < cov.summary.sites, true);
+  check("weights are a count, so they sum to the site total",
+        Math.round(cov.w.reduce((a, b) => a + b, 0)), cov.summary.sites);
+}
 
 console.log("blockage likelihood");
 const rs = R.likelihood(g, { matCodes: mc, jointCodes: jc, aggregate: "intensity" });
@@ -171,8 +278,9 @@ window.OSPDocs.render({ DATA: D.regions, VALID: D.validation, META: D.meta, CODE
 const all = Object.values(slots).map(s => s.innerHTML).join("");
 check("no undefined or NaN in any pane", /undefined|NaN/.test(all), false);
 check("Part D rendered", all.includes("Part D"), true);
+  check("Part F rendered", all.includes("Part F. Growth headroom"), true);
 const gl = slots["doc-glossary"].innerHTML;
-check("glossary terms", (gl.match(/<dt>/g) || []).length, 33);
+check("glossary terms", (gl.match(/<dt>/g) || []).length, 35);
 check("glossary figures", (gl.match(/<figure class="gl-fig">/g) || []).length, 31);
 check("every figure titled", (gl.match(/<svg /g) || []).length === (gl.match(/<title>/g) || []).length, true);
 
