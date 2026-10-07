@@ -20,7 +20,8 @@ window.GrowthUI = (function () {
                // Growth at one manhole (the grid), or a scenario the reader builds: scn is
                // [{i: chamber index, n: dwellings}], runner whether a local SWMM runner
                // answered (null until asked), scnRuns the SWMM answers, by case and sites.
-               mode: "one", scn: [], runner: null, scnRuns: {}, busy: false };
+               mode: "one", scn: [], runner: null, scnRuns: {}, busy: false,
+               algo: "swmm" };                                 // a Placement.METHODS id
 
   const runs = () => window.GROWTH_RUNS;
   const geom = () => window.GROWTH_GEOM;
@@ -46,8 +47,24 @@ window.GrowthUI = (function () {
 
   /* The sensor set: the first k of the order chosen across ALL cases for the current
      rule and objective. The order is nested, so sensor k+1 is always added to the first k. */
-  const placement = () => runs().sensors[ruleId()][st.obj];
-  const sensorSet = () => placement().order.slice(0, st.k).map(i => nameOf(i));
+  /* The sensors for the selected method. Sim 2.5's own greedy is published by the builder;
+     the sandbox's methods are run here by placement.js, once per method, rule and objective,
+     and every method is scored against the same SWMM runs, so the numbers compare. */
+  let _plCtx = null;
+  const _plCache = {};
+  function placement() {
+    if (st.algo === "swmm" || !window.Placement || !window.OSPCore) return runs().sensors[ruleId()][st.obj];
+    const key = st.algo + "|" + ruleId() + "|" + st.obj;
+    if (!_plCache[key]) {
+      if (!_plCtx) _plCtx = Placement.context(geom(), runs(), OSPCore);
+      _plCache[key] = Placement.place(st.algo, _plCtx, ruleId(), st.obj);
+    }
+    return _plCache[key];
+  }
+  // The k-sensor set. Nested methods add one sensor at a time; two-up-two-down and random
+  // choose afresh at each size, so their k set is stored whole.
+  const chosenAt = (pl, k) => pl.sets ? pl.sets[k - 1] : pl.order.slice(0, k);
+  const sensorSet = () => chosenAt(placement(), st.k).map(i => nameOf(i));
   function shownSensors() { return st.showSensors ? sensorSet() : []; }
 
   /* name -> the manhole's coverage on its own, for the heatmap, or null when it is off. */
@@ -328,7 +345,7 @@ window.GrowthUI = (function () {
     }
 
     // As a sensor, under the selected rule and objective.
-    const h = R.heat[ruleId()], chosen = placement().order.slice(0, st.k).includes(i);
+    const h = R.heat[ruleId()], chosen = chosenAt(placement(), st.k).includes(i);
     // rankOf ranks by the objective the sensor list uses, worst case or average. Say which:
     // shown beside the average, a worst-case rank read as wrong (43% and 9% averages both
     // ranked 285th, tied at 0% worst case).
@@ -461,7 +478,7 @@ window.GrowthUI = (function () {
     const seen = [...out.per].filter(([, v]) => seenBy(v)).sort((a, b) => b[1].rise - a[1].rise);
     const newAlarm = [...out.per].filter(([, v]) => v.alarmNew).length;
     const newSur = [...out.per].filter(([, v]) => v.surNew).length;
-    const chosen = placement().order.slice(0, st.k);
+    const chosen = chosenAt(placement(), st.k);
     const caught = chosen.filter(i => seen.some(([j]) => j === i));
     const source = out.source === "swmm"
       ? '<span class="badge swmm">SWMM</span>Solved in EPA SWMM for ' + esc(caseLabel()) +
@@ -631,7 +648,12 @@ window.GrowthUI = (function () {
     $("#kVal").textContent = String(k);
     document.querySelectorAll("#objKnob button").forEach(b =>
       b.classList.toggle("on", b.dataset.o === st.obj));
-    $("#objNote").textContent = OBJ_NOTE[st.obj].replace("{n}", nCases());
+    const m = window.Placement ? Placement.METHODS.find(x => x[0] === st.algo) : null;
+    $("#algoNote").textContent = m ? m[2] + (st.algo === "swmm" ? "" :
+      " Scored, like every method here, on the SWMM growth runs.") : "";
+    $("#objNote").textContent = st.algo === "swmm" || st.algo === "random"
+      ? OBJ_NOTE[st.obj].replace("{n}", nCases())
+      : "This method does not use the objective; the curve shows both measures, worst case and average.";
     $("#nCases").textContent = nCases();
     renderCurve(pl, k);
     const alarmNote = ruleId() === "alarm"
@@ -642,11 +664,15 @@ window.GrowthUI = (function () {
       "<p><b>" + k + "</b> sensor" + (k === 1 ? "" : "s") + " catch <b>" + pct(pl.worst[k - 1]) +
       "</b> of detectable growth in the worst case and <b>" + pct(pl.mean[k - 1]) +
       "</b> on average (all five growth sizes, " + esc(runs().rules[st.rule].label.toLowerCase()) +
-      ").</p><ol>" + pl.order.slice(0, k).map((m, j) =>
-        "<li><b>" + esc(label(m)) + "</b> <span class=quiet>worst " + pct(pl.worst[j]) +
-        ", average " + pct(pl.mean[j]) + "</span></li>").join("") + "</ol>" + alarmNote +
-      "<p class=quiet>Chosen one at a time, so the set for " + (k + 1) + " is this set plus " +
-      "one. Detectable growth: growth scenarios that at least one manhole sees.</p>";
+      ").</p><ol>" + chosenAt(pl, k).map((m, j) =>
+        "<li><b>" + esc(label(m)) + "</b>" + (pl.nested === false ? "" :
+          " <span class=quiet>worst " + pct(pl.worst[j]) + ", average " + pct(pl.mean[j]) +
+          "</span>") + "</li>").join("") + "</ol>" + alarmNote +
+      "<p class=quiet>" + (pl.nested === false
+        ? "Chosen afresh for each number of sensors, so the set for " + (k + 1) +
+          " need not contain this one."
+        : "Chosen one at a time, so the set for " + (k + 1) + " is this set plus one.") +
+      " Detectable growth: growth scenarios that at least one manhole sees.</p>";
   }
 
   /* Worst case and average against the number of sensors. One axis (percent), two series,
@@ -836,6 +862,14 @@ window.GrowthUI = (function () {
       buildKnobs();
       const order = buildList();
       wireScenario(order);
+      if (window.Placement && window.OSPCore) {
+        $("#algo").innerHTML = Placement.METHODS.map(([id, lab]) =>
+          "<option value=" + JSON.stringify(id) + ">" + esc(lab) + "</option>").join("");
+        $("#algo").value = st.algo;
+        $("#algo").onchange = () => { st.algo = $("#algo").value; repaint(); };
+      } else {
+        $("#algo").hidden = true;           // the page still works on its published greedy
+      }
       $("#scale").textContent = geom().nPipes + " pipes, " + geom().nChambers +
         " manholes, " + (geom().nHouses || geom().baseDwellings) + " connected properties" +
         ", plus " + geom().nodes.filter(n => n.kind !== "chamber").length +

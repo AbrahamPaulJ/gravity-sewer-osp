@@ -31,7 +31,13 @@ TEMPLATE = os.path.join(ROOT, "simulation25")
 sys.path.insert(0, SIM)
 
 # growth_est.js: the in-page estimate for a growth scenario, used where no SWMM runner is.
-PAGE_FILES = ["index.html", "growth_ui.js", "growth_3d.js", "growth_est.js"]
+# placement.js: the sandbox's algorithms on this network, scored on the SWMM runs.
+PAGE_FILES = ["index.html", "growth_ui.js", "growth_3d.js", "growth_est.js", "placement.js"]
+# The sandbox's own placement code, so the page can run its algorithms. Copied in from
+# src/model at every build rather than kept by hand: the page must stand alone when its folder
+# is served as a site root, where ../src does not exist, and because --check compares the
+# published copy byte for byte, it cannot drift from the original without failing.
+VENDORED = {"osp_core.js": os.path.join(ROOT, "src", "model", "osp_core.js")}
 MAX_SENSORS = 10
 # Case names and notes come from the same cases.json the grid ran from, so what the page
 # calls a case can never drift from what was actually solved.
@@ -619,7 +625,8 @@ def build_runs():
 
 
 def compare_output(output):
-    expected = PAGE_FILES + [".nojekyll", "data/catchment.js", "data/growth.js", "data/index.js"]
+    expected = PAGE_FILES + list(VENDORED) + [".nojekyll", "data/catchment.js", "data/growth.js",
+                                             "data/index.js"]
     different = []
     for relative in expected:
         built = os.path.join(output, *relative.split("/"))
@@ -662,12 +669,12 @@ def publish(output, runs):
     Only data/catchment.js and data/growth.js are copied. The HTML and UI modules are the
     templates this build reads, so they already are what is published."""
     changed = []
-    for name in ("catchment.js", "growth.js"):
-        src = os.path.join(output, "data", name)
-        dst = os.path.join(TEMPLATE, "data", name)
+    for rel in ["data/catchment.js", "data/growth.js"] + list(VENDORED):
+        src = os.path.join(output, *rel.split("/"))
+        dst = os.path.join(TEMPLATE, *rel.split("/"))
         if not os.path.exists(dst) or not filecmp.cmp(src, dst, shallow=False):
             shutil.copyfile(src, dst)
-            changed.append("data/" + name)
+            changed.append(rel)
     if not changed:
         print("\nPublished page already matches this build; nothing copied, keys unchanged.")
         return
@@ -706,6 +713,9 @@ def main():
     }
     for name in PAGE_FILES:
         shutil.copyfile(os.path.join(TEMPLATE, name), os.path.join(output, name))
+        sizes[name] = os.path.getsize(os.path.join(output, name))
+    for name, src in VENDORED.items():
+        shutil.copyfile(src, os.path.join(output, name))
         sizes[name] = os.path.getsize(os.path.join(output, name))
     shutil.copyfile(os.path.join(TEMPLATE, "data", "index.js"),
                     os.path.join(data_dir, "index.js"))

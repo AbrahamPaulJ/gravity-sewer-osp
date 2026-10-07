@@ -189,6 +189,47 @@ console.log("growth-scenario estimate (simulation25/growth_est.js)");
   }
 }
 
+/* The Sim 2.5 page's placement menu: the sandbox's algorithms run on that network and scored
+   on the SWMM growth runs. A score only compares if it means what the published one means,
+   so the scoring must reproduce the builder's own figures for its greedy order; and the
+   page's copy of osp_core.js must be the sandbox's, not a fork. */
+console.log("placement methods on Sim 2.5 (simulation25/placement.js)");
+{
+  const fs = require("fs");
+  const vend = path.join(ROOT, "simulation25/osp_core.js");
+  if (fs.existsSync(vend))
+    check("the page's osp_core.js is the sandbox's, byte for byte",
+      fs.readFileSync(vend, "utf8") === fs.readFileSync(path.join(ROOT, "src/model/osp_core.js"), "utf8"), true);
+  const data = f => path.join(ROOT, "simulation25/data", f);
+  if (fs.existsSync(data("growth.js"))) {
+    const saved = global.window;
+    global.window = {};
+    for (const f of ["catchment.js", "growth.js"]) {
+      delete require.cache[require.resolve(data(f))];
+      require(data(f));
+    }
+    const g = window.GROWTH_GEOM, R = window.GROWTH_RUNS;
+    global.window = saved;
+    const PL = require(path.join(ROOT, "simulation25/placement.js"));
+    let diff = 0;
+    for (const rule of R.rules.map(r => r.id)) for (const obj of ["worst", "mean"]) {
+      const pub = R.sensors[rule][obj], pool = PL.scenarios(R, rule);
+      for (let k = 1; k <= 10; k++) {
+        const f = PL.cover(pool, pub.order.slice(0, k));
+        diff = Math.max(diff, Math.abs(Math.min(...f) - pub.worst[k - 1]),
+          Math.abs(f.reduce((a, b) => a + b, 0) / f.length - pub.mean[k - 1]));
+      }
+    }
+    check("its scoring reproduces the builder's published coverage", diff < 1e-4, true);
+    const ctx = PL.context(g, R, C);
+    const bad = PL.METHODS.slice(1).filter(([id]) => {
+      const p = PL.place(id, ctx, "r25", "worst");
+      return !p.sets.every((s, k) => s.length === k + 1 && s.every(i => i >= 0 && i < R.chambers.length));
+    }).map(([id]) => id);
+    check("every method gives k manholes for k = 1..10", bad, []);
+  }
+}
+
 console.log("instanced colour is set before first compile");
 {
   const fs = require("fs");
