@@ -26,7 +26,8 @@ window.Growth3D = (function () {
   let scaleLabels = [];             // the height ruler's tick labels, projected like the rest
   let pipeLines = null, pipeCard = null;
   let stationMeshes = [], risingLines = [];          // pump stations and their rising mains
-  let pumpsOn = false, pumpLabels = [], pumpTubes = null, pumpSleeves = null;   // the chip          // pipes as pickable lines; the details card
+  let pumpsOn = false, pumpLabels = [], pumpTubes = null, pumpSleeves = null;   // the chip
+  let scnMarks = [];                                 // a growth scenario's sites: ring + label          // pipes as pickable lines; the details card
   let houseJ = null, latHi = null, latUp = null;   // where each home joins its main; the laterals drawn
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
   const clock = { t0: performance.now() };
@@ -142,7 +143,8 @@ window.Growth3D = (function () {
           const sc = 2.0 + 0.45 * (0.5 + 0.5 * beat);    // in phase with the linked homes
           stationMeshes.forEach(m => m.scale.setScalar(sc));
         }
-        [outletLabel, siteLabel, ...scaleLabels, ...(pumpsOn ? pumpLabels : [])].forEach(lbl => {
+        [outletLabel, siteLabel, ...scaleLabels, ...(pumpsOn ? pumpLabels : []),
+         ...scnMarks.map(m => m.label)].forEach(lbl => {
           if (!lbl) return;
           const v = lbl.at.clone().project(camera);
           const el = renderer.domElement;
@@ -708,6 +710,30 @@ window.Growth3D = (function () {
     }
     return true;
   }
+  /* The sites of a growth scenario: a cyan ring at each, the colour the legend gives to
+     "where the new dwellings connect", sized a little by its dwellings, and a "+n" label.
+     Replaces whatever was there; an empty list clears them. */
+  function setScenario(items) {
+    if (!built) return;
+    scnMarks.forEach(m => { scene.remove(m.ring); m.ring.geometry.dispose(); m.label.el.remove(); });
+    scnMarks = [];
+    const g = G();
+    (items || []).forEach(({ name, n }) => {
+      const nd = g.nodes.find(x => x.name === name);
+      if (!nd) return;
+      const at = P(nd.x, nd.y, nd.inv);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(15 + Math.min(16, 1.2 * Math.sqrt(n)), 2.4, 8, 36),
+        new THREE.MeshBasicMaterial({ color: COL.site }));
+      ring.rotation.x = Math.PI / 2;
+      ring.position.copy(at);
+      scene.add(ring);
+      const el = document.createElement("div");
+      el.className = "lbl scn";
+      el.textContent = "+" + n;
+      labelLayer.appendChild(el);
+      scnMarks.push({ ring, label: { el, at } });
+    });
+  }
   function closePipe() { if (pipeCard) pipeCard.hidden = true; }
   function cardAt(html, cx, cy) {
     const host = renderer.domElement.parentElement;
@@ -1097,6 +1123,7 @@ window.Growth3D = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, frame, resize, heatHex,
+  return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, setScenario,
+           frame, resize, heatHex,
            ZEXAG };
 })();

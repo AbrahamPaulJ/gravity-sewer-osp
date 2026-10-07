@@ -16,7 +16,12 @@ window.GrowthUI = (function () {
   // k and obj drive the sensor set: k sensors chosen once across all cases, for the best
   // worst case or the best average. showHeat colours the manholes by their own coverage.
   const st = { site: 0, showSensors: false, showHeat: false, k: 3, obj: "worst", ii: 1, add: 3, rule: 2,
-               hover: null };                                  // a manhole NAME, or null
+               hover: null,                                    // a manhole NAME, or null
+               // Growth at one manhole (the grid), or a scenario the reader builds: scn is
+               // [{i: chamber index, n: dwellings}], runner whether a local SWMM runner
+               // answered (null until asked), scnRuns the SWMM answers, by case and sites.
+               mode: "one", scn: [], runner: null, scnRuns: {}, busy: false,
+               algo: "swmm" };                                 // a Placement.METHODS id
 
   const runs = () => window.GROWTH_RUNS;
   const geom = () => window.GROWTH_GEOM;
@@ -42,8 +47,24 @@ window.GrowthUI = (function () {
 
   /* The sensor set: the first k of the order chosen across ALL cases for the current
      rule and objective. The order is nested, so sensor k+1 is always added to the first k. */
-  const placement = () => runs().sensors[ruleId()][st.obj];
-  const sensorSet = () => placement().order.slice(0, st.k).map(i => nameOf(i));
+  /* The sensors for the selected method. Sim 2.5's own greedy is published by the builder;
+     the sandbox's methods are run here by placement.js, once per method, rule and objective,
+     and every method is scored against the same SWMM runs, so the numbers compare. */
+  let _plCtx = null;
+  const _plCache = {};
+  function placement() {
+    if (st.algo === "swmm" || !window.Placement || !window.OSPCore) return runs().sensors[ruleId()][st.obj];
+    const key = st.algo + "|" + ruleId() + "|" + st.obj;
+    if (!_plCache[key]) {
+      if (!_plCtx) _plCtx = Placement.context(geom(), runs(), OSPCore);
+      _plCache[key] = Placement.place(st.algo, _plCtx, ruleId(), st.obj);
+    }
+    return _plCache[key];
+  }
+  // The k-sensor set. Nested methods add one sensor at a time; two-up-two-down and random
+  // choose afresh at each size, so their k set is stored whole.
+  const chosenAt = (pl, k) => pl.sets ? pl.sets[k - 1] : pl.order.slice(0, k);
+  const sensorSet = () => chosenAt(placement(), st.k).map(i => nameOf(i));
   function shownSensors() { return st.showSensors ? sensorSet() : []; }
 
   /* name -> the manhole's coverage on its own, for the heatmap, or null when it is off. */
@@ -92,6 +113,8 @@ window.GrowthUI = (function () {
   }
 
   function repaint() {
+    if (st.mode === "scn") return repaintScenario();
+    Growth3D.setScenario([]);
     const c = cell(), row = rowFor(c, st.site);
     const byIdx = stateFor(c, row);
     // Growth3D works in chamber NAMES, so translate once, here.
@@ -236,6 +259,11 @@ window.GrowthUI = (function () {
       b.classList.toggle("on", +b.dataset.i === st.add));
     document.querySelectorAll("#ruleKnob button").forEach(b =>
       b.classList.toggle("on", +b.dataset.i === st.rule));
+    document.querySelectorAll("#modeKnob button").forEach(b =>
+      b.classList.toggle("on", b.dataset.m === st.mode));
+    // A scenario is only offered where the page carries what it needs: the per-case loads
+    // the estimate starts from, which a whole-area build publishes.
+    $("#modeKnob").hidden = !R.baseLoads;
     $("#iiNote").textContent = R.cases[st.ii].note;
     $("#ruleNote").textContent = R.rules[st.rule].note;
   }
@@ -265,6 +293,16 @@ window.GrowthUI = (function () {
       }
     }
     return { chambers, metres };
+  }
+  // In scenario mode, what the scenario does to this manhole, and where the answer came from.
+  function scnRow(i) {
+    if (st.mode !== "scn") return "";
+    const out = scnOutcome(), v = out && out.per.get(i);
+    if (!v) return "";
+    const tag = out.source === "swmm" ? "SWMM" : "estimate";
+    return row2("This scenario", (v.rise >= 1 ? "<b>+" + Math.round(v.rise) + " mm</b>" : "no rise") +
+      (v.surNew ? ', <b class="bad">surcharges</b>' : v.alarmNew ? ', <b class="bad">passes the alarm</b>' : "") +
+      ' <span class="quiet">(' + tag + ")</span>");
   }
   function renderManhole() {
     const box = $("#mhFacts");
@@ -307,7 +345,7 @@ window.GrowthUI = (function () {
     }
 
     // As a sensor, under the selected rule and objective.
-    const h = R.heat[ruleId()], chosen = placement().order.slice(0, st.k).includes(i);
+    const h = R.heat[ruleId()], chosen = chosenAt(placement(), st.k).includes(i);
     // rankOf ranks by the objective the sensor list uses, worst case or average. Say which:
     // shown beside the average, a worst-case rank read as wrong (43% and 9% averages both
     // ranked 285th, tied at 0% worst case).
@@ -320,6 +358,7 @@ window.GrowthUI = (function () {
       row2("Asset", "MH " + n.mh + (n.yr ? ", built " + n.yr : ", year not recorded")) +
       (water ? row2("Water before growth", water) : "") +
       (head ? row2("Headroom", head) : "") +
+      scnRow(i) +
       row2("Pipe floor / ground", inv.toFixed(2) + " / " + (inv + n.depth).toFixed(2) +
         ' m <span class="quiet">(' + n.depth.toFixed(1) + " m deep)</span>") +
       row2("Pipes", pipes) +
@@ -330,15 +369,215 @@ window.GrowthUI = (function () {
       ". Manhole positions are schematic in the council record, not surveyed.</p>";
   }
 
-  function renderPanel(c, row) {
-    const R = runs();
-    const add = R.growthLevels[st.add];
-    const tipped = row ? row.tip : [];
-    const cs = R.cases[st.ii];
+  // Depends on the case and rule only, so it is written in either mode, and with or without
+  // a manhole selected; with none selected it is the only account of the case on the panel.
+  /* ------------------------------------------------------------ scenario */
+  /* A growth scenario: new dwellings at several manholes, each its own amount. The page
+     cannot run SWMM, so the answer comes from one of two places and always says which:
 
+       SWMM      sim25_serve.py, run locally, solves it with the grid's own function and
+                 model; exact, about 25 s. Cached per case and set of sites.
+       Estimate  growth_est.js, instant: exact flows plus a backwater pass. Checked against
+                 the grid's 8,200 SWMM runs it is close in dry weather, finds almost every
+                 manhole SWMM shows rising in the wet cases but also flags up to 4 in 10 that
+                 do not, and is unreliable in Severe. Shown only until SWMM has answered. */
+  const EST_NOTE = "an instant estimate, not SWMM. Checked against the 8,200 grid runs: " +
+    "close to SWMM in dry weather; in the wet cases it finds almost every manhole SWMM shows " +
+    "rising, but up to 4 in 10 it flags do not rise; unreliable in Severe.";
+  const DEFAULT_DWELLINGS = 50;
+  const threshold = () => graded() ? +ruleId().slice(1) : null;
+  const scnKey = () => runs().cases[st.ii].tag + "|" +
+    st.scn.map(s => runs().manholeIds[s.i] + ":" + s.n).sort().join(",");
+  const seenBy = v => graded() ? v.rise >= threshold() : v.alarmNew;
+
+  let _P = null, _geoIdx = null;
+  function estimateScn() {
+    const g = geom(), R = runs();
+    if (!window.GrowthEst || !R.baseLoads) return null;
+    if (!_P) {
+      _P = GrowthEst.prepare(g);
+      _geoIdx = {};
+      g.nodes.forEach((n, k) => { _geoIdx[n.name] = k; });
+    }
+    const sites = st.scn.map(x => [_geoIdx[nameOf(x.i)], x.n]).filter(x => x[0] != null);
+    const r = GrowthEst.scenario(_P, R.baseLoads[st.ii], sites, R.lpsPerDwelling[st.ii]);
+    const per = new Map();
+    R.chambers.forEach((nm, i) => {
+      const k = _geoIdx[nm], rise = r.rise[k];
+      if (k == null || isNaN(rise)) return;
+      // The alarm is judged from the published SWMM baseline plus the estimated rise, so
+      // the estimate and SWMM agree on which manholes start over it.
+      const b0 = R.baseDepthMm ? R.baseDepthMm[st.ii][i] : null;
+      per.set(i, { rise, alarmNew: b0 != null && b0 < 150 && b0 + rise >= 150,
+                   surNew: !r.base.sur[k] && !!r.now.sur[k] });
+    });
+    return { source: "est", per, addedLps: r.addedLps };
+  }
+  function fromRunner(res) {
+    const per = new Map();
+    runs().manholeIds.forEach((mh, i) => {
+      const v = res.manholes[String(mh)];
+      if (v) per.set(i, { rise: v.rise_mm, alarmNew: v.alarm && !v.alarm_before,
+                          surNew: v.surcharged && !v.surcharged_before });
+    });
+    return { source: "swmm", per, addedLps: res.added_lps, seconds: res.seconds,
+             err: res.continuity_error_pct };
+  }
+  function scnOutcome() {
+    if (!st.scn.length) return null;
+    const hit = st.scnRuns[scnKey()];
+    return hit ? fromRunner(hit) : estimateScn();
+  }
+
+  function repaintScenario() {
+    const R = runs(), c = cell(), out = scnOutcome();
+    const named = {};
+    if (!graded()) R.baseOver[st.ii].forEach(i => { named[nameOf(i)] = "was"; });
+    if (out) for (const [i, v] of out.per) if (seenBy(v)) named[nameOf(i)] = "tip";
+    const sensors = shownSensors();
+    Growth3D.paint(named, null, sensors, heatValues());
+    Growth3D.setScenario(st.scn.map(x => ({ name: nameOf(x.i), n: x.n })));
+    renderHomes(sensors);
     renderManhole();
-    // Depends on the case and rule only, so it is written whether or not a manhole is
-    // selected; with none selected it is the only account of the case on the panel.
+    renderBaseNote(c);
+    renderScnList();
+    renderScnResult(out);
+    renderSensors();
+    $("#heatKey").hidden = !st.showHeat;
+    $("#heatWhich").textContent = (st.obj === "worst" ? "worst of the " : "average of the ") +
+      nCases() + " cases, " + runs().rules[st.rule].label.toLowerCase();
+    renderKnobs();
+  }
+
+  function renderScnList() {
+    const total = st.scn.reduce((a, x) => a + x.n, 0);
+    $("#scnList").innerHTML = st.scn.map((x, k) =>
+      '<div class="srow"><span class="nm" title="' + esc(label(x.i)) + '">' + esc(label(x.i)) +
+      '</span><input type="number" min="1" max="5000" step="1" value="' + x.n +
+      '" data-k="' + k + '" aria-label="dwellings"> <span class="quiet">dw</span>' +
+      '<button class="x" data-k="' + k + '" title="Remove">×</button></div>').join("") +
+      (st.scn.length ? '<div class="tot">' + total + " dwellings at " + st.scn.length +
+        " manhole" + (st.scn.length === 1 ? "" : "s") + "</div>" : "");
+    const solved = !!st.scnRuns[scnKey()];
+    const run = $("#scnRun");
+    run.disabled = st.busy || !st.scn.length || solved || st.runner !== true;
+    run.textContent = st.busy ? "Solving…" : solved ? "Solved in SWMM" : "Run in SWMM";
+    run.title = st.runner === true ? "Solve this scenario in EPA SWMM (about 25 s)"
+      : "Needs the local SWMM runner: simulation_src/sim25_serve.py";
+    $("#scnClear").disabled = !st.scn.length || st.busy;
+  }
+
+  function renderScnResult(out) {
+    const R = runs();
+    if (!out) {
+      $("#siteFacts").innerHTML = '<p class="quiet">No manholes in the scenario yet. Click a ' +
+        "manhole on the map and add it, or add one by number.</p>";
+      $("#tipList").innerHTML = "";
+      return;
+    }
+    const seen = [...out.per].filter(([, v]) => seenBy(v)).sort((a, b) => b[1].rise - a[1].rise);
+    const newAlarm = [...out.per].filter(([, v]) => v.alarmNew).length;
+    const newSur = [...out.per].filter(([, v]) => v.surNew).length;
+    const chosen = chosenAt(placement(), st.k);
+    const caught = chosen.filter(i => seen.some(([j]) => j === i));
+    const source = out.source === "swmm"
+      ? '<span class="badge swmm">SWMM</span>Solved in EPA SWMM for ' + esc(caseLabel()) +
+        " in " + out.seconds + " s (continuity " + out.err + "%)."
+      : '<span class="badge est">Estimate</span>' + EST_NOTE +
+        (st.runner === true ? " Press Run in SWMM for the real answer."
+          : " For the real answer, run the site with simulation_src/sim25_serve.py.");
+    $("#siteFacts").innerHTML = '<p class="quiet">' + source + "</p>" +
+      row2("Adding", "<b>" + st.scn.reduce((a, x) => a + x.n, 0) + "</b> dwellings, " +
+        out.addedLps.toFixed(2) + " L/s") +
+      row2("Manholes that see it", seen.length ? '<b class="bad">' + seen.length + "</b>" : "none") +
+      row2("Newly over the alarm", newAlarm ? '<b class="bad">' + newAlarm + "</b>" : "none") +
+      row2("Newly surcharged", newSur ? '<b class="bad">' + newSur + "</b>" : "none") +
+      row2("The " + st.k + " chosen sensors", caught.length
+        ? "<b>" + caught.length + "</b> see it (" + caught.map(i => "MH " + R.manholeIds[i]).join(", ") + ")"
+        : "none of them see it");
+    $("#tipList").innerHTML = "<h4>Manholes that see this scenario</h4>" + (seen.length
+      ? "<ul>" + seen.slice(0, 40).map(([i, v]) => "<li>MH " + R.manholeIds[i] +
+          ' <span class="quiet">+' + Math.round(v.rise) + " mm</span></li>").join("") + "</ul>" +
+        (seen.length > 40 ? '<p class="quiet">and ' + (seen.length - 40) + " more</p>" : "")
+      : '<p class="quiet">No manhole passes ' + esc(runs().rules[st.rule].label.toLowerCase()) +
+        " in this case.</p>");
+  }
+
+  function scnStatus(msg) { $("#scnStatus").textContent = msg || ""; }
+  function addToScn(i) {
+    if (i == null) return scnStatus("Click a manhole on the map first, then add it.");
+    if (st.scn.some(x => x.i === i)) return scnStatus("MH " + runs().manholeIds[i] + " is already in the scenario.");
+    if (st.scn.length >= 60) return scnStatus("A scenario takes at most 60 manholes.");
+    st.scn.push({ i, n: DEFAULT_DWELLINGS });
+    scnStatus("");
+    repaint();
+  }
+  async function runScn() {
+    if (!st.scn.length || st.busy) return;
+    if (st.runner !== true) return scnStatus("No SWMM runner here. Locally, start " +
+      "simulation_src/sim25_serve.py and reload; the public page shows the estimate only.");
+    const key = scnKey(), R = runs(), t0 = Date.now();
+    st.busy = true;
+    renderScnList();
+    const tick = setInterval(() => scnStatus("Solving in SWMM, " +
+      Math.round((Date.now() - t0) / 1000) + " s (about 25 s)…"), 500);
+    try {
+      const res = await fetch("/api/sim25/scenario", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ case: R.cases[st.ii].tag,
+                               sites: st.scn.map(x => [R.manholeIds[x.i], x.n]) }) });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || res.status);
+      st.scnRuns[key] = j;
+      scnStatus("");
+    } catch (e) {
+      scnStatus("The SWMM run failed: " + e.message);
+    } finally {
+      clearInterval(tick);
+      st.busy = false;
+      repaint();
+    }
+  }
+  function wireScenario(order) {
+    $("#modeKnob").onclick = e => {
+      const b = e.target.closest("button"); if (!b) return;
+      st.mode = b.dataset.m;
+      $("#oneBox").hidden = st.mode !== "one";
+      $("#scnBox").hidden = st.mode !== "scn";
+      repaint();
+    };
+    $("#scnAddSel").onclick = () => addToScn(st.site);
+    $("#scnAddPick").innerHTML = '<option value="">+ Add by number…</option>' +
+      order.map(i => "<option value=" + JSON.stringify(String(i)) + ">" + esc(label(i)) + "</option>").join("");
+    $("#scnAddPick").onchange = () => {
+      const v = $("#scnAddPick").value;
+      $("#scnAddPick").value = "";
+      if (v !== "") addToScn(+v);
+    };
+    $("#scnList").onchange = e => {
+      const k = +e.target.dataset.k;
+      if (e.target.tagName !== "INPUT" || !st.scn[k]) return;
+      st.scn[k].n = Math.max(1, Math.min(5000, Math.round(+e.target.value) || 1));
+      repaint();
+    };
+    $("#scnList").onclick = e => {
+      const b = e.target.closest("button.x"); if (!b) return;
+      st.scn.splice(+b.dataset.k, 1);
+      repaint();
+    };
+    $("#scnRun").onclick = runScn;
+    $("#scnClear").onclick = () => { st.scn = []; scnStatus(""); repaint(); };
+    // Is a local SWMM runner serving this page? On the public site there is none, and the
+    // request fails, which is the answer.
+    fetch("/api/sim25/ping", { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { st.runner = !!(j && j.ok && runs().cases.every(c => j.cases.includes(c.tag))); })
+      .catch(() => { st.runner = false; })
+      .finally(() => { if (st.mode === "scn") renderScnList(); });
+  }
+
+  function renderBaseNote(c) {
+    const R = runs();
     $("#baseNote").innerHTML = graded()
       ? "Graded rule: every manhole is judged against its own level before the growth, so " +
         "nothing counts as already triggered."
@@ -347,6 +586,16 @@ window.GrowthUI = (function () {
           "over the alarm in this case <b>before any houses are added</b>. They are amber and " +
           "cannot report the growth."
         : "No manhole is over the alarm before growth in this case.");
+  }
+
+  function renderPanel(c, row) {
+    const R = runs();
+    const add = R.growthLevels[st.add];
+    const tipped = row ? row.tip : [];
+    const cs = R.cases[st.ii];
+
+    renderManhole();
+    renderBaseNote(c);
     if (st.site == null) {
       $("#siteFacts").innerHTML = '<p class="quiet">No manhole selected, so no growth is ' +
         "placed. Click a manhole on the map, or choose one above.</p>";
@@ -399,7 +648,12 @@ window.GrowthUI = (function () {
     $("#kVal").textContent = String(k);
     document.querySelectorAll("#objKnob button").forEach(b =>
       b.classList.toggle("on", b.dataset.o === st.obj));
-    $("#objNote").textContent = OBJ_NOTE[st.obj].replace("{n}", nCases());
+    const m = window.Placement ? Placement.METHODS.find(x => x[0] === st.algo) : null;
+    $("#algoNote").textContent = m ? m[2] + (st.algo === "swmm" ? "" :
+      " Scored, like every method here, on the SWMM growth runs.") : "";
+    $("#objNote").textContent = st.algo === "swmm" || st.algo === "random"
+      ? OBJ_NOTE[st.obj].replace("{n}", nCases())
+      : "This method does not use the objective; the curve shows both measures, worst case and average.";
     $("#nCases").textContent = nCases();
     renderCurve(pl, k);
     const alarmNote = ruleId() === "alarm"
@@ -410,11 +664,15 @@ window.GrowthUI = (function () {
       "<p><b>" + k + "</b> sensor" + (k === 1 ? "" : "s") + " catch <b>" + pct(pl.worst[k - 1]) +
       "</b> of detectable growth in the worst case and <b>" + pct(pl.mean[k - 1]) +
       "</b> on average (all five growth sizes, " + esc(runs().rules[st.rule].label.toLowerCase()) +
-      ").</p><ol>" + pl.order.slice(0, k).map((m, j) =>
-        "<li><b>" + esc(label(m)) + "</b> <span class=quiet>worst " + pct(pl.worst[j]) +
-        ", average " + pct(pl.mean[j]) + "</span></li>").join("") + "</ol>" + alarmNote +
-      "<p class=quiet>Chosen one at a time, so the set for " + (k + 1) + " is this set plus " +
-      "one. Detectable growth: growth scenarios that at least one manhole sees.</p>";
+      ").</p><ol>" + chosenAt(pl, k).map((m, j) =>
+        "<li><b>" + esc(label(m)) + "</b>" + (pl.nested === false ? "" :
+          " <span class=quiet>worst " + pct(pl.worst[j]) + ", average " + pct(pl.mean[j]) +
+          "</span>") + "</li>").join("") + "</ol>" + alarmNote +
+      "<p class=quiet>" + (pl.nested === false
+        ? "Chosen afresh for each number of sensors, so the set for " + (k + 1) +
+          " need not contain this one."
+        : "Chosen one at a time, so the set for " + (k + 1) + " is this set plus one.") +
+      " Detectable growth: growth scenarios that at least one manhole sees.</p>";
   }
 
   /* Worst case and average against the number of sensors. One axis (percent), two series,
@@ -603,6 +861,15 @@ window.GrowthUI = (function () {
     }).then(() => {
       buildKnobs();
       const order = buildList();
+      wireScenario(order);
+      if (window.Placement && window.OSPCore) {
+        $("#algo").innerHTML = Placement.METHODS.map(([id, lab]) =>
+          "<option value=" + JSON.stringify(id) + ">" + esc(lab) + "</option>").join("");
+        $("#algo").value = st.algo;
+        $("#algo").onchange = () => { st.algo = $("#algo").value; repaint(); };
+      } else {
+        $("#algo").hidden = true;           // the page still works on its published greedy
+      }
       $("#scale").textContent = geom().nPipes + " pipes, " + geom().nChambers +
         " manholes, " + (geom().nHouses || geom().baseDwellings) + " connected properties" +
         ", plus " + geom().nodes.filter(n => n.kind !== "chamber").length +

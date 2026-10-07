@@ -132,6 +132,22 @@ nav button.info:hover{background:var(--accent); color:#06131f}
    to) the outlet does not overlap the outlet's own fixed label. */
 .labels .lbl.site{color:#7dd8ff; transform:translate(-50%, 42%)}
 .labels .lbl.pump{color:#e3b341; transform:translate(-50%,-230%)}
+.labels .lbl.scn{color:#00d4ff; transform:translate(-50%,-200%)}
+/* The scenario builder: one row per manhole, its dwellings editable in place. */
+#scnBox[hidden],#oneBox[hidden]{display:none}
+#scnList .srow{display:flex; align-items:center; gap:6px; padding:4px 0; border-top:1px solid var(--line)}
+#scnList .srow .nm{flex:1; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+#scnList .srow input{width:72px; padding:3px 5px; background:var(--bg); color:var(--ink);
+  border:1px solid var(--line); border-radius:4px; font:inherit; font-size:12.5px}
+#scnList .srow .x{background:none; border:0; color:var(--faint); cursor:pointer; font-size:16px}
+#scnList .srow .x:hover{color:var(--ink)}
+#scnList .tot{font-size:12px; color:var(--dim); padding-top:5px; border-top:1px solid var(--line)}
+.scnAdd,.scnRun{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap}
+.scnAdd select{flex:1; min-width:0}
+.badge{display:inline-block; font-size:10.5px; letter-spacing:.04em; text-transform:uppercase;
+  padding:1px 7px; border-radius:99px; margin-right:6px; vertical-align:1px}
+.badge.swmm{background:#1f3d2a; color:#3fb950; border:1px solid #2ea04366}
+.badge.est{background:#3d2f12; color:#e3b341; border:1px solid #e3b34166}
 /* The height ruler: beside its tick, not above it, and quieter than anything the page is
    about, so it is there to read off without competing with the pipes. */
 .labels .lbl.scale{color:#8b949e; font-weight:500; font-size:10.5px; transform:translate(6px,-50%)}
@@ -266,21 +282,49 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   <div class="knob" id="iiKnob"></div>
   <div class="quiet" id="iiNote"></div>
 
-  <label class="fld">New dwellings added</label>
-  <div class="knob" id="addKnob"></div>
-
   <label class="fld">A sensor sees growth when</label>
   <div class="knob" id="ruleKnob"></div>
   <div class="quiet" id="ruleNote"></div>
 
-  <label class="fld" for="site">Connected at</label>
-  <select id="site"></select>
+  <!-- Growth either at one manhole, read from the grid the overnight runs solved, or as a
+       scenario the reader builds: several manholes, each with its own dwellings. -->
+  <label class="fld">Growth</label>
+  <div class="knob" id="modeKnob">
+    <button data-m="one">At one manhole</button>
+    <button data-m="scn">Your scenario</button>
+  </div>
+
+  <div id="oneBox">
+    <label class="fld">New dwellings added</label>
+    <div class="knob" id="addKnob"></div>
+
+    <label class="fld" for="site">Connected at</label>
+    <select id="site"></select>
+  </div>
+
+  <div id="scnBox" hidden>
+    <p class="quiet">New dwellings at several manholes at once. Click a manhole on the map, then
+    add it; or add one by number.</p>
+    <div id="scnList"></div>
+    <div class="scnAdd">
+      <button id="scnAddSel">+ Add the selected manhole</button>
+      <select id="scnAddPick"></select>
+    </div>
+    <div class="scnRun">
+      <button id="scnRun" class="primary">Run in SWMM</button>
+      <button id="scnClear">Clear</button>
+    </div>
+    <div id="scnStatus" class="quiet"></div>
+  </div>
 
   <div id="siteFacts"></div>
   <div id="tipList"></div>
   <div id="baseNote"></div>
   <div id="sensorBox">
     <h4>Sensors, chosen once across all <span id="nCases">12</span> cases</h4>
+    <label class="fld" for="algo">Placement method</label>
+    <select id="algo"></select>
+    <div class="quiet" id="algoNote"></div>
     <label class="fld" for="kRange">Number of sensors: <b id="kVal"></b></label>
     <input type="range" id="kRange" min="1" max="10" step="1">
     <div class="knob" id="objKnob">
@@ -370,11 +414,14 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=48"></script>
-<script src="data/growth.js?v=48"></script>
-<script src="data/index.js?v=48"></script>
-<script src="growth_3d.js?v=48"></script>
-<script src="growth_ui.js?v=48"></script>
+<script src="data/catchment.js?v=50"></script>
+<script src="data/growth.js?v=50"></script>
+<script src="data/index.js?v=50"></script>
+<script src="growth_3d.js?v=50"></script>
+<script src="osp_core.js?v=50"></script>
+<script src="placement.js?v=50"></script>
+<script src="growth_est.js?v=50"></script>
+<script src="growth_ui.js?v=50"></script>
 <script type="module">
   GrowthUI.init();
 </script>
