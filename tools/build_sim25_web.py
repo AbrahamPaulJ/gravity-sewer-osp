@@ -30,7 +30,8 @@ GRID = os.path.join(SIM, "results", "sim25", "grid")
 TEMPLATE = os.path.join(ROOT, "simulation25")
 sys.path.insert(0, SIM)
 
-PAGE_FILES = ["index.html", "growth_ui.js", "growth_3d.js"]
+# growth_est.js: the in-page estimate for a growth scenario, used where no SWMM runner is.
+PAGE_FILES = ["index.html", "growth_ui.js", "growth_3d.js", "growth_est.js"]
 MAX_SENSORS = 10
 # Case names and notes come from the same cases.json the grid ran from, so what the page
 # calls a case can never drift from what was actually solved.
@@ -402,6 +403,11 @@ def domain_geometry():
         "jx": jx, "jy": jy,
         "bottlenecks": [],
         "pumps": pump_stations(model, ox, oy, oz, index),
+        # The pumps the model solves, as [wet well, discharge] map-node pairs: the page's
+        # flow estimate carries a wet well's whole inflow across each, as SWMM's ideal
+        # pumps do. Stations the model leaves out are not here, so carry nothing.
+        "pumpLinks": [[index[w], index[d]] for _, w, d in model.pumps
+                      if w in index and d in index],
         "nPipes": len(links), "nChambers": len(model.chambers),
         "nHouses": len(hx), "baseDwellings": sum(dwellings.values()),
         "metres": round(sum(link.length for link in links), 1),
@@ -591,6 +597,24 @@ def build_runs():
         # Only the whole area says so, so a segment build stays byte-identical to the page
         # published before the setting existed.
         runs["studyArea"] = "whole"
+        # What the page's growth-scenario estimate starts from: for each case, the load
+        # entering at every map node exactly as SWMM was given it (sewage, I&I and outside
+        # inflow, L/s), and the flow one new dwelling adds. Taken from the same Sim25Model
+        # the grid ran, so the estimate and SWMM begin from one baseline.
+        node_at = {node["name"]: i for i, node in enumerate(geometry["nodes"])}
+        q_person = sim25.LITRES_PER_PERSON_DAY / 86400.0
+        base_loads, per_dwelling = [], []
+        for tag in order:
+            case = sim25.Case(**summaries[tag]["case"])
+            m = sim25.Sim25Model(case, whole=True)
+            loads = [0.0] * len(geometry["nodes"])
+            for name, q in m.base_loads().items():
+                if name in node_at:
+                    loads[node_at[name]] = round(q, 5)
+            base_loads.append(loads)
+            per_dwelling.append(round(sim25.PEOPLE_PER_NEW_DWELLING * q_person * m.sew, 7))
+        runs["baseLoads"] = base_loads
+        runs["lpsPerDwelling"] = per_dwelling
     return geometry, runs, len(cells)
 
 

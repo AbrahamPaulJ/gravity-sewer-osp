@@ -32,6 +32,35 @@ python sim25_daily.py                                # the daily-cycle check
 python test_simulation.py                            # the test suite
 ```
 
+### Growth scenarios on the page, and the local SWMM runner
+
+The page's **Growth → Your scenario** builds a scenario of several manholes, each with its own
+number of new dwellings. The page is static and cannot run SWMM, so the answer comes from one
+of two places, and the page always says which:
+
+- **SWMM**, when the site is served by the local runner:
+
+  ```
+  ~/.venvs/sewer/bin/python simulation_src/sim25_serve.py     # http://localhost:8001
+  ```
+
+  It serves the repository like `python3 -m http.server`, and adds the endpoint the page's
+  **Run in SWMM** button calls. It solves a scenario with `sim25_grid._whole_task`, the
+  function the grid ran, so the answer is consistent with every published result: a single
+  manhole at +150 in Design wet reproduces the grid's own run (the same 45 manholes rising,
+  within 0.05 mm; all 328 baselines identical). About 25 s per scenario per case. Listens on
+  127.0.0.1 only.
+- **An estimate** (`simulation25/growth_est.js`) everywhere else, including the public site:
+  exact steady flows plus a backwater pass. `node tools/check_growth_estimate.js` measures it
+  against the 8,200 grid runs. As published: close to SWMM in dry weather; in the wet cases it
+  finds almost every manhole SWMM shows rising past 25 mm but up to 4 in 10 it flags do not;
+  unreliable in Severe, where 141 manholes start surcharged. Rerun that check after changing
+  the estimate, the grid or the cases, and update the note in `growth_ui.js` if the figures
+  move.
+
+The estimate needs the per-case loads a whole-area build publishes, so the scenario switch
+appears only on a `study_area: "whole"` page.
+
 ### Choosing the cases
 
 The cases — "what cannot be measured yet" on the page — are defined in **`cases.json`** and
