@@ -304,7 +304,8 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
   <div id="scnBox" hidden>
     <p class="quiet">New dwellings at several manholes at once. Click a manhole on the map, then
-    add it; or add one by number.</p>
+    add it; or add one by number. In the network a home joins a main through its own
+    connection; here its flow enters at the manhole, as each pipe's load does in the model.</p>
     <div id="scnList"></div>
     <div class="scnAdd">
       <button id="scnAddSel">+ Add the selected manhole</button>
@@ -414,14 +415,14 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=50"></script>
-<script src="data/growth.js?v=50"></script>
-<script src="data/index.js?v=50"></script>
-<script src="growth_3d.js?v=50"></script>
-<script src="osp_core.js?v=50"></script>
-<script src="placement.js?v=50"></script>
-<script src="growth_est.js?v=50"></script>
-<script src="growth_ui.js?v=50"></script>
+<script src="data/catchment.js?v=51"></script>
+<script src="data/growth.js?v=51"></script>
+<script src="data/index.js?v=51"></script>
+<script src="growth_3d.js?v=51"></script>
+<script src="osp_core.js?v=51"></script>
+<script src="placement.js?v=51"></script>
+<script src="growth_est.js?v=51"></script>
+<script src="growth_ui.js?v=51"></script>
 <script type="module">
   GrowthUI.init();
 </script>

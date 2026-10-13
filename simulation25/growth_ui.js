@@ -300,8 +300,9 @@ window.GrowthUI = (function () {
     const out = scnOutcome(), v = out && out.per.get(i);
     if (!v) return "";
     const tag = out.source === "swmm" ? "SWMM" : "estimate";
-    return row2("This scenario", (v.rise >= 1 ? "<b>+" + Math.round(v.rise) + " mm</b>" : "no rise") +
-      (v.surNew ? ', <b class="bad">surcharges</b>' : v.alarmNew ? ', <b class="bad">passes the alarm</b>' : "") +
+    const flags = out.source !== "swmm" ? ""
+      : v.surNew ? ', <b class="bad">surcharges</b>' : v.alarmNew ? ', <b class="bad">passes the alarm</b>' : "";
+    return row2("This scenario", (v.rise >= 1 ? "<b>+" + Math.round(v.rise) + " mm</b>" : "no rise") + flags +
       ' <span class="quiet">(' + tag + ")</span>");
   }
   function renderManhole() {
@@ -383,12 +384,18 @@ window.GrowthUI = (function () {
                  do not, and is unreliable in Severe. Shown only until SWMM has answered. */
   const EST_NOTE = "an instant estimate, not SWMM. Checked against the 8,200 grid runs: " +
     "close to SWMM in dry weather; in the wet cases it finds almost every manhole SWMM shows " +
-    "rising, but up to 4 in 10 it flags do not rise; unreliable in Severe.";
+    "rising, but up to 4 in 10 it flags do not rise; unreliable in Severe. It is not " +
+    "trusted for the 150 mm alarm or for surcharge (in the wet cases it finds 44% to 71% of " +
+    "the manholes SWMM puts newly over the alarm, and 6 or 7 in 10 of its own are wrong), so " +
+    "those are shown only from SWMM.";
   const DEFAULT_DWELLINGS = 50;
   const threshold = () => graded() ? +ruleId().slice(1) : null;
   const scnKey = () => runs().cases[st.ii].tag + "|" +
     st.scn.map(s => runs().manholeIds[s.i] + ":" + s.n).sort().join(",");
   const seenBy = v => graded() ? v.rise >= threshold() : v.alarmNew;
+  // The estimate is close to SWMM on the rise, not on the alarm or surcharge (EST_NOTE), so
+  // under the alarm rule, or for those two rows, only a SWMM answer is shown.
+  const trusted = out => out.source === "swmm" || graded();
 
   let _P = null, _geoIdx = null;
   function estimateScn() {
@@ -433,7 +440,7 @@ window.GrowthUI = (function () {
     const R = runs(), c = cell(), out = scnOutcome();
     const named = {};
     if (!graded()) R.baseOver[st.ii].forEach(i => { named[nameOf(i)] = "was"; });
-    if (out) for (const [i, v] of out.per) if (seenBy(v)) named[nameOf(i)] = "tip";
+    if (out && trusted(out)) for (const [i, v] of out.per) if (seenBy(v)) named[nameOf(i)] = "tip";
     const sensors = shownSensors();
     Growth3D.paint(named, null, sensors, heatValues());
     Growth3D.setScenario(st.scn.map(x => ({ name: nameOf(x.i), n: x.n })));
@@ -475,7 +482,8 @@ window.GrowthUI = (function () {
       $("#tipList").innerHTML = "";
       return;
     }
-    const seen = [...out.per].filter(([, v]) => seenBy(v)).sort((a, b) => b[1].rise - a[1].rise);
+    const ok = trusted(out), swmm = out.source === "swmm";
+    const seen = ok ? [...out.per].filter(([, v]) => seenBy(v)).sort((a, b) => b[1].rise - a[1].rise) : [];
     const newAlarm = [...out.per].filter(([, v]) => v.alarmNew).length;
     const newSur = [...out.per].filter(([, v]) => v.surNew).length;
     const chosen = chosenAt(placement(), st.k);
@@ -489,13 +497,20 @@ window.GrowthUI = (function () {
     $("#siteFacts").innerHTML = '<p class="quiet">' + source + "</p>" +
       row2("Adding", "<b>" + st.scn.reduce((a, x) => a + x.n, 0) + "</b> dwellings, " +
         out.addedLps.toFixed(2) + " L/s") +
-      row2("Manholes that see it", seen.length ? '<b class="bad">' + seen.length + "</b>" : "none") +
-      row2("Newly over the alarm", newAlarm ? '<b class="bad">' + newAlarm + "</b>" : "none") +
-      row2("Newly surcharged", newSur ? '<b class="bad">' + newSur + "</b>" : "none") +
-      row2("The " + st.k + " chosen sensors", caught.length
+      row2("Manholes that see it", !ok ? '<span class="quiet">SWMM only, under the alarm rule</span>'
+        : seen.length ? '<b class="bad">' + seen.length + "</b>" : "none") +
+      row2("Newly over the alarm", !swmm ? '<span class="quiet">SWMM only</span>'
+        : newAlarm ? '<b class="bad">' + newAlarm + "</b>" : "none") +
+      row2("Newly surcharged", !swmm ? '<span class="quiet">SWMM only</span>'
+        : newSur ? '<b class="bad">' + newSur + "</b>" : "none") +
+      row2("The " + st.k + " chosen sensors", !ok ? '<span class="quiet">SWMM only, under the alarm rule</span>'
+        : caught.length
         ? "<b>" + caught.length + "</b> see it (" + caught.map(i => "MH " + R.manholeIds[i]).join(", ") + ")"
         : "none of them see it");
-    $("#tipList").innerHTML = "<h4>Manholes that see this scenario</h4>" + (seen.length
+    $("#tipList").innerHTML = "<h4>Manholes that see this scenario</h4>" + (!ok
+      ? '<p class="quiet">The estimate is not reliable for the alarm rule. Choose a rise rule, ' +
+        "or solve the scenario in SWMM.</p>"
+      : seen.length
       ? "<ul>" + seen.slice(0, 40).map(([i, v]) => "<li>MH " + R.manholeIds[i] +
           ' <span class="quiet">+' + Math.round(v.rise) + " mm</span></li>").join("") + "</ul>" +
         (seen.length > 40 ? '<p class="quiet">and ' + (seen.length - 40) + " more</p>" : "")
@@ -672,7 +687,11 @@ window.GrowthUI = (function () {
         ? "Chosen afresh for each number of sensors, so the set for " + (k + 1) +
           " need not contain this one."
         : "Chosen one at a time, so the set for " + (k + 1) + " is this set plus one.") +
-      " Detectable growth: growth scenarios that at least one manhole sees.</p>";
+      " Detectable growth: growth scenarios that at least one manhole sees.</p>" +
+      "<p class=quiet>This scores whether a sensor would notice a development, not whether " +
+      "it watches a choke point. Trunk manholes already over the alarm before any growth " +
+      "carry the most load yet rise only a few millimetres per development, so they score " +
+      "low here; watching the bottlenecks is a different objective, not yet modelled.</p>";
   }
 
   /* Worst case and average against the number of sensors. One axis (percent), two series,

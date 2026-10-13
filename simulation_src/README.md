@@ -61,6 +61,25 @@ of two places, and the page always says which:
 The estimate needs the per-case loads a whole-area build publishes, so the scenario switch
 appears only on a `study_area: "whole"` page.
 
+The estimate is trusted for the depth rise only. For the 150 mm alarm it finds 44% to 71% of
+the manholes SWMM puts newly over it in the wet cases, and 61% to 71% of its own flags are
+wrong (19% found, 84% wrong in Severe), so the page shows "newly over the alarm", "newly
+surcharged" and every result under the alarm rule from SWMM only.
+
+### What the sensor score measures, and what it does not
+
+Every placement method on the page is scored on one thing: the share of growth scenarios in
+which a chosen sensor's depth newly passes the selected rule. That is **detectability of a
+development**. It is not **watching the choke points**: trunk manholes already over the alarm
+before any growth carry the most load, yet one development raises them only a few millimetres,
+so they score near zero. Methods that rank by layout (largest catchment, two up two down) pick
+exactly those manholes, which is why they score 0% here. A second objective that rewards
+manholes at or near capacity in the baseline would answer the client's "am I monitoring the
+trunk main or only that location?" (TODO). Two further cautions when quoting the comparison:
+the SWMM greedy is chosen and scored on the same runs (in-sample), and "Random" keeps the best
+of 20 sets on this same score, so a typical random set does far worse (at 3 sensors, 25 mm:
+about 2% worst case and 9% average, against 7% and 25% for the best of 20).
+
 ### Choosing the cases
 
 The cases — "what cannot be measured yet" on the page — are defined in **`cases.json`** and

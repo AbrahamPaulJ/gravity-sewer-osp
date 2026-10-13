@@ -26,10 +26,12 @@
   const METHODS = [
     ["swmm", "Greedy on the SWMM growth runs",
      "Sim 2.5's own: each sensor added is the manhole that most raises the objective below, " +
-     "judged directly on which manholes saw growth in SWMM."],
+     "judged directly on which manholes saw growth in SWMM. Chosen and scored on the same " +
+     "runs, so its figure is in-sample: an upper bound for growth it was not shown."],
     ["celf", "Greedy set cover, CELF (sandbox)",
      "The sandbox's greedy: covers the most network nodes on its flood-fill model of where a " +
-     "blockage would be visible. Does not use SWMM."],
+     "blockage would be visible. Does not use SWMM. It is built for blockage, not growth, " +
+     "so a low score here says the two problems differ, not that it is a poor method."],
     ["twoupdown", "Two up, two down (rule of thumb)",
      "The practitioner's rule: anchor on the manhole with the largest catchment, add two " +
      "manholes upstream and two downstream, repeat. Does not use SWMM."],
@@ -39,9 +41,11 @@
      "The manholes the most flow paths pass through. Does not use SWMM."],
     ["outdeg", "Highest out-degree", "The manholes with the most pipes leaving. Does not use SWMM."],
     ["indeg", "Highest in-degree", "The manholes where the most pipes join. Does not use SWMM."],
-    ["random", "Random (best of 20)",
-     "Twenty random sets at each size, keeping the best on the SWMM growth runs: the floor " +
-     "any method should beat."],
+    ["random", "Random (best of 20 on this score)",
+     "Twenty random sets at each size, keeping the one that scores best on the SWMM growth " +
+     "runs. Picked on the score it is shown with, so it sits well above a typical random " +
+     "set: at 3 sensors, 25 mm rule, a typical random set catches about 2% worst case and " +
+     "9% on average."],
   ];
 
   /* The Sim 2.5 map as an osp_core graph. Levels in metres on the map's own datum; a node's

@@ -24,10 +24,10 @@ window.Growth3D = (function () {
       sleeves = null;
   let siteLabel = null, bottleneckMesh = null, lastPipeState = null, region = null;
   let scaleLabels = [];             // the height ruler's tick labels, projected like the rest
-  let pipeLines = null, pipeCard = null;
+  let pipeLines = null, pipeCard = null;          // pipes as pickable lines; the details card
   let stationMeshes = [], risingLines = [];          // pump stations and their rising mains
   let pumpsOn = false, pumpLabels = [], pumpTubes = null, pumpSleeves = null;   // the chip
-  let scnMarks = [];                                 // a growth scenario's sites: ring + label          // pipes as pickable lines; the details card
+  let scnMarks = [];                                 // a growth scenario's sites: ring + label
   let houseJ = null, latHi = null, latUp = null;   // where each home joins its main; the laterals drawn
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
   const clock = { t0: performance.now() };
