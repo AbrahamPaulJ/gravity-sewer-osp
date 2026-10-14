@@ -302,15 +302,22 @@ def write_inp(path, nh, sc):
                  ("MIN_SURFAREA", f"{INLINE_AREA}"), ("LENGTHENING_STEP", "0")]:
         w(f"{k:22s}{v}")
 
+    # Sim 2.5 rated pumps: these nodes are wet wells, written as tanks below, not junctions.
+    wet_wells = getattr(nh, "wet_wells", None) or {}
     w("\n[JUNCTIONS]\n;;Name Invert MaxDepth InitDepth SurDepth Aponded")
     for n in nh.nodes.values():
-        if n.kind == "inline":
+        if n.kind == "inline" and n.name not in wet_wells:
             # no opening in a pipe: it can pressurise but never overflow (H10)
             w(f"{n.name} {n.invert:.3f} {n.max_depth:.3f} 0 100 0")
 
     w("\n[STORAGE]\n;;Name Elev MaxDepth InitDepth Shape Coeff Expon Const SurDepth Fevap")
     for n in nh.nodes.values():
-        if n.kind == "chamber":
+        if n.name in wet_wells:
+            # Floor `drop` below the incoming pipe's end, so the pipe enters above the start
+            # level (offsets are elevations, so the pipe itself does not move).
+            area, drop = wet_wells[n.name]
+            w(f"{n.name} {n.invert - drop:.3f} {n.max_depth + drop:.3f} 0 FUNCTIONAL 0 0 {area:.4f} 0 0")
+        elif n.kind == "chamber":
             w(f"{n.name} {n.invert:.3f} {n.max_depth:.3f} 0 FUNCTIONAL 0 0 {CHAMBER_AREA:.4f} 0 0")
 
     w("\n[OUTFALLS]\n;;Name Invert Type Stage Gated")
@@ -327,11 +334,23 @@ def write_inp(path, nh, sc):
             w(f"{n.name} {n.invert:.3f} FIXED {max(stage, n.invert):.3f} NO")
 
     # Pumps (Sim 2.5, L7): SWMM IDEAL pumps pass whatever reaches the wet well straight on.
+    # Rated (a growth scenario with pump rates, config.js pumps): a PUMP2 curve with one step
+    # pumps at the rate whatever the depth, and the startup and shutoff depths switch it, so
+    # the station fills to the start level, pumps down to the stop level and rests.
     pumps = getattr(nh, "pumps", [])
+    rated = getattr(nh, "pump_rated", None)
     if pumps:
         w("\n[PUMPS]\n;;Name From To Curve Status Startup Shutoff")
         for name, frm, to in pumps:
-            w(f"{name} {frm} {to} * ON 0 0")
+            if rated and name in rated:
+                _rate, start, stop = rated[name]
+                w(f"{name} {frm} {to} PC_{name} OFF {start:.3f} {stop:.3f}")
+            else:
+                w(f"{name} {frm} {to} * ON 0 0")
+        if rated:
+            w("\n[CURVES]\n;;Name Type X Y")
+            for name, (rate, _start, _stop) in rated.items():
+                w(f"PC_{name} PUMP2 100 {rate:.4f}")
 
     w("\n[CONDUITS]\n;;Name From To Length N InOffset OutOffset InitFlow")
     for lk in nh.links:

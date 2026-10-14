@@ -901,6 +901,12 @@ window.Growth3D = (function () {
     }
     pipeCard.innerHTML = '<button class="x" title="Close (Esc)">\u00d7</button>' + html;
     pipeCard.querySelector(".x").onclick = closePipe;
+    // A pump station's "Set its rate": the page's scenario panel takes it from here.
+    const set = pipeCard.querySelector("button.pumpSet");
+    if (set) set.onclick = () => {
+      closePipe();
+      document.dispatchEvent(new CustomEvent("osp:pumprate", { detail: set.dataset.rm }));
+    };
     pipeCard.hidden = false;
     const r = host.getBoundingClientRect();
     const w = pipeCard.offsetWidth, h = pipeCard.offsetHeight;
@@ -917,10 +923,14 @@ window.Growth3D = (function () {
         (ps.risingMains.length > 1 ? " in " + ps.risingMains.length + " pieces" : "")) +
       row("Homes it serves", ps.homes) +
       row("In the model", ps.modelled ? "yes, as an ideal pump" : "no") +
+      (ps.modelled && ps.rate != null ? row("Default rate", ps.rate + " L/s") : "") +
+      (ps.modelled && ps.rm ? '<button class="pumpSet" data-rm="' + ps.rm + '">Set its rate in a scenario</button>' : "") +
       '<div class="note">' + (ps.modelled
-        ? "An ideal pump passes everything reaching the wet well straight on, with no pump " +
-          "rate, storage or cycling. A real station delivers in bursts, so the peak at the " +
-          "manhole it pumps to can be higher than the model shows."
+        ? "Every published result uses an ideal pump: everything reaching the wet well passes " +
+          "straight on, with no rate, storage or cycling. A real station delivers in bursts, so " +
+          "the peak at the manhole it pumps to can be higher. In a scenario it can pump at a " +
+          "set rate instead, solved in SWMM; the default rate " +
+          (ps.rateFrom ? "(" + ps.rateFrom + ") " : "") + "is an assumption, not published data."
         : "It discharges outside the model's area, so its flow never reaches the network " +
           "solved here.") +
       " The rising main's route is published, its depth is not: it is drawn schematically " +

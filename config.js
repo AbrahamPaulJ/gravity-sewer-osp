@@ -11,6 +11,9 @@
 //   pipes.manning_*       the sandbox on reload; Simulation 2.5 after a re-run and republish.
 //   display               Simulation 2.5, on reload: how the map draws. Republish too
 //                         (tools/build_sim25_web.py --publish) so a copy hosted on its own follows.
+//   pumps                 Simulation 2.5 growth scenarios run in SWMM by the local runner
+//                         (simulation_src/sim25_serve.py): restart it after an edit, and
+//                         republish so the page shows the new default rates.
 //   everything else       Simulation 2.5, after re-running the grid and republishing:
 //                           ~/.venvs/sewer/bin/python simulation_src/sim25_grid.py --cases all --resume
 //                           ~/.venvs/sewer/bin/python tools/build_sim25_web.py --publish
@@ -33,6 +36,27 @@
     "_homes_level": "Allowed: \"main\" | \"raised\". main: each home sits at the level of the main its connection joins, so connections lie flat, as the utility's own map draws them. raised: each home sits raised_height_m above its main and its connection slopes down to it, which keeps the homes apart from the pipes but, with heights exaggerated x22, turns a 6.7 m connection into a near-vertical stick.",
     "raised_height_m": 2.0,
     "_raised_height_m": "Allowed: a number of metres from 0 to 20. Used only when homes_level is \"raised\"; about 0.5 to 1 keeps the homes apart from the pipes without the sticks."
+  },
+
+  "pumps": {
+    "_note": "Pump stations at a set rate, for growth scenarios only (option A, 14 Oct 2026). The published grid and every placement still use SWMM IDEAL pumps, which pass on whatever reaches the wet well at once (L7). A scenario that switches 'Pump at set rates' on is solved by the local SWMM runner with each station as a wet-well tank and a constant-rate pump that starts and stops on its levels, against a baseline at the default rates; the page's instant estimate cannot model stop-start pumping, so it never does this. None of these values is published by the utility: every one is an assumption until the operator supplies duty points and wet-well levels.",
+    "rising_main_velocity_m_s": 1.0,
+    "_rising_main_velocity_m_s": "Allowed: a velocity in m/s, 0.3 to 3. A station's default rate is this velocity in its rising main's published bore: 7.9 L/s in DN100 and 17.7 L/s in DN150 at 1.0 m/s. A common design figure for self-cleansing rising mains, not a measurement.",
+    "default_rate_lps": null,
+    "_default_rate_lps": "Allowed: null, or a rate in L/s, above 0 and up to 200. null derives each station's default from its rising main (above); a number gives every station that rate instead.",
+    "stations": {},
+    "_stations": "Allowed: {} or { \"<rising main id>\": rate in L/s, ... }. Fixed defaults for named stations, keyed by the first rising main from the wet well, as the station card shows it: \"4433449\" (wet well N183, 14 homes, DN150) and \"1495438\" (wet well N997, 41 homes, DN100). Overrides default_rate_lps and the velocity rule.",
+    "wet_well_area_m2": 2.5,
+    "_wet_well_area_m2": "Allowed: a plan area in m2, 0.5 to 50. About a 1.8 m diameter wet well.",
+    "start_level_m": 1.0,
+    "stop_level_m": 0.3,
+    "_levels": "Allowed: metres above the wet-well floor, stop_level_m below start_level_m. The pump starts when the water reaches start_level_m and stops when it falls to stop_level_m.",
+    "inlet_above_start_m": 0.3,
+    "_inlet_above_start_m": "Allowed: metres, 0 to 2. How far the incoming sewer enters above the start level, so a filling wet well never backs up the pipes that feed it, as wet wells are built. The published node is the incoming pipe's end, so the wet-well floor is put this much plus start_level_m below it.",
+    "rated_minutes": 600,
+    "rated_window_min": 240,
+    "_rated_window": "A stop-start pump never settles, so a rated run lasts rated_minutes and every depth is the PEAK over its last rated_window_min, which must span at least one whole pump cycle (the slowest station here, 14 homes into 0.7 m x 2.5 m2, cycles in roughly 1 to 1.5 h). Ideal runs keep the grid's 480 minutes and 10-minute window.",
+    "_future": "Option B, not done: re-run the whole grid (about 8.5 h) with rated pumps so the published heatmap and placements include them, judging detection on the peak across a pump cycle rather than the settled depth. Worth doing once the operator confirms each station's pump rate, wet-well size and start and stop levels; its SCADA run-hours could then check the model, and rising run-hours are themselves evidence of growth behind a station."
   },
 
   "pipes": {

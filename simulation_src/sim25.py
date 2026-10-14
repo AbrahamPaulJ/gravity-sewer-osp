@@ -232,6 +232,64 @@ def boundary_entries(net):
 
 
 # ====================================================================== pumps
+def pump_settings(cfg=None):
+    """config.js's pumps section, checked, so a typo fails before a SWMM run does. These
+    are used only by rated scenarios (pump_rates given to Sim25Model); the grid's ideal
+    pumps never read them."""
+    ps = dict((cfg or CFG).get("pumps") or {})
+    where = f"{osp_config.PATH}: pumps"
+    v = float(ps.get("rising_main_velocity_m_s", 1.0))
+    if not 0.3 <= v <= 3.0:
+        raise ValueError(f"{where}.rising_main_velocity_m_s {v} is not 0.3 to 3 m/s")
+    d = ps.get("default_rate_lps")
+    if d is not None and not 0 < float(d) <= 200:
+        raise ValueError(f"{where}.default_rate_lps {d} is not null or above 0 and up to 200 L/s")
+    area = float(ps.get("wet_well_area_m2", 2.5))
+    if not 0.5 <= area <= 50:
+        raise ValueError(f"{where}.wet_well_area_m2 {area} is not 0.5 to 50 m2")
+    start, stop = float(ps.get("start_level_m", 1.0)), float(ps.get("stop_level_m", 0.3))
+    if not 0 < stop < start <= 10:
+        raise ValueError(f"{where}: stop_level_m {stop} must be above 0 and below start_level_m {start} (at most 10 m)")
+    stations = osp_config.plain(ps.get("stations") or {})
+    bad = {k: r for k, r in stations.items() if not 0 < float(r) <= 200}
+    if bad:
+        raise ValueError(f"{where}.stations {bad}: each rate must be above 0 and up to 200 L/s")
+    inlet = float(ps.get("inlet_above_start_m", 0.3))
+    if not 0 <= inlet <= 2:
+        raise ValueError(f"{where}.inlet_above_start_m {inlet} is not 0 to 2 m")
+    minutes, window = int(ps.get("rated_minutes", 600)), int(ps.get("rated_window_min", 240))
+    if not 60 <= window <= minutes - 60:
+        raise ValueError(f"{where}: rated_window_min {window} must be at least 60 and leave 60 minutes of rated_minutes {minutes} to settle")
+    return {"velocity": v, "default": None if d is None else float(d), "area": area,
+            "start": start, "stop": stop, "inlet": inlet, "stations": {str(k): float(r) for k, r in stations.items()},
+            "minutes": minutes, "window": window}
+
+
+def default_pump_rates(net=None, cfg=None):
+    """Each pump station's default rate, L/s, keyed by its first rising main's id (the name
+    the model gives it, P<id>): config.js's stations entry if it has one, else
+    default_rate_lps if set, else rising_main_velocity_m_s in the rising main's published
+    bore. Every one is an assumption: the utility publishes no pump rate."""
+    ps = pump_settings(cfg)
+    dia = {str(f["attributes"]["ID"]): f["attributes"].get("NOMINALDIA")
+           for f in oc.load("rising_mains")["features"]}
+    out = {}
+    for _wet, _dis, rid in pump_links(net or network()):
+        rid = str(rid)
+        if rid in ps["stations"]:
+            out[rid] = ps["stations"][rid]
+        elif ps["default"] is not None:
+            out[rid] = ps["default"]
+        else:
+            bore = (dia.get(rid) or 100) / 1000.0
+            out[rid] = round(1000 * ps["velocity"] * math.pi * bore * bore / 4, 2)
+    unknown = set(ps["stations"]) - set(out)
+    if unknown:
+        raise ValueError(f"{osp_config.PATH}: pumps.stations names {sorted(unknown)}, which are not "
+                         f"pump stations; they are {sorted(out)}")
+    return out
+
+
 def pump_links(net):
     """L7: (wet well node, discharge node, first rising main id) per pump station.
 
@@ -284,7 +342,7 @@ class Sim25Model:
     """
 
     def __init__(self, case, whole=True, outlet_head=None, growth=None, growth_nodes=None,
-                 exit_heads=None):
+                 exit_heads=None, pump_rates=None):
         net = network()
         self.net, self.case, self.whole = net, case, whole
         self.growth = dict(growth or {})            # manhole id -> added dwellings
@@ -385,6 +443,25 @@ class Sim25Model:
             self.node_of[nid] = j
         for k, (wet, dis, rm) in enumerate(pump_pairs):
             self.pumps.append((f"P{rm}", self.node_of[wet], self.node_of[dis]))
+
+        # Rated pumps, for growth scenarios only (config.js pumps, option A). None keeps
+        # SWMM's IDEAL pumps, as the grid ran. A dict (even empty) makes every pump a
+        # constant-rate pump at its rate here, else its default, starting and stopping on
+        # the wet-well levels, and makes each wet well a tank of the configured area.
+        self.pump_rated, self.wet_wells = None, {}
+        if pump_rates is not None and self.pumps:
+            ps, defaults = pump_settings(), default_pump_rates(net)
+            unknown = {str(k) for k in pump_rates} - set(defaults)
+            if unknown:
+                raise ValueError(f"pump rates for {sorted(unknown)}, which are not pump stations "
+                                 f"in this model; they are {sorted(defaults)}")
+            self.pump_rated = {}
+            for name, wet_name, _ in self.pumps:
+                rate = float(pump_rates.get(name[1:], defaults[name[1:]]))
+                self.pump_rated[name] = (rate, ps["start"], ps["stop"])
+                # The floor drops below the incoming pipe's end (the published node) by the
+                # start level plus the inlet's clearance, so the pipe enters above the water.
+                self.wet_wells[wet_name] = (ps["area"], ps["start"] + ps["inlet"])
 
         # Segment outlet level is what the nesting hands over: record it in whole runs.
         seg_tail = net.pipes[net.nodes[SEGMENT_OUTLET].outs[0]]
@@ -544,11 +621,13 @@ class _Steady:
         return "Sim 2.5 steady"
 
 
-def solve(m, minutes, out_dir):
+def solve(m, minutes, out_dir, window_min=10):
     """Returns (result, settled state, head at the segment outlet). After a whole run,
-    m.exit_heads holds the settled level at each segment side exit, for nesting."""
-    res = model.run(m, _Steady(minutes), out_dir)
-    st = settled(m, res)
+    m.exit_heads holds the settled level at each segment side exit, for nesting.
+    window_min is how far back the peak depth is taken: 10 for the grid, which settles;
+    longer for rated pumps, which never do, so the peak must span a whole pump cycle."""
+    res = model.run(m, _Steady(minutes, record_last_min=window_min + 2), out_dir)
+    st = settled(m, res, window_min)
     head = None
     m.exit_heads = {}
     if m.watch and len(res.s["watch_head"]):

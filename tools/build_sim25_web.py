@@ -330,6 +330,11 @@ def pump_stations(model, ox, oy, oz, index=None):
                       for s in json.load(f)["features"] if s["attributes"].get("SUBTYPE") == 3]
 
     modelled = {name[1:] for name, _, _ in model.pumps}       # "P4433449" -> "4433449"
+    # Each station's default rate for rated scenarios (config.js pumps): an assumption, the
+    # utility publishes none. Keyed, as the model and the runner key it, by the first
+    # rising main from the wet well.
+    rates = sim25.default_pump_rates(net)
+    pset = sim25.pump_settings()
     out = []
     for wet, dis, rid in sim25.pump_links(net):
         i = next(k for k, r in enumerate(rec) if r[0] == rid)
@@ -370,6 +375,13 @@ def pump_stations(model, ox, oy, oz, index=None):
             "px": [int(round((x - ox) * 10)) for x, _ in pts],
             "py": [int(round((y - oy) * 10)) for _, y in pts],
             "pz": [int(round((z_of(s) - oz) * 100)) for s in cum],
+            "rm": str(rid),
+            "rate": rates.get(str(rid)),
+            # How the default was set, for the card: a named rate, one rate for all, or the
+            # design velocity in this rising main's bore.
+            "rateFrom": ("station" if str(rid) in pset["stations"] else
+                         "default" if pset["default"] is not None else
+                         f"{pset['velocity']:g} m/s in DN{rec[chain[0]][1] or 100}"),
         })
     return out
 

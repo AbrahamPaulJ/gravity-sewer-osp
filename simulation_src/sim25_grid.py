@@ -85,10 +85,19 @@ def _segment_task(args):
 
 
 def _whole_task(args):
-    case, growth_nodes, growth, run_dir = args
-    m = Sim25Model(case, whole=True, growth=growth, growth_nodes=growth_nodes)
+    """One whole-domain run. An optional fifth element, pump rates ({} for every station at
+    its default), solves with rated pumps over config.js's longer run and peak window; the
+    grid never passes it, so its runs are the ideal-pump ones it always was."""
+    case, growth_nodes, growth, run_dir, *rest = args
+    pump_rates = rest[0] if rest else None
+    m = Sim25Model(case, whole=True, growth=growth, growth_nodes=growth_nodes,
+                   pump_rates=pump_rates)
+    minutes, window = MINUTES, 10
+    if pump_rates is not None:
+        ps = sim25.pump_settings()
+        minutes, window = ps["minutes"], ps["window"]
     try:
-        res, st, head = solve(m, MINUTES, run_dir)
+        res, st, head = solve(m, minutes, run_dir, window)
     finally:
         shutil.rmtree(run_dir, ignore_errors=True)
     return head, m.growth_lps, res.err, {

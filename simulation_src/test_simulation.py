@@ -139,6 +139,35 @@ def main():
           diff < 0.001, diff)
     check("whole-domain continuity error under 1%", abs(res.err) < 1, res.err)
 
+    # Pump stations at a set rate (config.js pumps, scenarios only). The grid's ideal pumps
+    # must be untouched, and a rated model must write tanks, curves and switch levels.
+    ideal_inp, rated_inp = os.path.join(tmp, "ideal.inp"), os.path.join(tmp, "rated.inp")
+    model.write_inp(ideal_inp, whole, sim25._Steady(480))
+    txt = open(ideal_inp).read()
+    check("ideal pumps unchanged: no curves, every pump '* ON 0 0'",
+          "[CURVES]" not in txt and all(f"{n} {a} {b} * ON 0 0" in txt for n, a, b in whole.pumps))
+    rates = sim25.default_pump_rates(withov)
+    check("default pump rates from the rising main bore: 17.67 L/s in DN150, 7.85 in DN100",
+          rates.get("4433449") == 17.67 and rates.get("1495438") == 7.85, rates)
+    ps = sim25.pump_settings()
+    rated = sim25.Sim25Model(case, whole=True, pump_rates={"1495438": 12.5})
+    model.write_inp(rated_inp, rated, sim25._Steady(600))
+    rt = open(rated_inp).read()
+    check("rated: a named station takes its rate, the other its default",
+          "PC_P1495438 PUMP2 100 12.5000" in rt and "PC_P4433449 PUMP2 100 17.6700" in rt)
+    check("rated: pumps start OFF and switch at the configured levels",
+          f"P1495438 N997 MH1623725 PC_P1495438 OFF {ps['start']:.3f} {ps['stop']:.3f}" in rt)
+    n997 = rated.nodes["N997"]
+    drop = ps["start"] + ps["inlet"]
+    check("rated: the wet well is a tank whose floor sits below the incoming pipe",
+          f"N997 {n997.invert - drop:.3f} {n997.max_depth + drop:.3f} 0 FUNCTIONAL 0 0 {ps['area']:.4f}" in rt
+          and f"\nN997 {n997.invert:.3f} {n997.max_depth:.3f} 0 100 0" not in rt)
+    try:
+        sim25.Sim25Model(case, whole=True, pump_rates={"999": 5})
+        check("an unknown pump station is refused", False)
+    except ValueError:
+        check("an unknown pump station is refused", True)
+
     shutil.rmtree(tmp, ignore_errors=True)
     print(f"\n{PASSES} passed, {len(FAILS)} failed")
     if FAILS:

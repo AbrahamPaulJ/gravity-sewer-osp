@@ -21,6 +21,9 @@ window.GrowthUI = (function () {
                // [{i: chamber index, n: dwellings}], runner whether a local SWMM runner
                // answered (null until asked), scnRuns the SWMM answers, by case and sites.
                mode: "one", scn: [], runner: null, scnRuns: {}, busy: false,
+               // Pump stations at a set rate in the scenario (SWMM runner only): on or off,
+               // the rates changed from default by rising main id, the runner's defaults.
+               pumpOn: false, pumpRates: {}, pumpDefaults: null,
                algo: "swmm" };                                 // a Placement.METHODS id
 
   const runs = () => window.GROWTH_RUNS;
@@ -392,8 +395,22 @@ window.GrowthUI = (function () {
   const DEFAULT_DWELLINGS = window.GROWTH_RUNS.defaultDwellings;   // config.js, via the runs
   const threshold = () => graded() ? +ruleId().slice(1) : null;
   const scnKey = () => runs().cases[st.ii].tag + "|" +
-    st.scn.map(s => runs().manholeIds[s.i] + ":" + s.n).sort().join(",");
+    st.scn.map(s => runs().manholeIds[s.i] + ":" + s.n).sort().join(",") + "|" + pumpKey();
   const seenBy = v => graded() ? v.rise >= threshold() : v.alarmNew;
+
+  /* Pump stations at a set rate (config.js pumps, option A). Only the stations the model
+     solves, keyed by the first rising main as the runner keys them. A station's default is
+     what the runner reports at start-up (config.js as it reads it), else the published one. */
+  const pumpStations = () => ((geom() && geom().pumps) || []).filter(p => p.modelled && p.rm);
+  const pumpDefault = rm => {
+    const live = st.pumpDefaults && st.pumpDefaults[rm];
+    if (live != null) return live;
+    const p = pumpStations().find(x => x.rm === rm);
+    return p ? p.rate : null;
+  };
+  const pumpRate = rm => (st.pumpRates[rm] != null ? st.pumpRates[rm] : pumpDefault(rm));
+  const pumpKey = () => st.pumpOn
+    ? "rated:" + pumpStations().map(p => p.rm + "=" + pumpRate(p.rm)).join(",") : "ideal";
   // The estimate is close to SWMM on the rise, not on the alarm or surcharge (EST_NOTE), so
   // under the alarm rule, or for those two rows, only a SWMM answer is shown.
   const trusted = out => out.source === "swmm" || graded();
@@ -429,12 +446,15 @@ window.GrowthUI = (function () {
                           surNew: v.surcharged && !v.surcharged_before });
     });
     return { source: "swmm", per, addedLps: res.added_lps, seconds: res.seconds,
-             err: res.continuity_error_pct };
+             err: res.continuity_error_pct, pumps: res.pumps };
   }
   function scnOutcome() {
-    if (!st.scn.length) return null;
+    if (!st.scn.length && !st.pumpOn) return null;
     const hit = st.scnRuns[scnKey()];
-    return hit ? fromRunner(hit) : estimateScn();
+    if (hit) return fromRunner(hit);
+    // Stop-start pumping is beyond the estimate: with pumps at set rates only SWMM answers.
+    if (st.pumpOn) return { source: "needs", per: new Map(), addedLps: 0 };
+    return estimateScn();
   }
 
   function repaintScenario() {
@@ -466,13 +486,42 @@ window.GrowthUI = (function () {
       '<button class="x" data-k="' + k + '" title="Remove">×</button></div>').join("") +
       (st.scn.length ? '<div class="tot">' + total + " dwellings at " + st.scn.length +
         " manhole" + (st.scn.length === 1 ? "" : "s") + "</div>" : "");
+    renderPumps();
     const solved = !!st.scnRuns[scnKey()];
     const run = $("#scnRun");
-    run.disabled = st.busy || !st.scn.length || solved || st.runner !== true;
+    run.disabled = st.busy || (!st.scn.length && !st.pumpOn) || solved || st.runner !== true;
     run.textContent = st.busy ? "Solving…" : solved ? "Solved in SWMM" : "Run in SWMM";
     run.title = st.runner === true ? "Solve this scenario in EPA SWMM (about 25 s)"
       : "Needs the local SWMM runner: simulation_src/sim25_serve.py";
-    $("#scnClear").disabled = !st.scn.length || st.busy;
+    $("#scnClear").disabled = (!st.scn.length && !st.pumpOn) || st.busy;
+  }
+
+  function renderPumps() {
+    const list = pumpStations();
+    $("#pumpBox").hidden = !list.length;
+    if (!list.length) return;
+    $("#pumpOn").checked = st.pumpOn;
+    const focused = document.activeElement && document.activeElement.dataset
+      ? document.activeElement.dataset.rm : null;
+    $("#pumpList").innerHTML = list.map(p => {
+      const d = pumpDefault(p.rm), r = pumpRate(p.rm), changed = st.pumpRates[p.rm] != null && r !== d;
+      return '<div class="prow' + (changed ? " changed" : "") + '"><span class="nm" title="' +
+        esc("Rising main " + p.rm + ", " + p.dia.join("/") + " mm; default " + d + " L/s (" + p.rateFrom + ")") + '">' +
+        (p.id ? "Station " + p.id : "Station") + " · " + p.homes + " homes</span>" +
+        '<input type="number" min="0.1" max="200" step="0.1" value="' + r + '" data-rm="' + esc(p.rm) +
+        '"' + (st.pumpOn ? "" : " disabled") + ' aria-label="pump rate"> <span class="quiet">L/s</span>' +
+        '<button class="rs" data-rm="' + esc(p.rm) + '" title="Back to the default, ' + d + ' L/s"' +
+        (changed ? "" : " hidden") + ">\u21ba</button></div>";
+    }).join("");
+    if (focused) { const el = $("#pumpList").querySelector('input[data-rm="' + focused + '"]'); if (el) el.focus(); }
+    $("#pumpNote").textContent = !st.pumpOn
+      ? "Off: pumps pass whatever reaches them at once (ideal), as every published result does."
+      : st.runner === true
+      ? "On: each station fills its wet well, then pumps at its rate until it is low again. " +
+        "Compared with the same network at the default rates; SWMM only. Defaults are " +
+        "assumptions, not published pump data."
+      : "Pumps at set rates need the local SWMM runner (simulation_src/sim25_serve.py); " +
+        "the page's estimate cannot model stop-start pumping.";
   }
 
   function renderScnResult(out) {
@@ -480,6 +529,15 @@ window.GrowthUI = (function () {
     if (!out) {
       $("#siteFacts").innerHTML = '<p class="quiet">No manholes in the scenario yet. Click a ' +
         "manhole on the map and add it, or add one by number.</p>";
+      $("#tipList").innerHTML = "";
+      return;
+    }
+    if (out.source === "needs") {
+      $("#siteFacts").innerHTML = '<p class="quiet"><span class="badge est">Not solved</span>' +
+        "With pump stations at set rates the answer comes from SWMM only: the estimate " +
+        "cannot model a wet well filling and a pump starting and stopping. " +
+        (st.runner === true ? "Press Run in SWMM (about 30 s)."
+          : "Run the site with simulation_src/sim25_serve.py to solve it.") + "</p>";
       $("#tipList").innerHTML = "";
       return;
     }
@@ -491,13 +549,25 @@ window.GrowthUI = (function () {
     const caught = chosen.filter(i => seen.some(([j]) => j === i));
     const source = out.source === "swmm"
       ? '<span class="badge swmm">SWMM</span>Solved in EPA SWMM for ' + esc(caseLabel()) +
-        " in " + out.seconds + " s (continuity " + out.err + "%)."
+        " in " + out.seconds + " s (continuity " + out.err + "%)." +
+        (out.pumps && out.pumps.mode === "rated"
+          ? " Pumps at set rates: every depth is the peak over the last " + out.pumps.window_min +
+            " minutes of a " + out.pumps.minutes + "-minute run, against the same network with " +
+            "each station at its default rate."
+          : "")
       : '<span class="badge est">Estimate</span>' + EST_NOTE +
         (st.runner === true ? " Press Run in SWMM for the real answer."
           : " For the real answer, run the site with simulation_src/sim25_serve.py.");
     $("#siteFacts").innerHTML = '<p class="quiet">' + source + "</p>" +
-      row2("Adding", "<b>" + st.scn.reduce((a, x) => a + x.n, 0) + "</b> dwellings, " +
-        out.addedLps.toFixed(2) + " L/s") +
+      row2("Adding", st.scn.length ? "<b>" + st.scn.reduce((a, x) => a + x.n, 0) + "</b> dwellings, " +
+        out.addedLps.toFixed(2) + " L/s" : "no new dwellings: pump rates only") +
+      (out.pumps && out.pumps.mode === "rated"
+        ? row2("Pumps", Object.entries(out.pumps.rates).map(([rm, r]) => {
+            const d = out.pumps.defaults[rm], p = pumpStations().find(x => x.rm === rm);
+            const nm = p && p.id ? "Station " + p.id : "Rising main " + rm;
+            return nm + " " + (r === d ? r + " L/s" : "<b>" + r + " L/s</b> (default " + d + ")");
+          }).join("<br>"))
+        : "") +
       row2("Manholes that see it", !ok ? '<span class="quiet">SWMM only, under the alarm rule</span>'
         : seen.length ? '<b class="bad">' + seen.length + "</b>" : "none") +
       row2("Newly over the alarm", !swmm ? '<span class="quiet">SWMM only</span>'
@@ -529,7 +599,7 @@ window.GrowthUI = (function () {
     repaint();
   }
   async function runScn() {
-    if (!st.scn.length || st.busy) return;
+    if ((!st.scn.length && !st.pumpOn) || st.busy) return;
     if (st.runner !== true) return scnStatus("No SWMM runner here. Locally, start " +
       "simulation_src/sim25_serve.py and reload; the public page shows the estimate only.");
     const key = scnKey(), R = runs(), t0 = Date.now();
@@ -541,7 +611,9 @@ window.GrowthUI = (function () {
       const res = await fetch("/api/sim25/scenario", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ case: R.cases[st.ii].tag,
-                               sites: st.scn.map(x => [R.manholeIds[x.i], x.n]) }) });
+                               sites: st.scn.map(x => [R.manholeIds[x.i], x.n]),
+                               pumps: st.pumpOn ? Object.fromEntries(
+                                 pumpStations().map(p => [p.rm, pumpRate(p.rm)])) : null }) });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || res.status);
       st.scnRuns[key] = j;
@@ -582,12 +654,38 @@ window.GrowthUI = (function () {
       repaint();
     };
     $("#scnRun").onclick = runScn;
-    $("#scnClear").onclick = () => { st.scn = []; scnStatus(""); repaint(); };
+    $("#scnClear").onclick = () => {
+      st.scn = []; st.pumpOn = false; st.pumpRates = {}; scnStatus(""); repaint();
+    };
+    $("#pumpOn").onchange = () => { st.pumpOn = $("#pumpOn").checked; repaint(); };
+    $("#pumpList").onchange = e => {
+      const rm = e.target.dataset.rm;
+      if (e.target.tagName !== "INPUT" || !rm) return;
+      const v = Math.round(10 * Math.max(0.1, Math.min(200, +e.target.value || pumpDefault(rm)))) / 10;
+      if (v === pumpDefault(rm)) delete st.pumpRates[rm]; else st.pumpRates[rm] = v;
+      repaint();
+    };
+    $("#pumpList").onclick = e => {
+      const b = e.target.closest("button.rs"); if (!b) return;
+      delete st.pumpRates[b.dataset.rm];
+      repaint();
+    };
+    // "Set its rate" on a pump station's card: into the scenario, pumps on, its box in focus.
+    document.addEventListener("osp:pumprate", e => {
+      if (st.mode !== "scn") $("#modeKnob").querySelector('button[data-m="scn"]').click();
+      st.pumpOn = true;
+      repaint();
+      const el = $("#pumpList").querySelector('input[data-rm="' + e.detail + '"]');
+      if (el) { el.focus(); el.select(); }
+    });
     // Is a local SWMM runner serving this page? On the public site there is none, and the
     // request fails, which is the answer.
     fetch("/api/sim25/ping", { cache: "no-store" })
       .then(r => r.ok ? r.json() : null)
-      .then(j => { st.runner = !!(j && j.ok && runs().cases.every(c => j.cases.includes(c.tag))); })
+      .then(j => {
+        st.runner = !!(j && j.ok && runs().cases.every(c => j.cases.includes(c.tag)));
+        if (st.runner && j.pumpDefaults) st.pumpDefaults = j.pumpDefaults;
+      })
       .catch(() => { st.runner = false; })
       .finally(() => { if (st.mode === "scn") renderScnList(); });
   }

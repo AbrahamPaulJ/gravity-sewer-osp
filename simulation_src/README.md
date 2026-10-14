@@ -19,8 +19,9 @@ Python 3.11. `pip install -r requirements.txt` (pyvista only for the desktop vie
 Every setting the project runs with is in one file, `config.js` at the repository root: which
 pages the site shows, the pipe attributes (roughness by material, infiltration weight by
 age, the sandbox's blockage-likelihood weights), the loads (people per house, litres per
-person, peaking), how the Simulation 2.5 map draws homes (`display`), and Simulation 2.5's study area, growth sizes, alarm depth, detection
-rises, sensor limit and cases. The browser loads it as a script; Python reads it through
+person, peaking), how the Simulation 2.5 map draws homes (`display`, read live by the page),
+pump stations at a set rate in scenarios (`pumps`), and Simulation 2.5's study area, growth
+sizes, alarm depth, detection rises, sensor limit and cases. The browser loads it as a script; Python reads it through
 `osp_config.py`. Its object is plain JSON, so keep double quotes and no comments or trailing
 commas inside it; explanations go in `"_"` keys. The comment at the top of the file says what
 each section takes effect on: a reload, a republish, or a SWMM re-run first.
@@ -76,6 +77,46 @@ The estimate is trusted for the depth rise only. For the 150 mm alarm it finds 4
 the manholes SWMM puts newly over it in the wet cases, and 61% to 71% of its own flags are
 wrong (19% found, 84% wrong in Severe), so the page shows "newly over the alarm", "newly
 surcharged" and every result under the alarm rule from SWMM only.
+
+### Pump stations at a set rate (scenarios only)
+
+The published grid and every placement use SWMM **IDEAL** pumps (assumption L7): whatever
+reaches a wet well is passed at once to the rising main's discharge node, with no rate, storage
+or cycling. Three stations are found from the rising-main layer; two discharge into the domain
+and are modelled (wet wells N183 and N997, rising mains 4433449 and 1495438, 55 homes between
+them), the third discharges outside it.
+
+A scenario on the page can switch **Pump stations at set rates** on and change any station's
+rate (also from the station's card on the map). The runner then solves it with each wet well a
+SWMM tank and each pump a constant rate switched by start and stop levels, all from `config.js`
+`pumps`:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `rising_main_velocity_m_s` | 1.0 | a station's default rate is this velocity in its rising main's bore: 17.67 L/s (DN150), 7.85 L/s (DN100) |
+| `default_rate_lps` | null | one rate for every station instead |
+| `stations` | {} | a fixed default for a named station, by rising main id |
+| `wet_well_area_m2` | 2.5 | the wet well's plan area |
+| `start_level_m`, `stop_level_m` | 1.0, 0.3 | the pump starts and stops at these depths above the wet-well floor |
+| `inlet_above_start_m` | 0.3 | the incoming sewer enters this far above the start level, so a filling well never backs up its pipes |
+| `rated_minutes`, `rated_window_min` | 600, 240 | a rated run never settles, so it runs longer and every depth is the peak over the window |
+
+The baseline it is compared with is the same rated network at default rates with no growth, so
+a rise is always between two runs of one model. The page's instant estimate cannot model a
+filling wet well, so with pumps at set rates only SWMM answers. The runner reads these settings
+when it starts: restart it after editing `config.js`, and republish so the page shows new
+defaults.
+
+Measured at Design wet with the defaults (14 Oct 2026): each pump ran about 10% of the time,
+cycling every 80 to 120 minutes; the manholes the stations pump to peak at 74 to 78 mm against
+21 to 29 mm with ideal pumps; 80 new dwellings behind a station raise its discharge manhole by
+8.6 mm with an ideal pump and by nothing with a rated one, which pumps more often instead; and
+doubling a station's rate raises its discharge manhole by 46.6 mm.
+
+**Not done yet (option B).** Re-run the whole grid with rated pumps so the heatmap and placements
+include them, judging detection on the peak across a pump cycle rather than the settled depth.
+About 8.5 hours, and worth it only with the operator's real pump rates, wet-well sizes and
+levels; its SCADA run-hours could then check the model.
 
 ### What the sensor score measures, and what it does not
 
