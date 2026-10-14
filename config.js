@@ -61,7 +61,7 @@
     "_rising_main_hazen_c": "Allowed: 60 to 160. Hazen-Williams C for rising-main friction (120: a lined or plastic main in service). Lengths and bores are the published rising mains: 46.5 m of DN150 from N183, 228.1 m of DN100 from N997.",
     "rated_minutes": 600,
     "rated_window_min": 240,
-    "_rated_window": "A stop-start pump never settles, so a rated run lasts rated_minutes and every depth is the PEAK over its last rated_window_min, which must span at least one whole pump cycle (the slowest station here, 14 homes into 0.7 m x 2.5 m2, cycles in roughly 1 to 1.5 h). Ideal runs keep the grid's 480 minutes and 10-minute window.",
+    "_rated_window": "A stop-start pump never settles, so a rated run lasts rated_minutes and every depth is the PEAK over its last rated_window_min, which must span at least one whole pump cycle. At default rates N183 cycles about every 80 min at Design wet and 3 h in Dry, N997 every 30 min and 1 h, so 240 holds at least one burst in every case; lower rates or smaller inflows lengthen the cycle. Ideal runs keep the grid's 480 minutes and 10-minute window.",
     "_future": "Option B, not done: re-run the whole grid (about 8.5 h) with rated pumps so the published heatmap and placements include them, judging detection on the peak across a pump cycle rather than the settled depth. Worth doing once the operator confirms each station's pump rate, wet-well size and start and stop levels; its SCADA run-hours could then check the model, and rising run-hours are themselves evidence of growth behind a station."
   },
 
