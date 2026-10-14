@@ -150,6 +150,86 @@ console.log("page configuration");
    writes to an attribute the shader never reads, and the tubes render white forever.
    That is not a crash, a parse error or a failed request, so nothing else here would
    notice: it is caught by looking at the page, which is how it was found. */
+/* The Sim 2.5 growth-scenario estimate. It carries its own copy of the partial-flow solver,
+   because that page must stand alone; this keeps the copy honest against the original.
+   And it must conserve flow: a loop through a pump station once held back all but 0.1 of
+   100 L/s, and nothing short of a mass balance would have shown it. */
+console.log("growth-scenario estimate (simulation25/growth_est.js)");
+{
+  const fs = require("fs");
+  const E = require(path.join(ROOT, "simulation25/growth_est.js"));
+  let worst = 0;
+  for (const D of [0.1, 0.15, 0.225, 0.45]) for (const S of [0.001, 0.005, 0.03])
+    for (const n of [0.010, 0.013]) for (const Q of [0.0005, 0.003, 0.02, 0.08])
+      worst = Math.max(worst, Math.abs(E.depthRatio(Q, D, S, n) - K.depthRatio(Q, D, S, n)));
+  check("its solver matches osp_capacity's depthRatio", worst < 1e-12, true);
+
+  const data = f => path.join(ROOT, "simulation25/data", f);
+  if (fs.existsSync(data("catchment.js")) && fs.existsSync(data("growth.js"))) {
+    const saved = global.window;
+    global.window = {};
+    for (const f of ["catchment.js", "growth.js"]) {
+      delete require.cache[require.resolve(data(f))];
+      require(data(f));
+    }
+    const g = window.GROWTH_GEOM, R = window.GROWTH_RUNS;
+    global.window = saved;
+    if (R.baseLoads) {
+      const P = E.prepare(g);
+      check("every node is in its flow order (no loop holds flow back)", P.acyclic, true);
+      const outfall = new Set(g.nodes.map((nd, i) => nd.kind === "outfall" ? i : -1).filter(i => i >= 0));
+      const leaks = R.cases.map((_, k) => {
+        const q = E.flows(P, R.baseLoads[k]);
+        let out = 0;
+        for (let l = 0; l < g.up.length; l++) if (outfall.has(g.down[l])) out += q[l];
+        return Math.abs(out - R.baseLoads[k].reduce((a, b) => a + b, 0));
+      });
+      check("it conserves flow in every published case", Math.max(...leaks) < 1e-6, true);
+    }
+  }
+}
+
+/* The Sim 2.5 page's placement menu: the sandbox's algorithms run on that network and scored
+   on the SWMM growth runs. A score only compares if it means what the published one means,
+   so the scoring must reproduce the builder's own figures for its greedy order; and the
+   page's copy of osp_core.js must be the sandbox's, not a fork. */
+console.log("placement methods on Sim 2.5 (simulation25/placement.js)");
+{
+  const fs = require("fs");
+  const vend = path.join(ROOT, "simulation25/osp_core.js");
+  if (fs.existsSync(vend))
+    check("the page's osp_core.js is the sandbox's, byte for byte",
+      fs.readFileSync(vend, "utf8") === fs.readFileSync(path.join(ROOT, "src/model/osp_core.js"), "utf8"), true);
+  const data = f => path.join(ROOT, "simulation25/data", f);
+  if (fs.existsSync(data("growth.js"))) {
+    const saved = global.window;
+    global.window = {};
+    for (const f of ["catchment.js", "growth.js"]) {
+      delete require.cache[require.resolve(data(f))];
+      require(data(f));
+    }
+    const g = window.GROWTH_GEOM, R = window.GROWTH_RUNS;
+    global.window = saved;
+    const PL = require(path.join(ROOT, "simulation25/placement.js"));
+    let diff = 0;
+    for (const rule of R.rules.map(r => r.id)) for (const obj of ["worst", "mean"]) {
+      const pub = R.sensors[rule][obj], pool = PL.scenarios(R, rule);
+      for (let k = 1; k <= 10; k++) {
+        const f = PL.cover(pool, pub.order.slice(0, k));
+        diff = Math.max(diff, Math.abs(Math.min(...f) - pub.worst[k - 1]),
+          Math.abs(f.reduce((a, b) => a + b, 0) / f.length - pub.mean[k - 1]));
+      }
+    }
+    check("its scoring reproduces the builder's published coverage", diff < 1e-4, true);
+    const ctx = PL.context(g, R, C);
+    const bad = PL.METHODS.slice(1).filter(([id]) => {
+      const p = PL.place(id, ctx, "r25", "worst");
+      return !p.sets.every((s, k) => s.length === k + 1 && s.every(i => i >= 0 && i < R.chambers.length));
+    }).map(([id]) => id);
+    check("every method gives k manholes for k = 1..10", bad, []);
+  }
+}
+
 console.log("instanced colour is set before first compile");
 {
   const fs = require("fs");

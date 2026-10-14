@@ -30,7 +30,14 @@ GRID = os.path.join(SIM, "results", "sim25", "grid")
 TEMPLATE = os.path.join(ROOT, "simulation25")
 sys.path.insert(0, SIM)
 
-PAGE_FILES = ["index.html", "growth_ui.js", "growth_3d.js"]
+# growth_est.js: the in-page estimate for a growth scenario, used where no SWMM runner is.
+# placement.js: the sandbox's algorithms on this network, scored on the SWMM runs.
+PAGE_FILES = ["index.html", "growth_ui.js", "growth_3d.js", "growth_est.js", "placement.js"]
+# The sandbox's own placement code, so the page can run its algorithms. Copied in from
+# src/model at every build rather than kept by hand: the page must stand alone when its folder
+# is served as a site root, where ../src does not exist, and because --check compares the
+# published copy byte for byte, it cannot drift from the original without failing.
+VENDORED = {"osp_core.js": os.path.join(ROOT, "src", "model", "osp_core.js")}
 MAX_SENSORS = 10
 # Case names and notes come from the same cases.json the grid ran from, so what the page
 # calls a case can never drift from what was actually solved.
@@ -402,6 +409,11 @@ def domain_geometry():
         "jx": jx, "jy": jy,
         "bottlenecks": [],
         "pumps": pump_stations(model, ox, oy, oz, index),
+        # The pumps the model solves, as [wet well, discharge] map-node pairs: the page's
+        # flow estimate carries a wet well's whole inflow across each, as SWMM's ideal
+        # pumps do. Stations the model leaves out are not here, so carry nothing.
+        "pumpLinks": [[index[w], index[d]] for _, w, d in model.pumps
+                      if w in index and d in index],
         "nPipes": len(links), "nChambers": len(model.chambers),
         "nHouses": len(hx), "baseDwellings": sum(dwellings.values()),
         "metres": round(sum(link.length for link in links), 1),
@@ -591,11 +603,30 @@ def build_runs():
         # Only the whole area says so, so a segment build stays byte-identical to the page
         # published before the setting existed.
         runs["studyArea"] = "whole"
+        # What the page's growth-scenario estimate starts from: for each case, the load
+        # entering at every map node exactly as SWMM was given it (sewage, I&I and outside
+        # inflow, L/s), and the flow one new dwelling adds. Taken from the same Sim25Model
+        # the grid ran, so the estimate and SWMM begin from one baseline.
+        node_at = {node["name"]: i for i, node in enumerate(geometry["nodes"])}
+        q_person = sim25.LITRES_PER_PERSON_DAY / 86400.0
+        base_loads, per_dwelling = [], []
+        for tag in order:
+            case = sim25.Case(**summaries[tag]["case"])
+            m = sim25.Sim25Model(case, whole=True)
+            loads = [0.0] * len(geometry["nodes"])
+            for name, q in m.base_loads().items():
+                if name in node_at:
+                    loads[node_at[name]] = round(q, 5)
+            base_loads.append(loads)
+            per_dwelling.append(round(sim25.PEOPLE_PER_NEW_DWELLING * q_person * m.sew, 7))
+        runs["baseLoads"] = base_loads
+        runs["lpsPerDwelling"] = per_dwelling
     return geometry, runs, len(cells)
 
 
 def compare_output(output):
-    expected = PAGE_FILES + [".nojekyll", "data/catchment.js", "data/growth.js", "data/index.js"]
+    expected = PAGE_FILES + list(VENDORED) + [".nojekyll", "data/catchment.js", "data/growth.js",
+                                             "data/index.js"]
     different = []
     for relative in expected:
         built = os.path.join(output, *relative.split("/"))
@@ -638,12 +669,12 @@ def publish(output, runs):
     Only data/catchment.js and data/growth.js are copied. The HTML and UI modules are the
     templates this build reads, so they already are what is published."""
     changed = []
-    for name in ("catchment.js", "growth.js"):
-        src = os.path.join(output, "data", name)
-        dst = os.path.join(TEMPLATE, "data", name)
+    for rel in ["data/catchment.js", "data/growth.js"] + list(VENDORED):
+        src = os.path.join(output, *rel.split("/"))
+        dst = os.path.join(TEMPLATE, *rel.split("/"))
         if not os.path.exists(dst) or not filecmp.cmp(src, dst, shallow=False):
             shutil.copyfile(src, dst)
-            changed.append("data/" + name)
+            changed.append(rel)
     if not changed:
         print("\nPublished page already matches this build; nothing copied, keys unchanged.")
         return
@@ -682,6 +713,9 @@ def main():
     }
     for name in PAGE_FILES:
         shutil.copyfile(os.path.join(TEMPLATE, name), os.path.join(output, name))
+        sizes[name] = os.path.getsize(os.path.join(output, name))
+    for name, src in VENDORED.items():
+        shutil.copyfile(src, os.path.join(output, name))
         sizes[name] = os.path.getsize(os.path.join(output, name))
     shutil.copyfile(os.path.join(TEMPLATE, "data", "index.js"),
                     os.path.join(data_dir, "index.js"))
