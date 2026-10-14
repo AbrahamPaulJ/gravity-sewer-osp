@@ -153,8 +153,18 @@ def main():
     rated = sim25.Sim25Model(case, whole=True, pump_rates={"1495438": 12.5})
     model.write_inp(rated_inp, rated, sim25._Steady(600))
     rt = open(rated_inp).read()
-    check("rated: a named station takes its rate, the other its default",
-          "PC_P1495438 PUMP2 100 12.5000" in rt and "PC_P4433449 PUMP2 100 17.6700" in rt)
+    curve = rated.pump_rated["P1495438"][3]
+    spec = rated.pump_curves["P1495438"]
+    q_at = lambda pts, x: next(q0 + (q1 - q0) * (x - h0) / (h1 - h0) for (h0, q0), (h1, q1) in zip(pts, pts[1:]) if h0 <= x <= h1)
+    check("rated: a named station takes its rate, on a head curve through its rated point",
+          "PC_P1495438 PUMP3" in rt and abs(q_at(curve, spec["static_m"]) - 12.5) < 0.25 and curve[-1][1] == 0.0,
+          (spec, curve[:2]))
+    check("rated: the curve delivers less against more head",
+          all(a[1] >= b[1] for a, b in zip(curve, curve[1:])))
+    check("rated: the other station keeps its default rate at its rated point",
+          abs(q_at(rated.pump_rated["P4433449"][3], rated.pump_curves["P4433449"]["static_m"]) - 17.67) < 0.3)
+    check("overflow inlets: published in the grid model, raised in a rated one",
+          whole.raised_overflow == {} and rated.raised_overflow.get(4433446, 0) > 0.1, rated.raised_overflow)
     check("rated: pumps start OFF and switch at the configured levels",
           f"P1495438 N997 MH1623725 PC_P1495438 OFF {ps['start']:.3f} {ps['stop']:.3f}" in rt)
     n997 = rated.nodes["N997"]

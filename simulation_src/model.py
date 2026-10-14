@@ -343,14 +343,21 @@ def write_inp(path, nh, sc):
         w("\n[PUMPS]\n;;Name From To Curve Status Startup Shutoff")
         for name, frm, to in pumps:
             if rated and name in rated:
-                _rate, start, stop = rated[name]
+                _rate, start, stop = rated[name][:3]
                 w(f"{name} {frm} {to} PC_{name} OFF {start:.3f} {stop:.3f}")
             else:
                 w(f"{name} {frm} {to} * ON 0 0")
         if rated:
+            # PUMP3 (head-dependent: flow against the head difference across the pump) where a
+            # curve is given, else PUMP2 with one step: the rate whatever the head.
             w("\n[CURVES]\n;;Name Type X Y")
-            for name, (rate, _start, _stop) in rated.items():
-                w(f"PC_{name} PUMP2 100 {rate:.4f}")
+            for name, spec in rated.items():
+                rate, curve = spec[0], (spec[3] if len(spec) > 3 else None)
+                if curve:
+                    for k, (dh, q) in enumerate(curve):
+                        w(f"PC_{name} {'PUMP3 ' if k == 0 else ''}{dh:.4f} {q:.4f}")
+                else:
+                    w(f"PC_{name} PUMP2 100 {rate:.4f}")
 
     w("\n[CONDUITS]\n;;Name From To Length N InOffset OutOffset InitFlow")
     for lk in nh.links:

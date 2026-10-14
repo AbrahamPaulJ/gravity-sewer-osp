@@ -254,14 +254,16 @@ marks 13 Oct 2026.
 | 3 Oct 2026 | Pump stations and rising mains drawn apart from the gravity mains, with a chip to highlight them. |
 | 8 Oct 2026 | Growth scenarios over many manholes, solved in SWMM by a local runner (`simulation_src/sim25_serve.py`) or estimated in the page. The sandbox's placement algorithms on this network, all scored on the same SWMM runs. |
 | 13 Oct 2026 | Review fixes: the estimate trusted for depth rise only; the method comparison labelled for what it is (in-sample greedy, best-of-20 random). Tagged `v1.1`. |
+| 15 Oct 2026 | Validation end to end: cases, growth sizes, rules, sensors, depths and overflows checked against the SWMM runs and on 400 page views. Overflow (spills from the lid) and rises below the rule shown on the map. Pumps in rated scenarios follow a head curve, so a station delivers less as the level it pumps against rises; overflow pipe 4433446, which sent N183's discharge back to its own wet well, relieves only when surcharged in those scenarios. |
 | 14 Oct 2026 | All settings in one `config.js`, read by the browser, Node and Python. House connections drawn from the published connection layer, bends included, and checked line for line against the council map viewer; a Connections chip shows every one at its bore. Map controls: drag turns, right-drag moves, the wheel zooms to the pointer. A `display` setting chooses whether homes sit at their main's level or above it, read live. Pump stations at a set rate in growth scenarios (option A, below). |
 
 **Pumps, now and next.** Every published result uses SWMM's ideal pumps, which pass on whatever
 reaches a wet well at once. Since 14 Oct 2026 a growth scenario may instead run the two modelled
 stations at a set rate: each wet well becomes a tank and each pump starts and stops on its levels,
-solved by the local runner against the same network at default rates. The defaults (17.67 L/s in
-the DN150 rising main, 7.85 L/s in the DN100s, from a 1.0 m/s design velocity) are assumptions; the
-utility publishes no pump rate. The next step (option B) is to re-run the whole grid with rated pumps
+solved by the local runner against the same network at default rates. Since 15 Oct each pump
+follows a head curve: it delivers less as the level it pumps against rises, and nothing above its
+shut-off head. The defaults (17.67 L/s in the DN150 rising main, 7.85 L/s in the DN100s, from a
+1.0 m/s design velocity) and the curves are assumptions; the utility publishes neither. The next step (option B) is to re-run the whole grid with rated pumps
 once the operator supplies pump rates, wet-well sizes and start and stop levels, judging detection on
 the peak across a pump cycle; see `pumps._future` in `config.js` and section 7 of the Simulation 2.5
 Findings tab.

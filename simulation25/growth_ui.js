@@ -132,11 +132,21 @@ window.GrowthUI = (function () {
     Growth3D.setScenario([]);
     const c = cell(), row = rowFor(c, st.site);
     const byIdx = stateFor(c, row);
+    // How far the change reaches: manholes rising 10 mm or more that the selected rule does
+    // not count, from the 10 mm cell of the same case, size and site.
+    if (row && ruleId() !== "r10") {
+      const R = runs(), add = R.growthLevels[st.add];
+      const c10 = R.cells.find(x => x.case === st.ii && x.add === add && x.rule === "r10");
+      const r10 = c10 && rowFor(c10, st.site);
+      if (r10) r10.tip.forEach(i => { if (!byIdx[i]) byIdx[i] = "rise"; });
+    }
     // Growth3D works in chamber NAMES, so translate once, here.
     const named = {};
     for (const k in byIdx) named[nameOf(+k)] = byIdx[k];
     const sensors = shownSensors();
     Growth3D.paint(named, nameOf(st.site), sensors, heatValues());
+    Growth3D.setSpills(spillBefore().map(nameOf), spillNew(st.site).map(nameOf));
+    Growth3D.setPumpRates([]);
     renderHomes(sensors);
     $("#site").value = st.site == null ? "" : String(st.site);
     renderPanel(c, row);
@@ -480,8 +490,19 @@ window.GrowthUI = (function () {
     const named = {};
     if (!graded()) R.baseOver[st.ii].forEach(i => { named[nameOf(i)] = "was"; });
     if (out && trusted(out)) for (const [i, v] of out.per) if (seenBy(v)) named[nameOf(i)] = "tip";
+    // The reach of the change: a rise of 10 mm or more the rule does not count (the estimate
+    // is trusted for the rise, so it shows here too).
+    if (out) for (const [i, v] of out.per) if (v.rise >= 10 && !named[nameOf(i)]) named[nameOf(i)] = "rise";
+    // A scenario can also LOWER levels (a pump set slower than its default): show that too.
+    if (out) for (const [i, v] of out.per) if (v.rise <= -10 && !named[nameOf(i)]) named[nameOf(i)] = "fall";
     const sensors = shownSensors();
     Growth3D.paint(named, null, sensors, heatValues());
+    Growth3D.setSpills(spillBefore().map(nameOf),
+      out && out.source === "swmm" ? [...out.per].filter(([, v]) => v.spillNew).map(([i]) => nameOf(i)) : []);
+    // Each station whose rate the scenario changes, labelled on the map.
+    Growth3D.setPumpRates(!st.pumpOn ? [] : pumpStations()
+      .filter(p => st.pumpRates[p.rm] != null && st.pumpRates[p.rm] !== pumpDefault(p.rm))
+      .map(p => ({ rm: p.rm, text: st.pumpRates[p.rm] + " L/s (was " + pumpDefault(p.rm) + ")" })));
     Growth3D.setScenario(st.scn.map(x => ({ name: nameOf(x.i), n: x.n })));
     renderHomes(sensors);
     renderManhole();
@@ -518,7 +539,12 @@ window.GrowthUI = (function () {
     const list = pumpStations();
     $("#pumpBox").hidden = !list.length;
     if (!list.length) return;
+    // Pump rates are solved only by the SWMM runner. Without one, nothing here can change the
+    // answer, so the controls are disabled rather than left to look as if they did nothing.
+    const can = st.runner === true;
+    if (!can && st.pumpOn) st.pumpOn = false;
     $("#pumpOn").checked = st.pumpOn;
+    $("#pumpOn").disabled = !can;
     const focused = document.activeElement && document.activeElement.dataset
       ? document.activeElement.dataset.rm : null;
     $("#pumpList").innerHTML = list.map(p => {
@@ -532,14 +558,14 @@ window.GrowthUI = (function () {
         (changed ? "" : " hidden") + ">\u21ba</button></div>";
     }).join("");
     if (focused) { const el = $("#pumpList").querySelector('input[data-rm="' + focused + '"]'); if (el) el.focus(); }
-    $("#pumpNote").textContent = !st.pumpOn
+    $("#pumpNote").textContent = !can ? "" : !st.pumpOn
       ? "Off: pumps pass whatever reaches them at once (ideal), as every published result does."
       : st.runner === true
       ? "On: each station fills its wet well, then pumps at its rate until it is low again. " +
         "Compared with the same network at the default rates; SWMM only. Defaults are " +
         "assumptions, not published pump data."
-      : "Pumps at set rates need the local SWMM runner (simulation_src/sim25_serve.py); " +
-        "the page's estimate cannot model stop-start pumping.";
+      : "";
+    $("#pumpWarn").hidden = can;
   }
 
   function renderScnResult(out) {
@@ -741,7 +767,7 @@ window.GrowthUI = (function () {
     }
     $("#siteFacts").innerHTML =
       reachRow() +
-      row2("Adding", "<b>+" + add + "</b> dwellings") +
+      row2("Adding", "<b>+" + add + "</b> dwellings, " + (add * runs().lpsPerDwelling[st.ii]).toFixed(2) + " L/s") +
       row2("Manholes that see it", tipped.length
         ? '<b class="bad">' + tipped.length + "</b>"
         : "none at this size") +
@@ -757,7 +783,7 @@ window.GrowthUI = (function () {
         "Try more growth, a wetter case, or a smaller rise.</p>") +
       (spillNew(st.site).length
         ? "<h4>Overflowing because of it</h4><ul>" + spillNew(st.site).map(i =>
-            "<li>" + esc(label(i)) + (runs().baseOver[st.ii].includes(i)
+            "<li>" + esc(label(i)) + (ruleId() === "alarm" && runs().baseOver[st.ii].includes(i)
               ? ' <span class="quiet">already over the alarm before growth, so the alarm rule cannot count it</span>'
               : "") + "</li>").join("") + "</ul>"
         : "");

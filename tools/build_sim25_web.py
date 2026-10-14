@@ -353,6 +353,8 @@ def pump_stations(model, ox, oy, oz, index=None):
     # rising main from the wet well.
     rates = sim25.default_pump_rates(net)
     pset = sim25.pump_settings()
+    # The curve each modelled station gets at its default rate (config.js pumps.curve).
+    curves = sim25.Sim25Model(sim25.Case(), whole=True, pump_rates={}).pump_curves if model.pumps else {}
     out = []
     for wet, dis, rid in sim25.pump_links(net):
         i = next(k for k, r in enumerate(rec) if r[0] == rid)
@@ -395,6 +397,7 @@ def pump_stations(model, ox, oy, oz, index=None):
             "pz": [int(round((z_of(s) - oz) * 100)) for s in cum],
             "rm": str(rid),
             "rate": rates.get(str(rid)),
+            "curve": curves.get(f"P{rid}"),
             # How the default was set, for the card: a named rate, one rate for all, or the
             # design velocity in this rising main's bore.
             "rateFrom": ("station" if str(rid) in pset["stations"] else

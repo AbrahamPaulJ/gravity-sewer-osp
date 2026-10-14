@@ -28,6 +28,7 @@ window.Growth3D = (function () {
   let stationMeshes = [], risingLines = [];          // pump stations and their rising mains
   let pumpsOn = false, pumpLabels = [], pumpTubes = null, pumpSleeves = null;   // the chip
   let scnMarks = [];                                 // a growth scenario's sites: ring + label
+  let spillMarks = [];                               // overflowing manholes: ring (+ label if new)
   let houseLat = null, latHi = null, latUp = null, latGuess = null;  // each home's connection, as drawn
   let connMeshes = [], connCounts = null, pipeScale = 0;  // the Connections chip; mains' radius per mm
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
@@ -44,6 +45,10 @@ window.Growth3D = (function () {
     ok: [0x4c, 0x8b, 0xf5],        // blue, has room
     was: [0xff, 0xa5, 0x00],       // orange, surcharged before any growth
     tip: [0xff, 0x2d, 0x55],       // hot red, tipped by this growth
+    rise: 0xff8c69,                // salmon: rises 10 mm or more, but not past the selected rule
+    fall: 0x39d3c3,                // teal: FALLS 10 mm or more (a scenario can lower a pump's rate)
+    spillWas: 0xbc8cff,            // violet ring: spills from the lid before any growth
+    spillNew: 0xff3df5,            // magenta ring: spills only because of this growth
     // Pink, not amber/yellow: "already surcharged, not growth" already owns that hue,
     // and a homes layer that reads the same colour as a pipe warning was the confusion.
     house: 0xff6f9c,
@@ -186,7 +191,7 @@ window.Growth3D = (function () {
           stationMeshes.forEach(m => m.scale.setScalar(sc));
         }
         [outletLabel, siteLabel, ...scaleLabels, ...(pumpsOn ? pumpLabels : []),
-         ...scnMarks.map(m => m.label)].forEach(lbl => {
+         ...scnMarks.map(m => m.label), ...spillMarks.filter(m => m.label).map(m => m.label), ...rateLabels].forEach(lbl => {
           if (!lbl) return;
           const v = lbl.at.clone().project(camera);
           const el = renderer.domElement;
@@ -890,6 +895,60 @@ window.Growth3D = (function () {
       scnMarks.push({ ring, label: { el, at } });
     });
   }
+  /* Overflow, from SWMM: a violet ring round each manhole that spills from its lid before any
+     growth, a magenta ring and an "overflows" label round each that spills only because of
+     the growth shown. Both lists are chamber names; empty lists clear them. */
+  function setSpills(before, newly) {
+    if (!built) return;
+    spillMarks.forEach(m => { scene.remove(m.ring); m.ring.geometry.dispose(); if (m.label) m.label.el.remove(); });
+    spillMarks = [];
+    const at = name => { const m = chamberMeshes.find(x => x.userData.node.name === name); return m ? m.position.clone() : null; };
+    const add = (name, col, r, label) => {
+      const p = at(name);
+      if (!p) return;
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 2.2, 8, 36), new THREE.MeshBasicMaterial({ color: col }));
+      ring.rotation.x = Math.PI / 2;
+      ring.position.copy(p);
+      ring.renderOrder = 3;
+      scene.add(ring);
+      let lbl = null;
+      if (label) {
+        const el = document.createElement("div");
+        el.className = "lbl spill";
+        el.textContent = label;
+        labelLayer.appendChild(el);
+        lbl = { el, at: p };
+      }
+      spillMarks.push({ ring, label: lbl, name, kind: label ? "new" : "before" });
+    };
+    (before || []).forEach(n => add(n, COL.spillWas, 11, null));
+    (newly || []).forEach(n => add(n, COL.spillNew, 14, "overflows"));
+  }
+  /* A label at each pump station whose rate a scenario changes, e.g. "15.7 L/s (was 7.85)".
+     items: [{rm, text}] keyed by the station's first rising main; [] clears them. */
+  let rateLabels = [];
+  function setPumpRates(items) {
+    if (!built) return;
+    rateLabels.forEach(l => l.el.remove());
+    rateLabels = [];
+    const ps = G().pumps || [];
+    (items || []).forEach(({ rm, text }) => {
+      const p = ps.find(x => x.rm === rm);
+      if (!p) return;
+      const el = document.createElement("div");
+      el.className = "lbl pumprate";
+      el.textContent = text;
+      labelLayer.appendChild(el);
+      rateLabels.push({ el, at: P(p.x, p.y, p.z), rm });
+    });
+  }
+  /* What the map shows, for tools/test pages: each manhole's colour and the overflow rings. */
+  function mapState() {
+    const col = {};
+    chamberMeshes.forEach(m => { col[m.userData.node.name] = m.material.color.getHex(); });
+    return { chambers: col, spills: spillMarks.map(m => [m.name, m.kind]),
+             pumpRates: rateLabels.map(l => [l.rm, l.el.textContent]) };
+  }
   function closePipe() { if (pipeCard) pipeCard.hidden = true; }
   function cardAt(html, cx, cy) {
     const host = renderer.domElement.parentElement;
@@ -924,12 +983,15 @@ window.Growth3D = (function () {
       row("Homes it serves", ps.homes) +
       row("In the model", ps.modelled ? "yes, as an ideal pump" : "no") +
       (ps.modelled && ps.rate != null ? row("Default rate", ps.rate + " L/s") : "") +
+      (ps.modelled && ps.curve ? row("At that rate", "lifts " + ps.curve.static_m.toFixed(2) + " m + " +
+        ps.curve.friction_m.toFixed(2) + " m friction; stops at " + ps.curve.shutoff_head_m.toFixed(2) + " m") : "") +
       (ps.modelled && ps.rm ? '<button class="pumpSet" data-rm="' + ps.rm + '">Set its rate in a scenario</button>' : "") +
       '<div class="note">' + (ps.modelled
         ? "Every published result uses an ideal pump: everything reaching the wet well passes " +
           "straight on, with no rate, storage or cycling. A real station delivers in bursts, so " +
           "the peak at the manhole it pumps to can be higher. In a scenario it can pump at a " +
-          "set rate instead, solved in SWMM; the default rate " +
+          "set rate instead, solved in SWMM, delivering less as the level it pumps against rises " +
+          "and nothing above its shut-off head; the default rate and curve " +
           (ps.rateFrom ? "(" + ps.rateFrom + ") " : "") + "is an assumption, not published data."
         : "It discharges outside the model's area, so its flow never reaches the network " +
           "solved here.") +
@@ -964,6 +1026,7 @@ window.Growth3D = (function () {
       row("Grade", v("pslope", x => x.toFixed(2) + " %")) +
       row("Pipe floor, up \u2192 down", lvl(g.zu[p]) + " \u2192 " + lvl(g.zd[p]) + " m") +
       row("Full-bore capacity", v("pcap", x => x.toFixed(1) + " L/s")) +
+
       (st ? '<div class="state"><i style="background:' + st[0] + '"></i>This case: ' + st[1] + "</div>" : "") +
       '<div class="note">Capacity is Manning full-bore at the published grade, with the ' +
       "roughness for its material. Levels in metres above datum.</div>";
@@ -1189,11 +1252,14 @@ window.Growth3D = (function () {
     const arr = pipeColours.array, segPipe = pipeGeo.userData.segPipe;
     // A pipe takes the worse of its two ends: a reach between a tipped chamber and a
     // healthy one is part of the problem, not half of it.
+    // "rise" marks a manhole only: its pipes stay as they are, so pipe colour keeps meaning
+    // the three states the legend gives them.
     const rank = { ok: 0, was: 1, tip: 2 };
+    const pipeState = name => { const v = nodeState(name); return v === "rise" || v === "fall" ? "ok" : v; };
     const pipeCol = [];
     for (let p = 0; p < g.nPipes; p++) {
       const u = g.nodes[g.up[p]], d = g.nodes[g.down[p]];
-      const su = nodeState(u.name), sd = nodeState(d.name);
+      const su = pipeState(u.name), sd = pipeState(d.name);
       pipeCol.push(rank[su] >= rank[sd] ? su : sd);
     }
     lastPipeState = pipeCol;   // read by highlight() to keep a sleeve off cyan-on-amber
@@ -1216,10 +1282,11 @@ window.Growth3D = (function () {
       const st = nodeState(nm);
       const c = sensorSet.has(nm) ? COL.sensor
         : heat ? heatHex(heat[nm] || 0)
-        : st === "tip" ? 0xff2d55 : st === "was" ? 0xffa500 : COL.chamber;
+        : st === "tip" ? 0xff2d55 : st === "was" ? 0xffa500 : st === "rise" ? COL.rise
+        : st === "fall" ? COL.fall : COL.chamber;
       m.material.color.setHex(c);
       m.scale.setScalar(sensorSet.has(nm) ? 2.1 : heat ? 0.9 + 1.4 * (heat[nm] || 0)
-        : st === "ok" ? 1 : 1.6);
+        : st === "ok" ? 1 : st === "rise" || st === "fall" ? 1.3 : 1.6);
       if (nm === siteName) {
         focusRing.position.copy(m.position);
         focusRing.visible = true;
@@ -1298,7 +1365,7 @@ window.Growth3D = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario,
+  return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, setSpills, setPumpRates, mapState,
            frame, resize, heatHex,
            ZEXAG };
 })();

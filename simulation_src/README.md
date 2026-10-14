@@ -99,7 +99,15 @@ SWMM tank and each pump a constant rate switched by start and stop levels, all f
 | `wet_well_area_m2` | 2.5 | the wet well's plan area |
 | `start_level_m`, `stop_level_m` | 1.0, 0.3 | the pump starts and stops at these depths above the wet-well floor |
 | `inlet_above_start_m` | 0.3 | the incoming sewer enters this far above the start level, so a filling well never backs up its pipes |
+| `curve` | head | `head`: each pump follows a centrifugal curve through its rate at its rated head (lift plus rising-main friction), so it delivers less as the level it pumps against rises; `flat`: the rate whatever the head |
+| `shutoff_head_ratio` | 1.3 | the shut-off head as a multiple of the rated head |
+| `rising_main_hazen_c` | 120 | Hazen-Williams C for rising-main friction (46.5 m DN150 from N183, 228.1 m DN100 from N997) |
 | `rated_minutes`, `rated_window_min` | 600, 240 | a rated run never settles, so it runs longer and every depth is the peak over the window |
+
+Rated scenarios also raise each overflow pipe's inlet to the crown of its manhole's main outlet
+(`simulation.overflow_inlet`, L13). At its published level overflow 4433446 takes 70% of what
+leaves MH4451967, where N183 pumps to, and sends it back to the N183 wet well, so the station
+pumped in a loop. The grid keeps the published levels until it is re-run.
 
 The baseline it is compared with is the same rated network at default rates with no growth, so
 a rise is always between two runs of one model. The page's instant estimate cannot model a
@@ -107,11 +115,14 @@ filling wet well, so with pumps at set rates only SWMM answers. The runner reads
 when it starts: restart it after editing `config.js`, and republish so the page shows new
 defaults.
 
-Measured at Design wet with the defaults (14 Oct 2026): each pump ran about 10% of the time,
-cycling every 80 to 120 minutes; the manholes the stations pump to peak at 74 to 78 mm against
-21 to 29 mm with ideal pumps; 80 new dwellings behind a station raise its discharge manhole by
-8.6 mm with an ideal pump and by nothing with a rated one, which pumps more often instead; and
-doubling a station's rate raises its discharge manhole by 46.6 mm.
+Measured at Design wet with the defaults and the head curve (15 Oct 2026): the manholes the
+stations pump to peak at 78 and 154 mm against 29 and 21 mm with ideal pumps; 80 new dwellings
+behind N997 raise its discharge manhole by 8.6 mm with an ideal pump and 0.1 mm with a rated one,
+which pumps more often instead; doubling its rate raises the discharge manhole by 46.0 mm; cutting
+it to 0.3 L/s, below its inflow, backs the sewer up 1.83 m. N183 averaged 16.3 L/s while running
+(as low as 12.9) as its discharge manhole filled. In Severe the trunk surcharges that manhole by
+1.37 m, its overflow relieves back to the wet well, and the pump runs continuously at about 24 L/s
+against about 0.9 m of head.
 
 **Not done yet (option B).** Re-run the whole grid with rated pumps so the heatmap and placements
 include them, judging detection on the peak across a pump cycle rather than the settled depth.

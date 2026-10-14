@@ -200,6 +200,7 @@ class Network:
             if flip < as_is:
                 line.reverse()
             self._add(a, line, si, ei, index)
+            self.pipes[-1].overflow = True      # a relief pipe: see sim25 overflow_inlet
             self.skipped["overflow pipe included, direction from inverts"] += 1
 
         self._place_manholes(manholes)
