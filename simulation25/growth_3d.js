@@ -29,6 +29,7 @@ window.Growth3D = (function () {
   let pumpsOn = false, pumpLabels = [], pumpTubes = null, pumpSleeves = null;   // the chip
   let scnMarks = [];                                 // a growth scenario's sites: ring + label
   let spillMarks = [];                               // overflowing manholes: ring (+ label if new)
+  let sensorMarks = [], sensorKey = "";             // proposed sensors: pin, ring and numbered label
   let houseLat = null, latHi = null, latUp = null, latGuess = null;  // each home's connection, as drawn
   let connMeshes = [], connCounts = null, pipeScale = 0;  // the Connections chip; mains' radius per mm
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
@@ -56,7 +57,7 @@ window.Growth3D = (function () {
     chamber: 0xc9d1d9,             // a real, published manhole: a candidate sensor site
     site: 0x00d4ff,                // cyan, where the new dwellings connect
     outlet: 0xa371f7,              // violet, the chamber everything drains through
-    sensor: 0x3fb950,              // green, a proposed sensor
+    sensor: 0x2ef56b,              // bright green, a proposed sensor (manhole, pin and label)
     houseDim: 0x3a2430,            // a property with nothing to do with the selection
     houseUp: 0x7dc4e0,             // drains THROUGH the selected manhole, from further up
     // A home's own connection pipe down to its main. Lighter than the royal-blue dot it
@@ -191,7 +192,7 @@ window.Growth3D = (function () {
           stationMeshes.forEach(m => m.scale.setScalar(sc));
         }
         [outletLabel, siteLabel, ...scaleLabels, ...(pumpsOn ? pumpLabels : []),
-         ...scnMarks.map(m => m.label), ...spillMarks.filter(m => m.label).map(m => m.label), ...rateLabels].forEach(lbl => {
+         ...scnMarks.map(m => m.label), ...spillMarks.filter(m => m.label).map(m => m.label), ...rateLabels, ...sensorMarks.map(m => m.label)].forEach(lbl => {
           if (!lbl) return;
           const v = lbl.at.clone().project(camera);
           const el = renderer.domElement;
@@ -924,6 +925,40 @@ window.Growth3D = (function () {
     (before || []).forEach(n => add(n, COL.spillWas, 11, null));
     (newly || []).forEach(n => add(n, COL.spillNew, 14, "overflows"));
   }
+  /* The proposed sensors, made visible from any distance: at each, a bright green pin
+     standing above the manhole, a ring at its foot, and a label S1, S2, ... in the order the
+     sensor list numbers them (the order the placement chose them). A small green manhole
+     among the pipes was easy to miss at the scale of the whole area. Rebuilt only when the
+     set changes. */
+  function setSensorMarks(names) {
+    const key = names.join(",");
+    if (key === sensorKey) return;
+    sensorKey = key;
+    sensorMarks.forEach(m => { scene.remove(m.group); m.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); m.label.el.remove(); });
+    sensorMarks = [];
+    names.forEach((name, k) => {
+      const mesh = chamberMeshes.find(x => x.userData.node.name === name);
+      if (!mesh) return;
+      const grp = new THREE.Group();
+      grp.position.copy(mesh.position);
+      const mat = new THREE.MeshBasicMaterial({ color: COL.sensor });
+      const stalk = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 110, 8), mat);
+      stalk.position.y = 55;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(7, 16, 12), mat);
+      head.position.y = 114;
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(13, 2.6, 8, 36), mat);
+      ring.rotation.x = Math.PI / 2;
+      grp.add(stalk, head, ring);
+      grp.renderOrder = 4;
+      scene.add(grp);
+      const el = document.createElement("div");
+      el.className = "lbl sensor";
+      el.textContent = "S" + (k + 1);
+      el.title = "Proposed sensor " + (k + 1) + ": MH " + mesh.userData.node.mh;
+      labelLayer.appendChild(el);
+      sensorMarks.push({ group: grp, name, label: { el, at: mesh.position.clone().add(new THREE.Vector3(0, 114, 0)) } });
+    });
+  }
   /* A label at each pump station whose rate a scenario changes, e.g. "15.7 L/s (was 7.85)".
      items: [{rm, text}] keyed by the station's first rising main; [] clears them. */
   let rateLabels = [];
@@ -947,6 +982,7 @@ window.Growth3D = (function () {
     const col = {};
     chamberMeshes.forEach(m => { col[m.userData.node.name] = m.material.color.getHex(); });
     return { chambers: col, spills: spillMarks.map(m => [m.name, m.kind]),
+             sensors: sensorMarks.map(m => [m.name, m.label.el.textContent]),
              pumpRates: rateLabels.map(l => [l.rm, l.el.textContent]) };
   }
   function closePipe() { if (pipeCard) pipeCard.hidden = true; }
@@ -1277,6 +1313,7 @@ window.Growth3D = (function () {
     if (pipeBodies && pipeBodies.instanceColor) pipeBodies.instanceColor.needsUpdate = true;
 
     const sensorSet = new Set(sensors || []);
+    setSensorMarks(sensors || []);
     chamberMeshes.forEach(m => {
       const nm = m.userData.node.name;
       const st = nodeState(nm);
