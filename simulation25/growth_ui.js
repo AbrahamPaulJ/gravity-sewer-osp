@@ -897,7 +897,8 @@ window.GrowthUI = (function () {
         " manholes, " + (geom().nHouses || geom().baseDwellings) + " connected properties" +
         ", plus " + geom().nodes.filter(n => n.kind !== "chamber").length +
         " pipe ends with no manhole on record. Elevation is the pipe invert, exaggerated x" +
-        Growth3D.ZEXAG + ". Click a manhole to move the growth there.";
+        Growth3D.ZEXAG + ". Click a manhole to move the growth there. Drag to move the map, " +
+        "right-drag (or Shift-drag) to rotate, scroll to zoom where the pointer is.";
       // Open on the busiest manhole whose growth something sees under the default knobs,
       // rather than one that reads "none at this size" before anyone has touched anything.
       const seen = new Set(cell().rows.filter(r => r.tip.length).map(r => r.site));
@@ -937,6 +938,21 @@ window.GrowthUI = (function () {
       if (!Growth3D.showPumps(st.showPumps)) { st.showPumps = false; return; }
       $("#togglePumps").classList.toggle("primary", st.showPumps);
       $("#togglePumps").textContent = st.showPumps ? "Hide pump stations" : "Pump stations";
+    };
+    // Connections: every property's published connection pipe. Offered only if the build
+    // published them; the key carries the counts the 3D view actually drew.
+    // Wired before the 3D view has built, so offered from the data, not from the view.
+    $("#toggleConn").hidden = !(geom() && geom().cptr && geom().cptr.length > 1);
+    $("#toggleConn").onclick = () => {
+      st.showConn = !st.showConn;
+      const c = Growth3D.showConnections(st.showConn);
+      if (!c) { st.showConn = false; return; }
+      $("#connMis").textContent = c.mis;
+      $("#connSpare").textContent = c.spare;
+      $("#connGuess").textContent = c.guess;
+      $("#connKey").hidden = !st.showConn;
+      // The label stays put: a longer "Hide ..." wrapped the map bar onto a second row.
+      $("#toggleConn").classList.toggle("primary", st.showConn);
     };
     $("#toggleHeat").onclick = () => {
       st.showHeat = !st.showHeat;

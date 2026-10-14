@@ -28,7 +28,8 @@ window.Growth3D = (function () {
   let stationMeshes = [], risingLines = [];          // pump stations and their rising mains
   let pumpsOn = false, pumpLabels = [], pumpTubes = null, pumpSleeves = null;   // the chip
   let scnMarks = [];                                 // a growth scenario's sites: ring + label
-  let houseJ = null, latHi = null, latUp = null;   // where each home joins its main; the laterals drawn
+  let houseLat = null, latHi = null, latUp = null, latGuess = null;  // each home's connection, as drawn
+  let connMeshes = [], connCounts = null, pipeScale = 0;  // the Connections chip; mains' radius per mm
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
   const clock = { t0: performance.now() };
   const ZEXAG = 22.0;
@@ -56,6 +57,10 @@ window.Growth3D = (function () {
     // A home's own connection pipe down to its main. Lighter than the royal-blue dot it
     // hangs from, because a one-pixel line in that blue vanishes on the dark ground.
     lateralHere: 0x6f95ff,
+    lateralGuess: 0xd2a8ff,        // dashed lilac: no published connection, joined to its nearest main
+    connOwn: 0x6f95ff,             // the Connections chip: a property's own connection pipe
+    connMis: 0xffa657,             // ... one that meets a different main from the model's attribution
+    connSpare: 0x8b949e,           // ... a branch laid to no property on record
     // Royal blue, not the cyan of the growth marker: "these homes reach this manhole first"
     // and "the new dwellings connect here" are different facts. A white rim keeps a dark
     // blue readable on the near-black background and apart from the blue pipes.
@@ -113,6 +118,17 @@ window.Growth3D = (function () {
       container.appendChild(labelLayer);
       controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
+      /* Moved like a map, not orbited like an object. Out of the box the left button
+         rotates about one fixed point and the wheel dollies toward it, so every zoom went
+         into the middle of the map and nowhere else could be reached. Now the left button
+         drags the map (along the ground, not the screen, so a tilted view does not climb),
+         the right button, or Shift with the left, rotates, and the wheel zooms toward
+         whatever is under the pointer. Not the arrow keys: listening on the window would
+         take them from the sensor slider and the dwelling inputs. */
+      controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+      controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
+      controls.screenSpacePanning = false;
+      controls.zoomToCursor = true;
       renderer.domElement.addEventListener("pointerdown", onDown);
       renderer.domElement.addEventListener("pointerup", onUp);
       renderer.domElement.addEventListener("pointermove", onMove);
@@ -290,6 +306,7 @@ window.Growth3D = (function () {
       // R_MAX stays under the bottleneck tube at 4.4 and the chamber at 5.6.
       const R_MAX = 3.4, R_NONE = 1.5;
       const k = dhi > 0 && isFinite(dhi) ? R_MAX / dhi : 0;
+      pipeScale = k;                                     // the connections use the same scale
       // A link with no published diameter (an outfall dummy, say) is drawn at the smallest
       // real pipe's radius rather than inventing a size for it.
       const radiusOf = p => {
@@ -327,41 +344,134 @@ window.Growth3D = (function () {
     }
 
 
-    /* Each home's connection to its main. The data records where every property's own
-       connection pipe meets a main (layer 7, median 6.2 m long). That point is snapped
-       here onto the nearest drawn pipe segment rather than placed by its published level,
-       so the line ends on the pipe as it is drawn, exaggeration and all. It runs from the
-       home, drawn 2 m above its main, down to that point: mostly a drop, which is what a
-       lateral is. Built once; highlight() draws only the ones for the homes it lights. */
-    if (houseGeo && g.jx && g.jx.length === g.hx.length && segEnds.length) {
-      const n = g.hx.length;
-      houseJ = new Float32Array(n * 3);
-      for (let i = 0; i < n; i++) {
-        const j = P(g.jx[i], g.jy[i], 0);              // only x and z matter here
-        let best = Infinity, bx = j.x, by = 0, bz = j.z;
-        for (let s2 = 0; s2 < segEnds.length; s2++) {
-          const [a, b] = segEnds[s2];
-          const dx = b.x - a.x, dz = b.z - a.z, L2 = dx * dx + dz * dz;
-          let t = L2 > 0 ? ((j.x - a.x) * dx + (j.z - a.z) * dz) / L2 : 0;
-          t = t < 0 ? 0 : t > 1 ? 1 : t;
-          const qx = a.x + t * dx, qz = a.z + t * dz;
-          const d = (j.x - qx) * (j.x - qx) + (j.z - qz) * (j.z - qz);
-          if (d < best) { best = d; bx = qx; bz = qz; by = a.y + t * (b.y - a.y); }
-        }
-        houseJ[i * 3] = bx; houseJ[i * 3 + 1] = by; houseJ[i * 3 + 2] = bz;
+    /* Each home's connection to its main, as the utility publishes it (layer 7): the pipe
+       from the property's inspection point, at its boundary, to the main, every bend
+       included, median 6.7 m long. The private drain from the house to that point is not
+       published, so the dot is the inspection point, not the house. Plan position is the
+       data's; height is not published, so a line falls evenly along its length from the
+       dot, drawn 2 m above its main, to the main, its last vertex snapped onto the drawn
+       pipe so it ends on the pipe as drawn, exaggeration and all.
+
+       g.hl gives each home its own line, or -1 where none starts at it: that home gets a
+       straight DASHED line to the point on its main it was attributed to, because that
+       connection is a guess. Built once; highlight() draws only the ones for the homes it
+       lights, and the Connections chip shows every line at its bore. */
+    const onMain = (xDm, yDm) => {                       // nearest point on any drawn pipe
+      const j = P(xDm, yDm, 0);
+      let best = Infinity, bx = j.x, by = 0, bz = j.z;
+      for (let s2 = 0; s2 < segEnds.length; s2++) {
+        const [a, b] = segEnds[s2];
+        const dx = b.x - a.x, dz = b.z - a.z, L2 = dx * dx + dz * dz;
+        let t = L2 > 0 ? ((j.x - a.x) * dx + (j.z - a.z) * dz) / L2 : 0;
+        t = t < 0 ? 0 : t > 1 ? 1 : t;
+        const qx = a.x + t * dx, qz = a.z + t * dz;
+        const d = (j.x - qx) * (j.x - qx) + (j.z - qz) * (j.z - qz);
+        if (d < best) { best = d; bx = qx; bz = qz; by = a.y + t * (b.y - a.y); }
       }
-      const lateral = (col, opacity) => {
+      return new THREE.Vector3(bx, by, bz);
+    };
+    const LIFT = P(0, 0, 200).y;                         // the 2 m a home is drawn above its main
+    // A published line as scene points: from `top` (or LIFT above the main) down to the main.
+    const lineOf = (i, top) => {
+      const a = g.cptr[i], b = g.cptr[i + 1];
+      const end = onMain(g.cx[b - 1], g.cy[b - 1]);
+      const pts = [];
+      for (let v = a; v < b; v++) pts.push(P(g.cx[v], g.cy[v], 0));
+      pts[pts.length - 1] = end;
+      if (top) { pts[0].x = top.x; pts[0].z = top.z; }
+      const y0 = top ? top.y : end.y + LIFT;
+      let total = 0;
+      const run = [0];
+      for (let v = 1; v < pts.length; v++) { total += Math.hypot(pts[v].x - pts[v - 1].x, pts[v].z - pts[v - 1].z); run.push(total); }
+      for (let v = 0; v < pts.length - 1; v++) pts[v].y = y0 + (end.y - y0) * (total > 0 ? run[v] / total : 0);
+      return pts;
+    };
+    if (houseGeo && g.jx && g.jx.length === g.hx.length && segEnds.length) {
+      const n = g.hx.length, hp = houseGeo.attributes.position.array;
+      const hasLines = g.cptr && g.hl && g.hl.length === n;
+      houseLat = new Array(n);
+      let segs = 0, guessSegs = 0;
+      for (let i = 0; i < n; i++) {
+        const top = new THREE.Vector3(hp[i * 3], hp[i * 3 + 1], hp[i * 3 + 2]);
+        const own = hasLines ? g.hl[i] : -1;
+        houseLat[i] = own >= 0 ? { pts: lineOf(own, top), guess: false }
+                               : { pts: [top, onMain(g.jx[i], g.jy[i])], guess: true };
+        if (houseLat[i].guess) guessSegs++; else segs += houseLat[i].pts.length - 1;
+      }
+      const lateral = (col, opacity, nSeg, dashed) => {
         const geo = new THREE.BufferGeometry();
-        geo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(n * 6), 3));
+        geo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(Math.max(1, nSeg) * 6), 3));
         geo.setDrawRange(0, 0);
-        const ls = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
-          color: col, transparent: true, opacity }));
+        const mat = dashed
+          ? new THREE.LineDashedMaterial({ color: col, transparent: true, opacity, dashSize: 2.5, gapSize: 2 })
+          : new THREE.LineBasicMaterial({ color: col, transparent: true, opacity });
+        const ls = new THREE.LineSegments(geo, mat);
         ls.frustumCulled = false;
         scene.add(ls);
         return ls;
       };
-      latHi = lateral(COL.lateralHere, 0.95);
-      latUp = lateral(COL.houseUp, 0.5);     // fainter: there can be hundreds of these
+      latHi = lateral(COL.lateralHere, 0.95, segs);
+      latUp = lateral(COL.houseUp, 0.5, segs);     // fainter: there can be hundreds of these
+      latGuess = lateral(COL.lateralGuess, 0.95, 2 * guessSegs, true);   // hi and up together
+
+      /* The Connections chip: every published line as a tube at its own bore, on the same
+         proportional scale as the mains (radius = bore x pipeScale), so a 100 mm
+         connection reads two thirds of a 150 mm main beside it. Three meshes, one colour
+         each, rather than per-instance colour (see the instanceColor trap above): a
+         property's own line; one that meets a different main from the one the model
+         gives that property's load (g.hMis); and a spare branch that starts at no
+         property. Hidden until the chip is pressed. */
+      if (hasLines) {
+        const mis = new Set(g.hMis || []);
+        const groups = { own: [], mis: [], spare: [] };
+        for (let i = 0; i < n; i++) if (!houseLat[i].guess) groups[mis.has(i) ? "mis" : "own"].push([houseLat[i].pts, g.cdia[g.hl[i]]]);
+        (g.cSpare || []).forEach(li => groups.spare.push([lineOf(li, null), g.cdia[li]]));
+        const m = new THREE.Matrix4(), q = new THREE.Quaternion(), yAxis = new THREE.Vector3(0, 1, 0);
+        const dir = new THREE.Vector3(), mid = new THREE.Vector3(), scl = new THREE.Vector3();
+        const tubes = (list, col) => {
+          const nSeg = list.reduce((t, [pts]) => t + pts.length - 1, 0);
+          const mesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 6, 1, true),
+            // Translucent: with the height exaggerated 22x, 2,500 opaque drops read as a comb
+            // that hides the mains they join.
+            new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, depthWrite: false }),
+            Math.max(1, nSeg));
+          let k = 0;
+          list.forEach(([pts, dia]) => {
+            const r = Math.max(0.5, (dia || 100) * pipeScale);
+            for (let v = 0; v < pts.length - 1; v++) {
+              dir.subVectors(pts[v + 1], pts[v]);
+              const len = dir.length();
+              if (len < 1e-6) { m.makeScale(0, 0, 0); mesh.setMatrixAt(k++, m); continue; }
+              q.setFromUnitVectors(yAxis, dir.divideScalar(len));
+              mid.addVectors(pts[v], pts[v + 1]).multiplyScalar(0.5);
+              m.compose(mid, q, scl.set(r, len, r));
+              mesh.setMatrixAt(k++, m);
+            }
+          });
+          mesh.count = k;
+          mesh.instanceMatrix.needsUpdate = true;
+          mesh.frustumCulled = false;
+          mesh.visible = false;
+          scene.add(mesh);
+          return mesh;
+        };
+        connMeshes = [tubes(groups.own, COL.connOwn), tubes(groups.mis, COL.connMis),
+                      tubes(groups.spare, COL.connSpare)];
+        // The guessed homes, dashed, so the chip shows every home's connection.
+        const gs = [];
+        for (let i = 0; i < n; i++) if (houseLat[i].guess) gs.push(...houseLat[i].pts);
+        if (gs.length) {
+          const geo = new THREE.BufferGeometry().setFromPoints(gs);
+          const ls = new THREE.LineSegments(geo, new THREE.LineDashedMaterial({
+            color: COL.lateralGuess, dashSize: 2.5, gapSize: 2 }));
+          ls.computeLineDistances();
+          ls.visible = false;
+          scene.add(ls);
+          connMeshes.push(ls);
+        }
+        connCounts = { own: groups.own.length, mis: groups.mis.length, spare: groups.spare.length,
+                       guess: gs.length / 2 };
+      }
     }
 
     // Sleeves: a translucent tube around every pipe in the highlighted catchment. WebGL
@@ -628,7 +738,8 @@ window.Growth3D = (function () {
   /* Picking. A drag that ends where it began is a click; anything else is an orbit, so
      rotating the view does not keep reassigning the growth site. */
   let downAt = null;
-  function onDown(e) { downAt = { x: e.clientX, y: e.clientY }; }
+  // Only the left button picks; the right one rotates, and a still right-click is not a pick.
+  function onDown(e) { downAt = e.button === 0 ? { x: e.clientX, y: e.clientY } : null; }
   function chamberAt(e) {
     const r = renderer.domElement.getBoundingClientRect();
     pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
@@ -709,6 +820,13 @@ window.Growth3D = (function () {
       pumpLabels.forEach(l => { l.el.style.display = "none"; });
     }
     return true;
+  }
+  /* Show or hide every published connection pipe. Returns the counts drawn, or null if the
+     data has none, so the page can hide its chip rather than offer a switch that does nothing. */
+  function showConnections(on) {
+    if (!connMeshes.length) return null;
+    connMeshes.forEach(m => { m.visible = !!on; });
+    return connCounts;
   }
   /* The sites of a growth scenario: a cyan ring at each, the colour the legend gives to
      "where the new dwellings connect", sized a little by its dwellings, and a "+n" label.
@@ -905,13 +1023,21 @@ window.Growth3D = (function () {
       dst[k * 3] = src[i * 3]; dst[k * 3 + 1] = src[i * 3 + 1]; dst[k * 3 + 2] = src[i * 3 + 2];
     };
     let nHi = 0, nUp = 0, nDirect = 0, out, pipes = null;
-    // A home's lateral, from the home to where it joins its main, written into slot k.
-    const hiLat = latHi && latHi.geometry.attributes.position.array;
-    const upLat = latUp && latUp.geometry.attributes.position.array;
-    const lat = (dst, k, i) => {
+    // A home's connection, its published line or a dashed guess, appended as segments.
+    const segN = { hi: 0, up: 0, guess: 0 };
+    const bufs = {
+      hi: latHi && latHi.geometry.attributes.position.array,
+      up: latUp && latUp.geometry.attributes.position.array,
+      guess: latGuess && latGuess.geometry.attributes.position.array,
+    };
+    const lat = (which, i) => {
+      if (!houseLat || !houseLat[i]) return;
+      const { pts, guess } = houseLat[i], key = guess ? "guess" : which, dst = bufs[key];
       if (!dst) return;
-      dst.set(src.subarray(i * 3, i * 3 + 3), k * 6);
-      dst.set(houseJ.subarray(i * 3, i * 3 + 3), k * 6 + 3);
+      for (let v = 0; v < pts.length - 1; v++, segN[key]++) {
+        const o = segN[key] * 6, a = pts[v], b = pts[v + 1];
+        dst[o] = a.x; dst[o + 1] = a.y; dst[o + 2] = a.z; dst[o + 3] = b.x; dst[o + 4] = b.y; dst[o + 5] = b.z;
+      }
     };
 
     if (spec && spec.mode === "site" && spec.name in t.idxOf) {
@@ -920,8 +1046,8 @@ window.Growth3D = (function () {
       for (let i = 0; i < n; i++) {
         const node = g.hn[i];
         paintHouse(i, COL.houseDim);
-        if (t.firstMh[node] === me) { lat(hiLat, nHi, i); copy(hiPos, nHi++, i); if (node === me) nDirect++; }
-        else if (up.nodes.has(node)) { lat(upLat, nUp, i); copy(upPos, nUp++, i); }
+        if (t.firstMh[node] === me) { lat("hi", i); copy(hiPos, nHi++, i); if (node === me) nDirect++; }
+        else if (up.nodes.has(node)) { lat("up", i); copy(upPos, nUp++, i); }
       }
       out = { mode: "site", here: nHi, direct: nDirect, through: nUp, elsewhere: n - nHi - nUp, total: n };
     } else if (spec && spec.mode === "sensors" && spec.names.length) {
@@ -949,11 +1075,12 @@ window.Growth3D = (function () {
       pts.frustumCulled = false;
     });
     // Laterals only for the homes lit in "site" mode; every other mode clears them, since
-    // nHi and nUp are only counted there.
-    [[latHi, nHi], [latUp, nUp]].forEach(([ls, k]) => {
+    // segN is only counted there.
+    [[latHi, segN.hi], [latUp, segN.up], [latGuess, segN.guess]].forEach(([ls, k]) => {
       if (!ls) return;
       ls.geometry.setDrawRange(0, k * 2);
       ls.geometry.attributes.position.needsUpdate = true;
+      if (ls === latGuess && k) ls.computeLineDistances();
     });
 
     // Sleeves around the pipes that carry it. Coloured per instance, not once for the
@@ -1123,7 +1250,7 @@ window.Growth3D = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, setScenario,
+  return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario,
            frame, resize, heatHex,
            ZEXAG };
 })();

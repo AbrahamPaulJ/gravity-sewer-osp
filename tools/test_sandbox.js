@@ -236,6 +236,34 @@ console.log("placement methods on Sim 2.5 (simulation25/placement.js)");
   }
 }
 
+/* The Sim 2.5 connections: each home's own published connection pipe. An off-by-one in the
+   vertex pointers draws a home's pipe to a neighbour's main, and nothing else would notice. */
+console.log("house connections on Sim 2.5");
+{
+  const fs = require("fs");
+  const f = path.join(ROOT, "simulation25/data/catchment.js");
+  if (fs.existsSync(f)) {
+    const saved = global.window;
+    global.window = {};
+    delete require.cache[require.resolve(f)];
+    require(f);
+    const g = window.GROWTH_GEOM;
+    global.window = saved;
+    if (g.cptr) {
+      const nLines = g.cptr.length - 1;
+      check("every line has at least two vertices",
+        g.cptr.slice(1).filter((p, i) => p - g.cptr[i] < 2).length, 0);
+      check("one line, or -1, per home", g.hl.length === g.hx.length && g.hl.every(i => i >= -1 && i < nLines), true);
+      // A home's own line starts at the home: published 0.00 m apart, 0.1 m after rounding.
+      const off = g.hl.map((li, h) => li < 0 ? 0 : Math.hypot(g.cx[g.cptr[li]] - g.hx[h], g.cy[g.cptr[li]] - g.hy[h]))
+        .filter(d => d > 1).length;
+      check("each home's line starts at that home", off, 0);
+      check("spare branches are no home's line",
+        g.cSpare.filter(li => g.hl.includes(li)).length, 0);
+    }
+  }
+}
+
 console.log("instanced colour is set before first compile");
 {
   const fs = require("fs");

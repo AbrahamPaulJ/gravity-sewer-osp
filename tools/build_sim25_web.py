@@ -69,6 +69,48 @@ RULES = [("alarm", f"{ALARM_MM:g} mm alarm",
           "own level before the growth.") for mm in _SIM["detection_rises_mm"]]
 
 
+def connection_geometry(network, kept, in_model, ox, oy):
+    """The connection pipes as published (layer 7), for the page to draw as they are.
+
+    kept lists, per drawn house, its index in network.connections. Returns:
+      cx, cy, cptr  every line's vertices (dm from the origin), property end first and the
+                    end on the main last; line i is cx[cptr[i]:cptr[i+1]]
+      cdia          each line's bore, mm (None where unpublished)
+      hl            per drawn house, the line that starts at it, or -1 where none does, so
+                    the page can only draw a straight guess to its main
+      hMis          drawn houses whose own line meets a different main from the one their
+                    load is attributed to (see network.connection_own)
+      cSpare        lines that start at no property, joining a main in this map: branches
+                    laid to a lot with no inspection point on record
+    """
+    paths = getattr(network, "connection_paths", None) or []
+    own = getattr(network, "connection_own", None) or []
+    if not paths:
+        return {}
+    pub, cx, cy, cptr, cdia = {}, [], [], [0], []
+
+    def publish(i):
+        if i not in pub:
+            pub[i] = len(cdia)
+            for x, y in paths[i]["path"]:
+                cx.append(int(round((x - ox) * 10)))
+                cy.append(int(round((y - oy) * 10)))
+            cptr.append(len(cx))
+            cdia.append(paths[i]["dia"])
+        return pub[i]
+
+    hl, mis = [], []
+    for h, k in enumerate(kept):
+        i = own[k] if k < len(own) else None
+        hl.append(-1 if i is None else publish(i))
+        if i is not None and paths[i]["pipe"] != network.connections[k][2]:
+            mis.append(h)
+    taken = {i for i in own if i is not None}
+    spare = [publish(i) for i, c in enumerate(paths) if i not in taken and c["pipe"] in in_model]
+    return {"cx": cx, "cy": cy, "cptr": cptr, "cdia": cdia, "hl": hl, "hMis": mis,
+            "cSpare": spare}
+
+
 def write_js(path, varname, payload):
     body = json.dumps(payload, separators=(",", ":"), allow_nan=False)
     text = (
@@ -177,11 +219,12 @@ def catchment_geometry(outlet):
 
     study_assets = {pipe.asset_id for pipe in model.pipes if pipe.role == "study"}
     in_model = {i for i, pipe in enumerate(network.pipes) if pipe.asset_id in study_assets}
-    hx, hy, hz, hn, jx, jy = [], [], [], [], [], []
+    hx, hy, hz, hn, jx, jy, kept = [], [], [], [], [], [], []
     junctions = getattr(network, "connection_junctions", None) or []
     for k, (x, y, pipe_id) in enumerate(getattr(network, "connections", [])):
         if pipe_id in in_model:
             pipe = network.pipes[pipe_id]
+            kept.append(k)
             hx.append(int(round((x - ox) * 10)))
             hy.append(int(round((y - oy) * 10)))
             hz.append(int(round(((pipe.inv_up + pipe.inv_down) / 2 - oz) * 100)))
@@ -201,6 +244,7 @@ def catchment_geometry(outlet):
         **link_details(model),
         # Where each property joins its main: the lateral the page draws from the house.
         "jx": jx, "jy": jy,
+        **connection_geometry(network, kept, in_model, ox, oy),
         "bottlenecks": [],
         "nPipes": len(model.links), "nChambers": len(model.chambers),
         "nHouses": len(hx), "baseDwellings": model.base_dwellings,
@@ -384,7 +428,7 @@ def domain_geometry():
     } for name, node in model.nodes.items()]
 
     in_model = set(model._pipe_ids)
-    hx, hy, hz, hn, jx, jy = [], [], [], [], [], []
+    hx, hy, hz, hn, jx, jy, kept = [], [], [], [], [], [], []
     junctions = getattr(network, "connection_junctions", None) or []
     for k, (x, y, pipe_id) in enumerate(getattr(network, "connections", [])):
         if pipe_id in in_model:
@@ -392,6 +436,7 @@ def domain_geometry():
             name = model.node_of.get(pipe.up)
             if name is None:
                 continue
+            kept.append(k)
             hx.append(int(round((x - ox) * 10)))
             hy.append(int(round((y - oy) * 10)))
             hz.append(int(round(((pipe.inv_up + pipe.inv_down) / 2 - oz) * 100)))
@@ -412,6 +457,7 @@ def domain_geometry():
         **link_details(model),
         # Where each property joins its main: the lateral the page draws from the house.
         "jx": jx, "jy": jy,
+        **connection_geometry(network, kept, in_model, ox, oy),
         "bottlenecks": [],
         "pumps": pump_stations(model, ox, oy, oz, index),
         # The pumps the model solves, as [wet well, discharge] map-node pairs: the page's
