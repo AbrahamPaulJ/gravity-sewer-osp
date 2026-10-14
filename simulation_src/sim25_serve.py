@@ -89,7 +89,7 @@ def scenario(tag, sites, by_mh, pumps=None):
             "rise_mm": round((s["depth"] - b["depth"]) * 1000, 1),
             "alarm": bool(s["alarm"]), "alarm_before": bool(b["alarm"]),
             "surcharged": bool(s["surcharged"]), "surcharged_before": bool(b["surcharged"]),
-            "spilled": bool(s["spilled"]),
+            "spilled": bool(s["spilled"]), "spilled_before": bool(b["spilled"]),
         }
     out = {"case": tag, "sites": [[int(mh), int(n)] for mh, n in sites],
            "added_lps": round(growth_lps, 4), "continuity_error_pct": round(err, 3),

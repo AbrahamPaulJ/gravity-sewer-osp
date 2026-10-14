@@ -69,6 +69,24 @@ RULES = [("alarm", f"{ALARM_MM:g} mm alarm",
           "own level before the growth.") for mm in _SIM["detection_rises_mm"]]
 
 
+def spill_payload(order, summaries, manhole_index, sizes):
+    """baseSpilled and spill for the page, or nothing if any case lacks a baseline spill."""
+    if not all("spilled" in summaries[tag]["baseline"] for tag in order):
+        return {}
+    base_sp, spill = [], []
+    for tag in order:
+        summary = summaries[tag]
+        before = set(summary["baseline"]["spilled"])
+        base_sp.append(sorted(manhole_index[m] for m in before))
+        by_size = {}
+        for row in summary["rows"]:
+            new = sorted(manhole_index[m] for m in set(row.get("spilled") or []) - before)
+            if new:
+                by_size.setdefault(str(row["dwellings"]), []).append([manhole_index[row["site"]], new])
+        spill.append({k: sorted(v) for k, v in by_size.items()})
+    return {"baseSpilled": base_sp, "spill": spill}
+
+
 def connection_geometry(network, kept, in_model, ox, oy):
     """The connection pipes as published (layer 7), for the page to draw as they are.
 
@@ -676,6 +694,11 @@ def build_runs():
                   for rule, label, note in RULES],
         "cells": cells, "heat": heat, "sensors": sensors, "corridor": corridor_rows,
         "baseDepthMm": base_depth, "baseOver": base_over, "baseSurcharged": base_sur,
+        # Overflow: manholes spilling from the lid before any growth, per case, and for each
+        # growth run the manholes that spill only because of it (sparse: case -> size ->
+        # [[site, [manholes]], ...], runs with none left out). Published only where the grid
+        # recorded the baseline spill (whole area, from 14 Oct 2026).
+        **spill_payload(order, summaries, manhole_index, sizes),
         # config.js settings the page shows or applies, for the same reason as geometry.manning.
         "alarmMm": ALARM_MM, "maxSensors": MAX_SENSORS,
         "defaultDwellings": _SIM["scenario_default_dwellings"],

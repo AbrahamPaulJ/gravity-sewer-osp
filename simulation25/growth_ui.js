@@ -91,6 +91,18 @@ window.GrowthUI = (function () {
     return out;
   }
 
+  /* Overflow (water spilling from a manhole's lid), from SWMM: which manholes spill before
+     any growth in the selected case, and which the selected growth newly makes spill. Null
+     where the build published no spill data (a segment build). */
+  const hasSpill = () => !!runs().spill;
+  const spillBefore = () => (runs().baseSpilled ? runs().baseSpilled[st.ii] : []);
+  function spillNew(siteIdx) {
+    const R = runs();
+    if (!R.spill || siteIdx == null) return [];
+    const hit = (R.spill[st.ii][String(R.growthLevels[st.add])] || []).find(x => x[0] === siteIdx);
+    return hit ? hit[1] : [];
+  }
+
   function rowFor(c, siteIdx) {
     return c.rows.find(r => r.site === siteIdx) || null;
   }
@@ -305,7 +317,8 @@ window.GrowthUI = (function () {
     if (!v) return "";
     const tag = out.source === "swmm" ? "SWMM" : "estimate";
     const flags = out.source !== "swmm" ? ""
-      : v.surNew ? ', <b class="bad">surcharges</b>' : v.alarmNew ? ', <b class="bad">passes the alarm</b>' : "";
+      : v.spillNew ? ', <b class="bad">overflows</b>' : v.surNew ? ', <b class="bad">surcharges</b>'
+      : v.alarmNew ? ', <b class="bad">passes the alarm</b>' : "";
     return row2("This scenario", (v.rise >= 1 ? "<b>+" + Math.round(v.rise) + " mm</b>" : "no rise") + flags +
       ' <span class="quiet">(' + tag + ")</span>");
   }
@@ -339,11 +352,13 @@ window.GrowthUI = (function () {
     const d = R.baseDepthMm ? R.baseDepthMm[st.ii][i] : null;
     const over = R.baseOver && R.baseOver[st.ii].includes(i);
     const sur = R.baseSurcharged && R.baseSurcharged[st.ii].includes(i);
+    const spills = spillBefore().includes(i);
     let water = null, head = null;
     if (d != null) {
       water = "<b>" + d + " mm</b> deep";
       const crown = out != null ? g.dia[out] : null;
-      head = sur ? '<b class="bad">surcharged</b>: above the top of its pipe already'
+      head = spills ? '<b class="bad">overflowing</b>: water already spills from its lid'
+        : sur ? '<b class="bad">surcharged</b>: above the top of its pipe already'
         : over ? '<b class="bad">' + (d - ALARM_MM) + " mm over</b> the " + ALARM_MM + " mm alarm already"
         : "<b>" + (ALARM_MM - d) + " mm</b> to the " + ALARM_MM + " mm alarm" +
           (crown ? ", " + (crown - d) + " mm to the top of its pipe" : "");
@@ -355,8 +370,10 @@ window.GrowthUI = (function () {
     // shown beside the average, a worst-case rank read as wrong (43% and 9% averages both
     // ranked 285th, tied at 0% worst case).
     const by = st.obj === "worst" ? "worst case" : "average";
+    const vals = h[st.obj], ties = vals.filter(x => x === vals[i]).length - 1;
     const sensor = pct(h.mean[i]) + " average, " + pct(h.worst[i]) + " worst case; rank " +
       rankOf(i) + " of " + R.chambers.length + " by " + by +
+      (ties ? " (tied with " + ties + " other" + (ties === 1 ? "" : "s") + ")" : "") +
       (chosen ? ", <b>one of the " + st.k + " chosen</b>" : "");
 
     box.innerHTML = "<h4>This manhole</h4>" +
@@ -443,7 +460,8 @@ window.GrowthUI = (function () {
     runs().manholeIds.forEach((mh, i) => {
       const v = res.manholes[String(mh)];
       if (v) per.set(i, { rise: v.rise_mm, alarmNew: v.alarm && !v.alarm_before,
-                          surNew: v.surcharged && !v.surcharged_before });
+                          surNew: v.surcharged && !v.surcharged_before,
+                          spillNew: !!v.spilled && v.spilled_before === false });
     });
     return { source: "swmm", per, addedLps: res.added_lps, seconds: res.seconds,
              err: res.continuity_error_pct, pumps: res.pumps };
@@ -545,6 +563,7 @@ window.GrowthUI = (function () {
     const seen = ok ? [...out.per].filter(([, v]) => seenBy(v)).sort((a, b) => b[1].rise - a[1].rise) : [];
     const newAlarm = [...out.per].filter(([, v]) => v.alarmNew).length;
     const newSur = [...out.per].filter(([, v]) => v.surNew).length;
+    const newSpill = [...out.per].filter(([, v]) => v.spillNew).length;
     const chosen = chosenAt(placement(), st.k);
     const caught = chosen.filter(i => seen.some(([j]) => j === i));
     const source = out.source === "swmm"
@@ -574,6 +593,8 @@ window.GrowthUI = (function () {
         : newAlarm ? '<b class="bad">' + newAlarm + "</b>" : "none") +
       row2("Newly surcharged", !swmm ? '<span class="quiet">SWMM only</span>'
         : newSur ? '<b class="bad">' + newSur + "</b>" : "none") +
+      row2("Newly overflowing", !swmm ? '<span class="quiet">SWMM only</span>'
+        : newSpill ? '<b class="bad">' + newSpill + "</b> spill from the lid" : "none") +
       row2("The " + st.k + " chosen sensors", !ok ? '<span class="quiet">SWMM only, under the alarm rule</span>'
         : caught.length
         ? "<b>" + caught.length + "</b> see it (" + caught.map(i => "MH " + R.manholeIds[i]).join(", ") + ")"
@@ -691,15 +712,17 @@ window.GrowthUI = (function () {
   }
 
   function renderBaseNote(c) {
-    const R = runs();
-    $("#baseNote").innerHTML = graded()
+    const R = runs(), sp = spillBefore().length;
+    const spillNote = sp ? " <b>" + sp + "</b> manhole" + (sp === 1 ? " already spills" : "s already spill") +
+      " from the lid before any growth in this case." : "";
+    $("#baseNote").innerHTML = (graded()
       ? "Graded rule: every manhole is judged against its own level before the growth, so " +
         "nothing counts as already triggered."
       : (c.base.length
         ? "<b>" + c.base.length + "</b> of " + R.chambers.length + " manholes are already " +
           "over the alarm in this case <b>before any houses are added</b>. They are amber and " +
           "cannot report the growth."
-        : "No manhole is over the alarm before growth in this case.");
+        : "No manhole is over the alarm before growth in this case.")) + spillNote;
   }
 
   function renderPanel(c, row) {
@@ -722,13 +745,22 @@ window.GrowthUI = (function () {
       row2("Manholes that see it", tipped.length
         ? '<b class="bad">' + tipped.length + "</b>"
         : "none at this size") +
+      (hasSpill() ? row2("Newly overflowing", spillNew(st.site).length
+        ? '<b class="bad">' + spillNew(st.site).length + "</b> spill from the lid"
+        : "none") : "") +
       row2("Solved on", cs.method === "nested" ? "study catchment, levels handed down"
                                               : "whole council network");
 
     $("#tipList").innerHTML = "<h4>Manholes that see this growth</h4>" + (tipped.length
       ? "<ul>" + tipped.map(i => "<li>" + esc(label(i)) + "</li>").join("") + "</ul>"
       : "<p class=quiet>No manhole passes the rule at +" + add + " dwellings in this case. " +
-        "Try more growth, a wetter case, or a smaller rise.</p>");
+        "Try more growth, a wetter case, or a smaller rise.</p>") +
+      (spillNew(st.site).length
+        ? "<h4>Overflowing because of it</h4><ul>" + spillNew(st.site).map(i =>
+            "<li>" + esc(label(i)) + (runs().baseOver[st.ii].includes(i)
+              ? ' <span class="quiet">already over the alarm before growth, so the alarm rule cannot count it</span>'
+              : "") + "</li>").join("") + "</ul>"
+        : "");
 
   }
 
@@ -770,18 +802,28 @@ window.GrowthUI = (function () {
       : "This method does not use the objective; the curve shows both measures, worst case and average.";
     $("#nCases").textContent = nCases();
     renderCurve(pl, k);
-    const alarmNote = ruleId() === "alarm"
-      ? "<p class=quiet>Under the alarm rule the worst case is the dry one, where only one " +
-        "growth scenario passes the alarm at all, at one manhole. Until that manhole is " +
-        "chosen, the worst case stays at 0%.</p>" : "";
+    // Which case is the worst at this many sensors, from the same scoring the curve uses.
+    let worstNote = "";
+    if (window.Placement) {
+      const R = runs(), rule = ruleId();
+      // scenarios() drops a case nothing sees, as the builder does; keep the labels in step.
+      const kept = R.cases.filter((_, j) => R.cells.some(x => x.case === j && x.rule === rule &&
+        x.rows.some(r => r.tip.length)));
+      const f = Placement.cover(Placement.scenarios(R, rule), chosenAt(pl, k));
+      const w = f.indexOf(Math.min(...f));
+      if (w >= 0) worstNote = "<p class=quiet>The worst case at " + k + " sensor" + (k === 1 ? "" : "s") +
+        " is <b>" + esc(kept[w].label) + "</b> (" + pct(f[w]) + ")." +
+        (f[w] === 0 ? " None of these sensors sees any growth that this case's alarm or rise " +
+          "reveals, so the worst case stays at 0% until one does." : "") + "</p>";
+    }
     $("#sensorList").innerHTML =
       "<p><b>" + k + "</b> sensor" + (k === 1 ? "" : "s") + " catch <b>" + pct(pl.worst[k - 1]) +
       "</b> of detectable growth in the worst case and <b>" + pct(pl.mean[k - 1]) +
-      "</b> on average (all five growth sizes, " + esc(runs().rules[st.rule].label.toLowerCase()) +
+      "</b> on average (all " + runs().growthLevels.length + " growth sizes, " + esc(runs().rules[st.rule].label.toLowerCase()) +
       ").</p><ol>" + chosenAt(pl, k).map((m, j) =>
         "<li><b>" + esc(label(m)) + "</b>" + (pl.nested === false ? "" :
           " <span class=quiet>worst " + pct(pl.worst[j]) + ", average " + pct(pl.mean[j]) +
-          "</span>") + "</li>").join("") + "</ol>" + alarmNote +
+          "</span>") + "</li>").join("") + "</ol>" + worstNote +
       "<p class=quiet>" + (pl.nested === false
         ? "Chosen afresh for each number of sensors, so the set for " + (k + 1) +
           " need not contain this one."

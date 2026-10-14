@@ -185,7 +185,10 @@ def run_case(case, pool, sites_limit, sizes):
                "method": "nested" if nested else "whole", "outlet_head": h0,
                "baseline_depth_m": {str(mh_of[c]): round(base[c]["depth"], 4) for c in seg},
                "baseline": {"alarm": sorted(mh_of[c] for c in seg if base[c]["alarm"]),
-                            "surcharged": sorted(mh_of[c] for c in seg if base[c]["surcharged"])},
+                            "surcharged": sorted(mh_of[c] for c in seg if base[c]["surcharged"]),
+                            # Spilling from the lid before growth, so a row's "spilled" can be
+                            # read as new or not (added 14 Oct 2026).
+                            "spilled": sorted(mh_of[c] for c in seg if base[c]["spilled"])},
                "rows": rows, "placement": placement, "wall_s": round(time.time() - t0)}
     with open(os.path.join(base_dir, "summary.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(summary, f, indent=1)

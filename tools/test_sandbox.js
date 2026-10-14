@@ -233,6 +233,15 @@ console.log("placement methods on Sim 2.5 (simulation25/placement.js)");
       return !p.sets.every((s, k) => s.length === k + 1 && s.every(i => i >= 0 && i < R.chambers.length));
     }).map(([id]) => id);
     check("every method gives k manholes for k = 1..maxSensors", bad, []);
+    /* Overflow: a manhole spilling before growth cannot also be "newly" spilling, and every
+       index must be a real manhole. */
+    if (R.spill) {
+      const n = R.chambers.length, okIdx = i => Number.isInteger(i) && i >= 0 && i < n;
+      const badSpill = R.spill.flatMap((bySize, k) => Object.values(bySize).flat()
+        .filter(([site, list]) => !okIdx(site) || !list.every(okIdx) || list.some(i => R.baseSpilled[k].includes(i))));
+      check("newly overflowing manholes are real, and never ones spilling before growth", badSpill.length, 0);
+      check("one pre-growth spill list per case", R.baseSpilled.length === R.cases.length && R.spill.length === R.cases.length, true);
+    }
   }
 }
 
