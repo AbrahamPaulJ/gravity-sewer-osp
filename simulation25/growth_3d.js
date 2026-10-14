@@ -136,6 +136,7 @@ window.Growth3D = (function () {
       window.addEventListener("resize", () => resize(container));
       (function loop() {
         requestAnimationFrame(loop);
+        if (moving) moving();
         controls.update();
         // The blink. One shared clock so every pulsing thing stays in phase rather than
         // drifting against each other, which read as flicker rather than a deliberate beat.
@@ -1225,6 +1226,50 @@ window.Growth3D = (function () {
     return true;
   }
 
+  /* The on-map view buttons. Both move the camera about the point it looks at, animated so
+     the turn reads as a turn rather than a jump, and leave the controls free afterwards.
+     Rotation itself has no limit: the right button, or Shift with the left, turns the map
+     the full 360 degrees and tilts it from overhead to the horizon. */
+  let moving = null;
+  const ease = f => (f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2);
+  function animate(apply, ms = 380) {
+    const t0 = performance.now();
+    let done = 0;
+    moving = () => {
+      const f = Math.min(1, (performance.now() - t0) / ms), e = ease(f);
+      apply(e - done, e);
+      done = e;
+      if (f >= 1) moving = null;
+    };
+  }
+  // Turn the map by deg about the vertical through the point in view; positive is clockwise
+  // as seen from above.
+  function turn(deg) {
+    if (!built) return;
+    const axis = new THREE.Vector3(0, 1, 0), total = -deg * Math.PI / 180;
+    animate(step => {
+      const off = camera.position.clone().sub(controls.target).applyAxisAngle(axis, total * step);
+      camera.position.copy(controls.target).add(off);
+    });
+  }
+  /* Straight down onto the plan, or back to the usual three-quarter view. A hair off
+     vertical, because a camera looking exactly down its own up axis has no defined heading.
+     Returns true when it is now a plan view. */
+  function togglePlan() {
+    if (!built) return false;
+    const t = controls.target, off = camera.position.clone().sub(t), r = off.length();
+    const plan = off.y / r < 0.995;                      // not already overhead: go there
+    const heading = Math.atan2(off.x, off.z);
+    const polar = plan ? 0.001 : Math.acos(0.48 / Math.hypot(0.62, 0.48, 0.62));
+    const from = Math.acos(Math.min(1, off.y / r));
+    animate((_step, e) => {
+      const ph = from + (polar - from) * e;
+      camera.position.set(t.x + r * Math.sin(ph) * Math.sin(heading), t.y + r * Math.cos(ph),
+                          t.z + r * Math.sin(ph) * Math.cos(heading));
+    });
+    return plan;
+  }
+
   function frame(tightOn) {
     if (!built) return;
     const box = new THREE.Box3().setFromObject(scene);
@@ -1250,7 +1295,7 @@ window.Growth3D = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario,
+  return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, turn, togglePlan,
            frame, resize, heatHex,
            ZEXAG };
 })();

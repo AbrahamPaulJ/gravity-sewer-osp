@@ -898,7 +898,8 @@ window.GrowthUI = (function () {
         ", plus " + geom().nodes.filter(n => n.kind !== "chamber").length +
         " pipe ends with no manhole on record. Elevation is the pipe invert, exaggerated x" +
         Growth3D.ZEXAG + ". Click a manhole to move the growth there. Drag to move the map, " +
-        "right-drag (or Shift-drag) to rotate, scroll to zoom where the pointer is.";
+        "right-drag (or Shift-drag, or the buttons on the map) to turn it any way round, scroll to " +
+        "zoom where the pointer is.";
       // Open on the busiest manhole whose growth something sees under the default knobs,
       // rather than one that reads "none at this size" before anyone has touched anything.
       const seen = new Set(cell().rows.filter(r => r.tip.length).map(r => r.site));
@@ -910,7 +911,16 @@ window.GrowthUI = (function () {
     $("#tab-qa").onclick = () => setTab($("#pane-qa").hidden ? "qa" : "map");
     $("#qaClose").onclick = () => setTab("map");
     $("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").hidden = true; };
-    $("#fitAll").onclick = () => Growth3D.frame(null);
+    // Both framing buttons return to the three-quarter view, so the Plan button says so too.
+    const planOff = () => { $("#planView").classList.remove("primary"); $("#planView").textContent = "Plan"; };
+    $("#fitAll").onclick = () => { Growth3D.frame(null); planOff(); };
+    $("#turnL").onclick = () => Growth3D.turn(-45);
+    $("#turnR").onclick = () => Growth3D.turn(45);
+    $("#planView").onclick = () => {
+      const plan = Growth3D.togglePlan();
+      $("#planView").classList.toggle("primary", plan);
+      $("#planView").textContent = plan ? "3D" : "Plan";
+    };
     // Off by default: the page is about the 71 study manholes, and the whole network makes
     // them a fifth of the view. On demand it shows what "whole council network" means.
     // A whole-area build already draws the whole network as the study area, so the button
@@ -923,7 +933,7 @@ window.GrowthUI = (function () {
       $("#toggleRegion").textContent = st.showRegion ? "Study area only" : "Whole Walkerville";
       $("#regionKey").hidden = !st.showRegion;
     };
-    $("#fitSite").onclick = () => Growth3D.frame(nameOf(st.site));
+    $("#fitSite").onclick = () => { Growth3D.frame(nameOf(st.site)); planOff(); };
     $("#toggleSensors").onclick = () => {
       st.showSensors = !st.showSensors;
       $("#toggleSensors").classList.toggle("primary", st.showSensors);
