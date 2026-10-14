@@ -853,17 +853,24 @@ window.GrowthUI = (function () {
     const g = geom(), n = GROWTH_INDEX.scenario.numbers;
     $("#ref").innerHTML =
       '<div class="lead"><p><strong>What this model is, in one paragraph.</strong> ' +
-      "The study catchment is the " + g.nPipes + " pipes and " + g.nChambers + " manholes " +
-      "draining to one chamber, drawn here. Around it, every council pipe draining to the " +
-      "end of the council data is solved together in EPA SWMM as a steady state, so the " +
-      "trunk below can back water up into the catchment. Pipes from outside the council " +
+      (runs().studyArea === "whole"
+        ? "Every council pipe draining to the end of the council data, " + g.nPipes + " pipes and " +
+          g.nChambers + " manholes, is solved together in EPA SWMM as a steady state, and every " +
+          "one of those manholes is a growth site and a sensor candidate. "
+        : "The study catchment is the " + g.nPipes + " pipes and " + g.nChambers + " manholes " +
+          "draining to one chamber, drawn here. Around it, every council pipe draining to the " +
+          "end of the council data is solved together in EPA SWMM as a steady state, so the " +
+          "trunk below can back water up into the catchment. ") +
+      "Pipes from outside the council " +
       "area are not modelled; where they join, a constant inflow sized from their published " +
-      "length stands in for them. Two pump stations pass their flow on as ideal pumps. " +
+      "length stands in for them. Two pump stations pass their flow on as ideal pumps (a " +
+      "growth scenario may run them at a set rate instead). " +
       "Sewage comes from connected properties counted from the published record; " +
       "infiltration is in proportion to pipe length.</p>" +
       "<p><strong>The register below</strong> is every assumption and constant the model " +
-      "rests on, with its value, how firm it is and its source. Twelve cases vary the ones " +
-      "no data pins yet.</p></div>" +
+      "rests on, with its value, how firm it is and its source. " + nCases() + " cases vary " +
+      "the ones no data pins yet. Sources cited as docs/ or papers/ are in the project's " +
+      "working repository, not this one.</p></div>" +
       markdown(GROWTH_INDEX.docs.assumptions);
     $("#ref").dataset.done = "1";
   }
