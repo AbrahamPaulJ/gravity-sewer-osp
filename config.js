@@ -9,6 +9,8 @@
 //   pages                 the landing page, on reload.
 //   pipes.blockage_*      the sandbox, on reload.
 //   pipes.manning_*       the sandbox on reload; Simulation 2.5 after a re-run and republish.
+//   display               Simulation 2.5, on reload: how the map draws. Republish too
+//                         (tools/build_sim25_web.py --publish) so a copy hosted on its own follows.
 //   everything else       Simulation 2.5, after re-running the grid and republishing:
 //                           ~/.venvs/sewer/bin/python simulation_src/sim25_grid.py --cases all --resume
 //                           ~/.venvs/sewer/bin/python tools/build_sim25_web.py --publish
@@ -17,12 +19,20 @@
 // Register IDs (P01, G6, ...) refer to the assumptions register on the Simulation 2.5 page.
 (typeof window !== "undefined" ? window : globalThis).OSP_CONFIG = {
   "pages": {
-    "_note": "Which pages the site offers. false removes that page's tab, overview card and pane; a deep link to it falls back to the overview. Overview and Sandbox cannot be hidden: the overview is the fallback, and its prose links to the sandbox mid-sentence.",
+    "_note": "Allowed: true | false for each page. Which pages the site offers. false removes that page's tab, overview card and pane; a deep link to it falls back to the overview. Overview and Sandbox cannot be hidden: the overview is the fallback, and its prose links to the sandbox mid-sentence.",
     "anatomy": true,
     "observability": true,
     "sim1": false,
     "sim2": false,
     "sim25": true
+  },
+
+  "display": {
+    "_note": "How the Simulation 2.5 map draws things. Changes no result. The page reads this on reload; republish too so a copy of the page hosted on its own follows.",
+    "homes_level": "raised",
+    "_homes_level": "Allowed: \"main\" | \"raised\". main: each home sits at the level of the main its connection joins, so connections lie flat, as the utility's own map draws them. raised: each home sits raised_height_m above its main and its connection slopes down to it, which keeps the homes apart from the pipes but, with heights exaggerated x22, turns a 6.7 m connection into a near-vertical stick.",
+    "raised_height_m": 2.0,
+    "_raised_height_m": "Allowed: a number of metres from 0 to 20. Used only when homes_level is \"raised\"; about 0.5 to 1 keeps the homes apart from the pipes without the sticks."
   },
 
   "pipes": {
@@ -62,7 +72,7 @@
   "simulation": {
     "_note": "Simulation 2.5: where growth is tested, how much, and what counts as a sensor seeing it.",
     "study_area": "whole",
-    "_study_area": "segment: the 71 manholes draining to segment_outlet_node, results in results/sim25/grid. whole: all 328 published manholes in the model domain, results in results/sim25/grid_whole.",
+    "_study_area": "Allowed: \"segment\" | \"whole\". segment: the 71 manholes draining to segment_outlet_node, results in results/sim25/grid. whole: all 328 published manholes in the model domain, results in results/sim25/grid_whole.",
     "segment_outlet_node": 583,
     "growth_dwellings": [10, 30, 80, 150],
     "stress_dwellings": 700,
@@ -76,7 +86,7 @@
     "scenario_default_dwellings": 50,
 
     "case_set": "five",
-    "_case_set": "Which of case_sets below is run and published. Each case is one combination of what cannot be measured yet, and costs 1,641 whole-domain SWMM runs (about 87 min on 9 workers) in the whole area.",
+    "_case_set": "Allowed: the name of any set under case_sets (as committed, \"five\" | \"all_twelve\"). Which of case_sets below is run and published. Each case is one combination of what cannot be measured yet, and costs 1,641 whole-domain SWMM runs (about 87 min on 9 workers) in the whole area.",
     "case_sets": {
       "five": {
         "weather": [
@@ -110,6 +120,6 @@
         }
       }
     },
-    "_case_sets": "weather: the nominal sweep, one case each; ii is P04, infiltration in L/s per 100 m of pipe. sensitivity: at_ii names the weather levels that get the variants; each variant overrides fields of a case (pf flat|harmon, age uniform|weighted, bfac, stage, hour) and adds its label."
+    "_case_sets": "weather: the nominal sweep, one case each; ii is P04, infiltration in L/s per 100 m of pipe. sensitivity: at_ii names the weather levels that get the variants; each variant overrides fields of a case and adds its label. Allowed fields in a variant's set: pf \"flat\" | \"harmon\" (peaking); age \"uniform\" | \"weighted\" (I&I by pipe age); bfac a multiplier on outside inflow, such as 0.5 or 1.5; stage metres above the outfall invert, or null for a free outfall; hour \"peak\" | \"trough\" of the daily cycle. at_ii may only name ii values listed in weather."
   }
 };

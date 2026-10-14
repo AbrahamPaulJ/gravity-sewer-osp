@@ -101,10 +101,40 @@ window.Growth3D = (function () {
     return new THREE.Vector3(xDm / 10, (zCm / 100) * ZEXAG, -(yDm / 10));
   }
 
+  /* config.js's display section, read live so a change shows on a plain reload. The page
+     must also stand alone, served from its own folder where ../config.js does not exist, so
+     a missing or unreadable file falls back to the copy the builder published (g.homes).
+     Fetched rather than loaded as a script, and with no-store, so an edited file is never
+     answered from the browser's cache. Its object is plain JSON by contract (osp_config.py
+     reads it the same way). Invalid values are reported and ignored, not guessed at. */
+  async function liveDisplay() {
+    try {
+      const r = await fetch("../config.js", { cache: "no-store" });
+      if (!r.ok) return null;
+      const t = await r.text(), at = t.indexOf(".OSP_CONFIG =");
+      if (at < 0) return null;
+      const d = (JSON.parse(t.slice(t.indexOf("{", at), t.lastIndexOf("}") + 1)) || {}).display;
+      if (!d) return null;
+      const level = d.homes_level ?? "main", raisedM = +(d.raised_height_m ?? 2);
+      if (level !== "main" && level !== "raised") {
+        console.warn("config.js: display.homes_level '" + level + "' is not main or raised; ignored");
+        return null;
+      }
+      if (!(raisedM >= 0 && raisedM <= 20)) {
+        console.warn("config.js: display.raised_height_m " + d.raised_height_m + " is not 0 to 20; ignored");
+        return null;
+      }
+      return { level, raisedM };
+    } catch (e) {
+      return null;
+    }
+  }
+
   async function build(container, pick, hover) {
     await ensureThree();
     onPick = pick; onHover = hover || null;
     const g = G();
+    const liveHomes = await liveDisplay();
     if (!renderer) {
       renderer = new THREE.WebGLRenderer({ antialias: true });
       scene = new THREE.Scene();
@@ -173,13 +203,12 @@ window.Growth3D = (function () {
     sun.position.set(-100, 300, 200);
     scene.add(sun);
 
-    // The connected properties, drawn at the ground rather than at pipe level so they read
-    // as a layer above the network instead of merging into it.
+    // The connected properties. Placed here at a provisional height; once the pipes exist,
+    // each is moved to the level of the main its connection joins (see the connections
+    // below), so its connection lies flat, as the utility's own map draws it.
     if (g.hx && g.hx.length) {
       const hp = [];
       for (let i = 0; i < g.hx.length; i++) {
-        // Its own main's elevation plus a couple of metres, so the properties sit just
-        // above the street they drain into rather than on one shared plane.
         const v = P(g.hx[i], g.hy[i], (g.hz ? g.hz[i] : 0) + 200);
         hp.push(v.x, v.y, v.z);
       }
@@ -343,15 +372,24 @@ window.Growth3D = (function () {
     /* Each home's connection to its main, as the utility publishes it (layer 7): the pipe
        from the property's inspection point, at its boundary, to the main, every bend
        included, median 6.7 m long. The private drain from the house to that point is not
-       published, so the dot is the inspection point, not the house. Plan position is the
-       data's; height is not published, so a line falls evenly along its length from the
-       dot, drawn 2 m above its main, to the main, its last vertex snapped onto the drawn
-       pipe so it ends on the pipe as drawn, exaggeration and all.
+       published, so the dot is the inspection point, not the house.
 
-       g.hl gives each home its own line, or -1 where none starts at it: that home gets a
-       straight DASHED line to the point on its main it was attributed to, because that
-       connection is a guess. Built once; highlight() draws only the ones for the homes it
-       lights, and the Connections chip shows every line at its bore. */
+       HOW HIGH THE HOME SITS is config.js's display.homes_level, read live (liveDisplay)
+       or, where the page stands alone, as published in g.homes.
+       "main" (the default) draws it at the level of the main, so its connection lies flat,
+       as the utility's own map draws it. "raised" draws it raisedM above the main, as every
+       home was until 14 Oct 2026: apart from the pipes, but with heights exaggerated x22 a
+       6.7 m connection then stands as a stick 44 units tall, about 81 degrees from flat.
+       Connection depths are not published, so neither claims anything the other does not.
+       Each line's last vertex is snapped onto the drawn pipe, so it ends on the pipe as
+       drawn; the line falls evenly along its length from the home to there.
+
+       Connections are drawn only for the homes a selected manhole lights (highlight()), or
+       all at once, at their bore, while the Connections chip is on; by default the homes
+       are dots alone, so the network stays readable. Drawing every one all the time was
+       tried on 14 Oct 2026 and withdrawn. g.hl gives each home its own line, or -1 where
+       none starts at it: that home gets a straight DASHED line to the point on its main it
+       was attributed to, because that connection is a guess. */
     const onMain = (xDm, yDm) => {                       // nearest point on any drawn pipe
       const j = P(xDm, yDm, 0);
       let best = Infinity, bx = j.x, by = 0, bz = j.z;
@@ -366,21 +404,27 @@ window.Growth3D = (function () {
       }
       return new THREE.Vector3(bx, by, bz);
     };
-    const LIFT = P(0, 0, 200).y;                         // the 2 m a home is drawn above its main
-    // A published line as scene points: from `top` (or LIFT above the main) down to the main.
-    const lineOf = (i, top) => {
-      const a = g.cptr[i], b = g.cptr[i + 1];
-      const end = onMain(g.cx[b - 1], g.cy[b - 1]);
-      const pts = [];
-      for (let v = a; v < b; v++) pts.push(P(g.cx[v], g.cy[v], 0));
-      pts[pts.length - 1] = end;
-      if (top) { pts[0].x = top.x; pts[0].z = top.z; }
-      const y0 = top ? top.y : end.y + LIFT;
-      let total = 0;
-      const run = [0];
-      for (let v = 1; v < pts.length; v++) { total += Math.hypot(pts[v].x - pts[v - 1].x, pts[v].z - pts[v - 1].z); run.push(total); }
+    // How far above its main a home is drawn: just clear of the pipe's tube at "main",
+    // or the configured height at "raised".
+    const homes = liveHomes || g.homes || { level: "main" };
+    const HOME_LIFT = homes.level === "raised" ? P(0, 0, 100 * (homes.raisedM ?? 2)).y : 1.2;
+    // Heights along a line: from HOME_LIFT above the main at its first point down to the
+    // main at its last, evenly by plan length.
+    const slope = pts => {
+      const end = pts[pts.length - 1], y0 = end.y + HOME_LIFT, run = [0];
+      for (let v = 1; v < pts.length; v++) run.push(run[v - 1] + Math.hypot(pts[v].x - pts[v - 1].x, pts[v].z - pts[v - 1].z));
+      const total = run[run.length - 1];
       for (let v = 0; v < pts.length - 1; v++) pts[v].y = y0 + (end.y - y0) * (total > 0 ? run[v] / total : 0);
       return pts;
+    };
+    // A published line as scene points: the vertices as published, the last one on the main
+    // as drawn.
+    const lineOf = i => {
+      const a = g.cptr[i], b = g.cptr[i + 1];
+      const pts = [];
+      for (let v = a; v < b - 1; v++) pts.push(P(g.cx[v], g.cy[v], 0));
+      pts.push(onMain(g.cx[b - 1], g.cy[b - 1]));
+      return slope(pts);
     };
     if (houseGeo && g.jx && g.jx.length === g.hx.length && segEnds.length) {
       const n = g.hx.length, hp = houseGeo.attributes.position.array;
@@ -388,26 +432,38 @@ window.Growth3D = (function () {
       houseLat = new Array(n);
       let segs = 0, guessSegs = 0;
       for (let i = 0; i < n; i++) {
-        const top = new THREE.Vector3(hp[i * 3], hp[i * 3 + 1], hp[i * 3 + 2]);
         const own = hasLines ? g.hl[i] : -1;
-        houseLat[i] = own >= 0 ? { pts: lineOf(own, top), guess: false }
-                               : { pts: [top, onMain(g.jx[i], g.jy[i])], guess: true };
+        if (own >= 0) houseLat[i] = { pts: lineOf(own), guess: false };
+        else {
+          houseLat[i] = { pts: slope([P(g.hx[i], g.hy[i], 0), onMain(g.jx[i], g.jy[i])]), guess: true };
+        }
+        // The home sits where its connection starts: its own inspection point, HOME_LIFT
+        // above its main. The published line starts 0.00 m from it, so plan is unchanged.
+        const top = houseLat[i].pts[0];
+        hp[i * 3] = top.x; hp[i * 3 + 1] = top.y; hp[i * 3 + 2] = top.z;
         if (houseLat[i].guess) guessSegs++; else segs += houseLat[i].pts.length - 1;
       }
-      const lateral = (col, opacity, nSeg, dashed) => {
+      houseGeo.attributes.position.needsUpdate = true;
+      houseGeo.computeBoundingSphere();
+
+      // Branches laid to no property: drawn only by the Connections chip, below.
+      const spareLines = hasLines ? (g.cSpare || []).map(li => lineOf(li)) : [];
+
+      const lateral = (col, opacity, nSeg, isDashed) => {
         const geo = new THREE.BufferGeometry();
         geo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(Math.max(1, nSeg) * 6), 3));
         geo.setDrawRange(0, 0);
-        const mat = dashed
+        const mat = isDashed
           ? new THREE.LineDashedMaterial({ color: col, transparent: true, opacity, dashSize: 2.5, gapSize: 2 })
           : new THREE.LineBasicMaterial({ color: col, transparent: true, opacity });
         const ls = new THREE.LineSegments(geo, mat);
         ls.frustumCulled = false;
+        ls.renderOrder = 1;
         scene.add(ls);
         return ls;
       };
       latHi = lateral(COL.lateralHere, 0.95, segs);
-      latUp = lateral(COL.houseUp, 0.5, segs);     // fainter: there can be hundreds of these
+      latUp = lateral(COL.houseUp, 0.7, segs);
       latGuess = lateral(COL.lateralGuess, 0.95, 2 * guessSegs, true);   // hi and up together
 
       /* The Connections chip: every published line as a tube at its own bore, on the same
@@ -421,15 +477,13 @@ window.Growth3D = (function () {
         const mis = new Set(g.hMis || []);
         const groups = { own: [], mis: [], spare: [] };
         for (let i = 0; i < n; i++) if (!houseLat[i].guess) groups[mis.has(i) ? "mis" : "own"].push([houseLat[i].pts, g.cdia[g.hl[i]]]);
-        (g.cSpare || []).forEach(li => groups.spare.push([lineOf(li, null), g.cdia[li]]));
+        (g.cSpare || []).forEach((li, k) => groups.spare.push([spareLines[k], g.cdia[li]]));
         const m = new THREE.Matrix4(), q = new THREE.Quaternion(), yAxis = new THREE.Vector3(0, 1, 0);
         const dir = new THREE.Vector3(), mid = new THREE.Vector3(), scl = new THREE.Vector3();
         const tubes = (list, col) => {
           const nSeg = list.reduce((t, [pts]) => t + pts.length - 1, 0);
           const mesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 6, 1, true),
-            // Translucent: with the height exaggerated 22x, 2,500 opaque drops read as a comb
-            // that hides the mains they join.
-            new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, depthWrite: false }),
+            new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false }),
             Math.max(1, nSeg));
           let k = 0;
           list.forEach(([pts, dia]) => {
@@ -453,20 +507,8 @@ window.Growth3D = (function () {
         };
         connMeshes = [tubes(groups.own, COL.connOwn), tubes(groups.mis, COL.connMis),
                       tubes(groups.spare, COL.connSpare)];
-        // The guessed homes, dashed, so the chip shows every home's connection.
-        const gs = [];
-        for (let i = 0; i < n; i++) if (houseLat[i].guess) gs.push(...houseLat[i].pts);
-        if (gs.length) {
-          const geo = new THREE.BufferGeometry().setFromPoints(gs);
-          const ls = new THREE.LineSegments(geo, new THREE.LineDashedMaterial({
-            color: COL.lateralGuess, dashSize: 2.5, gapSize: 2 }));
-          ls.computeLineDistances();
-          ls.visible = false;
-          scene.add(ls);
-          connMeshes.push(ls);
-        }
         connCounts = { own: groups.own.length, mis: groups.mis.length, spare: groups.spare.length,
-                       guess: gs.length / 2 };
+                       guess: guessSegs };
       }
     }
 

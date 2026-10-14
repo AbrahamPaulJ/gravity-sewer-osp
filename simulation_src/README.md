@@ -19,7 +19,7 @@ Python 3.11. `pip install -r requirements.txt` (pyvista only for the desktop vie
 Every setting the project runs with is in one file, `config.js` at the repository root: which
 pages the site shows, the pipe attributes (roughness by material, infiltration weight by
 age, the sandbox's blockage-likelihood weights), the loads (people per house, litres per
-person, peaking), and Simulation 2.5's study area, growth sizes, alarm depth, detection
+person, peaking), how the Simulation 2.5 map draws homes (`display`), and Simulation 2.5's study area, growth sizes, alarm depth, detection
 rises, sensor limit and cases. The browser loads it as a script; Python reads it through
 `osp_config.py`. Its object is plain JSON, so keep double quotes and no comments or trailing
 commas inside it; explanations go in `"_"` keys. The comment at the top of the file says what

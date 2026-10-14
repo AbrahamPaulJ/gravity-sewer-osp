@@ -579,6 +579,16 @@ def build_runs():
     pipes = _CFG["pipes"]
     geometry["manning"] = {"byMaterial": osp_config.plain(pipes["manning_n_by_material"]),
                            "fallback": pipes["manning_n_fallback"], "minSlope": pipes["min_slope"]}
+    # How the map draws the homes: config.js's display section, checked here so a typo
+    # stops the build rather than leaving the page to guess.
+    display = _CFG.get("display") or {}
+    level = display.get("homes_level", "main")
+    if level not in ("main", "raised"):
+        raise ValueError(f"display.homes_level '{level}' is not one of ['main', 'raised']")
+    raised = float(display.get("raised_height_m", 2.0))
+    if not 0 <= raised <= 20:
+        raise ValueError(f"display.raised_height_m {raised} is not between 0 and 20 m")
+    geometry["homes"] = {"level": level, "raisedM": raised}
     names = sorted(node["name"] for node in geometry["nodes"] if node["kind"] == "chamber")
     manhole_index = {int(name[2:]): i for i, name in enumerate(names)}
     base_model = None if whole_area else catchment.Catchment(Network(), sim25.SEGMENT_OUTLET)

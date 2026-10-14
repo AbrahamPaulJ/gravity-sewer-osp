@@ -354,7 +354,7 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
       <button id="toggleSensors">Show sensors</button>
       <button id="toggleHeat" title="Colour every manhole by how much growth it would see on its own">Heatmap</button>
       <button id="togglePumps" title="Highlight the pump stations, their rising mains and the pipes that drain to them">Pump stations</button>
-      <button id="toggleConn" title="Show every property's connection pipe to its main, as the utility publishes it">Connections</button>
+      <button id="toggleConn" title="Draw every connection pipe at its bore, coloured by how it joins the model">Connections</button>
     </div>
     <div class="navrow">
       <span class="navlbl">Read</span>
@@ -404,6 +404,7 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
       <span><span class="k" style="background:#c9d1d9"></span>manhole, a sensor could go here</span>
       <span><span class="k" style="background:#30363d"></span>pipe end, no manhole recorded</span>
       <span><span class="k" style="background:#ff6f9c"></span>connected property</span>
+      <span><span class="kl" style="background:#6f95ff"></span>a selected manhole's homes: their connections to the main, as published (dashed: none published, a guess)</span>
       <span><span class="k" style="background:#00d4ff"></span>where the new dwellings connect</span>
       <span><span class="k" style="background:#3fb950"></span>proposed sensor</span>
       <span><span class="k" style="background:#a371f7"></span>outlet, everything drains through it</span>
@@ -426,14 +427,14 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=58"></script>
-<script src="data/growth.js?v=58"></script>
-<script src="data/index.js?v=58"></script>
-<script src="growth_3d.js?v=58"></script>
-<script src="osp_core.js?v=58"></script>
-<script src="placement.js?v=58"></script>
-<script src="growth_est.js?v=58"></script>
-<script src="growth_ui.js?v=58"></script>
+<script src="data/catchment.js?v=66"></script>
+<script src="data/growth.js?v=66"></script>
+<script src="data/index.js?v=66"></script>
+<script src="growth_3d.js?v=66"></script>
+<script src="osp_core.js?v=66"></script>
+<script src="placement.js?v=66"></script>
+<script src="growth_est.js?v=66"></script>
+<script src="growth_ui.js?v=66"></script>
 <script type="module">
   GrowthUI.init();
 </script>
