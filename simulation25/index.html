@@ -172,12 +172,6 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   background:repeating-linear-gradient(90deg,#e3b341 0 5px,transparent 5px 8px)}
 .legend .kdl{display:inline-block; width:18px; height:2px; vertical-align:3px; margin-right:6px;
   background:repeating-linear-gradient(90deg,#d2a8ff 0 5px,transparent 5px 8px)}
-#viewPad{position:absolute; right:12px; bottom:12px; z-index:3; display:flex; gap:6px}
-#viewPad button{min-width:38px; height:34px; padding:0 10px; font-size:17px; line-height:1;
-  background:#161b22e6; color:#c9d1d9; border:1px solid #30363d; border-radius:6px; cursor:pointer}
-#viewPad button#planView{font-size:13px}
-#viewPad button:hover{border-color:#58a6ff; color:#f0f6fc}
-#viewPad button.primary{background:#1f6feb; border-color:#1f6feb; color:#fff}
 /* The homes key: an overlay on the map, fixed width, so its text changing on hover
    cannot move anything. It ignores the pointer, so hovering through it still works. */
 #homeKey{position:absolute; left:12px; top:12px; z-index:3; width:330px; height:112px;
@@ -372,12 +366,6 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   <div id="stageWrap">
     <div id="stage"></div>
     <div id="homeKey"></div>
-    <!-- Turn and tilt without a right button: a trackpad has none to hand. -->
-    <div id="viewPad">
-      <button id="turnL" title="Turn the map 45 degrees anticlockwise (or right-drag / Shift-drag)">&#10226;</button>
-      <button id="turnR" title="Turn the map 45 degrees clockwise (or right-drag / Shift-drag)">&#10227;</button>
-      <button id="planView" title="Look straight down on the plan, or back to 3D">Plan</button>
-    </div>
   </div>
 
   <div class="legend">
@@ -438,14 +426,14 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=57"></script>
-<script src="data/growth.js?v=57"></script>
-<script src="data/index.js?v=57"></script>
-<script src="growth_3d.js?v=57"></script>
-<script src="osp_core.js?v=57"></script>
-<script src="placement.js?v=57"></script>
-<script src="growth_est.js?v=57"></script>
-<script src="growth_ui.js?v=57"></script>
+<script src="data/catchment.js?v=58"></script>
+<script src="data/growth.js?v=58"></script>
+<script src="data/index.js?v=58"></script>
+<script src="growth_3d.js?v=58"></script>
+<script src="osp_core.js?v=58"></script>
+<script src="placement.js?v=58"></script>
+<script src="growth_est.js?v=58"></script>
+<script src="growth_ui.js?v=58"></script>
 <script type="module">
   GrowthUI.init();
 </script>
