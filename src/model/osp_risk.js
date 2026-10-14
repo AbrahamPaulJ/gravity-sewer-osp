@@ -38,11 +38,18 @@
    because each is fitted to local geography; the reason its own review cannot
    resolve them is the reason this file does not quote them.  */
 
+/* Its settings come from config.js at the repository root, the one file that holds the
+   project's settings, so the browser must load config.js first; under Node it is required
+   here. Keys starting "_" there are notes. */
 (function (root, factory) {
-  if (typeof module === "object" && module.exports) module.exports = factory();
-  else root.OSPRisk = factory();
-})(typeof self !== "undefined" ? self : this, function () {
+  if (typeof module === "object" && module.exports) {
+    require("../../config.js");
+    module.exports = factory((typeof window !== "undefined" ? window : globalThis).OSP_CONFIG);
+  } else root.OSPRisk = factory(root.OSP_CONFIG);
+})(typeof self !== "undefined" ? self : this, function (CONFIG) {
 "use strict";
+if (!CONFIG) throw new Error("osp_risk.js: config.js must be loaded before this script");
+const plain = o => Object.fromEntries(Object.entries(o).filter(([k]) => !k.startsWith("_")));
 
 /* SOURCES FOR EVERY DECLARED NUMBER BELOW
    ---------------------------------------
@@ -92,25 +99,25 @@
    A reader is entitled to disagree with that and move the sliders; the point is
    that the choice is visible. Everything sums to 1 so a weight reads as "share of
    the answer this factor is responsible for". */
-const DEFAULT_WEIGHTS = {
-  age: 0.30,        // [Ma25] rank 1 by mutual information, 0.124. Deterioration,
-                    //   root entry, and rising roughness with age per [MM20].
-  diameter: 0.25,   // [Ma25] rank 2, 0.032. [DP22]: "most blockages occur in small
-                    //   diameter pipes, the so-called wastewater reticulation
-                    //   network". [Al23] finds the same concentration in Hong Kong.
-                    //   NOTE [MM20] reports the literature CONTRADICTS itself on
-                    //   diameter, which is a reason to keep this weight moderate.
-  gradient: 0.20,   // [MM20]: "Flat slopes -> low velocity -> wastewater sits
-                    //   longer -> hydrogen sulfide forms -> converts to sulfuric
-                    //   acid -> attacks concrete and mortar pipes."
-  material: 0.15,   // [MM20] on material resistance; see MATERIAL_RISK below.
-  joint: 0.05,      // [MM20]: "joints are especially vulnerable to failure".
-                    //   Published on barely half the records here, so it cannot
-                    //   carry much weight whatever the literature says.
-  length: 0.05,     // [MM20]: "Longer pipes have more joints... additionally,
-                    //   longer pipes are more vulnerable to blockages and sediment
-                    //   deposition."
-};
+/* The argument for each weight (values in config.js, pipes.blockage_likelihood.weights):
+   age: [Ma25] rank 1 by mutual information, 0.124. Deterioration,
+     root entry, and rising roughness with age per [MM20].
+   diameter: [Ma25] rank 2, 0.032. [DP22]: "most blockages occur in small
+     diameter pipes, the so-called wastewater reticulation
+     network". [Al23] finds the same concentration in Hong Kong.
+     NOTE [MM20] reports the literature CONTRADICTS itself on
+     diameter, which is a reason to keep this weight moderate.
+   gradient: [MM20]: "Flat slopes -> low velocity -> wastewater sits
+     longer -> hydrogen sulfide forms -> converts to sulfuric
+     acid -> attacks concrete and mortar pipes."
+   material: [MM20] on material resistance; see MATERIAL_RISK below.
+   joint: [MM20]: "joints are especially vulnerable to failure".
+     Published on barely half the records here, so it cannot
+     carry much weight whatever the literature says.
+   length: [MM20]: "Longer pipes have more joints... additionally,
+     longer pipes are more vulnerable to blockages and sediment
+     deposition." */
+const DEFAULT_WEIGHTS = plain(CONFIG.pipes.blockage_likelihood.weights);
 
 /* Per-material blockage propensity, 0 to 1.
 
@@ -131,7 +138,7 @@ const DEFAULT_WEIGHTS = {
    THE NUMBERS ARE NOT FROM ANY SOURCE. No paper in the corpus gives a
    per-material blockage propensity. That clay is 3.3x uPVC rather than 2x is
    judgement, and it is the weakest link in this module. */
-const MATERIAL_RISK = { VC: 1.0, RC: 0.7, PVCU: 0.3 };
+const MATERIAL_RISK = plain(CONFIG.pipes.blockage_likelihood.material_risk);   // config.js
 
 /* Per-joint-type propensity.
 
@@ -147,16 +154,16 @@ const MATERIAL_RISK = { VC: 1.0, RC: 0.7, PVCU: 0.3 };
    THE NUMBERS ARE NOT FROM ANY SOURCE, as with MATERIAL_RISK above. Joint type is
    also published on only 54% of records here, which is why the blend gives it
    0.05: a factor known for half the network cannot carry much of the answer. */
-const JOINT_RISK = { BIT: 1.0, SCJ: 0.8, PLAST: 0.4, RRJ: 0.3 };
+const JOINT_RISK = plain(CONFIG.pipes.blockage_likelihood.joint_risk);         // config.js
 
 /* Reference points for the two factors that need one. A gradient at or above
    GRADE_REF is treated as comfortably self-cleansing and scores zero; the figure
    is near the slope at which a 150 mm sewer reaches self-cleansing velocity, so
    it is a design convention rather than a measurement. LENGTH_REF is the reach
    length at which the length factor saturates. */
-const GRADE_REF = 1.0;      // percent
-const LENGTH_REF = 100;     // metres
-const UNKNOWN = 0.5;        // neutral score where an attribute is not published
+const GRADE_REF = CONFIG.pipes.blockage_likelihood.grade_ref_pct;     // percent, config.js
+const LENGTH_REF = CONFIG.pipes.blockage_likelihood.length_ref_m;     // metres, config.js
+const UNKNOWN = CONFIG.pipes.blockage_likelihood.unknown_score;      // neutral score where an attribute is not published, config.js
 
 const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
 

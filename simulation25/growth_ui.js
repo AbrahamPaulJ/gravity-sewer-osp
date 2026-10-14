@@ -42,7 +42,7 @@ window.GrowthUI = (function () {
   const ruleId = () => runs().rules[st.rule].id;
   const graded = () => ruleId() !== "alarm";
   const caseLabel = () => runs().cases[st.ii].label;
-  // How many cases the build published. cases.json decides it, so nothing here may say 12.
+  // How many cases the build published. config.js's case set decides it, so nothing here may say 12.
   const nCases = () => runs().cases.length;
 
   /* The sensor set: the first k of the order chosen across ALL cases for the current
@@ -272,7 +272,8 @@ window.GrowthUI = (function () {
      Water before growth and headroom lead, because they are what make a manhole a choke
      point; the rest is what the council record and the model know about it. Everything
      here follows the selected case and detection rule, as the rest of the panel does. */
-  const ALARM_MM = 150;                       // G6: the operator's low alarm, above invert
+  // G6: the operator's low alarm, above invert. config.js's alarm_depth_mm, published with the runs.
+  const ALARM_MM = window.GROWTH_RUNS.alarmMm;
   const GROUND = { contour: "from the 1 m contours", surveyed: "surveyed", none: "not known" };
   let _incoming = null;
   function upstreamOf(g, ni) {
@@ -385,10 +386,10 @@ window.GrowthUI = (function () {
   const EST_NOTE = "an instant estimate, not SWMM. Checked against the 8,200 grid runs: " +
     "close to SWMM in dry weather; in the wet cases it finds almost every manhole SWMM shows " +
     "rising, but up to 4 in 10 it flags do not rise; unreliable in Severe. It is not " +
-    "trusted for the 150 mm alarm or for surcharge (in the wet cases it finds 44% to 71% of " +
+    "trusted for the " + ALARM_MM + " mm alarm or for surcharge (in the wet cases it finds 44% to 71% of " +
     "the manholes SWMM puts newly over the alarm, and 6 or 7 in 10 of its own are wrong), so " +
     "those are shown only from SWMM.";
-  const DEFAULT_DWELLINGS = 50;
+  const DEFAULT_DWELLINGS = window.GROWTH_RUNS.defaultDwellings;   // config.js, via the runs
   const threshold = () => graded() ? +ruleId().slice(1) : null;
   const scnKey = () => runs().cases[st.ii].tag + "|" +
     st.scn.map(s => runs().manholeIds[s.i] + ":" + s.n).sort().join(",");
@@ -415,7 +416,7 @@ window.GrowthUI = (function () {
       // The alarm is judged from the published SWMM baseline plus the estimated rise, so
       // the estimate and SWMM agree on which manholes start over it.
       const b0 = R.baseDepthMm ? R.baseDepthMm[st.ii][i] : null;
-      per.set(i, { rise, alarmNew: b0 != null && b0 < 150 && b0 + rise >= 150,
+      per.set(i, { rise, alarmNew: b0 != null && b0 < ALARM_MM && b0 + rise >= ALARM_MM,
                    surNew: !r.base.sur[k] && !!r.now.sur[k] });
     });
     return { source: "est", per, addedLps: r.addedLps };
@@ -878,6 +879,9 @@ window.GrowthUI = (function () {
       st.hover = name;
       renderHomes(shownSensors());
     }).then(() => {
+      // How many sensors may be placed is config.js's max_sensors, as the build published it.
+      $("#kRange").max = String(runs().maxSensors);
+      st.k = Math.min(st.k, runs().maxSensors);
       buildKnobs();
       const order = buildList();
       wireScenario(order);

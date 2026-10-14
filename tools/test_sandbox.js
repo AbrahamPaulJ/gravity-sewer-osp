@@ -92,6 +92,10 @@ console.log("repository hygiene");
     }
   });
   check("scripts load in dependency order", misordered, []);
+  // The models take their settings from config.js when they load, so it must come first.
+  check("the sandbox loads config.js before the models",
+    order.indexOf("config.js") >= 0 && order.indexOf("config.js") < order.indexOf("src/model/osp_capacity.js")
+    && order.indexOf("config.js") < order.indexOf("src/model/osp_risk.js"), true);
 
   /* The data files are generated, and tools/format_data.py reads them by pulling
      the object text out and handing it to a JSON parser. A JS comment inside that
@@ -117,10 +121,12 @@ console.log("page configuration");
 {
   const fs = require("fs");
   require(path.join(ROOT, "config.js"));
-  const pages = window.OSP_PAGES;
+  const all = (window.OSP_CONFIG || {}).pages;
+  /* Keys starting "_" are notes; the landing page only acts on a key set to false. */
+  const pages = all && Object.fromEntries(Object.entries(all).filter(([k]) => !k.startsWith("_")));
   const home = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 
-  check("config.js defines OSP_PAGES", pages && typeof pages === "object", true);
+  check("config.js defines OSP_CONFIG.pages", !!pages && typeof all === "object", true);
   check("every page flag is a boolean",
     Object.keys(pages).filter(k => typeof pages[k] !== "boolean"), []);
 
@@ -214,7 +220,7 @@ console.log("placement methods on Sim 2.5 (simulation25/placement.js)");
     let diff = 0;
     for (const rule of R.rules.map(r => r.id)) for (const obj of ["worst", "mean"]) {
       const pub = R.sensors[rule][obj], pool = PL.scenarios(R, rule);
-      for (let k = 1; k <= 10; k++) {
+      for (let k = 1; k <= R.maxSensors; k++) {
         const f = PL.cover(pool, pub.order.slice(0, k));
         diff = Math.max(diff, Math.abs(Math.min(...f) - pub.worst[k - 1]),
           Math.abs(f.reduce((a, b) => a + b, 0) / f.length - pub.mean[k - 1]));
@@ -226,7 +232,7 @@ console.log("placement methods on Sim 2.5 (simulation25/placement.js)");
       const p = PL.place(id, ctx, "r25", "worst");
       return !p.sets.every((s, k) => s.length === k + 1 && s.every(i => i >= 0 && i < R.chambers.length));
     }).map(([id]) => id);
-    check("every method gives k manholes for k = 1..10", bad, []);
+    check("every method gives k manholes for k = 1..maxSensors", bad, []);
   }
 }
 

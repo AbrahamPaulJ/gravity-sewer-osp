@@ -20,8 +20,6 @@
 })(this, function () {
   "use strict";
 
-  const MAX_K = 10;
-
   // id, menu label, what it does. "swmm" is Sim 2.5's own and is published, not computed here.
   const METHODS = [
     ["swmm", "Greedy on the SWMM growth runs",
@@ -104,24 +102,25 @@
     };
   }
 
-  /* One method's sensors for 1..MAX_K, as chamber indices, scored on the SWMM runs.
+  /* One method's sensors for 1..K (config.js's max_sensors, published as R.maxSensors), as
+     chamber indices, scored on the SWMM runs.
      Returns { sets, worst, mean, nested }: sets[k-1] is the k-sensor set. */
   function place(method, ctx, rule, obj) {
-    const { C, G, R, chamberOfNode } = ctx;
+    const { C, G, R, chamberOfNode, K } = ctx;
     const pool = scenarios(R, rule);
     const toCh = nodes => nodes.map(v => chamberOfNode[v]).filter(i => i >= 0);
-    const prefixes = order => Array.from({ length: MAX_K }, (_, k) => order.slice(0, k + 1));
-    const ranked = score => prefixes(toCh(C.topBy(G, MAX_K, i => score[i])));
+    const prefixes = order => Array.from({ length: K }, (_, k) => order.slice(0, k + 1));
+    const ranked = score => prefixes(toCh(C.topBy(G, K, i => score[i])));
     let sets, nested = true;
     switch (method) {
-      case "celf": sets = prefixes(toCh(C.greedy(G, MAX_K, "nodes"))); break;
+      case "celf": sets = prefixes(toCh(C.greedy(G, K, "nodes"))); break;
       case "upstream": sets = ranked(C.upstreamSize(G, null)); break;
       case "between": sets = ranked(C.betweenness(G, null)); break;
       case "outdeg": sets = ranked(C.degreeWeight(G, null, "out")); break;
       case "indeg": sets = ranked(C.degreeWeight(G, null, "in")); break;
       case "twoupdown":
         nested = false;
-        sets = Array.from({ length: MAX_K }, (_, k) =>
+        sets = Array.from({ length: K }, (_, k) =>
           toCh(C.twoUpTwoDown(G, k + 1, 2, 2, "nodes").sensors));
         break;
       case "random": {
@@ -130,7 +129,7 @@
         const better = (a, b) => obj === "mean"
           ? (a.m > b.m || (a.m === b.m && a.w > b.w))
           : (a.w > b.w || (a.w === b.w && a.m > b.m));
-        sets = Array.from({ length: MAX_K }, (_, k) => {
+        sets = Array.from({ length: K }, (_, k) => {
           let best = null;
           for (let t = 0; t < 20; t++) {
             const pick = new Set();
@@ -159,8 +158,8 @@
     const at = {};
     R.chambers.forEach((name, i) => { at[name] = i; });
     const chamberOfNode = g.nodes.map(v => (v.name in at ? at[v.name] : -1));
-    return { C, G, R, chamberOfNode };
+    return { C, G, R, chamberOfNode, K: R.maxSensors };
   }
 
-  return { METHODS, MAX_K, context, place, scenarios, cover };
+  return { METHODS, context, place, scenarios, cover };
 });

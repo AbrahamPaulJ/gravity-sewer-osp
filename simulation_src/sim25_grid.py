@@ -48,11 +48,11 @@ WHOLE_RISE_FLOOR_MM = 1.0
 MINUTES = 480            # R2: settled within 0.2 mm by 480 min at every weather level tested
 NEST_MAX_II = 0.11       # X4: nesting validated up to design wet only
 CORRIDOR_BUFFER_M = 25.0
-CORRIDOR_SIZES = [80, 150, 390, 485]   # P05; 390 / 485 = projected 2021-41 medium / high
+CORRIDOR_SIZES = list(sim25.CFG["simulation"]["corridor_dwellings"])   # P05; config.js
 
 
 def cases(which):
-    """The cases to run, read from cases.json: the weather sweep, then each sensitivity
+    """The cases to run, the case set config.js selects: the weather sweep, then each sensitivity
     variant at each weather level the config names. Order is weather first, then by level,
     then by variant, which is the order the page lists them in."""
     nominal = [Case(ii=ii) for ii, _ in sim25.WEATHER]

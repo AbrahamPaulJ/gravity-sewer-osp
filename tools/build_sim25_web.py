@@ -38,30 +38,35 @@ PAGE_FILES = ["index.html", "growth_ui.js", "growth_3d.js", "growth_est.js", "pl
 # is served as a site root, where ../src does not exist, and because --check compares the
 # published copy byte for byte, it cannot drift from the original without failing.
 VENDORED = {"osp_core.js": os.path.join(ROOT, "src", "model", "osp_core.js")}
-MAX_SENSORS = 10
-# Case names and notes come from the same cases.json the grid ran from, so what the page
-# calls a case can never drift from what was actually solved.
-CASES_FILE = os.path.join(SIM, "cases.json")
-with io.open(CASES_FILE, encoding="utf-8") as _f:
-    _CASES = json.load(_f)
+# Every setting the page is built with comes from config.js at the repository root, the one
+# file that holds the project's settings, and the same file the grid ran from: the case names
+# and notes, the study area, the detection rules and the sensor limit. So what the page calls
+# a case or a rule can never drift from what was actually solved.
+import osp_config
+CASES_FILE = osp_config.PATH
+_CFG = osp_config.load()
+_SIM = _CFG["simulation"]
+# The selected case set; sim25.load_cases checks it properly when build_runs imports sim25,
+# so a bad name only needs to get that far here.
+_CASES = osp_config.plain(_SIM.get("case_sets") or {}).get(_SIM.get("case_set")) or {}
+MAX_SENSORS = _SIM["max_sensors"]
 # The study area decides which grid this build reads and what the map draws. Its results
 # live in a folder of their own, the same choice sim25_grid.py makes, so the two never mix.
-STUDY_AREA = _CASES.get("study_area", "segment")
+STUDY_AREA = _SIM.get("study_area", "segment")
 if STUDY_AREA == "whole":
     GRID = os.path.join(SIM, "results", "sim25", "grid_whole")
-WEATHER_LABEL = {round(w["ii"], 2): w["label"] for w in _CASES["weather"]}
-WEATHER_NOTE = {round(w["ii"], 2): w["note"] for w in _CASES["weather"]}
+WEATHER_LABEL = {round(w["ii"], 2): w["label"] for w in _CASES.get("weather", [])}
+WEATHER_NOTE = {round(w["ii"], 2): w["note"] for w in _CASES.get("weather", [])}
 VARIANTS = (_CASES.get("sensitivity") or {}).get("variants", [])
-RULES = [
-    ("alarm", "150 mm alarm", "Seen when the depth newly passes 150 mm above the pipe floor "
-     "(the low alarm used in a real deployment)."),
-    ("r10", "Rise 10 mm", "Seen when the depth rises at least 10 mm over that manhole's "
-     "own level before the growth."),
-    ("r25", "Rise 25 mm", "Seen when the depth rises at least 25 mm over that manhole's "
-     "own level before the growth."),
-    ("r50", "Rise 50 mm", "Seen when the depth rises at least 50 mm over that manhole's "
-     "own level before the growth."),
-]
+# The alarm is stored with every SWMM run (sim25.DETECT_DEPTH_M, from the same setting), so
+# its label only names it; the rises are applied here to the stored depth rises.
+ALARM_MM = _SIM["alarm_depth_mm"]
+RULES = [("alarm", f"{ALARM_MM:g} mm alarm",
+          f"Seen when the depth newly passes {ALARM_MM:g} mm above the pipe floor "
+          "(the low alarm used in a real deployment).")] + [
+         (f"r{mm:g}", f"Rise {mm:g} mm",
+          f"Seen when the depth rises at least {mm:g} mm over that manhole's "
+          "own level before the growth.") for mm in _SIM["detection_rises_mm"]]
 
 
 def write_js(path, varname, payload):
@@ -499,13 +504,13 @@ def build_runs():
     order = [case.tag() for case in sim25_grid.cases("all")]
     missing = [tag for tag in order if tag not in summaries]
     if missing:
-        sys.exit("\ncases.json lists cases that have never been solved, so there is nothing to "
+        sys.exit("\nconfig.js lists cases that have never been solved, so there is nothing to "
                  "publish for them:\n" + "".join(f"  {tag}\n" for tag in missing) +
                  "Run them first, from simulation_src/ (each is about 4 to 20 minutes):\n"
                  "  python sim25_grid.py --cases all --resume\n"
                  "--resume skips every case that already has results.")
 
-    # The corridor runs one case per weather level, so publish only the levels cases.json
+    # The corridor runs one case per weather level, so publish only the levels config.js
     # still lists. Globbing everything on disk would keep showing a level after it was
     # removed from the config, which is the same mistake the grid order above avoids.
     levels = {round(ii, 2) for ii, _ in sim25.WEATHER}
@@ -523,6 +528,11 @@ def build_runs():
     else:
         geometry = catchment_geometry(sim25.SEGMENT_OUTLET)
         geometry["context"] = region_context(geometry)
+    # The page's growth estimate needs config.js's roughness, and the page must stand alone
+    # where ../config.js does not exist, so the values travel with the geometry.
+    pipes = _CFG["pipes"]
+    geometry["manning"] = {"byMaterial": osp_config.plain(pipes["manning_n_by_material"]),
+                           "fallback": pipes["manning_n_fallback"], "minSlope": pipes["min_slope"]}
     names = sorted(node["name"] for node in geometry["nodes"] if node["kind"] == "chamber")
     manhole_index = {int(name[2:]): i for i, name in enumerate(names)}
     base_model = None if whole_area else catchment.Catchment(Network(), sim25.SEGMENT_OUTLET)
@@ -598,6 +608,9 @@ def build_runs():
                   for rule, label, note in RULES],
         "cells": cells, "heat": heat, "sensors": sensors, "corridor": corridor_rows,
         "baseDepthMm": base_depth, "baseOver": base_over, "baseSurcharged": base_sur,
+        # config.js settings the page shows or applies, for the same reason as geometry.manning.
+        "alarmMm": ALARM_MM, "maxSensors": MAX_SENSORS,
+        "defaultDwellings": _SIM["scenario_default_dwellings"],
     }
     if whole_area:
         # Only the whole area says so, so a segment build stays byte-identical to the page
@@ -704,8 +717,8 @@ def main():
     try:
         geometry, runs, cell_count = build_runs()
     except ValueError as e:
-        # A mistake in cases.json. Say so plainly rather than with a traceback.
-        sys.exit(f"\ncases.json is not valid, so nothing was built or published:\n  {e}")
+        # A mistake in config.js. Say so plainly rather than with a traceback.
+        sys.exit(f"\nconfig.js is not valid, so nothing was built or published:\n  {e}")
     sizes = {
         "data/catchment.js": write_js(os.path.join(data_dir, "catchment.js"),
                                       "GROWTH_GEOM", geometry),

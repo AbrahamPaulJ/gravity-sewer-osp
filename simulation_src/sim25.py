@@ -31,6 +31,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 import model
+import osp_config
 import overlap_check as oc
 from model import SimNode, SimLink, PipeInfo
 from network import Network
@@ -39,47 +40,57 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(model.RESULTS, "sim25")
 
 DOMAIN_END = 606            # X1: node where the council data ends
-SEGMENT_OUTLET = 583        # P22 / X2: manhole A
 
-PEOPLE_PER_CONNECTION = 2.81        # P01: 8,023 people / 2,851 connections (ABS 2021)
-PEOPLE_PER_NEW_DWELLING = 2.3       # G4: ABS 2021 average household size
-LITRES_PER_PERSON_DAY = 200.0       # P01b
-PF_NOMINAL = 2.0                    # P02
-# R9: the overnight trough of the daily cycle, x average sewage flow. Midpoint of "Minimum
-# hour flow: 0.10 to 0.30 x ADF" (UW CEE 481 notes, as for P02). The peak end is the peak
+# Every setting below is read from config.js at the repository root (osp_config), the one file
+# that holds the project's settings; the register IDs say where each is argued for.
+CFG = osp_config.load()
+_SIM, _LOADS = CFG["simulation"], CFG["loads"]
+
+SEGMENT_OUTLET = _SIM["segment_outlet_node"]                 # P22 / X2: manhole A
+
+PEOPLE_PER_CONNECTION = _LOADS["people_per_connection"]       # P01: people / connections (ABS 2021)
+PEOPLE_PER_NEW_DWELLING = _LOADS["people_per_new_dwelling"]   # G4: ABS 2021 average household size
+LITRES_PER_PERSON_DAY = _LOADS["litres_per_person_day"]       # P01b
+PF_NOMINAL = _LOADS["peak_factor"]                            # P02
+# R9: the overnight trough of the daily cycle, x average sewage flow. The peak end is the peak
 # factor itself, so the existing runs ARE the peak of the day.
-TROUGH_FACTOR = 0.2
+TROUGH_FACTOR = _LOADS["trough_factor"]
 
-# The cases live in cases.json and nowhere else; see that file for what each one means.
+# The cases are config.js's simulation.case_sets[case_set] and nowhere else.
 # P04: I&I rate, L/s per 100 m. 0.11 meets the design envelope implied by the utility's own
 # DN225 rating (docs/15 s2.3); the others are multiples beyond design.
-CASES_FILE = os.path.join(HERE, "cases.json")
+CASES_FILE = osp_config.PATH
 
 
-def load_cases(path=CASES_FILE):
-    """The case configuration, checked, so a typo fails here rather than two hours in."""
-    with open(path, encoding="utf-8") as f:
-        cfg = json.load(f)
+def load_cases(cfg=CFG, path=CASES_FILE):
+    """The selected case set, checked, so a typo fails here rather than two hours in. Returned
+    as {weather, sensitivity, study_area}, the shape the grid and the page builder read."""
+    sim = cfg["simulation"]
+    sets = osp_config.plain(sim.get("case_sets") or {})
+    name = sim.get("case_set")
+    if name not in sets:
+        raise ValueError(f"{path}: simulation.case_set '{name}' is not one of {sorted(sets)}")
+    chosen = sets[name]
     fields = set(Case.__dataclass_fields__)
-    weather = cfg.get("weather") or []
+    weather = chosen.get("weather") or []
     if not weather:
-        raise ValueError(f"{path}: 'weather' must list at least one case")
+        raise ValueError(f"{path}: case set '{name}': 'weather' must list at least one case")
     iis = [w["ii"] for w in weather]
     if len(set(iis)) != len(iis):
-        raise ValueError(f"{path}: two weather cases share an ii, which would share a tag")
-    sens = cfg.get("sensitivity") or {"at_ii": [], "variants": []}
+        raise ValueError(f"{path}: case set '{name}': two weather cases share an ii, which would share a tag")
+    sens = chosen.get("sensitivity") or {"at_ii": [], "variants": []}
     missing = [ii for ii in sens.get("at_ii", []) if ii not in iis]
     if missing:
-        raise ValueError(f"{path}: sensitivity at_ii {missing} is not a weather level")
+        raise ValueError(f"{path}: case set '{name}': sensitivity at_ii {missing} is not a weather level")
     for v in sens.get("variants", []):
         bad = set(v["set"]) - fields
         if bad:
-            raise ValueError(f"{path}: variant '{v['label']}' sets unknown field(s) {sorted(bad)}; "
-                             f"a Case has {sorted(fields)}")
-    area = cfg.get("study_area", "segment")
+            raise ValueError(f"{path}: case set '{name}': variant '{v['label']}' sets unknown field(s) "
+                             f"{sorted(bad)}; a Case has {sorted(fields)}")
+    area = sim.get("study_area", "segment")
     if area not in STUDY_AREAS:
-        raise ValueError(f"{path}: study_area '{area}' is not one of {sorted(STUDY_AREAS)}")
-    return cfg
+        raise ValueError(f"{path}: simulation.study_area '{area}' is not one of {sorted(STUDY_AREAS)}")
+    return {"case_set": name, "weather": weather, "sensitivity": sens, "study_area": area}
 
 
 # Where growth is tested and sensors may go. "segment" is X2, the 71 manholes above node 583,
@@ -93,12 +104,12 @@ STUDY_AREAS = {"segment", "whole"}
 CASE_CONFIG = None     # set below, once Case exists to validate against
 WEATHER = []
 
-# P26: sensitivity only; nominal is uniform. Upper bound of each era (construction year).
-AGE_BANDS = [(1929, 1.5), (1959, 1.2), (1989, 0.8), (9999, 0.5)]
+# P26: sensitivity only; nominal is uniform. Upper bound of each era (construction year), weight.
+AGE_BANDS = [tuple(b) for b in CFG["pipes"]["infiltration_weight_by_age"]["bands"]]
 
-DETECT_DEPTH_M = 0.150              # G6: the network operator's low alarm, depth above invert (Do 2023)
-GROWTH_DWELLINGS = [10, 30, 80, 150]  # P05
-STRESS_DWELLINGS = 700              # P05 stress case
+DETECT_DEPTH_M = _SIM["alarm_depth_mm"] / 1000.0             # G6: the operator's low alarm, depth above invert (Do 2023)
+GROWTH_DWELLINGS = list(_SIM["growth_dwellings"])            # P05
+STRESS_DWELLINGS = _SIM["stress_dwellings"]                  # P05 stress case
 RM_SNAP_M = 12.0                    # rising main end to network node (measured: <= 11.4 m)
 
 

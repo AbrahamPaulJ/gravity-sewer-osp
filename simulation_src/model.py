@@ -30,10 +30,15 @@ import numpy as np
 import pyswmm
 from pyswmm import Simulation, Nodes, Links
 
+import osp_config
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 RESULTS = os.path.join(HERE, "results")
 
-MANNING_N = 0.013                        # H3, the fallback where material is unknown
+# Roughness is set in config.js at the repository root (pipes.manning_*), the one file that
+# holds the project's settings, so the sandbox and Simulation 2.5 page use the same table.
+_PIPES = osp_config.load()["pipes"]
+MANNING_N = _PIPES["manning_n_fallback"]   # H3, the fallback where material is unknown
 
 # Manning's n by the publisher's material code. Conventional design values, not
 # measurements: Chow (1959) Open-Channel Hydraulics Table 5-6, the same table the
@@ -46,9 +51,9 @@ MANNING_N = 0.013                        # H3, the fallback where material is un
 # a published attribute rather than a measurement. MATERIAL itself is published on
 # every record once MATERIALUN is read alongside it.
 #
-# Walkerville is roughly nine parts clay to one part uPVC, so this moves a tenth of
+# As configured (VC 0.013, PVCU 0.010, RC 0.013), Walkerville is roughly nine parts clay to one part uPVC, so this moves a tenth of
 # the network and leaves the rest where it was.
-MANNING_BY_MATERIAL = {"VC": 0.013, "PVCU": 0.010, "RC": 0.013}
+MANNING_BY_MATERIAL = osp_config.plain(_PIPES["manning_n_by_material"])
 
 
 def manning_of(material):

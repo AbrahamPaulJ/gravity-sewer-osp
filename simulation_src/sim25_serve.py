@@ -106,7 +106,7 @@ class Handler(SimpleHTTPRequestHandler):
             tag, sites = req.get("case"), req.get("sites") or []
             if tag not in CASES:
                 return self._json(400, {"error": f"unknown case {tag!r}; this runner has "
-                                                 f"{sorted(CASES)}. Republish if cases.json changed."})
+                                                 f"{sorted(CASES)}. Republish if config.js's cases changed."})
             if not sites or len(sites) > MAX_SITES:
                 return self._json(400, {"error": f"give between 1 and {MAX_SITES} manholes"})
             for mh, dw in sites:

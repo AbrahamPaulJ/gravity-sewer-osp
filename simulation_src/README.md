@@ -14,6 +14,17 @@ they were run on and every run's output, so each result can be reproduced or che
 Python 3.11. `pip install -r requirements.txt` (pyvista only for the desktop viewer
 `view3d.py`).
 
+## Settings: `../config.js`
+
+Every setting the project runs with is in one file, `config.js` at the repository root: which
+pages the site shows, the pipe attributes (roughness by material, infiltration weight by
+age, the sandbox's blockage-likelihood weights), the loads (people per house, litres per
+person, peaking), and Simulation 2.5's study area, growth sizes, alarm depth, detection
+rises, sensor limit and cases. The browser loads it as a script; Python reads it through
+`osp_config.py`. Its object is plain JSON, so keep double quotes and no comments or trailing
+commas inside it; explanations go in `"_"` keys. The comment at the top of the file says what
+each section takes effect on: a reload, a republish, or a SWMM re-run first.
+
 ## Inputs
 
 `data/raw/` is the snapshot of the public council and statewide ArcGIS layers the published
@@ -82,19 +93,21 @@ about 2% worst case and 9% average, against 7% and 25% for the best of 20).
 
 ### Choosing the cases
 
-The cases — "what cannot be measured yet" on the page — are defined in **`cases.json`** and
-nowhere else. `sim25.py`, `sim25_grid.py` and `../tools/build_sim25_web.py` all read it, so
-adding or removing a case is an edit to that one file:
+The cases — "what cannot be measured yet" on the page — are defined in `config.js` under
+`simulation.case_sets`, and nowhere else. `simulation.case_set` names the set that is run and
+published; two are kept: `five` (as published) and `all_twelve` (the earlier 12-case set).
+`sim25.py`, `sim25_grid.py`, `sim25_serve.py` and `../tools/build_sim25_web.py` all read it, so
+adding or removing a case, or switching sets, is an edit to that one file:
 
 - `weather` is the nominal sweep, one case per infiltration level, each with the label and
   note the page shows. The corridor runs use these levels too.
 - `sensitivity.at_ii` names which weather levels get the variants; each variant overrides one
   field of `Case` (`pf`, `age`, `bfac`, `stage`, `hour`) and carries the words added to its label.
 
-As committed that is 4 weather levels plus 4 variants at 2 of them, 12 cases. Each case is 355
-SWMM runs, so the count is the main lever on run time.
+The count is the main lever on run time: a case is 355 SWMM runs in the segment and 1,641 in
+the whole area.
 
-`study_area` in the same file sets where growth is tested and sensors may go:
+`simulation.study_area` sets where growth is tested and sensors may go:
 
 - `"segment"` (the default if absent): the 71 manholes above node 583, a corner of the council
   area. Results in `results/sim25/grid/`. Low-infiltration cases are nested, so a case takes
@@ -110,21 +123,27 @@ SWMM runs, so the count is the main lever on run time.
 The map follows the setting: a whole-area build draws the whole domain as the study area,
 and the "Whole Walkerville" button is hidden because there is nothing left for it to add.
 
-The file is checked when `sim25` is imported, so a misspelt field, an `at_ii` that is not a
-weather level, or two cases sharing an infiltration level fails immediately with a message
-saying which, rather than partway through a two-hour grid.
+The settings are checked when `sim25` is imported, so a misspelt field, a `case_set` that is
+not in `case_sets`, an `at_ii` that is not a weather level, or two cases sharing an
+infiltration level fails immediately with a message saying which, rather than partway
+through a two-hour grid.
 
-**Editing it does not change the page by itself.** The page reads generated data, so after an
-edit, publish it from the repository root:
+**Editing it does not change the Simulation 2.5 page by itself.** The page reads generated
+data (it must stand alone, so it cannot read `../config.js`; the builder publishes the values
+it needs with that data), so after an edit, publish it from the repository root:
 
 ```
 python tools/build_sim25_web.py --publish
 ```
 
-That checks `cases.json`, rebuilds, copies the data into `simulation25/` and bumps the cache
-keys, then lists the cases now on the page. It publishes nothing if the file is invalid. If
-the file names a case that has never been solved, it stops and says which; run those first
+That checks the settings, rebuilds, copies the data into `simulation25/` and bumps the cache
+keys, then lists the cases now on the page. It publishes nothing if the settings are invalid.
+If they name a case that has never been solved, it stops and says which; run those first
 with `python sim25_grid.py --cases all --resume`, which skips every case already solved.
+`detection_rises_mm`, `max_sensors` and `scenario_default_dwellings` need only the republish;
+the alarm depth, loads, roughness, age weights and growth sizes change what SWMM is given, so
+they need the affected cases re-run first (move or delete their results so `--resume` does not
+skip them).
 
 Outputs land in `results/sim25/`: one folder per case with `summary.json`, plus `graded.json`,
 `robustness.json`, the corridor runs and the SWMM `.inp`, `.rpt` and `.out` files. The published
@@ -159,7 +178,7 @@ tab. Generated from the project's working copy; do not hand-edit this folder.
 
 ## Manning's n comes from each pipe's material
 
-`model.MANNING_BY_MATERIAL` keys roughness to the publisher's MATERIAL field: 0.013 for
+`model.MANNING_BY_MATERIAL`, read from `config.js` (`pipes.manning_n_by_material`), keys roughness to the publisher's MATERIAL field: 0.013 for
 vitrified clay and reinforced concrete, 0.010 for uPVC, and 0.013 as the fallback where the
 code is missing or unrecognised. Conventional design values from Chow (1959) Table 5-6, the
 table the SWMM reference reproduces and from which SWMM takes its own concrete default.
