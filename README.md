@@ -20,7 +20,8 @@ Everything runs in the browser. No server, no build step, no tracking.
 | `src/ui/` | `osp_ui.js`, the sandbox page's state, canvas and controls; `osp_3d.js`, the optional relief view. |
 | `src/docs/` | `osp_docs.js`, the assumptions register, method, Q&A and illustrated glossary, generated from the loaded data. |
 | `data/` | `osp_data.js`, the generated dataset. Never edited by hand. |
-| `simulation25/` | Simulation 2.5, the browser view of the growth and sensor-placement grid. |
+| `config.js` | Every setting in one file: which pages the site shows, pipe roughness and age weights, the sandbox's blockage weights, loads, Simulation 2.5's study area, cases, detection rules, map display and pump stations. Read by the browser, Node and Python (`simulation_src/osp_config.py`). |
+| `simulation25/` | Simulation 2.5, the browser view of the growth and sensor-placement grid, with a scenario builder and a choice of placement methods. |
 | `simulation_src/` | EPA SWMM source, the exact public-data snapshot, saved outputs and full reproduction commands for Simulations 1, 2 and 2.5. |
 | `tools/` | Regression tests, data formatting, and the public Sim 2.5 browser builder. The source-data harvester and sanitiser remain private. See `ARCHITECTURE.md`. |
 
@@ -28,8 +29,16 @@ Both explainers are standalone and need no data file. If the vocabulary is new, 
 `manhole_anatomy.html`.
 
 To reproduce Sim 2.5 from the committed SWMM outputs, run
-`python tools/build_sim25_web.py --check`. For a fresh 4,260-run solver reproduction and the
-complete setup instructions, see [`simulation_src/README.md`](simulation_src/README.md).
+`python tools/build_sim25_web.py --check`. For a fresh solver reproduction (the whole-area grid is
+8,200 SWMM runs, about 8.5 hours) and the complete setup instructions, see
+[`simulation_src/README.md`](simulation_src/README.md).
+
+To solve your own growth scenarios in SWMM from the page, serve the site with the local runner
+instead of a plain web server:
+
+```
+~/.venvs/sewer/bin/python simulation_src/sim25_serve.py      # http://localhost:8001
+```
 
 ## The problem
 
@@ -214,6 +223,50 @@ literature on what actually makes a sewer fail.
 Full provenance, including every assumption, what was changed and why, and what data would remove
 each one, is in the tool's **Assumptions** tab, which is generated from the loaded dataset rather
 than written by hand so its figures cannot drift from the model.
+
+## Settings
+
+Everything the project is run with lives in [`config.js`](config.js) at the repository root, one
+file for the browser, Node and Python. Its object is plain JSON (double quotes, no comments, no
+trailing commas); every choice carries an `"_"` note naming the values it allows. The comment at
+the top of the file says what each section takes effect on:
+
+| Section | Takes effect |
+|---|---|
+| `pages` | the landing page, on reload |
+| `display` | the Simulation 2.5 map, on reload |
+| `pipes.blockage_likelihood`, `pipes.manning_*` | the sandbox, on reload; Manning also feeds SWMM, so Simulation 2.5 needs a re-run |
+| `pumps` | growth scenarios run by the local SWMM runner; restart it after an edit |
+| `loads`, `simulation` | Simulation 2.5, after re-running the grid and `python tools/build_sim25_web.py --publish` |
+
+## History
+
+Simulation 2.5 and the site since the first public version (tag `v1.0`, 25 Sep 2026). Tag `v1.1`
+marks 13 Oct 2026.
+
+| Date | Change |
+|---|---|
+| 24 Sep 2026 | Sandbox: growth headroom per chamber, and an objective that maximises the growth capacity watched. |
+| 25 Sep 2026 | Every declared number cited where it is declared. SWMM takes Manning's n from each pipe's material (VC 0.013, uPVC 0.010, RC 0.013), reading the second material field where the first says UNKN; Simulation 2.5 re-run. Reproducible page builder published. |
+| 27 Sep 2026 | Pipes drawn at their own bore. `config.js` chooses which pages the site offers. |
+| 1 Oct 2026 | Simulation 2.5 cases defined in one file and published with one command. |
+| 2 Oct 2026 | Whole-area placement: all 328 manholes are growth sites and sensor candidates (8,200 SWMM runs). Height datum and ruler; each home's lateral; pipe width proportional to diameter; a details card for any pipe; a right-hand panel for the selected manhole. |
+| 3 Oct 2026 | Pump stations and rising mains drawn apart from the gravity mains, with a chip to highlight them. |
+| 8 Oct 2026 | Growth scenarios over many manholes, solved in SWMM by a local runner (`simulation_src/sim25_serve.py`) or estimated in the page. The sandbox's placement algorithms on this network, all scored on the same SWMM runs. |
+| 13 Oct 2026 | Review fixes: the estimate trusted for depth rise only; the method comparison labelled for what it is (in-sample greedy, best-of-20 random). Tagged `v1.1`. |
+| 15 Oct 2026 | Validation end to end: cases, growth sizes, rules, sensors, depths and overflows checked against the SWMM runs and on 400 page views. Overflow (spills from the lid) and rises below the rule shown on the map. Pumps in rated scenarios follow a head curve, so a station delivers less as the level it pumps against rises; overflow pipe 4433446, which sent N183's discharge back to its own wet well, relieves only when surcharged in those scenarios. |
+| 14 Oct 2026 | All settings in one `config.js`, read by the browser, Node and Python. House connections drawn from the published connection layer, bends included, and checked line for line against the council map viewer; a Connections chip shows every one at its bore. Map controls: drag turns, right-drag moves, the wheel zooms to the pointer. A `display` setting chooses whether homes sit at their main's level or above it, read live. Pump stations at a set rate in growth scenarios (option A, below). |
+
+**Pumps, now and next.** Every published result uses SWMM's ideal pumps, which pass on whatever
+reaches a wet well at once. Since 14 Oct 2026 a growth scenario may instead run the two modelled
+stations at a set rate: each wet well becomes a tank and each pump starts and stops on its levels,
+solved by the local runner against the same network at default rates. Since 15 Oct each pump
+follows a head curve: it delivers less as the level it pumps against rises, and nothing above its
+shut-off head. The defaults (17.67 L/s in the DN150 rising main, 7.85 L/s in the DN100s, from a
+1.0 m/s design velocity) and the curves are assumptions; the utility publishes neither. The next step (option B) is to re-run the whole grid with rated pumps
+once the operator supplies pump rates, wet-well sizes and start and stop levels, judging detection on
+the peak across a pump cycle; see `pumps._future` in `config.js` and section 7 of the Simulation 2.5
+Findings tab.
 
 ## Licence
 

@@ -14,6 +14,18 @@ they were run on and every run's output, so each result can be reproduced or che
 Python 3.11. `pip install -r requirements.txt` (pyvista only for the desktop viewer
 `view3d.py`).
 
+## Settings: `../config.js`
+
+Every setting the project runs with is in one file, `config.js` at the repository root: which
+pages the site shows, the pipe attributes (roughness by material, infiltration weight by
+age, the sandbox's blockage-likelihood weights), the loads (people per house, litres per
+person, peaking), how the Simulation 2.5 map draws homes (`display`, read live by the page),
+pump stations at a set rate in scenarios (`pumps`), and Simulation 2.5's study area, growth
+sizes, alarm depth, detection rises, sensor limit and cases. The browser loads it as a script; Python reads it through
+`osp_config.py`. Its object is plain JSON, so keep double quotes and no comments or trailing
+commas inside it; explanations go in `"_"` keys. The comment at the top of the file says what
+each section takes effect on: a reload, a republish, or a SWMM re-run first.
+
 ## Inputs
 
 `data/raw/` is the snapshot of the public council and statewide ArcGIS layers the published
@@ -66,6 +78,57 @@ the manholes SWMM puts newly over it in the wet cases, and 61% to 71% of its own
 wrong (19% found, 84% wrong in Severe), so the page shows "newly over the alarm", "newly
 surcharged" and every result under the alarm rule from SWMM only.
 
+### Pump stations at a set rate (scenarios only)
+
+The published grid and every placement use SWMM **IDEAL** pumps (assumption L7): whatever
+reaches a wet well is passed at once to the rising main's discharge node, with no rate, storage
+or cycling. Three stations are found from the rising-main layer; two discharge into the domain
+and are modelled (wet wells N183 and N997, rising mains 4433449 and 1495438, 55 homes between
+them), the third discharges outside it.
+
+A scenario on the page can switch **Pump stations at set rates** on and change any station's
+rate (also from the station's card on the map). The runner then solves it with each wet well a
+SWMM tank and each pump a constant rate switched by start and stop levels, all from `config.js`
+`pumps`:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `rising_main_velocity_m_s` | 1.0 | a station's default rate is this velocity in its rising main's bore: 17.67 L/s (DN150), 7.85 L/s (DN100) |
+| `default_rate_lps` | null | one rate for every station instead |
+| `stations` | {} | a fixed default for a named station, by rising main id |
+| `wet_well_area_m2` | 2.5 | the wet well's plan area |
+| `start_level_m`, `stop_level_m` | 1.0, 0.3 | the pump starts and stops at these depths above the wet-well floor |
+| `inlet_above_start_m` | 0.3 | the incoming sewer enters this far above the start level, so a filling well never backs up its pipes |
+| `curve` | head | `head`: each pump follows a centrifugal curve through its rate at its rated head (lift plus rising-main friction), so it delivers less as the level it pumps against rises; `flat`: the rate whatever the head |
+| `shutoff_head_ratio` | 1.3 | the shut-off head as a multiple of the rated head |
+| `rising_main_hazen_c` | 120 | Hazen-Williams C for rising-main friction (46.5 m DN150 from N183, 228.1 m DN100 from N997) |
+| `rated_minutes`, `rated_window_min` | 600, 240 | a rated run never settles, so it runs longer and every depth is the peak over the window |
+
+Rated scenarios also raise each overflow pipe's inlet to the crown of its manhole's main outlet
+(`simulation.overflow_inlet`, L13). At its published level overflow 4433446 takes 70% of what
+leaves MH4451967, where N183 pumps to, and sends it back to the N183 wet well, so the station
+pumped in a loop. The grid keeps the published levels until it is re-run.
+
+The baseline it is compared with is the same rated network at default rates with no growth, so
+a rise is always between two runs of one model. The page's instant estimate cannot model a
+filling wet well, so with pumps at set rates only SWMM answers. The runner reads these settings
+when it starts: restart it after editing `config.js`, and republish so the page shows new
+defaults.
+
+Measured at Design wet with the defaults and the head curve (15 Oct 2026): the manholes the
+stations pump to peak at 78 and 154 mm against 29 and 21 mm with ideal pumps; 80 new dwellings
+behind N997 raise its discharge manhole by 8.6 mm with an ideal pump and 0.1 mm with a rated one,
+which pumps more often instead; doubling its rate raises the discharge manhole by 46.0 mm; cutting
+it to 0.3 L/s, below its inflow, backs the sewer up 1.83 m. N183 averaged 16.3 L/s while running
+(as low as 12.9) as its discharge manhole filled. In Severe the trunk surcharges that manhole by
+1.37 m, its overflow relieves back to the wet well, and the pump runs continuously at about 24 L/s
+against about 0.9 m of head.
+
+**Not done yet (option B).** Re-run the whole grid with rated pumps so the heatmap and placements
+include them, judging detection on the peak across a pump cycle rather than the settled depth.
+About 8.5 hours, and worth it only with the operator's real pump rates, wet-well sizes and
+levels; its SCADA run-hours could then check the model.
+
 ### What the sensor score measures, and what it does not
 
 Every placement method on the page is scored on one thing: the share of growth scenarios in
@@ -82,19 +145,21 @@ about 2% worst case and 9% average, against 7% and 25% for the best of 20).
 
 ### Choosing the cases
 
-The cases — "what cannot be measured yet" on the page — are defined in **`cases.json`** and
-nowhere else. `sim25.py`, `sim25_grid.py` and `../tools/build_sim25_web.py` all read it, so
-adding or removing a case is an edit to that one file:
+The cases — "what cannot be measured yet" on the page — are defined in `config.js` under
+`simulation.case_sets`, and nowhere else. `simulation.case_set` names the set that is run and
+published; two are kept: `five` (as published) and `all_twelve` (the earlier 12-case set).
+`sim25.py`, `sim25_grid.py`, `sim25_serve.py` and `../tools/build_sim25_web.py` all read it, so
+adding or removing a case, or switching sets, is an edit to that one file:
 
 - `weather` is the nominal sweep, one case per infiltration level, each with the label and
   note the page shows. The corridor runs use these levels too.
 - `sensitivity.at_ii` names which weather levels get the variants; each variant overrides one
   field of `Case` (`pf`, `age`, `bfac`, `stage`, `hour`) and carries the words added to its label.
 
-As committed that is 4 weather levels plus 4 variants at 2 of them, 12 cases. Each case is 355
-SWMM runs, so the count is the main lever on run time.
+The count is the main lever on run time: a case is 355 SWMM runs in the segment and 1,641 in
+the whole area.
 
-`study_area` in the same file sets where growth is tested and sensors may go:
+`simulation.study_area` sets where growth is tested and sensors may go:
 
 - `"segment"` (the default if absent): the 71 manholes above node 583, a corner of the council
   area. Results in `results/sim25/grid/`. Low-infiltration cases are nested, so a case takes
@@ -110,21 +175,27 @@ SWMM runs, so the count is the main lever on run time.
 The map follows the setting: a whole-area build draws the whole domain as the study area,
 and the "Whole Walkerville" button is hidden because there is nothing left for it to add.
 
-The file is checked when `sim25` is imported, so a misspelt field, an `at_ii` that is not a
-weather level, or two cases sharing an infiltration level fails immediately with a message
-saying which, rather than partway through a two-hour grid.
+The settings are checked when `sim25` is imported, so a misspelt field, a `case_set` that is
+not in `case_sets`, an `at_ii` that is not a weather level, or two cases sharing an
+infiltration level fails immediately with a message saying which, rather than partway
+through a two-hour grid.
 
-**Editing it does not change the page by itself.** The page reads generated data, so after an
-edit, publish it from the repository root:
+**Editing it does not change the Simulation 2.5 page by itself.** The page reads generated
+data (it must stand alone, so it cannot read `../config.js`; the builder publishes the values
+it needs with that data), so after an edit, publish it from the repository root:
 
 ```
 python tools/build_sim25_web.py --publish
 ```
 
-That checks `cases.json`, rebuilds, copies the data into `simulation25/` and bumps the cache
-keys, then lists the cases now on the page. It publishes nothing if the file is invalid. If
-the file names a case that has never been solved, it stops and says which; run those first
+That checks the settings, rebuilds, copies the data into `simulation25/` and bumps the cache
+keys, then lists the cases now on the page. It publishes nothing if the settings are invalid.
+If they name a case that has never been solved, it stops and says which; run those first
 with `python sim25_grid.py --cases all --resume`, which skips every case already solved.
+`detection_rises_mm`, `max_sensors` and `scenario_default_dwellings` need only the republish;
+the alarm depth, loads, roughness, age weights and growth sizes change what SWMM is given, so
+they need the affected cases re-run first (move or delete their results so `--resume` does not
+skip them).
 
 Outputs land in `results/sim25/`: one folder per case with `summary.json`, plus `graded.json`,
 `robustness.json`, the corridor runs and the SWMM `.inp`, `.rpt` and `.out` files. The published
@@ -159,7 +230,7 @@ tab. Generated from the project's working copy; do not hand-edit this folder.
 
 ## Manning's n comes from each pipe's material
 
-`model.MANNING_BY_MATERIAL` keys roughness to the publisher's MATERIAL field: 0.013 for
+`model.MANNING_BY_MATERIAL`, read from `config.js` (`pipes.manning_n_by_material`), keys roughness to the publisher's MATERIAL field: 0.013 for
 vitrified clay and reinforced concrete, 0.010 for uPVC, and 0.013 as the fallback where the
 code is missing or unrecognised. Conventional design values from Chow (1959) Table 5-6, the
 table the SWMM reference reproduces and from which SWMM takes its own concrete default.

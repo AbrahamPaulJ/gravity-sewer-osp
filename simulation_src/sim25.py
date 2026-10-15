@@ -31,6 +31,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 import model
+import osp_config
 import overlap_check as oc
 from model import SimNode, SimLink, PipeInfo
 from network import Network
@@ -39,47 +40,57 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(model.RESULTS, "sim25")
 
 DOMAIN_END = 606            # X1: node where the council data ends
-SEGMENT_OUTLET = 583        # P22 / X2: manhole A
 
-PEOPLE_PER_CONNECTION = 2.81        # P01: 8,023 people / 2,851 connections (ABS 2021)
-PEOPLE_PER_NEW_DWELLING = 2.3       # G4: ABS 2021 average household size
-LITRES_PER_PERSON_DAY = 200.0       # P01b
-PF_NOMINAL = 2.0                    # P02
-# R9: the overnight trough of the daily cycle, x average sewage flow. Midpoint of "Minimum
-# hour flow: 0.10 to 0.30 x ADF" (UW CEE 481 notes, as for P02). The peak end is the peak
+# Every setting below is read from config.js at the repository root (osp_config), the one file
+# that holds the project's settings; the register IDs say where each is argued for.
+CFG = osp_config.load()
+_SIM, _LOADS = CFG["simulation"], CFG["loads"]
+
+SEGMENT_OUTLET = _SIM["segment_outlet_node"]                 # P22 / X2: manhole A
+
+PEOPLE_PER_CONNECTION = _LOADS["people_per_connection"]       # P01: people / connections (ABS 2021)
+PEOPLE_PER_NEW_DWELLING = _LOADS["people_per_new_dwelling"]   # G4: ABS 2021 average household size
+LITRES_PER_PERSON_DAY = _LOADS["litres_per_person_day"]       # P01b
+PF_NOMINAL = _LOADS["peak_factor"]                            # P02
+# R9: the overnight trough of the daily cycle, x average sewage flow. The peak end is the peak
 # factor itself, so the existing runs ARE the peak of the day.
-TROUGH_FACTOR = 0.2
+TROUGH_FACTOR = _LOADS["trough_factor"]
 
-# The cases live in cases.json and nowhere else; see that file for what each one means.
+# The cases are config.js's simulation.case_sets[case_set] and nowhere else.
 # P04: I&I rate, L/s per 100 m. 0.11 meets the design envelope implied by the utility's own
 # DN225 rating (docs/15 s2.3); the others are multiples beyond design.
-CASES_FILE = os.path.join(HERE, "cases.json")
+CASES_FILE = osp_config.PATH
 
 
-def load_cases(path=CASES_FILE):
-    """The case configuration, checked, so a typo fails here rather than two hours in."""
-    with open(path, encoding="utf-8") as f:
-        cfg = json.load(f)
+def load_cases(cfg=CFG, path=CASES_FILE):
+    """The selected case set, checked, so a typo fails here rather than two hours in. Returned
+    as {weather, sensitivity, study_area}, the shape the grid and the page builder read."""
+    sim = cfg["simulation"]
+    sets = osp_config.plain(sim.get("case_sets") or {})
+    name = sim.get("case_set")
+    if name not in sets:
+        raise ValueError(f"{path}: simulation.case_set '{name}' is not one of {sorted(sets)}")
+    chosen = sets[name]
     fields = set(Case.__dataclass_fields__)
-    weather = cfg.get("weather") or []
+    weather = chosen.get("weather") or []
     if not weather:
-        raise ValueError(f"{path}: 'weather' must list at least one case")
+        raise ValueError(f"{path}: case set '{name}': 'weather' must list at least one case")
     iis = [w["ii"] for w in weather]
     if len(set(iis)) != len(iis):
-        raise ValueError(f"{path}: two weather cases share an ii, which would share a tag")
-    sens = cfg.get("sensitivity") or {"at_ii": [], "variants": []}
+        raise ValueError(f"{path}: case set '{name}': two weather cases share an ii, which would share a tag")
+    sens = chosen.get("sensitivity") or {"at_ii": [], "variants": []}
     missing = [ii for ii in sens.get("at_ii", []) if ii not in iis]
     if missing:
-        raise ValueError(f"{path}: sensitivity at_ii {missing} is not a weather level")
+        raise ValueError(f"{path}: case set '{name}': sensitivity at_ii {missing} is not a weather level")
     for v in sens.get("variants", []):
         bad = set(v["set"]) - fields
         if bad:
-            raise ValueError(f"{path}: variant '{v['label']}' sets unknown field(s) {sorted(bad)}; "
-                             f"a Case has {sorted(fields)}")
-    area = cfg.get("study_area", "segment")
+            raise ValueError(f"{path}: case set '{name}': variant '{v['label']}' sets unknown field(s) "
+                             f"{sorted(bad)}; a Case has {sorted(fields)}")
+    area = sim.get("study_area", "segment")
     if area not in STUDY_AREAS:
-        raise ValueError(f"{path}: study_area '{area}' is not one of {sorted(STUDY_AREAS)}")
-    return cfg
+        raise ValueError(f"{path}: simulation.study_area '{area}' is not one of {sorted(STUDY_AREAS)}")
+    return {"case_set": name, "weather": weather, "sensitivity": sens, "study_area": area}
 
 
 # Where growth is tested and sensors may go. "segment" is X2, the 71 manholes above node 583,
@@ -93,12 +104,12 @@ STUDY_AREAS = {"segment", "whole"}
 CASE_CONFIG = None     # set below, once Case exists to validate against
 WEATHER = []
 
-# P26: sensitivity only; nominal is uniform. Upper bound of each era (construction year).
-AGE_BANDS = [(1929, 1.5), (1959, 1.2), (1989, 0.8), (9999, 0.5)]
+# P26: sensitivity only; nominal is uniform. Upper bound of each era (construction year), weight.
+AGE_BANDS = [tuple(b) for b in CFG["pipes"]["infiltration_weight_by_age"]["bands"]]
 
-DETECT_DEPTH_M = 0.150              # G6: the network operator's low alarm, depth above invert (Do 2023)
-GROWTH_DWELLINGS = [10, 30, 80, 150]  # P05
-STRESS_DWELLINGS = 700              # P05 stress case
+DETECT_DEPTH_M = _SIM["alarm_depth_mm"] / 1000.0             # G6: the operator's low alarm, depth above invert (Do 2023)
+GROWTH_DWELLINGS = list(_SIM["growth_dwellings"])            # P05
+STRESS_DWELLINGS = _SIM["stress_dwellings"]                  # P05 stress case
 RM_SNAP_M = 12.0                    # rising main end to network node (measured: <= 11.4 m)
 
 
@@ -221,6 +232,122 @@ def boundary_entries(net):
 
 
 # ====================================================================== pumps
+def pump_settings(cfg=None):
+    """config.js's pumps section, checked, so a typo fails before a SWMM run does. These
+    are used only by rated scenarios (pump_rates given to Sim25Model); the grid's ideal
+    pumps never read them."""
+    ps = dict((cfg or CFG).get("pumps") or {})
+    where = f"{osp_config.PATH}: pumps"
+    v = float(ps.get("rising_main_velocity_m_s", 1.0))
+    if not 0.3 <= v <= 3.0:
+        raise ValueError(f"{where}.rising_main_velocity_m_s {v} is not 0.3 to 3 m/s")
+    d = ps.get("default_rate_lps")
+    if d is not None and not 0 < float(d) <= 200:
+        raise ValueError(f"{where}.default_rate_lps {d} is not null or above 0 and up to 200 L/s")
+    area = float(ps.get("wet_well_area_m2", 2.5))
+    if not 0.5 <= area <= 50:
+        raise ValueError(f"{where}.wet_well_area_m2 {area} is not 0.5 to 50 m2")
+    start, stop = float(ps.get("start_level_m", 1.0)), float(ps.get("stop_level_m", 0.3))
+    if not 0 < stop < start <= 10:
+        raise ValueError(f"{where}: stop_level_m {stop} must be above 0 and below start_level_m {start} (at most 10 m)")
+    stations = osp_config.plain(ps.get("stations") or {})
+    bad = {k: r for k, r in stations.items() if not 0 < float(r) <= 200}
+    if bad:
+        raise ValueError(f"{where}.stations {bad}: each rate must be above 0 and up to 200 L/s")
+    inlet = float(ps.get("inlet_above_start_m", 0.3))
+    if not 0 <= inlet <= 2:
+        raise ValueError(f"{where}.inlet_above_start_m {inlet} is not 0 to 2 m")
+    curve = ps.get("curve", "head")
+    if curve not in ("head", "flat"):
+        raise ValueError(f"{where}.curve '{curve}' is not one of ['flat', 'head']")
+    ratio = float(ps.get("shutoff_head_ratio", 1.3))
+    if not 1.1 <= ratio <= 3:
+        raise ValueError(f"{where}.shutoff_head_ratio {ratio} is not 1.1 to 3")
+    hazen = float(ps.get("rising_main_hazen_c", 120))
+    if not 60 <= hazen <= 160:
+        raise ValueError(f"{where}.rising_main_hazen_c {hazen} is not 60 to 160")
+    minutes, window = int(ps.get("rated_minutes", 600)), int(ps.get("rated_window_min", 240))
+    if not 60 <= window <= minutes - 60:
+        raise ValueError(f"{where}: rated_window_min {window} must be at least 60 and leave 60 minutes of rated_minutes {minutes} to settle")
+    return {"velocity": v, "default": None if d is None else float(d), "area": area,
+            "start": start, "stop": stop, "inlet": inlet, "curve": curve, "ratio": ratio,
+            "hazen": hazen, "stations": {str(k): float(r) for k, r in stations.items()},
+            "minutes": minutes, "window": window}
+
+
+def default_pump_rates(net=None, cfg=None):
+    """Each pump station's default rate, L/s, keyed by its first rising main's id (the name
+    the model gives it, P<id>): config.js's stations entry if it has one, else
+    default_rate_lps if set, else rising_main_velocity_m_s in the rising main's published
+    bore. Every one is an assumption: the utility publishes no pump rate."""
+    ps = pump_settings(cfg)
+    dia = {str(f["attributes"]["ID"]): f["attributes"].get("NOMINALDIA")
+           for f in oc.load("rising_mains")["features"]}
+    out = {}
+    for _wet, _dis, rid in pump_links(net or network()):
+        rid = str(rid)
+        if rid in ps["stations"]:
+            out[rid] = ps["stations"][rid]
+        elif ps["default"] is not None:
+            out[rid] = ps["default"]
+        else:
+            bore = (dia.get(rid) or 100) / 1000.0
+            out[rid] = round(1000 * ps["velocity"] * math.pi * bore * bore / 4, 2)
+    unknown = set(ps["stations"]) - set(out)
+    if unknown:
+        raise ValueError(f"{osp_config.PATH}: pumps.stations names {sorted(unknown)}, which are not "
+                         f"pump stations; they are {sorted(out)}")
+    return out
+
+
+def rising_mains():
+    """Each station's rising main as published, by its first piece's id: {"length": m,
+    "dia_mm": the smallest bore along it}. Pieces are chained end to end, as pump_links
+    chains them."""
+    rec = {}
+    for f in oc.load("rising_mains")["features"]:
+        a = f["attributes"]
+        pts = [tuple(p) for path in f["geometry"]["paths"] for p in path]
+        if a.get("FLOWDIRECT") == 2:
+            pts = pts[::-1]
+        rec[a["ID"]] = (a.get("NOMINALDIA"), pts)
+    key = lambda xy: (round(xy[0], 1), round(xy[1], 1))
+    starts = {key(p[0]): rid for rid, (_, p) in rec.items()}
+    out = {}
+    for rid in rec:
+        chain = [rid]
+        while key(rec[chain[-1]][1][-1]) in starts and starts[key(rec[chain[-1]][1][-1])] not in chain:
+            chain.append(starts[key(rec[chain[-1]][1][-1])])
+        bores = [rec[r][0] for r in chain if rec[r][0]]
+        out[str(rid)] = {"length": sum(math.dist(a, b) for r in chain for a, b in zip(rec[r][1], rec[r][1][1:])),
+                         "dia_mm": min(bores) if bores else 100}
+    return out
+
+
+def hazen_loss(q_lps, length_m, dia_m, c):
+    """Hazen-Williams friction head, m, for q in L/s through length_m of bore dia_m."""
+    q = max(q_lps, 0.0) / 1000.0
+    return 10.67 * length_m * q ** 1.852 / (c ** 1.852 * dia_m ** 4.87)
+
+
+def pump_curve(rate_lps, static_m, friction_m, ratio, points=10):
+    """A head-dependent pump for SWMM (PUMP3: flow against the head difference between the
+    discharge and the wet well). The pump is a centrifugal curve H = H0 - a Q^2 through the
+    rated point (rate, static + friction) with shut-off head H0 = ratio x rated head; the
+    rising main, which SWMM does not model as a pipe here, adds friction r Q^2 with r set
+    so it is friction_m at the rate. SWMM's head difference is the static part only, so the
+    flow it gets is where pump and main balance: Q = rate x sqrt((H0 - dh) / (H0 - Hd + hf)).
+    Returns [(dh, Q)] from no head up to shut-off, where the flow is zero."""
+    hd = static_m + friction_m
+    h0 = ratio * hd
+    den = (h0 - hd) + friction_m
+    pts = []
+    for k in range(points + 1):
+        dh = h0 * k / points
+        pts.append((round(dh, 4), round(rate_lps * math.sqrt(max(0.0, (h0 - dh) / den)), 4)))
+    return pts
+
+
 def pump_links(net):
     """L7: (wet well node, discharge node, first rising main id) per pump station.
 
@@ -273,7 +400,7 @@ class Sim25Model:
     """
 
     def __init__(self, case, whole=True, outlet_head=None, growth=None, growth_nodes=None,
-                 exit_heads=None):
+                 exit_heads=None, pump_rates=None):
         net = network()
         self.net, self.case, self.whole = net, case, whole
         self.growth = dict(growth or {})            # manhole id -> added dwellings
@@ -336,16 +463,33 @@ class Sim25Model:
                 if nm and self.nodes[nm].kind == "outfall":
                     self.nodes[nm].stage = h
 
+        # Overflow (relief) pipes: published inverts, or the inlet raised to the crown of the
+        # manhole's main outlet so it relieves surcharge instead of splitting everyday flow
+        # (config.js simulation.overflow_inlet). Rated pump scenarios always raise it: a
+        # station pumping into a manhole that drains back to it would only pump in a loop.
+        raise_overflow = (CFG["simulation"].get("overflow_inlet", "published") == "raised"
+                          or pump_rates is not None)
+        if CFG["simulation"].get("overflow_inlet", "published") not in ("published", "raised"):
+            raise ValueError(f"{osp_config.PATH}: simulation.overflow_inlet is not 'published' or 'raised'")
+        self.raised_overflow = {}
         used = set()
         for pi in sorted(pipes):
             p = net.pipes[pi]
             up, dn = self.node_of[p.up], self.node_of[p.down]
+            inv_up = p.inv_up
+            if raise_overflow and getattr(p, "overflow", False):
+                mains = [net.pipes[i] for i in net.nodes[p.up].outs
+                         if not getattr(net.pipes[i], "overflow", False)]
+                crown = max((m.inv_up + m.dia for m in mains), default=p.inv_up)
+                if crown > inv_up:
+                    self.raised_overflow[p.asset_id] = round(crown - inv_up, 3)
+                    inv_up = crown
             label = f"{up}>{dn}"
             if label in used:
                 label = f"{label}#{p.asset_id}"
             used.add(label)
             role = "exit" if pi in exits else "study"
-            self.links.append(SimLink(label, label, role, up, dn, p.inv_up, p.inv_down,
+            self.links.append(SimLink(label, label, role, up, dn, inv_up, p.inv_down,
                                       p.dia, p.length, p.line, p.material))
             info = PipeInfo(label, p.asset_id, role, up, dn, p.dia, p.length, p.slope,
                             p.material, p.year)
@@ -374,6 +518,39 @@ class Sim25Model:
             self.node_of[nid] = j
         for k, (wet, dis, rm) in enumerate(pump_pairs):
             self.pumps.append((f"P{rm}", self.node_of[wet], self.node_of[dis]))
+
+        # Rated pumps, for growth scenarios only (config.js pumps, option A). None keeps
+        # SWMM's IDEAL pumps, as the grid ran. A dict (even empty) makes every pump a
+        # constant-rate pump at its rate here, else its default, starting and stopping on
+        # the wet-well levels, and makes each wet well a tank of the configured area.
+        self.pump_rated, self.wet_wells = None, {}
+        if pump_rates is not None and self.pumps:
+            ps, defaults = pump_settings(), default_pump_rates(net)
+            unknown = {str(k) for k in pump_rates} - set(defaults)
+            if unknown:
+                raise ValueError(f"pump rates for {sorted(unknown)}, which are not pump stations "
+                                 f"in this model; they are {sorted(defaults)}")
+            self.pump_rated, self.pump_curves = {}, {}
+            mains = rising_mains()
+            for name, wet_name, dis_name in self.pumps:
+                rate = float(pump_rates.get(name[1:], defaults[name[1:]]))
+                curve = None
+                if ps["curve"] == "head":
+                    # Lift from the wet well's mid level (its floor sits start + inlet below
+                    # the incoming pipe, L10) to the discharge manhole's floor, plus friction.
+                    floor = self.nodes[wet_name].invert - (ps["start"] + ps["inlet"])
+                    mid = floor + (ps["start"] + ps["stop"]) / 2
+                    static = max(0.1, self.nodes[dis_name].invert - mid)
+                    rm = mains.get(name[1:], {"length": 50.0, "dia_mm": 100})
+                    hf = hazen_loss(rate, rm["length"], rm["dia_mm"] / 1000.0, ps["hazen"])
+                    curve = pump_curve(rate, static, hf, ps["ratio"])
+                    self.pump_curves[name] = {"static_m": round(static, 3), "friction_m": round(hf, 3),
+                                              "rated_head_m": round(static + hf, 3),
+                                              "shutoff_head_m": round(ps["ratio"] * (static + hf), 3)}
+                self.pump_rated[name] = (rate, ps["start"], ps["stop"], curve)
+                # The floor drops below the incoming pipe's end (the published node) by the
+                # start level plus the inlet's clearance, so the pipe enters above the water.
+                self.wet_wells[wet_name] = (ps["area"], ps["start"] + ps["inlet"])
 
         # Segment outlet level is what the nesting hands over: record it in whole runs.
         seg_tail = net.pipes[net.nodes[SEGMENT_OUTLET].outs[0]]
@@ -533,11 +710,13 @@ class _Steady:
         return "Sim 2.5 steady"
 
 
-def solve(m, minutes, out_dir):
+def solve(m, minutes, out_dir, window_min=10):
     """Returns (result, settled state, head at the segment outlet). After a whole run,
-    m.exit_heads holds the settled level at each segment side exit, for nesting."""
-    res = model.run(m, _Steady(minutes), out_dir)
-    st = settled(m, res)
+    m.exit_heads holds the settled level at each segment side exit, for nesting.
+    window_min is how far back the peak depth is taken: 10 for the grid, which settles;
+    longer for rated pumps, which never do, so the peak must span a whole pump cycle."""
+    res = model.run(m, _Steady(minutes, record_last_min=window_min + 2), out_dir)
+    st = settled(m, res, window_min)
     head = None
     m.exit_heads = {}
     if m.watch and len(res.s["watch_head"]):

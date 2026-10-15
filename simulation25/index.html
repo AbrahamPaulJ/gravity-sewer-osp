@@ -108,7 +108,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 #stageWrap{flex:1; min-height:0; position:relative}
 #stage{position:absolute; inset:0}
 #stage canvas{display:block; width:100%; height:100%}
-.labels{position:absolute; inset:0; pointer-events:none}
+.labels{position:absolute; inset:0; pointer-events:none; overflow:hidden}   /* a label projected past the map edge (the ruler, seen from overhead) is cut off, not drawn over the legend */
 /* The card a click on a pipe opens, beside the click. */
 .pipeCard{position:absolute; z-index:5; width:270px; padding:12px 14px 10px;
   background:#111c2fee; border:1px solid #22314d; border-radius:10px; color:#a9b8d4;
@@ -133,6 +133,13 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .labels .lbl.site{color:#7dd8ff; transform:translate(-50%, 42%)}
 .labels .lbl.pump{color:#e3b341; transform:translate(-50%,-230%)}
 .labels .lbl.scn{color:#00d4ff; transform:translate(-50%,-200%)}
+.labels .lbl.spill{color:#ff3df5; font-weight:600; transform:translate(-50%,-210%)}
+/* A proposed sensor's number, on a filled green tag at the top of its pin: readable over
+   any pipe colour, at any zoom. */
+.labels .lbl.sensor{color:#04140a; background:#2ef56b; font-weight:700; font-size:11.5px;
+  padding:1px 6px; border-radius:4px; transform:translate(-50%,-140%); box-shadow:0 0 0 2px #0d1117}
+.legend .kr{display:inline-block; width:9px; height:9px; border-radius:50%; border:2px solid;
+  vertical-align:-2px; margin-right:6px}
 /* The scenario builder: one row per manhole, its dwellings editable in place. */
 #scnBox[hidden],#oneBox[hidden]{display:none}
 #scnList .srow{display:flex; align-items:center; gap:6px; padding:4px 0; border-top:1px solid var(--line)}
@@ -143,6 +150,26 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 #scnList .srow .x:hover{color:var(--ink)}
 #scnList .tot{font-size:12px; color:var(--dim); padding-top:5px; border-top:1px solid var(--line)}
 .scnAdd,.scnRun{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap}
+#pumpBox{margin-top:10px; padding-top:8px; border-top:1px solid var(--line)}
+#pumpBox[hidden]{display:none}
+#pumpBox .pumpOn{display:flex; align-items:center; gap:7px; font-size:12.5px; cursor:pointer}
+#pumpList .prow{display:flex; align-items:center; gap:6px; padding:4px 0 4px 22px}
+#pumpList .prow .nm{flex:1; font-size:12px; color:var(--dim)}
+#pumpList .prow input{width:64px; padding:3px 5px; background:var(--bg); color:var(--ink);
+  border:1px solid var(--line); border-radius:4px; font:inherit; font-size:12.5px}
+#pumpList .prow input:disabled{opacity:.45}
+#pumpList .prow .rs{background:none; border:0; color:var(--faint); cursor:pointer; font-size:13px}
+#pumpList .prow .rs:hover{color:var(--ink)}
+#pumpList .prow.changed input{border-color:#e3b341}
+#pumpNote{font-size:11.5px; margin:4px 0 0}
+#pumpBox .warnBox{margin:6px 0 2px; padding:7px 9px; font-size:11.5px; line-height:1.45; color:#e3b341;
+  background:#3d2f1233; border:1px solid #e3b34166; border-radius:5px}
+#pumpBox .warnBox[hidden]{display:none}
+#pumpBox .warnBox code{font-size:10.5px; color:#f0d38a}
+.labels .lbl.pumprate{color:#e3b341; font-weight:600; transform:translate(-50%,160%)}
+.pipeCard button.pumpSet{margin:8px 0 2px; width:100%; padding:5px 8px; font-size:12px; cursor:pointer;
+  background:#1f2a3a; color:#c9d1d9; border:1px solid #30363d; border-radius:5px}
+.pipeCard button.pumpSet:hover{border-color:#e3b341; color:#f0f6fc}
 .scnAdd select{flex:1; min-width:0}
 .badge{display:inline-block; font-size:10.5px; letter-spacing:.04em; text-transform:uppercase;
   padding:1px 7px; border-radius:99px; margin-right:6px; vertical-align:1px}
@@ -170,6 +197,8 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   border:1px solid #0d1117; outline:1px solid #e3b34166; vertical-align:-1px; margin-right:6px}
 .legend .kd{display:inline-block; width:18px; height:2px; vertical-align:3px; margin-right:6px;
   background:repeating-linear-gradient(90deg,#e3b341 0 5px,transparent 5px 8px)}
+.legend .kdl{display:inline-block; width:18px; height:2px; vertical-align:3px; margin-right:6px;
+  background:repeating-linear-gradient(90deg,#d2a8ff 0 5px,transparent 5px 8px)}
 /* The homes key: an overlay on the map, fixed width, so its text changing on hover
    cannot move anything. It ignores the pointer, so hovering through it still works. */
 #homeKey{position:absolute; left:12px; top:12px; z-index:3; width:330px; height:112px;
@@ -311,6 +340,16 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
       <button id="scnAddSel">+ Add the selected manhole</button>
       <select id="scnAddPick"></select>
     </div>
+    <!-- Pump stations at a set rate (config.js pumps): SWMM runner only, as the estimate
+         cannot model stop-start pumping. Shown where the map has modelled stations. -->
+    <div id="pumpBox" hidden>
+      <label class="pumpOn"><input type="checkbox" id="pumpOn"> Pump stations at set rates</label>
+      <p id="pumpWarn" class="warnBox" hidden><b>Needs the SWMM runner.</b> This page is served by a
+        plain web server, so pump rates cannot be solved and changing them changes nothing. Serve the
+        site with <code>~/.venvs/sewer/bin/python simulation_src/sim25_serve.py</code> and reload.</p>
+      <div id="pumpList"></div>
+      <p class="quiet" id="pumpNote"></p>
+    </div>
     <div class="scnRun">
       <button id="scnRun" class="primary">Run in SWMM</button>
       <button id="scnClear">Clear</button>
@@ -352,6 +391,7 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
       <button id="toggleSensors">Show sensors</button>
       <button id="toggleHeat" title="Colour every manhole by how much growth it would see on its own">Heatmap</button>
       <button id="togglePumps" title="Highlight the pump stations, their rising mains and the pipes that drain to them">Pump stations</button>
+      <button id="toggleConn" title="Draw every connection pipe at its bore, coloured by how it joins the model">Connections</button>
     </div>
     <div class="navrow">
       <span class="navlbl">Read</span>
@@ -382,6 +422,14 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
       <span><span class="kl" style="background:#ffa500"></span>already over the alarm before growth (alarm rule)</span>
       <span><span class="kl" style="background:#ff2d55"></span>sees this growth</span>
     </div>
+    <div class="grp"><b>Manholes</b>
+      <span><span class="k" style="background:#ff2d55"></span>sees the growth (the selected rule)</span>
+      <span><span class="k" style="background:#ff8c69"></span>rises 10 mm or more, below the rule</span>
+      <span><span class="k" style="background:#39d3c3"></span>falls 10 mm or more (a scenario)</span>
+      <span><span class="k" style="background:#ffa500"></span>over the alarm before growth</span>
+      <span><span class="kr" style="border-color:#bc8cff"></span>overflowing before growth</span>
+      <span><span class="kr" style="border-color:#ff3df5"></span>overflows because of the growth</span>
+    </div>
     <!-- Shown only when the map has pump stations, which a whole-area build does. -->
     <div class="grp" id="pumpKey" hidden><b>Pumped</b>
       <span><span class="ksq" style="background:#e3b341"></span>pump station</span>
@@ -389,12 +437,21 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
       <span><span class="ksq" style="background:#6e5a2a"></span>dimmed: not in the model</span>
       <span>click either for details</span>
     </div>
+    <!-- Shown while the Connections chip is on. -->
+    <div class="grp" id="connKey" hidden><b>Connections</b>
+      <span><span class="kl" style="background:#6f95ff"></span>a property's own connection pipe, as published, at its bore</span>
+      <span><span class="kl" style="background:#ffa657"></span>meets a different main from the one the model gives its load (<span id="connMis"></span>)</span>
+      <span><span class="kl" style="background:#8b949e"></span>branch laid to no property on record (<span id="connSpare"></span>)</span>
+      <span><span class="kdl"></span>no connection published: joined to its nearest main, a guess (<span id="connGuess"></span>)</span>
+      <span>the dot is the property's inspection point at its boundary; the drain from the house to it is private and not published</span>
+    </div>
     <div class="grp"><b>Points</b>
       <span><span class="k" style="background:#c9d1d9"></span>manhole, a sensor could go here</span>
       <span><span class="k" style="background:#30363d"></span>pipe end, no manhole recorded</span>
       <span><span class="k" style="background:#ff6f9c"></span>connected property</span>
+      <span><span class="kl" style="background:#6f95ff"></span>a selected manhole's homes: their connections to the main, as published (dashed: none published, a guess)</span>
       <span><span class="k" style="background:#00d4ff"></span>where the new dwellings connect</span>
-      <span><span class="k" style="background:#3fb950"></span>proposed sensor</span>
+      <span><span class="k" style="background:#2ef56b"></span>proposed sensor: green pin, numbered S1, S2, ... as in the sensor list</span>
       <span><span class="k" style="background:#a371f7"></span>outlet, everything drains through it</span>
     </div>
   </div>
@@ -415,14 +472,14 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=51"></script>
-<script src="data/growth.js?v=51"></script>
-<script src="data/index.js?v=51"></script>
-<script src="growth_3d.js?v=51"></script>
-<script src="osp_core.js?v=51"></script>
-<script src="placement.js?v=51"></script>
-<script src="growth_est.js?v=51"></script>
-<script src="growth_ui.js?v=51"></script>
+<script src="data/catchment.js?v=81"></script>
+<script src="data/growth.js?v=81"></script>
+<script src="data/index.js?v=81"></script>
+<script src="growth_3d.js?v=81"></script>
+<script src="osp_core.js?v=81"></script>
+<script src="placement.js?v=81"></script>
+<script src="growth_est.js?v=81"></script>
+<script src="growth_ui.js?v=81"></script>
 <script type="module">
   GrowthUI.init();
 </script>

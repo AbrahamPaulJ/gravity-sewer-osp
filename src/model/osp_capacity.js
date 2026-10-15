@@ -30,11 +30,18 @@
    SWMM and will not reproduce SWMM. The network operator's own team does real modelling and
    will know the difference immediately, so label it accordingly.  */
 
+/* Its settings come from config.js at the repository root, the one file that holds the
+   project's settings, so the browser must load config.js first; under Node it is required
+   here. Keys starting "_" there are notes. */
 (function (root, factory) {
-  if (typeof module === "object" && module.exports) module.exports = factory();
-  else root.OSPCapacity = factory();
-})(typeof self !== "undefined" ? self : this, function () {
+  if (typeof module === "object" && module.exports) {
+    require("../../config.js");
+    module.exports = factory((typeof window !== "undefined" ? window : globalThis).OSP_CONFIG);
+  } else root.OSPCapacity = factory(root.OSP_CONFIG);
+})(typeof self !== "undefined" ? self : this, function (CONFIG) {
 "use strict";
+if (!CONFIG) throw new Error("osp_capacity.js: config.js must be loaded before this script");
+const plain = o => Object.fromEntries(Object.entries(o).filter(([k]) => !k.startsWith("_")));
 
 /* Manning roughness. Sewer pipe is 0.010 to 0.015 depending on material and age;
    0.013 is the conventional design value for concrete and vitrified clay and is
@@ -62,8 +69,8 @@
 
    Keyed by the material strings the publisher uses, so an unrecognised code falls
    back rather than guessing. */
-const DEFAULT_N = 0.013;
-const MATERIAL_N = { VC: 0.013, PVCU: 0.010, RC: 0.013 };
+const DEFAULT_N = CONFIG.pipes.manning_n_fallback;                  // config.js
+const MATERIAL_N = plain(CONFIG.pipes.manning_n_by_material);       // config.js
 
 /* A reach with no fall cannot be solved by Manning. Some are genuinely flat, some
    are data error: the invert fields are flow-anchored and a mis-set record can read
@@ -75,7 +82,7 @@ const MATERIAL_N = { VC: 0.013, PVCU: 0.010, RC: 0.013 };
    other field, and only clamp when that is missing too. Reaches recovered that way
    are flagged separately from clamped ones, because they are a different claim:
    one is a measurement from a second source, the other is an admission. */
-const MIN_SLOPE = 1e-4;
+const MIN_SLOPE = CONFIG.pipes.min_slope;                          // config.js
 
 /* --------------------------------------------------------------- geometry */
 /* Per-edge diameter, slope and length.

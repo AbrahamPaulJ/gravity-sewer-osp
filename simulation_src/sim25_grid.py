@@ -48,11 +48,11 @@ WHOLE_RISE_FLOOR_MM = 1.0
 MINUTES = 480            # R2: settled within 0.2 mm by 480 min at every weather level tested
 NEST_MAX_II = 0.11       # X4: nesting validated up to design wet only
 CORRIDOR_BUFFER_M = 25.0
-CORRIDOR_SIZES = [80, 150, 390, 485]   # P05; 390 / 485 = projected 2021-41 medium / high
+CORRIDOR_SIZES = list(sim25.CFG["simulation"]["corridor_dwellings"])   # P05; config.js
 
 
 def cases(which):
-    """The cases to run, read from cases.json: the weather sweep, then each sensitivity
+    """The cases to run, the case set config.js selects: the weather sweep, then each sensitivity
     variant at each weather level the config names. Order is weather first, then by level,
     then by variant, which is the order the page lists them in."""
     nominal = [Case(ii=ii) for ii, _ in sim25.WEATHER]
@@ -85,10 +85,19 @@ def _segment_task(args):
 
 
 def _whole_task(args):
-    case, growth_nodes, growth, run_dir = args
-    m = Sim25Model(case, whole=True, growth=growth, growth_nodes=growth_nodes)
+    """One whole-domain run. An optional fifth element, pump rates ({} for every station at
+    its default), solves with rated pumps over config.js's longer run and peak window; the
+    grid never passes it, so its runs are the ideal-pump ones it always was."""
+    case, growth_nodes, growth, run_dir, *rest = args
+    pump_rates = rest[0] if rest else None
+    m = Sim25Model(case, whole=True, growth=growth, growth_nodes=growth_nodes,
+                   pump_rates=pump_rates)
+    minutes, window = MINUTES, 10
+    if pump_rates is not None:
+        ps = sim25.pump_settings()
+        minutes, window = ps["minutes"], ps["window"]
     try:
-        res, st, head = solve(m, MINUTES, run_dir)
+        res, st, head = solve(m, minutes, run_dir, window)
     finally:
         shutil.rmtree(run_dir, ignore_errors=True)
     return head, m.growth_lps, res.err, {
@@ -176,7 +185,10 @@ def run_case(case, pool, sites_limit, sizes):
                "method": "nested" if nested else "whole", "outlet_head": h0,
                "baseline_depth_m": {str(mh_of[c]): round(base[c]["depth"], 4) for c in seg},
                "baseline": {"alarm": sorted(mh_of[c] for c in seg if base[c]["alarm"]),
-                            "surcharged": sorted(mh_of[c] for c in seg if base[c]["surcharged"])},
+                            "surcharged": sorted(mh_of[c] for c in seg if base[c]["surcharged"]),
+                            # Spilling from the lid before growth, so a row's "spilled" can be
+                            # read as new or not (added 14 Oct 2026).
+                            "spilled": sorted(mh_of[c] for c in seg if base[c]["spilled"])},
                "rows": rows, "placement": placement, "wall_s": round(time.time() - t0)}
     with open(os.path.join(base_dir, "summary.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(summary, f, indent=1)

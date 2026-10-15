@@ -38,30 +38,95 @@ PAGE_FILES = ["index.html", "growth_ui.js", "growth_3d.js", "growth_est.js", "pl
 # is served as a site root, where ../src does not exist, and because --check compares the
 # published copy byte for byte, it cannot drift from the original without failing.
 VENDORED = {"osp_core.js": os.path.join(ROOT, "src", "model", "osp_core.js")}
-MAX_SENSORS = 10
-# Case names and notes come from the same cases.json the grid ran from, so what the page
-# calls a case can never drift from what was actually solved.
-CASES_FILE = os.path.join(SIM, "cases.json")
-with io.open(CASES_FILE, encoding="utf-8") as _f:
-    _CASES = json.load(_f)
+# Every setting the page is built with comes from config.js at the repository root, the one
+# file that holds the project's settings, and the same file the grid ran from: the case names
+# and notes, the study area, the detection rules and the sensor limit. So what the page calls
+# a case or a rule can never drift from what was actually solved.
+import osp_config
+CASES_FILE = osp_config.PATH
+_CFG = osp_config.load()
+_SIM = _CFG["simulation"]
+# The selected case set; sim25.load_cases checks it properly when build_runs imports sim25,
+# so a bad name only needs to get that far here.
+_CASES = osp_config.plain(_SIM.get("case_sets") or {}).get(_SIM.get("case_set")) or {}
+MAX_SENSORS = _SIM["max_sensors"]
 # The study area decides which grid this build reads and what the map draws. Its results
 # live in a folder of their own, the same choice sim25_grid.py makes, so the two never mix.
-STUDY_AREA = _CASES.get("study_area", "segment")
+STUDY_AREA = _SIM.get("study_area", "segment")
 if STUDY_AREA == "whole":
     GRID = os.path.join(SIM, "results", "sim25", "grid_whole")
-WEATHER_LABEL = {round(w["ii"], 2): w["label"] for w in _CASES["weather"]}
-WEATHER_NOTE = {round(w["ii"], 2): w["note"] for w in _CASES["weather"]}
+WEATHER_LABEL = {round(w["ii"], 2): w["label"] for w in _CASES.get("weather", [])}
+WEATHER_NOTE = {round(w["ii"], 2): w["note"] for w in _CASES.get("weather", [])}
 VARIANTS = (_CASES.get("sensitivity") or {}).get("variants", [])
-RULES = [
-    ("alarm", "150 mm alarm", "Seen when the depth newly passes 150 mm above the pipe floor "
-     "(the low alarm used in a real deployment)."),
-    ("r10", "Rise 10 mm", "Seen when the depth rises at least 10 mm over that manhole's "
-     "own level before the growth."),
-    ("r25", "Rise 25 mm", "Seen when the depth rises at least 25 mm over that manhole's "
-     "own level before the growth."),
-    ("r50", "Rise 50 mm", "Seen when the depth rises at least 50 mm over that manhole's "
-     "own level before the growth."),
-]
+# The alarm is stored with every SWMM run (sim25.DETECT_DEPTH_M, from the same setting), so
+# its label only names it; the rises are applied here to the stored depth rises.
+ALARM_MM = _SIM["alarm_depth_mm"]
+RULES = [("alarm", f"{ALARM_MM:g} mm alarm",
+          f"Seen when the depth newly passes {ALARM_MM:g} mm above the pipe floor "
+          "(the low alarm used in a real deployment).")] + [
+         (f"r{mm:g}", f"Rise {mm:g} mm",
+          f"Seen when the depth rises at least {mm:g} mm over that manhole's "
+          "own level before the growth.") for mm in _SIM["detection_rises_mm"]]
+
+
+def spill_payload(order, summaries, manhole_index, sizes):
+    """baseSpilled and spill for the page, or nothing if any case lacks a baseline spill."""
+    if not all("spilled" in summaries[tag]["baseline"] for tag in order):
+        return {}
+    base_sp, spill = [], []
+    for tag in order:
+        summary = summaries[tag]
+        before = set(summary["baseline"]["spilled"])
+        base_sp.append(sorted(manhole_index[m] for m in before))
+        by_size = {}
+        for row in summary["rows"]:
+            new = sorted(manhole_index[m] for m in set(row.get("spilled") or []) - before)
+            if new:
+                by_size.setdefault(str(row["dwellings"]), []).append([manhole_index[row["site"]], new])
+        spill.append({k: sorted(v) for k, v in by_size.items()})
+    return {"baseSpilled": base_sp, "spill": spill}
+
+
+def connection_geometry(network, kept, in_model, ox, oy):
+    """The connection pipes as published (layer 7), for the page to draw as they are.
+
+    kept lists, per drawn house, its index in network.connections. Returns:
+      cx, cy, cptr  every line's vertices (dm from the origin), property end first and the
+                    end on the main last; line i is cx[cptr[i]:cptr[i+1]]
+      cdia          each line's bore, mm (None where unpublished)
+      hl            per drawn house, the line that starts at it, or -1 where none does, so
+                    the page can only draw a straight guess to its main
+      hMis          drawn houses whose own line meets a different main from the one their
+                    load is attributed to (see network.connection_own)
+      cSpare        lines that start at no property, joining a main in this map: branches
+                    laid to a lot with no inspection point on record
+    """
+    paths = getattr(network, "connection_paths", None) or []
+    own = getattr(network, "connection_own", None) or []
+    if not paths:
+        return {}
+    pub, cx, cy, cptr, cdia = {}, [], [], [0], []
+
+    def publish(i):
+        if i not in pub:
+            pub[i] = len(cdia)
+            for x, y in paths[i]["path"]:
+                cx.append(int(round((x - ox) * 10)))
+                cy.append(int(round((y - oy) * 10)))
+            cptr.append(len(cx))
+            cdia.append(paths[i]["dia"])
+        return pub[i]
+
+    hl, mis = [], []
+    for h, k in enumerate(kept):
+        i = own[k] if k < len(own) else None
+        hl.append(-1 if i is None else publish(i))
+        if i is not None and paths[i]["pipe"] != network.connections[k][2]:
+            mis.append(h)
+    taken = {i for i in own if i is not None}
+    spare = [publish(i) for i, c in enumerate(paths) if i not in taken and c["pipe"] in in_model]
+    return {"cx": cx, "cy": cy, "cptr": cptr, "cdia": cdia, "hl": hl, "hMis": mis,
+            "cSpare": spare}
 
 
 def write_js(path, varname, payload):
@@ -172,11 +237,12 @@ def catchment_geometry(outlet):
 
     study_assets = {pipe.asset_id for pipe in model.pipes if pipe.role == "study"}
     in_model = {i for i, pipe in enumerate(network.pipes) if pipe.asset_id in study_assets}
-    hx, hy, hz, hn, jx, jy = [], [], [], [], [], []
+    hx, hy, hz, hn, jx, jy, kept = [], [], [], [], [], [], []
     junctions = getattr(network, "connection_junctions", None) or []
     for k, (x, y, pipe_id) in enumerate(getattr(network, "connections", [])):
         if pipe_id in in_model:
             pipe = network.pipes[pipe_id]
+            kept.append(k)
             hx.append(int(round((x - ox) * 10)))
             hy.append(int(round((y - oy) * 10)))
             hz.append(int(round(((pipe.inv_up + pipe.inv_down) / 2 - oz) * 100)))
@@ -196,6 +262,7 @@ def catchment_geometry(outlet):
         **link_details(model),
         # Where each property joins its main: the lateral the page draws from the house.
         "jx": jx, "jy": jy,
+        **connection_geometry(network, kept, in_model, ox, oy),
         "bottlenecks": [],
         "nPipes": len(model.links), "nChambers": len(model.chambers),
         "nHouses": len(hx), "baseDwellings": model.base_dwellings,
@@ -281,6 +348,13 @@ def pump_stations(model, ox, oy, oz, index=None):
                       for s in json.load(f)["features"] if s["attributes"].get("SUBTYPE") == 3]
 
     modelled = {name[1:] for name, _, _ in model.pumps}       # "P4433449" -> "4433449"
+    # Each station's default rate for rated scenarios (config.js pumps): an assumption, the
+    # utility publishes none. Keyed, as the model and the runner key it, by the first
+    # rising main from the wet well.
+    rates = sim25.default_pump_rates(net)
+    pset = sim25.pump_settings()
+    # The curve each modelled station gets at its default rate (config.js pumps.curve).
+    curves = sim25.Sim25Model(sim25.Case(), whole=True, pump_rates={}).pump_curves if model.pumps else {}
     out = []
     for wet, dis, rid in sim25.pump_links(net):
         i = next(k for k, r in enumerate(rec) if r[0] == rid)
@@ -321,6 +395,14 @@ def pump_stations(model, ox, oy, oz, index=None):
             "px": [int(round((x - ox) * 10)) for x, _ in pts],
             "py": [int(round((y - oy) * 10)) for _, y in pts],
             "pz": [int(round((z_of(s) - oz) * 100)) for s in cum],
+            "rm": str(rid),
+            "rate": rates.get(str(rid)),
+            "curve": curves.get(f"P{rid}"),
+            # How the default was set, for the card: a named rate, one rate for all, or the
+            # design velocity in this rising main's bore.
+            "rateFrom": ("station" if str(rid) in pset["stations"] else
+                         "default" if pset["default"] is not None else
+                         f"{pset['velocity']:g} m/s in DN{rec[chain[0]][1] or 100}"),
         })
     return out
 
@@ -379,7 +461,7 @@ def domain_geometry():
     } for name, node in model.nodes.items()]
 
     in_model = set(model._pipe_ids)
-    hx, hy, hz, hn, jx, jy = [], [], [], [], [], []
+    hx, hy, hz, hn, jx, jy, kept = [], [], [], [], [], [], []
     junctions = getattr(network, "connection_junctions", None) or []
     for k, (x, y, pipe_id) in enumerate(getattr(network, "connections", [])):
         if pipe_id in in_model:
@@ -387,6 +469,7 @@ def domain_geometry():
             name = model.node_of.get(pipe.up)
             if name is None:
                 continue
+            kept.append(k)
             hx.append(int(round((x - ox) * 10)))
             hy.append(int(round((y - oy) * 10)))
             hz.append(int(round(((pipe.inv_up + pipe.inv_down) / 2 - oz) * 100)))
@@ -407,6 +490,7 @@ def domain_geometry():
         **link_details(model),
         # Where each property joins its main: the lateral the page draws from the house.
         "jx": jx, "jy": jy,
+        **connection_geometry(network, kept, in_model, ox, oy),
         "bottlenecks": [],
         "pumps": pump_stations(model, ox, oy, oz, index),
         # The pumps the model solves, as [wet well, discharge] map-node pairs: the page's
@@ -499,13 +583,13 @@ def build_runs():
     order = [case.tag() for case in sim25_grid.cases("all")]
     missing = [tag for tag in order if tag not in summaries]
     if missing:
-        sys.exit("\ncases.json lists cases that have never been solved, so there is nothing to "
+        sys.exit("\nconfig.js lists cases that have never been solved, so there is nothing to "
                  "publish for them:\n" + "".join(f"  {tag}\n" for tag in missing) +
                  "Run them first, from simulation_src/ (each is about 4 to 20 minutes):\n"
                  "  python sim25_grid.py --cases all --resume\n"
                  "--resume skips every case that already has results.")
 
-    # The corridor runs one case per weather level, so publish only the levels cases.json
+    # The corridor runs one case per weather level, so publish only the levels config.js
     # still lists. Globbing everything on disk would keep showing a level after it was
     # removed from the config, which is the same mistake the grid order above avoids.
     levels = {round(ii, 2) for ii, _ in sim25.WEATHER}
@@ -523,6 +607,21 @@ def build_runs():
     else:
         geometry = catchment_geometry(sim25.SEGMENT_OUTLET)
         geometry["context"] = region_context(geometry)
+    # The page's growth estimate needs config.js's roughness, and the page must stand alone
+    # where ../config.js does not exist, so the values travel with the geometry.
+    pipes = _CFG["pipes"]
+    geometry["manning"] = {"byMaterial": osp_config.plain(pipes["manning_n_by_material"]),
+                           "fallback": pipes["manning_n_fallback"], "minSlope": pipes["min_slope"]}
+    # How the map draws the homes: config.js's display section, checked here so a typo
+    # stops the build rather than leaving the page to guess.
+    display = _CFG.get("display") or {}
+    level = display.get("homes_level", "main")
+    if level not in ("main", "raised"):
+        raise ValueError(f"display.homes_level '{level}' is not one of ['main', 'raised']")
+    raised = float(display.get("raised_height_m", 2.0))
+    if not 0 <= raised <= 20:
+        raise ValueError(f"display.raised_height_m {raised} is not between 0 and 20 m")
+    geometry["homes"] = {"level": level, "raisedM": raised}
     names = sorted(node["name"] for node in geometry["nodes"] if node["kind"] == "chamber")
     manhole_index = {int(name[2:]): i for i, name in enumerate(names)}
     base_model = None if whole_area else catchment.Catchment(Network(), sim25.SEGMENT_OUTLET)
@@ -598,6 +697,14 @@ def build_runs():
                   for rule, label, note in RULES],
         "cells": cells, "heat": heat, "sensors": sensors, "corridor": corridor_rows,
         "baseDepthMm": base_depth, "baseOver": base_over, "baseSurcharged": base_sur,
+        # Overflow: manholes spilling from the lid before any growth, per case, and for each
+        # growth run the manholes that spill only because of it (sparse: case -> size ->
+        # [[site, [manholes]], ...], runs with none left out). Published only where the grid
+        # recorded the baseline spill (whole area, from 14 Oct 2026).
+        **spill_payload(order, summaries, manhole_index, sizes),
+        # config.js settings the page shows or applies, for the same reason as geometry.manning.
+        "alarmMm": ALARM_MM, "maxSensors": MAX_SENSORS,
+        "defaultDwellings": _SIM["scenario_default_dwellings"],
     }
     if whole_area:
         # Only the whole area says so, so a segment build stays byte-identical to the page
@@ -704,8 +811,8 @@ def main():
     try:
         geometry, runs, cell_count = build_runs()
     except ValueError as e:
-        # A mistake in cases.json. Say so plainly rather than with a traceback.
-        sys.exit(f"\ncases.json is not valid, so nothing was built or published:\n  {e}")
+        # A mistake in config.js. Say so plainly rather than with a traceback.
+        sys.exit(f"\nconfig.js is not valid, so nothing was built or published:\n  {e}")
     sizes = {
         "data/catchment.js": write_js(os.path.join(data_dir, "catchment.js"),
                                       "GROWTH_GEOM", geometry),

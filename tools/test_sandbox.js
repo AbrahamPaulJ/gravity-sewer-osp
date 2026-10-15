@@ -92,6 +92,10 @@ console.log("repository hygiene");
     }
   });
   check("scripts load in dependency order", misordered, []);
+  // The models take their settings from config.js when they load, so it must come first.
+  check("the sandbox loads config.js before the models",
+    order.indexOf("config.js") >= 0 && order.indexOf("config.js") < order.indexOf("src/model/osp_capacity.js")
+    && order.indexOf("config.js") < order.indexOf("src/model/osp_risk.js"), true);
 
   /* The data files are generated, and tools/format_data.py reads them by pulling
      the object text out and handing it to a JSON parser. A JS comment inside that
@@ -117,10 +121,12 @@ console.log("page configuration");
 {
   const fs = require("fs");
   require(path.join(ROOT, "config.js"));
-  const pages = window.OSP_PAGES;
+  const all = (window.OSP_CONFIG || {}).pages;
+  /* Keys starting "_" are notes; the landing page only acts on a key set to false. */
+  const pages = all && Object.fromEntries(Object.entries(all).filter(([k]) => !k.startsWith("_")));
   const home = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 
-  check("config.js defines OSP_PAGES", pages && typeof pages === "object", true);
+  check("config.js defines OSP_CONFIG.pages", !!pages && typeof all === "object", true);
   check("every page flag is a boolean",
     Object.keys(pages).filter(k => typeof pages[k] !== "boolean"), []);
 
@@ -214,7 +220,7 @@ console.log("placement methods on Sim 2.5 (simulation25/placement.js)");
     let diff = 0;
     for (const rule of R.rules.map(r => r.id)) for (const obj of ["worst", "mean"]) {
       const pub = R.sensors[rule][obj], pool = PL.scenarios(R, rule);
-      for (let k = 1; k <= 10; k++) {
+      for (let k = 1; k <= R.maxSensors; k++) {
         const f = PL.cover(pool, pub.order.slice(0, k));
         diff = Math.max(diff, Math.abs(Math.min(...f) - pub.worst[k - 1]),
           Math.abs(f.reduce((a, b) => a + b, 0) / f.length - pub.mean[k - 1]));
@@ -226,7 +232,44 @@ console.log("placement methods on Sim 2.5 (simulation25/placement.js)");
       const p = PL.place(id, ctx, "r25", "worst");
       return !p.sets.every((s, k) => s.length === k + 1 && s.every(i => i >= 0 && i < R.chambers.length));
     }).map(([id]) => id);
-    check("every method gives k manholes for k = 1..10", bad, []);
+    check("every method gives k manholes for k = 1..maxSensors", bad, []);
+    /* Overflow: a manhole spilling before growth cannot also be "newly" spilling, and every
+       index must be a real manhole. */
+    if (R.spill) {
+      const n = R.chambers.length, okIdx = i => Number.isInteger(i) && i >= 0 && i < n;
+      const badSpill = R.spill.flatMap((bySize, k) => Object.values(bySize).flat()
+        .filter(([site, list]) => !okIdx(site) || !list.every(okIdx) || list.some(i => R.baseSpilled[k].includes(i))));
+      check("newly overflowing manholes are real, and never ones spilling before growth", badSpill.length, 0);
+      check("one pre-growth spill list per case", R.baseSpilled.length === R.cases.length && R.spill.length === R.cases.length, true);
+    }
+  }
+}
+
+/* The Sim 2.5 connections: each home's own published connection pipe. An off-by-one in the
+   vertex pointers draws a home's pipe to a neighbour's main, and nothing else would notice. */
+console.log("house connections on Sim 2.5");
+{
+  const fs = require("fs");
+  const f = path.join(ROOT, "simulation25/data/catchment.js");
+  if (fs.existsSync(f)) {
+    const saved = global.window;
+    global.window = {};
+    delete require.cache[require.resolve(f)];
+    require(f);
+    const g = window.GROWTH_GEOM;
+    global.window = saved;
+    if (g.cptr) {
+      const nLines = g.cptr.length - 1;
+      check("every line has at least two vertices",
+        g.cptr.slice(1).filter((p, i) => p - g.cptr[i] < 2).length, 0);
+      check("one line, or -1, per home", g.hl.length === g.hx.length && g.hl.every(i => i >= -1 && i < nLines), true);
+      // A home's own line starts at the home: published 0.00 m apart, 0.1 m after rounding.
+      const off = g.hl.map((li, h) => li < 0 ? 0 : Math.hypot(g.cx[g.cptr[li]] - g.hx[h], g.cy[g.cptr[li]] - g.hy[h]))
+        .filter(d => d > 1).length;
+      check("each home's line starts at that home", off, 0);
+      check("spare branches are no home's line",
+        g.cSpare.filter(li => g.hl.includes(li)).length, 0);
+    }
   }
 }
 

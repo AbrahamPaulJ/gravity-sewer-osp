@@ -40,6 +40,8 @@ IP_SAMPLE = 4.0      # m, spacing when sampling centrelines to find the nearest 
 # is generous enough to cover that and tight enough that a property cannot adopt the
 # connection belonging to the house next door.
 CONN_MATCH_TOL = 15.0
+# A property's own connection line starts on it: measured 0.00 m for 2,833 of 2,851.
+OWN_LINE_TOL = 0.5
 
 
 @dataclass
@@ -198,6 +200,7 @@ class Network:
             if flip < as_is:
                 line.reverse()
             self._add(a, line, si, ei, index)
+            self.pipes[-1].overflow = True      # a relief pipe: see sim25 overflow_inlet
             self.skipped["overflow pipe included, direction from inverts"] += 1
 
         self._place_manholes(manholes)
@@ -284,6 +287,9 @@ class Network:
 
         # Where each connection line meets a main, and which main that is.
         end_xy, end_pipe = [], []
+        # Each line as published, for drawing: every vertex, ordered from the property to
+        # the main, with its bore. Aligned with end_xy.
+        self.connection_paths = []
         for f in (conns or []):
             path = (f.get("geometry") or {}).get("paths") or []
             if not path or len(path[0]) < 2:
@@ -292,6 +298,11 @@ class Network:
             (da, ia), (db, ib) = tree.query([a]), tree.query([b])
             end_xy.append(a if da[0] <= db[0] else b)
             end_pipe.append(sp[ia[0] if da[0] <= db[0] else ib[0]])
+            att = f.get("attributes") or {}
+            line = [tuple(v[:2]) for v in path[0]]
+            self.connection_paths.append({
+                "id": att.get("ID"), "dia": att.get("NOMINALDIA") or None,
+                "path": line if da[0] > db[0] else line[::-1], "pipe": end_pipe[-1]})
         self.connection_lines = len(end_xy)
 
         dist, idx = tree.query(np.array(xy))
@@ -327,6 +338,19 @@ class Network:
             self.pipes[pipe].dwellings += 1
             self.connections.append((px, py, pipe))
             self.connection_junctions.append(junction)
+
+        # Each property's OWN line, the one that starts at it: for drawing, not for load.
+        # The match above pairs a property with the nearest line END ON A MAIN, which is not
+        # always its own line (measured 14 Oct: 577 of 2,851), though it lands on the same
+        # main for all but 36. Load stays attributed as above, which is what every published
+        # SWMM run was given; changing it means re-running them. Aligned with
+        # self.connections; None where no line starts within OWN_LINE_TOL of the property.
+        self.connection_own = []
+        if self.connection_paths:
+            starts = cKDTree(np.array([c["path"][0] for c in self.connection_paths]))
+            for px, py, _pipe in self.connections:
+                d, i = starts.query((px, py))
+                self.connection_own.append(int(i) if d <= OWN_LINE_TOL else None)
 
     def dwellings_upstream(self, node_id):
         """Connected properties draining to node_id, through any path."""

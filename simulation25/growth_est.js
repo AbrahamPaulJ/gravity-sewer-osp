@@ -49,13 +49,15 @@
     return (1 - Math.cos((lo + hi) / 4)) / 2;
   }
 
-  // Roughness by published material, model.py's MANNING_BY_MATERIAL; 0.013 otherwise.
-  const MATERIAL_N = { VC: 0.013, PVCU: 0.010, RC: 0.013 };
-  const MIN_SLOPE = 1e-4;           // a flat or adverse reach, given a token fall
+  // Roughness by published material, and the token fall a flat or adverse reach is given,
+  // come from config.js (pipes.manning_*, min_slope), the values SWMM ran with. The builder
+  // publishes them with the geometry as g.manning, since this page cannot read ../config.js.
   const NO_GRADE = 0.001;           // a link with no published pipe (an outfall dummy)
 
   /* Everything that depends only on the network, computed once. */
   function prepare(g) {
+    const M = g.manning;
+    if (!M) throw new Error("growth_est: the geometry has no manning settings; rebuild it with tools/build_sim25_web.py");
     const nN = g.nodes.length, nL = g.up.length;
     const D = new Float64Array(nL), S = new Float64Array(nL), N = new Float64Array(nL);
     const qMax = new Float64Array(nL), step = new Float64Array(nL);
@@ -64,8 +66,8 @@
     for (let l = 0; l < nL; l++) {
       D[l] = (g.dia[l] || 150) / 1000;
       const sl = g.pslope && g.pslope[l] != null ? g.pslope[l] / 100 : NO_GRADE;
-      S[l] = Math.max(MIN_SLOPE, sl);
-      N[l] = (g.pmat && MATERIAL_N[g.pmat[l]]) || 0.013;
+      S[l] = Math.max(M.minSlope, sl);
+      N[l] = (g.pmat && M.byMaterial[g.pmat[l]]) || M.fallback;
       qMax[l] = 1000 * qOfTheta(THETA_QMAX, D[l], S[l], N[l]);        // L/s
       qFull[l] = 1000 * qOfTheta(2 * Math.PI, D[l], S[l], N[l]);       // L/s, full bore
       len[l] = (g.plen && g.plen[l]) || 1;
@@ -219,5 +221,5 @@
     return { qBase, qNow, base, now, rise, addedLps: added };
   }
 
-  return { prepare, flows, depths, scenario, depthRatio, qOfTheta, MATERIAL_N, THETA_QMAX };
+  return { prepare, flows, depths, scenario, depthRatio, qOfTheta, THETA_QMAX };
 });

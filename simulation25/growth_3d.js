@@ -28,7 +28,10 @@ window.Growth3D = (function () {
   let stationMeshes = [], risingLines = [];          // pump stations and their rising mains
   let pumpsOn = false, pumpLabels = [], pumpTubes = null, pumpSleeves = null;   // the chip
   let scnMarks = [];                                 // a growth scenario's sites: ring + label
-  let houseJ = null, latHi = null, latUp = null;   // where each home joins its main; the laterals drawn
+  let spillMarks = [];                               // overflowing manholes: ring (+ label if new)
+  let sensorMarks = [], sensorKey = "";             // proposed sensors: pin, ring and numbered label
+  let houseLat = null, latHi = null, latUp = null, latGuess = null;  // each home's connection, as drawn
+  let connMeshes = [], connCounts = null, pipeScale = 0;  // the Connections chip; mains' radius per mm
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
   const clock = { t0: performance.now() };
   const ZEXAG = 22.0;
@@ -43,6 +46,10 @@ window.Growth3D = (function () {
     ok: [0x4c, 0x8b, 0xf5],        // blue, has room
     was: [0xff, 0xa5, 0x00],       // orange, surcharged before any growth
     tip: [0xff, 0x2d, 0x55],       // hot red, tipped by this growth
+    rise: 0xff8c69,                // salmon: rises 10 mm or more, but not past the selected rule
+    fall: 0x39d3c3,                // teal: FALLS 10 mm or more (a scenario can lower a pump's rate)
+    spillWas: 0xbc8cff,            // violet ring: spills from the lid before any growth
+    spillNew: 0xff3df5,            // magenta ring: spills only because of this growth
     // Pink, not amber/yellow: "already surcharged, not growth" already owns that hue,
     // and a homes layer that reads the same colour as a pipe warning was the confusion.
     house: 0xff6f9c,
@@ -50,12 +57,16 @@ window.Growth3D = (function () {
     chamber: 0xc9d1d9,             // a real, published manhole: a candidate sensor site
     site: 0x00d4ff,                // cyan, where the new dwellings connect
     outlet: 0xa371f7,              // violet, the chamber everything drains through
-    sensor: 0x3fb950,              // green, a proposed sensor
+    sensor: 0x2ef56b,              // bright green, a proposed sensor (manhole, pin and label)
     houseDim: 0x3a2430,            // a property with nothing to do with the selection
     houseUp: 0x7dc4e0,             // drains THROUGH the selected manhole, from further up
     // A home's own connection pipe down to its main. Lighter than the royal-blue dot it
     // hangs from, because a one-pixel line in that blue vanishes on the dark ground.
     lateralHere: 0x6f95ff,
+    lateralGuess: 0xd2a8ff,        // dashed lilac: no published connection, joined to its nearest main
+    connOwn: 0x6f95ff,             // the Connections chip: a property's own connection pipe
+    connMis: 0xffa657,             // ... one that meets a different main from the model's attribution
+    connSpare: 0x8b949e,           // ... a branch laid to no property on record
     // Royal blue, not the cyan of the growth marker: "these homes reach this manhole first"
     // and "the new dwellings connect here" are different facts. A white rim keeps a dark
     // blue readable on the near-black background and apart from the blue pipes.
@@ -96,10 +107,40 @@ window.Growth3D = (function () {
     return new THREE.Vector3(xDm / 10, (zCm / 100) * ZEXAG, -(yDm / 10));
   }
 
+  /* config.js's display section, read live so a change shows on a plain reload. The page
+     must also stand alone, served from its own folder where ../config.js does not exist, so
+     a missing or unreadable file falls back to the copy the builder published (g.homes).
+     Fetched rather than loaded as a script, and with no-store, so an edited file is never
+     answered from the browser's cache. Its object is plain JSON by contract (osp_config.py
+     reads it the same way). Invalid values are reported and ignored, not guessed at. */
+  async function liveDisplay() {
+    try {
+      const r = await fetch("../config.js", { cache: "no-store" });
+      if (!r.ok) return null;
+      const t = await r.text(), at = t.indexOf(".OSP_CONFIG =");
+      if (at < 0) return null;
+      const d = (JSON.parse(t.slice(t.indexOf("{", at), t.lastIndexOf("}") + 1)) || {}).display;
+      if (!d) return null;
+      const level = d.homes_level ?? "main", raisedM = +(d.raised_height_m ?? 2);
+      if (level !== "main" && level !== "raised") {
+        console.warn("config.js: display.homes_level '" + level + "' is not main or raised; ignored");
+        return null;
+      }
+      if (!(raisedM >= 0 && raisedM <= 20)) {
+        console.warn("config.js: display.raised_height_m " + d.raised_height_m + " is not 0 to 20; ignored");
+        return null;
+      }
+      return { level, raisedM };
+    } catch (e) {
+      return null;
+    }
+  }
+
   async function build(container, pick, hover) {
     await ensureThree();
     onPick = pick; onHover = hover || null;
     const g = G();
+    const liveHomes = await liveDisplay();
     if (!renderer) {
       renderer = new THREE.WebGLRenderer({ antialias: true });
       scene = new THREE.Scene();
@@ -113,6 +154,13 @@ window.Growth3D = (function () {
       container.appendChild(labelLayer);
       controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
+      /* The left button turns the map the full 360 degrees and tilts it, the right button
+         drags it (along the ground, not the screen, so a tilted view does not climb), and
+         the wheel zooms toward whatever is under the pointer. Out of the box the wheel
+         dollies toward one fixed point, so every zoom went into the middle of the map and
+         nowhere else could be reached. */
+      controls.screenSpacePanning = false;
+      controls.zoomToCursor = true;
       renderer.domElement.addEventListener("pointerdown", onDown);
       renderer.domElement.addEventListener("pointerup", onUp);
       renderer.domElement.addEventListener("pointermove", onMove);
@@ -144,7 +192,7 @@ window.Growth3D = (function () {
           stationMeshes.forEach(m => m.scale.setScalar(sc));
         }
         [outletLabel, siteLabel, ...scaleLabels, ...(pumpsOn ? pumpLabels : []),
-         ...scnMarks.map(m => m.label)].forEach(lbl => {
+         ...scnMarks.map(m => m.label), ...spillMarks.filter(m => m.label).map(m => m.label), ...rateLabels, ...sensorMarks.map(m => m.label)].forEach(lbl => {
           if (!lbl) return;
           const v = lbl.at.clone().project(camera);
           const el = renderer.domElement;
@@ -161,13 +209,12 @@ window.Growth3D = (function () {
     sun.position.set(-100, 300, 200);
     scene.add(sun);
 
-    // The connected properties, drawn at the ground rather than at pipe level so they read
-    // as a layer above the network instead of merging into it.
+    // The connected properties. Placed here at a provisional height; once the pipes exist,
+    // each is moved to the level of the main its connection joins (see the connections
+    // below), so its connection lies flat, as the utility's own map draws it.
     if (g.hx && g.hx.length) {
       const hp = [];
       for (let i = 0; i < g.hx.length; i++) {
-        // Its own main's elevation plus a couple of metres, so the properties sit just
-        // above the street they drain into rather than on one shared plane.
         const v = P(g.hx[i], g.hy[i], (g.hz ? g.hz[i] : 0) + 200);
         hp.push(v.x, v.y, v.z);
       }
@@ -290,6 +337,7 @@ window.Growth3D = (function () {
       // R_MAX stays under the bottleneck tube at 4.4 and the chamber at 5.6.
       const R_MAX = 3.4, R_NONE = 1.5;
       const k = dhi > 0 && isFinite(dhi) ? R_MAX / dhi : 0;
+      pipeScale = k;                                     // the connections use the same scale
       // A link with no published diameter (an outfall dummy, say) is drawn at the smallest
       // real pipe's radius rather than inventing a size for it.
       const radiusOf = p => {
@@ -327,41 +375,147 @@ window.Growth3D = (function () {
     }
 
 
-    /* Each home's connection to its main. The data records where every property's own
-       connection pipe meets a main (layer 7, median 6.2 m long). That point is snapped
-       here onto the nearest drawn pipe segment rather than placed by its published level,
-       so the line ends on the pipe as it is drawn, exaggeration and all. It runs from the
-       home, drawn 2 m above its main, down to that point: mostly a drop, which is what a
-       lateral is. Built once; highlight() draws only the ones for the homes it lights. */
-    if (houseGeo && g.jx && g.jx.length === g.hx.length && segEnds.length) {
-      const n = g.hx.length;
-      houseJ = new Float32Array(n * 3);
-      for (let i = 0; i < n; i++) {
-        const j = P(g.jx[i], g.jy[i], 0);              // only x and z matter here
-        let best = Infinity, bx = j.x, by = 0, bz = j.z;
-        for (let s2 = 0; s2 < segEnds.length; s2++) {
-          const [a, b] = segEnds[s2];
-          const dx = b.x - a.x, dz = b.z - a.z, L2 = dx * dx + dz * dz;
-          let t = L2 > 0 ? ((j.x - a.x) * dx + (j.z - a.z) * dz) / L2 : 0;
-          t = t < 0 ? 0 : t > 1 ? 1 : t;
-          const qx = a.x + t * dx, qz = a.z + t * dz;
-          const d = (j.x - qx) * (j.x - qx) + (j.z - qz) * (j.z - qz);
-          if (d < best) { best = d; bx = qx; bz = qz; by = a.y + t * (b.y - a.y); }
-        }
-        houseJ[i * 3] = bx; houseJ[i * 3 + 1] = by; houseJ[i * 3 + 2] = bz;
+    /* Each home's connection to its main, as the utility publishes it (layer 7): the pipe
+       from the property's inspection point, at its boundary, to the main, every bend
+       included, median 6.7 m long. The private drain from the house to that point is not
+       published, so the dot is the inspection point, not the house.
+
+       HOW HIGH THE HOME SITS is config.js's display.homes_level, read live (liveDisplay)
+       or, where the page stands alone, as published in g.homes.
+       "main" (the default) draws it at the level of the main, so its connection lies flat,
+       as the utility's own map draws it. "raised" draws it raisedM above the main, as every
+       home was until 14 Oct 2026: apart from the pipes, but with heights exaggerated x22 a
+       6.7 m connection then stands as a stick 44 units tall, about 81 degrees from flat.
+       Connection depths are not published, so neither claims anything the other does not.
+       Each line's last vertex is snapped onto the drawn pipe, so it ends on the pipe as
+       drawn; the line falls evenly along its length from the home to there.
+
+       Connections are drawn only for the homes a selected manhole lights (highlight()), or
+       all at once, at their bore, while the Connections chip is on; by default the homes
+       are dots alone, so the network stays readable. Drawing every one all the time was
+       tried on 14 Oct 2026 and withdrawn. g.hl gives each home its own line, or -1 where
+       none starts at it: that home gets a straight DASHED line to the point on its main it
+       was attributed to, because that connection is a guess. */
+    const onMain = (xDm, yDm) => {                       // nearest point on any drawn pipe
+      const j = P(xDm, yDm, 0);
+      let best = Infinity, bx = j.x, by = 0, bz = j.z;
+      for (let s2 = 0; s2 < segEnds.length; s2++) {
+        const [a, b] = segEnds[s2];
+        const dx = b.x - a.x, dz = b.z - a.z, L2 = dx * dx + dz * dz;
+        let t = L2 > 0 ? ((j.x - a.x) * dx + (j.z - a.z) * dz) / L2 : 0;
+        t = t < 0 ? 0 : t > 1 ? 1 : t;
+        const qx = a.x + t * dx, qz = a.z + t * dz;
+        const d = (j.x - qx) * (j.x - qx) + (j.z - qz) * (j.z - qz);
+        if (d < best) { best = d; bx = qx; bz = qz; by = a.y + t * (b.y - a.y); }
       }
-      const lateral = (col, opacity) => {
+      return new THREE.Vector3(bx, by, bz);
+    };
+    // How far above its main a home is drawn: just clear of the pipe's tube at "main",
+    // or the configured height at "raised".
+    const homes = liveHomes || g.homes || { level: "main" };
+    const HOME_LIFT = homes.level === "raised" ? P(0, 0, 100 * (homes.raisedM ?? 2)).y : 1.2;
+    // Heights along a line: from HOME_LIFT above the main at its first point down to the
+    // main at its last, evenly by plan length.
+    const slope = pts => {
+      const end = pts[pts.length - 1], y0 = end.y + HOME_LIFT, run = [0];
+      for (let v = 1; v < pts.length; v++) run.push(run[v - 1] + Math.hypot(pts[v].x - pts[v - 1].x, pts[v].z - pts[v - 1].z));
+      const total = run[run.length - 1];
+      for (let v = 0; v < pts.length - 1; v++) pts[v].y = y0 + (end.y - y0) * (total > 0 ? run[v] / total : 0);
+      return pts;
+    };
+    // A published line as scene points: the vertices as published, the last one on the main
+    // as drawn.
+    const lineOf = i => {
+      const a = g.cptr[i], b = g.cptr[i + 1];
+      const pts = [];
+      for (let v = a; v < b - 1; v++) pts.push(P(g.cx[v], g.cy[v], 0));
+      pts.push(onMain(g.cx[b - 1], g.cy[b - 1]));
+      return slope(pts);
+    };
+    if (houseGeo && g.jx && g.jx.length === g.hx.length && segEnds.length) {
+      const n = g.hx.length, hp = houseGeo.attributes.position.array;
+      const hasLines = g.cptr && g.hl && g.hl.length === n;
+      houseLat = new Array(n);
+      let segs = 0, guessSegs = 0;
+      for (let i = 0; i < n; i++) {
+        const own = hasLines ? g.hl[i] : -1;
+        if (own >= 0) houseLat[i] = { pts: lineOf(own), guess: false };
+        else {
+          houseLat[i] = { pts: slope([P(g.hx[i], g.hy[i], 0), onMain(g.jx[i], g.jy[i])]), guess: true };
+        }
+        // The home sits where its connection starts: its own inspection point, HOME_LIFT
+        // above its main. The published line starts 0.00 m from it, so plan is unchanged.
+        const top = houseLat[i].pts[0];
+        hp[i * 3] = top.x; hp[i * 3 + 1] = top.y; hp[i * 3 + 2] = top.z;
+        if (houseLat[i].guess) guessSegs++; else segs += houseLat[i].pts.length - 1;
+      }
+      houseGeo.attributes.position.needsUpdate = true;
+      houseGeo.computeBoundingSphere();
+
+      // Branches laid to no property: drawn only by the Connections chip, below.
+      const spareLines = hasLines ? (g.cSpare || []).map(li => lineOf(li)) : [];
+
+      const lateral = (col, opacity, nSeg, isDashed) => {
         const geo = new THREE.BufferGeometry();
-        geo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(n * 6), 3));
+        geo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(Math.max(1, nSeg) * 6), 3));
         geo.setDrawRange(0, 0);
-        const ls = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
-          color: col, transparent: true, opacity }));
+        const mat = isDashed
+          ? new THREE.LineDashedMaterial({ color: col, transparent: true, opacity, dashSize: 2.5, gapSize: 2 })
+          : new THREE.LineBasicMaterial({ color: col, transparent: true, opacity });
+        const ls = new THREE.LineSegments(geo, mat);
         ls.frustumCulled = false;
+        ls.renderOrder = 1;
         scene.add(ls);
         return ls;
       };
-      latHi = lateral(COL.lateralHere, 0.95);
-      latUp = lateral(COL.houseUp, 0.5);     // fainter: there can be hundreds of these
+      latHi = lateral(COL.lateralHere, 0.95, segs);
+      latUp = lateral(COL.houseUp, 0.7, segs);
+      latGuess = lateral(COL.lateralGuess, 0.95, 2 * guessSegs, true);   // hi and up together
+
+      /* The Connections chip: every published line as a tube at its own bore, on the same
+         proportional scale as the mains (radius = bore x pipeScale), so a 100 mm
+         connection reads two thirds of a 150 mm main beside it. Three meshes, one colour
+         each, rather than per-instance colour (see the instanceColor trap above): a
+         property's own line; one that meets a different main from the one the model
+         gives that property's load (g.hMis); and a spare branch that starts at no
+         property. Hidden until the chip is pressed. */
+      if (hasLines) {
+        const mis = new Set(g.hMis || []);
+        const groups = { own: [], mis: [], spare: [] };
+        for (let i = 0; i < n; i++) if (!houseLat[i].guess) groups[mis.has(i) ? "mis" : "own"].push([houseLat[i].pts, g.cdia[g.hl[i]]]);
+        (g.cSpare || []).forEach((li, k) => groups.spare.push([spareLines[k], g.cdia[li]]));
+        const m = new THREE.Matrix4(), q = new THREE.Quaternion(), yAxis = new THREE.Vector3(0, 1, 0);
+        const dir = new THREE.Vector3(), mid = new THREE.Vector3(), scl = new THREE.Vector3();
+        const tubes = (list, col) => {
+          const nSeg = list.reduce((t, [pts]) => t + pts.length - 1, 0);
+          const mesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 6, 1, true),
+            new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false }),
+            Math.max(1, nSeg));
+          let k = 0;
+          list.forEach(([pts, dia]) => {
+            const r = Math.max(0.5, (dia || 100) * pipeScale);
+            for (let v = 0; v < pts.length - 1; v++) {
+              dir.subVectors(pts[v + 1], pts[v]);
+              const len = dir.length();
+              if (len < 1e-6) { m.makeScale(0, 0, 0); mesh.setMatrixAt(k++, m); continue; }
+              q.setFromUnitVectors(yAxis, dir.divideScalar(len));
+              mid.addVectors(pts[v], pts[v + 1]).multiplyScalar(0.5);
+              m.compose(mid, q, scl.set(r, len, r));
+              mesh.setMatrixAt(k++, m);
+            }
+          });
+          mesh.count = k;
+          mesh.instanceMatrix.needsUpdate = true;
+          mesh.frustumCulled = false;
+          mesh.visible = false;
+          scene.add(mesh);
+          return mesh;
+        };
+        connMeshes = [tubes(groups.own, COL.connOwn), tubes(groups.mis, COL.connMis),
+                      tubes(groups.spare, COL.connSpare)];
+        connCounts = { own: groups.own.length, mis: groups.mis.length, spare: groups.spare.length,
+                       guess: guessSegs };
+      }
     }
 
     // Sleeves: a translucent tube around every pipe in the highlighted catchment. WebGL
@@ -628,7 +782,8 @@ window.Growth3D = (function () {
   /* Picking. A drag that ends where it began is a click; anything else is an orbit, so
      rotating the view does not keep reassigning the growth site. */
   let downAt = null;
-  function onDown(e) { downAt = { x: e.clientX, y: e.clientY }; }
+  // Only the left button picks; the right one moves the map, and a still right-click is not a pick.
+  function onDown(e) { downAt = e.button === 0 ? { x: e.clientX, y: e.clientY } : null; }
   function chamberAt(e) {
     const r = renderer.domElement.getBoundingClientRect();
     pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
@@ -710,6 +865,13 @@ window.Growth3D = (function () {
     }
     return true;
   }
+  /* Show or hide every published connection pipe. Returns the counts drawn, or null if the
+     data has none, so the page can hide its chip rather than offer a switch that does nothing. */
+  function showConnections(on) {
+    if (!connMeshes.length) return null;
+    connMeshes.forEach(m => { m.visible = !!on; });
+    return connCounts;
+  }
   /* The sites of a growth scenario: a cyan ring at each, the colour the legend gives to
      "where the new dwellings connect", sized a little by its dwellings, and a "+n" label.
      Replaces whatever was there; an empty list clears them. */
@@ -734,6 +896,95 @@ window.Growth3D = (function () {
       scnMarks.push({ ring, label: { el, at } });
     });
   }
+  /* Overflow, from SWMM: a violet ring round each manhole that spills from its lid before any
+     growth, a magenta ring and an "overflows" label round each that spills only because of
+     the growth shown. Both lists are chamber names; empty lists clear them. */
+  function setSpills(before, newly) {
+    if (!built) return;
+    spillMarks.forEach(m => { scene.remove(m.ring); m.ring.geometry.dispose(); if (m.label) m.label.el.remove(); });
+    spillMarks = [];
+    const at = name => { const m = chamberMeshes.find(x => x.userData.node.name === name); return m ? m.position.clone() : null; };
+    const add = (name, col, r, label) => {
+      const p = at(name);
+      if (!p) return;
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 2.2, 8, 36), new THREE.MeshBasicMaterial({ color: col }));
+      ring.rotation.x = Math.PI / 2;
+      ring.position.copy(p);
+      ring.renderOrder = 3;
+      scene.add(ring);
+      let lbl = null;
+      if (label) {
+        const el = document.createElement("div");
+        el.className = "lbl spill";
+        el.textContent = label;
+        labelLayer.appendChild(el);
+        lbl = { el, at: p };
+      }
+      spillMarks.push({ ring, label: lbl, name, kind: label ? "new" : "before" });
+    };
+    (before || []).forEach(n => add(n, COL.spillWas, 11, null));
+    (newly || []).forEach(n => add(n, COL.spillNew, 14, "overflows"));
+  }
+  /* The proposed sensors, made visible from any distance: at each, a bright green pin
+     standing above the manhole, a ring at its foot, and a label S1, S2, ... in the order the
+     sensor list numbers them (the order the placement chose them). A small green manhole
+     among the pipes was easy to miss at the scale of the whole area. Rebuilt only when the
+     set changes. */
+  function setSensorMarks(names) {
+    const key = names.join(",");
+    if (key === sensorKey) return;
+    sensorKey = key;
+    sensorMarks.forEach(m => { scene.remove(m.group); m.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); m.label.el.remove(); });
+    sensorMarks = [];
+    names.forEach((name, k) => {
+      const mesh = chamberMeshes.find(x => x.userData.node.name === name);
+      if (!mesh) return;
+      const grp = new THREE.Group();
+      grp.position.copy(mesh.position);
+      const mat = new THREE.MeshBasicMaterial({ color: COL.sensor });
+      const stalk = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 110, 8), mat);
+      stalk.position.y = 55;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(7, 16, 12), mat);
+      head.position.y = 114;
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(13, 2.6, 8, 36), mat);
+      ring.rotation.x = Math.PI / 2;
+      grp.add(stalk, head, ring);
+      grp.renderOrder = 4;
+      scene.add(grp);
+      const el = document.createElement("div");
+      el.className = "lbl sensor";
+      el.textContent = "S" + (k + 1);
+      el.title = "Proposed sensor " + (k + 1) + ": MH " + mesh.userData.node.mh;
+      labelLayer.appendChild(el);
+      sensorMarks.push({ group: grp, name, label: { el, at: mesh.position.clone().add(new THREE.Vector3(0, 114, 0)) } });
+    });
+  }
+  /* A label at each pump station whose rate a scenario changes, e.g. "15.7 L/s (was 7.85)".
+     items: [{rm, text}] keyed by the station's first rising main; [] clears them. */
+  let rateLabels = [];
+  function setPumpRates(items) {
+    if (!built) return;
+    rateLabels.forEach(l => l.el.remove());
+    rateLabels = [];
+    const ps = G().pumps || [];
+    (items || []).forEach(({ rm, text }) => {
+      const p = ps.find(x => x.rm === rm);
+      if (!p) return;
+      const el = document.createElement("div");
+      el.className = "lbl pumprate";
+      el.textContent = text;
+      labelLayer.appendChild(el);
+      rateLabels.push({ el, at: P(p.x, p.y, p.z), rm });
+    });
+  }
+  /* What the map shows, for tools/test pages: each manhole's colour and the overflow rings. */
+  function mapState() {
+    const col = {};
+    chamberMeshes.forEach(m => { col[m.userData.node.name] = m.material.color.getHex(); });
+    return { chambers: col, spills: spillMarks.map(m => [m.name, m.kind]),
+             sensors: sensorMarks.map(m => [m.name, m.label.el.textContent]),
+             pumpRates: rateLabels.map(l => [l.rm, l.el.textContent]) };
+  }
   function closePipe() { if (pipeCard) pipeCard.hidden = true; }
   function cardAt(html, cx, cy) {
     const host = renderer.domElement.parentElement;
@@ -745,6 +996,12 @@ window.Growth3D = (function () {
     }
     pipeCard.innerHTML = '<button class="x" title="Close (Esc)">\u00d7</button>' + html;
     pipeCard.querySelector(".x").onclick = closePipe;
+    // A pump station's "Set its rate": the page's scenario panel takes it from here.
+    const set = pipeCard.querySelector("button.pumpSet");
+    if (set) set.onclick = () => {
+      closePipe();
+      document.dispatchEvent(new CustomEvent("osp:pumprate", { detail: set.dataset.rm }));
+    };
     pipeCard.hidden = false;
     const r = host.getBoundingClientRect();
     const w = pipeCard.offsetWidth, h = pipeCard.offsetHeight;
@@ -761,10 +1018,17 @@ window.Growth3D = (function () {
         (ps.risingMains.length > 1 ? " in " + ps.risingMains.length + " pieces" : "")) +
       row("Homes it serves", ps.homes) +
       row("In the model", ps.modelled ? "yes, as an ideal pump" : "no") +
+      (ps.modelled && ps.rate != null ? row("Default rate", ps.rate + " L/s") : "") +
+      (ps.modelled && ps.curve ? row("At that rate", "lifts " + ps.curve.static_m.toFixed(2) + " m + " +
+        ps.curve.friction_m.toFixed(2) + " m friction; stops at " + ps.curve.shutoff_head_m.toFixed(2) + " m") : "") +
+      (ps.modelled && ps.rm ? '<button class="pumpSet" data-rm="' + ps.rm + '">Set its rate in a scenario</button>' : "") +
       '<div class="note">' + (ps.modelled
-        ? "An ideal pump passes everything reaching the wet well straight on, with no pump " +
-          "rate, storage or cycling. A real station delivers in bursts, so the peak at the " +
-          "manhole it pumps to can be higher than the model shows."
+        ? "Every published result uses an ideal pump: everything reaching the wet well passes " +
+          "straight on, with no rate, storage or cycling. A real station delivers in bursts, so " +
+          "the peak at the manhole it pumps to can be higher. In a scenario it can pump at a " +
+          "set rate instead, solved in SWMM, delivering less as the level it pumps against rises " +
+          "and nothing above its shut-off head; the default rate and curve " +
+          (ps.rateFrom ? "(" + ps.rateFrom + ") " : "") + "is an assumption, not published data."
         : "It discharges outside the model's area, so its flow never reaches the network " +
           "solved here.") +
       " The rising main's route is published, its depth is not: it is drawn schematically " +
@@ -798,6 +1062,7 @@ window.Growth3D = (function () {
       row("Grade", v("pslope", x => x.toFixed(2) + " %")) +
       row("Pipe floor, up \u2192 down", lvl(g.zu[p]) + " \u2192 " + lvl(g.zd[p]) + " m") +
       row("Full-bore capacity", v("pcap", x => x.toFixed(1) + " L/s")) +
+
       (st ? '<div class="state"><i style="background:' + st[0] + '"></i>This case: ' + st[1] + "</div>" : "") +
       '<div class="note">Capacity is Manning full-bore at the published grade, with the ' +
       "roughness for its material. Levels in metres above datum.</div>";
@@ -905,13 +1170,21 @@ window.Growth3D = (function () {
       dst[k * 3] = src[i * 3]; dst[k * 3 + 1] = src[i * 3 + 1]; dst[k * 3 + 2] = src[i * 3 + 2];
     };
     let nHi = 0, nUp = 0, nDirect = 0, out, pipes = null;
-    // A home's lateral, from the home to where it joins its main, written into slot k.
-    const hiLat = latHi && latHi.geometry.attributes.position.array;
-    const upLat = latUp && latUp.geometry.attributes.position.array;
-    const lat = (dst, k, i) => {
+    // A home's connection, its published line or a dashed guess, appended as segments.
+    const segN = { hi: 0, up: 0, guess: 0 };
+    const bufs = {
+      hi: latHi && latHi.geometry.attributes.position.array,
+      up: latUp && latUp.geometry.attributes.position.array,
+      guess: latGuess && latGuess.geometry.attributes.position.array,
+    };
+    const lat = (which, i) => {
+      if (!houseLat || !houseLat[i]) return;
+      const { pts, guess } = houseLat[i], key = guess ? "guess" : which, dst = bufs[key];
       if (!dst) return;
-      dst.set(src.subarray(i * 3, i * 3 + 3), k * 6);
-      dst.set(houseJ.subarray(i * 3, i * 3 + 3), k * 6 + 3);
+      for (let v = 0; v < pts.length - 1; v++, segN[key]++) {
+        const o = segN[key] * 6, a = pts[v], b = pts[v + 1];
+        dst[o] = a.x; dst[o + 1] = a.y; dst[o + 2] = a.z; dst[o + 3] = b.x; dst[o + 4] = b.y; dst[o + 5] = b.z;
+      }
     };
 
     if (spec && spec.mode === "site" && spec.name in t.idxOf) {
@@ -920,8 +1193,8 @@ window.Growth3D = (function () {
       for (let i = 0; i < n; i++) {
         const node = g.hn[i];
         paintHouse(i, COL.houseDim);
-        if (t.firstMh[node] === me) { lat(hiLat, nHi, i); copy(hiPos, nHi++, i); if (node === me) nDirect++; }
-        else if (up.nodes.has(node)) { lat(upLat, nUp, i); copy(upPos, nUp++, i); }
+        if (t.firstMh[node] === me) { lat("hi", i); copy(hiPos, nHi++, i); if (node === me) nDirect++; }
+        else if (up.nodes.has(node)) { lat("up", i); copy(upPos, nUp++, i); }
       }
       out = { mode: "site", here: nHi, direct: nDirect, through: nUp, elsewhere: n - nHi - nUp, total: n };
     } else if (spec && spec.mode === "sensors" && spec.names.length) {
@@ -949,11 +1222,12 @@ window.Growth3D = (function () {
       pts.frustumCulled = false;
     });
     // Laterals only for the homes lit in "site" mode; every other mode clears them, since
-    // nHi and nUp are only counted there.
-    [[latHi, nHi], [latUp, nUp]].forEach(([ls, k]) => {
+    // segN is only counted there.
+    [[latHi, segN.hi], [latUp, segN.up], [latGuess, segN.guess]].forEach(([ls, k]) => {
       if (!ls) return;
       ls.geometry.setDrawRange(0, k * 2);
       ls.geometry.attributes.position.needsUpdate = true;
+      if (ls === latGuess && k) ls.computeLineDistances();
     });
 
     // Sleeves around the pipes that carry it. Coloured per instance, not once for the
@@ -1014,11 +1288,14 @@ window.Growth3D = (function () {
     const arr = pipeColours.array, segPipe = pipeGeo.userData.segPipe;
     // A pipe takes the worse of its two ends: a reach between a tipped chamber and a
     // healthy one is part of the problem, not half of it.
+    // "rise" marks a manhole only: its pipes stay as they are, so pipe colour keeps meaning
+    // the three states the legend gives them.
     const rank = { ok: 0, was: 1, tip: 2 };
+    const pipeState = name => { const v = nodeState(name); return v === "rise" || v === "fall" ? "ok" : v; };
     const pipeCol = [];
     for (let p = 0; p < g.nPipes; p++) {
       const u = g.nodes[g.up[p]], d = g.nodes[g.down[p]];
-      const su = nodeState(u.name), sd = nodeState(d.name);
+      const su = pipeState(u.name), sd = pipeState(d.name);
       pipeCol.push(rank[su] >= rank[sd] ? su : sd);
     }
     lastPipeState = pipeCol;   // read by highlight() to keep a sleeve off cyan-on-amber
@@ -1036,15 +1313,17 @@ window.Growth3D = (function () {
     if (pipeBodies && pipeBodies.instanceColor) pipeBodies.instanceColor.needsUpdate = true;
 
     const sensorSet = new Set(sensors || []);
+    setSensorMarks(sensors || []);
     chamberMeshes.forEach(m => {
       const nm = m.userData.node.name;
       const st = nodeState(nm);
       const c = sensorSet.has(nm) ? COL.sensor
         : heat ? heatHex(heat[nm] || 0)
-        : st === "tip" ? 0xff2d55 : st === "was" ? 0xffa500 : COL.chamber;
+        : st === "tip" ? 0xff2d55 : st === "was" ? 0xffa500 : st === "rise" ? COL.rise
+        : st === "fall" ? COL.fall : COL.chamber;
       m.material.color.setHex(c);
       m.scale.setScalar(sensorSet.has(nm) ? 2.1 : heat ? 0.9 + 1.4 * (heat[nm] || 0)
-        : st === "ok" ? 1 : 1.6);
+        : st === "ok" ? 1 : st === "rise" || st === "fall" ? 1.3 : 1.6);
       if (nm === siteName) {
         focusRing.position.copy(m.position);
         focusRing.visible = true;
@@ -1123,7 +1402,7 @@ window.Growth3D = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, setScenario,
+  return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, setSpills, setPumpRates, mapState,
            frame, resize, heatHex,
            ZEXAG };
 })();
