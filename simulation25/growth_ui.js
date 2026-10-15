@@ -35,9 +35,18 @@ window.GrowthUI = (function () {
      read out of the cell the two knobs select, so a knob costs a lookup and nothing is
      recomputed. Chambers are held as indices throughout, because the payload stores them
      that way and converting once at the edge is cheaper than everywhere. */
+  /* The growth size "None" (st.add === NO_GROWTH): a click only selects a manhole, so the map
+     and panels show the network as it is in the case. Its cell has no growth rows; what is
+     already over the alarm before growth is the same for every size, so it comes from any. */
+  const NO_GROWTH = -1;
+  const noGrowth = () => st.add === NO_GROWTH;
   function cell() {
-    const R = runs();
-    const add = R.growthLevels[st.add], rule = R.rules[st.rule].id;
+    const R = runs(), rule = R.rules[st.rule].id;
+    if (noGrowth()) {
+      const any = R.cells.find(c => c.case === st.ii && c.rule === rule) || R.cells[0];
+      return { case: st.ii, add: 0, rule, base: any.base, rows: [] };
+    }
+    const add = R.growthLevels[st.add];
     return R.cells.find(c => c.case === st.ii && c.add === add && c.rule === rule)
       || R.cells[0];
   }
@@ -98,7 +107,7 @@ window.GrowthUI = (function () {
   const spillBefore = () => (runs().baseSpilled ? runs().baseSpilled[st.ii] : []);
   function spillNew(siteIdx) {
     const R = runs();
-    if (!R.spill || siteIdx == null) return [];
+    if (!R.spill || siteIdx == null || noGrowth()) return [];
     const hit = (R.spill[st.ii][String(R.growthLevels[st.add])] || []).find(x => x[0] === siteIdx);
     return hit ? hit[1] : [];
   }
@@ -264,8 +273,9 @@ window.GrowthUI = (function () {
       const b = e.target.closest("button"); if (!b) return;
       st.rule = +b.dataset.i; repaint();
     };
-    $("#addKnob").innerHTML = R.growthLevels.map((g, i) =>
-      "<button data-i=" + JSON.stringify(String(i)) + ">+" + g + "</button>").join("");
+    $("#addKnob").innerHTML = '<button data-i="' + NO_GROWTH + '" title="Select manholes without adding any growth">None</button>' +
+      R.growthLevels.map((g, i) =>
+        "<button data-i=" + JSON.stringify(String(i)) + ">+" + g + "</button>").join("");
     $("#iiKnob").onclick = e => {
       const b = e.target.closest("button"); if (!b) return;
       st.ii = +b.dataset.i; repaint();
@@ -763,6 +773,18 @@ window.GrowthUI = (function () {
       $("#siteFacts").innerHTML = '<p class="quiet">No manhole selected, so no growth is ' +
         "placed. Click a manhole on the map, or choose one above.</p>";
       $("#tipList").innerHTML = "";
+      return;
+    }
+    if (noGrowth()) {
+      // No growth placed: the manhole as it is. Its details are in the right-hand panel.
+      $("#siteFacts").innerHTML = reachRow() +
+        row2("Adding", "none: the network as it is in " + esc(cs.label)) +
+        row2("Solved on", cs.method === "nested" ? "study catchment, levels handed down"
+                                                : "whole council network");
+      $("#tipList").innerHTML = '<p class="quiet">No growth is placed, so nothing is coloured ' +
+        "as seeing it. Amber manholes are over the alarm before any growth" +
+        (spillBefore().length ? "; violet rings spill from the lid already" : "") +
+        ". Choose a growth size above to place new dwellings at the selected manhole.</p>";
       return;
     }
     $("#siteFacts").innerHTML =
