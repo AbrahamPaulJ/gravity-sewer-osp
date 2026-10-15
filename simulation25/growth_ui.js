@@ -692,8 +692,13 @@ window.GrowthUI = (function () {
       repaint();
     };
     $("#scnAddSel").onclick = () => addToScn(st.site);
+    // By manhole number, ascending, so a manhole can be found by its number. (Connected at
+    // keeps busiest first.) Pipe ends with no manhole number, if any, go last by name.
+    const R0 = runs();
+    const byNumber = [...order].sort((a, b) =>
+      (R0.manholeIds[a] || Infinity) - (R0.manholeIds[b] || Infinity) || nameOf(a).localeCompare(nameOf(b)));
     $("#scnAddPick").innerHTML = '<option value="">+ Add by number…</option>' +
-      order.map(i => "<option value=" + JSON.stringify(String(i)) + ">" + esc(label(i)) + "</option>").join("");
+      byNumber.map(i => "<option value=" + JSON.stringify(String(i)) + ">" + esc(label(i)) + "</option>").join("");
     $("#scnAddPick").onchange = () => {
       const v = $("#scnAddPick").value;
       $("#scnAddPick").value = "";
