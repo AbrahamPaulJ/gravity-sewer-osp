@@ -67,6 +67,7 @@ footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);
     <button data-tab="sim1">Simulation 1</button>
     <button data-tab="sim2">Simulation 2 (superseded)</button>
     <button data-tab="sim25">Simulation 2.5 (latest)</button>
+    <button data-tab="sim25legacy">Simulation 2.5 (legacy)</button>
   </nav>
 </header>
 
@@ -101,6 +102,13 @@ This is a working tool for exploring that, running on a real network rather than
     under a fixed 150 mm alarm the best sensor moves with every case, but judged on a rise of
     10 or 25 mm over each manhole's own level, one pair of sensors keeps most of the achievable
     coverage in all twelve. The threshold itself is what real level records would settle.</p>
+  </a>
+  <a class="card" href="#sim25legacy" data-tab="sim25legacy">
+    <span class="tag">Earlier version of 2.5</span>
+    <h3>Simulation 2.5 as first published (25 Sep 2026)</h3>
+    <p>The first Simulation 2.5: the 71-chamber segment draining to node 583, twelve cases,
+    one roughness on every pipe and pump stations passed straight through. Kept so its results
+    can be compared with the current whole-area model.</p>
   </a>
   <a class="card" href="#sim2" data-tab="sim2">
     <span class="tag">Superseded by 2.5</span>
@@ -206,13 +214,14 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 <div class="pane" id="pane-sim1" hidden><iframe data-src="simulation_legacy/index.html?v=31" title="Simulation 1: warning time"></iframe></div>
 <div class="pane" id="pane-sim2" hidden><iframe data-src="simulation/index.html?v=31" title="Simulation 2: growth and sensor placement"></iframe></div>
 <div class="pane" id="pane-sim25" hidden><iframe data-src="simulation25/index.html?v=81" title="Simulation 2.5: growth and sensor placement"></iframe></div>
+<div class="pane" id="pane-sim25legacy" hidden><iframe data-src="simulation25_legacy/index.html?v=1" title="Simulation 2.5 (legacy): as published 25 Sep 2026"></iframe></div>
 
 </div>
 
 <!-- config.js holds the project's settings; its "pages" section decides which pages this site offers. It carries its own cache key for
      the same reason the iframes do: it is a script, and a browser will reuse the copy
      it has. Bump it when the config changes. -->
-<script src="config.js?v=33"></script>
+<script src="config.js?v=34"></script>
 <script>
 // Drop the pages config.js turns off (keys starting "_" are notes), before anything is wired up. Removing the button
 // is what makes a deep link to a hidden page fall back to the overview: showTab looks
