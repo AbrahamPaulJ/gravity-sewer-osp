@@ -20,7 +20,7 @@ Everything runs in the browser. No server, no build step, no tracking.
 | `src/ui/` | `osp_ui.js`, the sandbox page's state, canvas and controls; `osp_3d.js`, the optional relief view. |
 | `src/docs/` | `osp_docs.js`, the assumptions register, method, Q&A and illustrated glossary, generated from the loaded data. |
 | `data/` | `osp_data.js`, the generated dataset. Never edited by hand. |
-| `config.js` | Every setting in one file: which pages the site shows, pipe roughness and age weights, the sandbox's blockage weights, loads, Simulation 2.5's study area, cases, detection rules, map display and pump stations. Read by the browser, Node and Python (`simulation_src/osp_config.py`). |
+| `config.js` | Every setting in one file: which pages the site shows, pipe roughness and age weights, the sandbox's blockage weights, loads, Simulation 2.5's study area, cases, detection rules and pump stations. Read by the browser, Node and Python (`simulation_src/osp_config.py`). |
 | `simulation25/` | Simulation 2.5, the browser view of the growth and sensor-placement grid, with a scenario builder and a choice of placement methods. |
 | `simulation_src/` | EPA SWMM source, the exact public-data snapshot, saved outputs and full reproduction commands for Simulations 1, 2 and 2.5. |
 | `tools/` | Regression tests, data formatting, and the public Sim 2.5 browser builder. The source-data harvester and sanitiser remain private. See `ARCHITECTURE.md`. |
@@ -234,7 +234,6 @@ the top of the file says what each section takes effect on:
 | Section | Takes effect |
 |---|---|
 | `pages` | the landing page, on reload |
-| `display` | the Simulation 2.5 map, on reload |
 | `pipes.blockage_likelihood`, `pipes.manning_*` | the sandbox, on reload; Manning also feeds SWMM, so Simulation 2.5 needs a re-run |
 | `pumps` | growth scenarios run by the local SWMM runner; restart it after an edit |
 | `loads`, `simulation` | Simulation 2.5, after re-running the grid and `python tools/build_sim25_web.py --publish` |
@@ -254,8 +253,9 @@ marks 13 Oct 2026.
 | 3 Oct 2026 | Pump stations and rising mains drawn apart from the gravity mains, with a chip to highlight them. |
 | 8 Oct 2026 | Growth scenarios over many manholes, solved in SWMM by a local runner (`simulation_src/sim25_serve.py`) or estimated in the page. The sandbox's placement algorithms on this network, all scored on the same SWMM runs. |
 | 13 Oct 2026 | Review fixes: the estimate trusted for depth rise only; the method comparison labelled for what it is (in-sample greedy, best-of-20 random). Tagged `v1.1`. |
+| 14 Oct 2026 | All settings in one `config.js`, read by the browser, Node and Python. House connections drawn from the published connection layer, bends included, and checked line for line against the council map viewer; a Connections chip shows every one at its bore. Map controls: drag turns, right-drag moves, the wheel zooms to the pointer. Homes can sit at their main's level or above it. Pump stations at a set rate in growth scenarios (option A, below). |
 | 15 Oct 2026 | Validation end to end: cases, growth sizes, rules, sensors, depths and overflows checked against the SWMM runs and on 400 page views. Overflow (spills from the lid) and rises below the rule shown on the map. Pumps in rated scenarios follow a head curve, so a station delivers less as the level it pumps against rises; overflow pipe 4433446, which sent N183's discharge back to its own wet well, relieves only when surcharged in those scenarios. |
-| 14 Oct 2026 | All settings in one `config.js`, read by the browser, Node and Python. House connections drawn from the published connection layer, bends included, and checked line for line against the council map viewer; a Connections chip shows every one at its bore. Map controls: drag turns, right-drag moves, the wheel zooms to the pointer. A `display` setting chooses whether homes sit at their main's level or above it, read live. Pump stations at a set rate in growth scenarios (option A, below). |
+| 16 Oct 2026 | Simulation 2.5 map made simpler to read: a **None** growth size, to select manholes and see the network before any growth; **Datum & ruler** and **Raised homes** buttons on the map (the datum and ruler hidden by default; raised homes replace the `display` setting, removed from `config.js`); a one-line legend that shows only what is on the map, with the full key on demand; the scenario's **+ Add by number** list in manhole-number order. No result changes. |
 
 **Pumps, now and next.** Every published result uses SWMM's ideal pumps, which pass on whatever
 reaches a wet well at once. Since 14 Oct 2026 a growth scenario may instead run the two modelled

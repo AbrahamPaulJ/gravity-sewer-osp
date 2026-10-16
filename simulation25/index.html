@@ -179,8 +179,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
    about, so it is there to read off without competing with the pipes. */
 .labels .lbl.scale{color:#8b949e; font-weight:500; font-size:10.5px; transform:translate(6px,-50%)}
 .labels .lbl.scale.cap{color:#a9b8d4; transform:translate(6px, 80%)}
-.legend{padding:10px 14px 4px; background:#0d1117; color:#8b949e;
-  font-size:11.5px; display:flex; gap:7px 18px; flex-wrap:wrap; align-items:center}
+.legend{padding:8px 14px; background:#0d1117; color:#8b949e; font-size:11.5px; display:grid}
 .legend b{color:#c9d1d9; font-weight:600; margin-right:2px}
 .legend .grp[hidden]{display:none}
 .heatbar{display:inline-flex; align-items:center; gap:6px}
@@ -199,6 +198,12 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   background:repeating-linear-gradient(90deg,#e3b341 0 5px,transparent 5px 8px)}
 .legend .kdl{display:inline-block; width:18px; height:2px; vertical-align:3px; margin-right:6px;
   background:repeating-linear-gradient(90deg,#d2a8ff 0 5px,transparent 5px 8px)}
+#viewToggles{position:absolute; right:12px; bottom:12px; z-index:3; display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end}
+#viewToggles button{font:inherit; font-size:12px; padding:5px 10px; cursor:pointer; border-radius:6px;
+  background:#161b22e6; color:#8b949e; border:1px solid #30363d}
+#viewToggles button:hover{color:#f0f6fc; border-color:#58a6ff}
+#viewToggles button[aria-pressed="true"]{color:#f0f6fc; border-color:#58a6ff; background:#1f2a3a}
+#viewToggles button:focus-visible{outline:2px solid #58a6ff; outline-offset:2px}
 /* The homes key: an overlay on the map, fixed width, so its text changing on hover
    cannot move anything. It ignores the pointer, so hovering through it still works. */
 #homeKey{position:absolute; left:12px; top:12px; z-index:3; width:330px; height:112px;
@@ -214,7 +219,15 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   vertical-align:-2px; margin-right:6px}
 #homeKey .k.ring{box-shadow:0 0 0 2px #ffffff}
 #homeKey .quiet2{color:#6e7681; font-size:11px}
-#scale{padding:2px 14px 10px; font-size:10.5px; color:#6e7681; background:#0d1117}
+#scale{padding:2px 0 0; font-size:10.5px; color:#6e7681}
+.legend .lgShort{display:flex; gap:6px 16px; flex-wrap:wrap; align-items:center}
+.legend .lgFull{display:grid; gap:7px; padding-top:8px; margin-top:6px; border-top:1px solid #21262d}
+.legend .lgFull[hidden]{display:none}
+.legend [data-ctx][hidden]{display:none}
+#lgToggle{margin-left:auto; font:inherit; font-size:11.5px; padding:2px 9px; cursor:pointer; border-radius:5px;
+  background:transparent; color:#8b949e; border:1px solid #30363d}
+#lgToggle:hover,#lgToggle[aria-expanded="true"]{color:#f0f6fc; border-color:#58a6ff}
+#lgToggle:focus-visible{outline:2px solid #58a6ff; outline-offset:2px}
 /* The assumptions tab. It replaces the stage rather than sitting beside it, and
    !important because #stage sets display on an ID selector. */
 .pane.doc{position:absolute; inset:0; overflow-y:auto; padding:22px 30px; background:var(--bg);
@@ -403,59 +416,76 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   <div id="stageWrap">
     <div id="stage"></div>
     <div id="homeKey"></div>
+    <!-- What the map draws, on or off; kept per viewer in this browser. -->
+    <div id="viewToggles" role="group" aria-label="Map view">
+      <button id="tglDatum" aria-pressed="false" title="Show the height ruler (levels in metres above the datum) and the datum plane under the network (a 100 m grid)">Datum &amp; ruler</button>
+      <button id="tglRaised" aria-pressed="true" title="Draw homes 2 m above their main (on) or at the main's level (off)">Raised homes</button>
+    </div>
   </div>
 
-  <div class="legend">
-    <div class="grp" id="heatKey" hidden><b>Heatmap</b>
-      <span>manholes ranked by the share of detectable growth each sees on its own, <span id="heatWhich"></span>:</span>
-      <span class="heatbar"><span>lowest</span><i></i><span>highest</span></span>
-      <span>bigger = higher rank; hover a manhole for its real percentages</span>
-      <span>pipes greyed while it is on</span>
-    </div>
-    <div class="grp" id="regionKey" hidden><b>Whole Walkerville</b>
-      <span><span class="kl" style="background:#4f5d75"></span>rest of the council network: solved with the study area, not a growth site or sensor candidate</span>
-      <span><span class="k" style="background:#f0f6fc"></span>outside inflow into the study area</span>
-      <span><span class="k" style="background:#8b949e"></span>outside inflow elsewhere</span>
-    </div>
-    <div class="grp"><b>Pipes</b>
+  <!-- The legend: one line by default, the full key on demand. Items marked data-ctx show
+       only when what they explain is on the map (growth_ui.js renderLegend). -->
+  <div class="legend" id="legend">
+    <div class="lgShort">
       <span><span class="kl" style="background:#4c8bf5"></span>room to spare</span>
-      <span><span class="kl" style="background:#ffa500"></span>already over the alarm before growth (alarm rule)</span>
-      <span><span class="kl" style="background:#ff2d55"></span>sees this growth</span>
+      <span data-ctx="alarm"><span class="kl" style="background:#ffa500"></span>over the alarm already</span>
+      <span data-ctx="growth"><span class="k" style="background:#ff2d55"></span>sees the growth</span>
+      <span data-ctx="growth"><span class="k" style="background:#ff8c69"></span>rises &ge;10 mm</span>
+      <span data-ctx="falls"><span class="k" style="background:#39d3c3"></span>falls &ge;10 mm</span>
+      <span data-ctx="spillWas"><span class="kr" style="border-color:#bc8cff"></span>overflowing</span>
+      <span data-ctx="spillNew"><span class="kr" style="border-color:#ff3df5"></span>overflows from growth</span>
+      <span data-ctx="sensors"><span class="k" style="background:#2ef56b"></span>sensor S1, S2, &hellip;</span>
+      <button id="lgToggle" aria-expanded="false" aria-controls="lgFull">Full legend &#9656;</button>
     </div>
-    <div class="grp"><b>Manholes</b>
-      <span><span class="k" style="background:#ff2d55"></span>sees the growth (the selected rule)</span>
-      <span><span class="k" style="background:#ff8c69"></span>rises 10 mm or more, below the rule</span>
-      <span><span class="k" style="background:#39d3c3"></span>falls 10 mm or more (a scenario)</span>
-      <span><span class="k" style="background:#ffa500"></span>over the alarm before growth</span>
-      <span><span class="kr" style="border-color:#bc8cff"></span>overflowing before growth</span>
-      <span><span class="kr" style="border-color:#ff3df5"></span>overflows because of the growth</span>
-    </div>
-    <!-- Shown only when the map has pump stations, which a whole-area build does. -->
-    <div class="grp" id="pumpKey" hidden><b>Pumped</b>
-      <span><span class="ksq" style="background:#e3b341"></span>pump station</span>
-      <span><span class="kd"></span>rising main, pumped under pressure, not gravity</span>
-      <span><span class="ksq" style="background:#6e5a2a"></span>dimmed: not in the model</span>
-      <span>click either for details</span>
-    </div>
-    <!-- Shown while the Connections chip is on. -->
-    <div class="grp" id="connKey" hidden><b>Connections</b>
-      <span><span class="kl" style="background:#6f95ff"></span>a property's own connection pipe, as published, at its bore</span>
-      <span><span class="kl" style="background:#ffa657"></span>meets a different main from the one the model gives its load (<span id="connMis"></span>)</span>
-      <span><span class="kl" style="background:#8b949e"></span>branch laid to no property on record (<span id="connSpare"></span>)</span>
-      <span><span class="kdl"></span>no connection published: joined to its nearest main, a guess (<span id="connGuess"></span>)</span>
-      <span>the dot is the property's inspection point at its boundary; the drain from the house to it is private and not published</span>
-    </div>
-    <div class="grp"><b>Points</b>
-      <span><span class="k" style="background:#c9d1d9"></span>manhole, a sensor could go here</span>
-      <span><span class="k" style="background:#30363d"></span>pipe end, no manhole recorded</span>
-      <span><span class="k" style="background:#ff6f9c"></span>connected property</span>
-      <span><span class="kl" style="background:#6f95ff"></span>a selected manhole's homes: their connections to the main, as published (dashed: none published, a guess)</span>
-      <span><span class="k" style="background:#00d4ff"></span>where the new dwellings connect</span>
-      <span><span class="k" style="background:#2ef56b"></span>proposed sensor: green pin, numbered S1, S2, ... as in the sensor list</span>
-      <span><span class="k" style="background:#a371f7"></span>outlet, everything drains through it</span>
+    <div class="lgFull" id="lgFull" hidden>
+      <div class="grp" id="heatKey" hidden><b>Heatmap</b>
+        <span>rank by share of growth seen alone, <span id="heatWhich"></span>:</span>
+        <span class="heatbar"><span>lowest</span><i></i><span>highest</span></span>
+        <span>bigger = higher; hover for the percentages; pipes greyed</span>
+      </div>
+      <div class="grp" id="regionKey" hidden><b>Whole Walkerville</b>
+        <span><span class="kl" style="background:#4f5d75"></span>rest of the network, solved, not a site or candidate</span>
+        <span><span class="k" style="background:#f0f6fc"></span>outside inflow into the study area</span>
+        <span><span class="k" style="background:#8b949e"></span>outside inflow elsewhere</span>
+      </div>
+      <div class="grp"><b>Pipes</b>
+        <span><span class="kl" style="background:#4c8bf5"></span>room to spare</span>
+        <span data-ctx="alarm"><span class="kl" style="background:#ffa500"></span>over the alarm before growth</span>
+        <span data-ctx="growth"><span class="kl" style="background:#ff2d55"></span>sees this growth</span>
+      </div>
+      <div class="grp"><b>Manholes</b>
+        <span data-ctx="growth"><span class="k" style="background:#ff2d55"></span>sees the growth (the selected rule)</span>
+        <span data-ctx="growth"><span class="k" style="background:#ff8c69"></span>rises &ge;10 mm, below the rule</span>
+        <span data-ctx="falls"><span class="k" style="background:#39d3c3"></span>falls &ge;10 mm</span>
+        <span data-ctx="alarm"><span class="k" style="background:#ffa500"></span>over the alarm before growth</span>
+        <span data-ctx="spillWas"><span class="kr" style="border-color:#bc8cff"></span>overflowing before growth</span>
+        <span data-ctx="spillNew"><span class="kr" style="border-color:#ff3df5"></span>overflows because of the growth</span>
+      </div>
+      <div class="grp" id="pumpKey" hidden><b>Pumped</b>
+        <span><span class="ksq" style="background:#e3b341"></span>pump station</span>
+        <span><span class="kd"></span>rising main (pressure, not gravity)</span>
+        <span><span class="ksq" style="background:#6e5a2a"></span>not in the model</span>
+        <span>click either for details</span>
+      </div>
+      <div class="grp" id="connKey" hidden><b>Connections</b>
+        <span><span class="kl" style="background:#6f95ff"></span>a property's own connection, at its bore</span>
+        <span><span class="kl" style="background:#ffa657"></span>meets a different main from its load (<span id="connMis"></span>)</span>
+        <span><span class="kl" style="background:#8b949e"></span>branch to no property (<span id="connSpare"></span>)</span>
+        <span><span class="kdl"></span>none published, a guess (<span id="connGuess"></span>)</span>
+        <span>dot = the inspection point at the boundary; the house drain is private</span>
+      </div>
+      <div class="grp"><b>Points</b>
+        <span><span class="k" style="background:#c9d1d9"></span>manhole (sensor candidate)</span>
+        <span><span class="k" style="background:#30363d"></span>pipe end, no manhole</span>
+        <span><span class="k" style="background:#ff6f9c"></span>connected property</span>
+        <span data-ctx="site"><span class="kl" style="background:#6f95ff"></span>its connection to the main (dashed: a guess)</span>
+        <span data-ctx="growth"><span class="k" style="background:#00d4ff"></span>where the new dwellings connect</span>
+        <span data-ctx="sensors"><span class="k" style="background:#2ef56b"></span>proposed sensor, numbered as in the list</span>
+        <span><span class="k" style="background:#a371f7"></span>outlet</span>
+      </div>
+      <div id="scale"></div>
     </div>
   </div>
-  <div id="scale"></div>
   <section class="pane doc" id="pane-ref" hidden>
     <button id="refClose" title="Close (Esc)">Close, back to the map</button>
     <div id="ref"></div></section>
@@ -472,14 +502,14 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=83"></script>
-<script src="data/growth.js?v=83"></script>
-<script src="data/index.js?v=83"></script>
-<script src="growth_3d.js?v=83"></script>
-<script src="osp_core.js?v=83"></script>
-<script src="placement.js?v=83"></script>
-<script src="growth_est.js?v=83"></script>
-<script src="growth_ui.js?v=83"></script>
+<script src="data/catchment.js?v=88"></script>
+<script src="data/growth.js?v=88"></script>
+<script src="data/index.js?v=88"></script>
+<script src="growth_3d.js?v=88"></script>
+<script src="osp_core.js?v=88"></script>
+<script src="placement.js?v=88"></script>
+<script src="growth_est.js?v=88"></script>
+<script src="growth_ui.js?v=88"></script>
 <script type="module">
   GrowthUI.init();
 </script>

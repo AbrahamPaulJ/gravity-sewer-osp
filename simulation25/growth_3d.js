@@ -32,6 +32,8 @@ window.Growth3D = (function () {
   let sensorMarks = [], sensorKey = "";             // proposed sensors: pin, ring and numbered label
   let houseLat = null, latHi = null, latUp = null, latGuess = null;  // each home's connection, as drawn
   let connMeshes = [], connCounts = null, pipeScale = 0;  // the Connections chip; mains' radius per mm
+  let homesRaised = true, relift = null, reliftTubes = null;   // the Raised homes toggle
+  let rulerLines = null, datumLines = null, rulerOn = false;   // the Height ruler and Datum plane toggles
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
   const clock = { t0: performance.now() };
   const ZEXAG = 22.0;
@@ -107,40 +109,10 @@ window.Growth3D = (function () {
     return new THREE.Vector3(xDm / 10, (zCm / 100) * ZEXAG, -(yDm / 10));
   }
 
-  /* config.js's display section, read live so a change shows on a plain reload. The page
-     must also stand alone, served from its own folder where ../config.js does not exist, so
-     a missing or unreadable file falls back to the copy the builder published (g.homes).
-     Fetched rather than loaded as a script, and with no-store, so an edited file is never
-     answered from the browser's cache. Its object is plain JSON by contract (osp_config.py
-     reads it the same way). Invalid values are reported and ignored, not guessed at. */
-  async function liveDisplay() {
-    try {
-      const r = await fetch("../config.js", { cache: "no-store" });
-      if (!r.ok) return null;
-      const t = await r.text(), at = t.indexOf(".OSP_CONFIG =");
-      if (at < 0) return null;
-      const d = (JSON.parse(t.slice(t.indexOf("{", at), t.lastIndexOf("}") + 1)) || {}).display;
-      if (!d) return null;
-      const level = d.homes_level ?? "main", raisedM = +(d.raised_height_m ?? 2);
-      if (level !== "main" && level !== "raised") {
-        console.warn("config.js: display.homes_level '" + level + "' is not main or raised; ignored");
-        return null;
-      }
-      if (!(raisedM >= 0 && raisedM <= 20)) {
-        console.warn("config.js: display.raised_height_m " + d.raised_height_m + " is not 0 to 20; ignored");
-        return null;
-      }
-      return { level, raisedM };
-    } catch (e) {
-      return null;
-    }
-  }
-
   async function build(container, pick, hover) {
     await ensureThree();
     onPick = pick; onHover = hover || null;
     const g = G();
-    const liveHomes = await liveDisplay();
     if (!renderer) {
       renderer = new THREE.WebGLRenderer({ antialias: true });
       scene = new THREE.Scene();
@@ -191,7 +163,8 @@ window.Growth3D = (function () {
           const sc = 2.0 + 0.45 * (0.5 + 0.5 * beat);    // in phase with the linked homes
           stationMeshes.forEach(m => m.scale.setScalar(sc));
         }
-        [outletLabel, siteLabel, ...scaleLabels, ...(pumpsOn ? pumpLabels : []),
+        scaleLabels.forEach(l => { if (!rulerOn) l.el.style.display = "none"; });
+        [outletLabel, siteLabel, ...(rulerOn ? scaleLabels : []), ...(pumpsOn ? pumpLabels : []),
          ...scnMarks.map(m => m.label), ...spillMarks.filter(m => m.label).map(m => m.label), ...rateLabels, ...sensorMarks.map(m => m.label)].forEach(lbl => {
           if (!lbl) return;
           const v = lbl.at.clone().project(camera);
@@ -380,12 +353,11 @@ window.Growth3D = (function () {
        included, median 6.7 m long. The private drain from the house to that point is not
        published, so the dot is the inspection point, not the house.
 
-       HOW HIGH THE HOME SITS is config.js's display.homes_level, read live (liveDisplay)
-       or, where the page stands alone, as published in g.homes.
-       "main" (the default) draws it at the level of the main, so its connection lies flat,
-       as the utility's own map draws it. "raised" draws it raisedM above the main, as every
-       home was until 14 Oct 2026: apart from the pipes, but with heights exaggerated x22 a
-       6.7 m connection then stands as a stick 44 units tall, about 81 degrees from flat.
+       HOW HIGH THE HOME SITS is the map's "Raised homes" toggle (setHomesRaised). Raised
+       (the default) draws it 2 m above its main: apart from the pipes, but with heights
+       exaggerated x22 a 6.7 m connection then stands as a stick 44 units tall. Off draws it
+       at the level of the main, so its connection lies flat, as the utility's own map draws
+       it. Flipping it moves the homes and their connections in place; nothing is rebuilt.
        Connection depths are not published, so neither claims anything the other does not.
        Each line's last vertex is snapped onto the drawn pipe, so it ends on the pipe as
        drawn; the line falls evenly along its length from the home to there.
@@ -410,14 +382,12 @@ window.Growth3D = (function () {
       }
       return new THREE.Vector3(bx, by, bz);
     };
-    // How far above its main a home is drawn: just clear of the pipe's tube at "main",
-    // or the configured height at "raised".
-    const homes = liveHomes || g.homes || { level: "main" };
-    const HOME_LIFT = homes.level === "raised" ? P(0, 0, 100 * (homes.raisedM ?? 2)).y : 1.2;
-    // Heights along a line: from HOME_LIFT above the main at its first point down to the
+    // How far above its main a home is drawn: 2 m when raised, else just clear of the pipe.
+    const homeLift = () => (homesRaised ? P(0, 0, 200).y : 1.2);
+    // Heights along a line: from the lift above the main at its first point down to the
     // main at its last, evenly by plan length.
     const slope = pts => {
-      const end = pts[pts.length - 1], y0 = end.y + HOME_LIFT, run = [0];
+      const end = pts[pts.length - 1], y0 = end.y + homeLift(), run = [0];
       for (let v = 1; v < pts.length; v++) run.push(run[v - 1] + Math.hypot(pts[v].x - pts[v - 1].x, pts[v].z - pts[v - 1].z));
       const total = run[run.length - 1];
       for (let v = 0; v < pts.length - 1; v++) pts[v].y = y0 + (end.y - y0) * (total > 0 ? run[v] / total : 0);
@@ -436,6 +406,14 @@ window.Growth3D = (function () {
       const n = g.hx.length, hp = houseGeo.attributes.position.array;
       const hasLines = g.cptr && g.hl && g.hl.length === n;
       houseLat = new Array(n);
+      const placeHomes = () => {             // each home at the top of its connection
+        for (let i = 0; i < n; i++) {
+          const top = houseLat[i].pts[0];
+          hp[i * 3] = top.x; hp[i * 3 + 1] = top.y; hp[i * 3 + 2] = top.z;
+        }
+        houseGeo.attributes.position.needsUpdate = true;
+        houseGeo.computeBoundingSphere();
+      };
       let segs = 0, guessSegs = 0;
       for (let i = 0; i < n; i++) {
         const own = hasLines ? g.hl[i] : -1;
@@ -443,14 +421,11 @@ window.Growth3D = (function () {
         else {
           houseLat[i] = { pts: slope([P(g.hx[i], g.hy[i], 0), onMain(g.jx[i], g.jy[i])]), guess: true };
         }
-        // The home sits where its connection starts: its own inspection point, HOME_LIFT
-        // above its main. The published line starts 0.00 m from it, so plan is unchanged.
-        const top = houseLat[i].pts[0];
-        hp[i * 3] = top.x; hp[i * 3 + 1] = top.y; hp[i * 3 + 2] = top.z;
+        // The home sits where its connection starts: its own inspection point, lifted above
+        // its main. The published line starts 0.00 m from it, so plan is unchanged.
         if (houseLat[i].guess) guessSegs++; else segs += houseLat[i].pts.length - 1;
       }
-      houseGeo.attributes.position.needsUpdate = true;
-      houseGeo.computeBoundingSphere();
+      placeHomes();
 
       // Branches laid to no property: drawn only by the Connections chip, below.
       const spareLines = hasLines ? (g.cSpare || []).map(li => lineOf(li)) : [];
@@ -486,11 +461,7 @@ window.Growth3D = (function () {
         (g.cSpare || []).forEach((li, k) => groups.spare.push([spareLines[k], g.cdia[li]]));
         const m = new THREE.Matrix4(), q = new THREE.Quaternion(), yAxis = new THREE.Vector3(0, 1, 0);
         const dir = new THREE.Vector3(), mid = new THREE.Vector3(), scl = new THREE.Vector3();
-        const tubes = (list, col) => {
-          const nSeg = list.reduce((t, [pts]) => t + pts.length - 1, 0);
-          const mesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 6, 1, true),
-            new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false }),
-            Math.max(1, nSeg));
+        const fill = (mesh, list) => {
           let k = 0;
           list.forEach(([pts, dia]) => {
             const r = Math.max(0.5, (dia || 100) * pipeScale);
@@ -506,6 +477,14 @@ window.Growth3D = (function () {
           });
           mesh.count = k;
           mesh.instanceMatrix.needsUpdate = true;
+        };
+        const tubes = (list, col) => {
+          const nSeg = list.reduce((t, [pts]) => t + pts.length - 1, 0);
+          const mesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 6, 1, true),
+            new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false }),
+            Math.max(1, nSeg));
+          mesh.userData.list = list;
+          fill(mesh, list);
           mesh.frustumCulled = false;
           mesh.visible = false;
           scene.add(mesh);
@@ -515,7 +494,16 @@ window.Growth3D = (function () {
                       tubes(groups.spare, COL.connSpare)];
         connCounts = { own: groups.own.length, mis: groups.mis.length, spare: groups.spare.length,
                        guess: guessSegs };
+        reliftTubes = () => connMeshes.forEach(mesh => fill(mesh, mesh.userData.list));
       }
+      // The Raised homes toggle: re-slope every connection from the new height and move the
+      // homes onto their tops. The lists are the same point objects the tubes hold.
+      relift = () => {
+        houseLat.forEach(h => slope(h.pts));
+        spareLines.forEach(slope);
+        placeHomes();
+        if (reliftTubes) reliftTubes();
+      };
     }
 
     // Sleeves: a translucent tube around every pipe in the highlighted catchment. WebGL
@@ -627,8 +615,17 @@ window.Growth3D = (function () {
       const pad = 0.04 * Math.max(x1 - x0, y1 - y0);
       const rx = x0 - pad, ry = y0 - pad, tick = 0.025 * Math.max(x1 - x0, y1 - y0);
 
-      const seg = [];
+      let seg = [];
       const add = (a, b) => seg.push(a.x, a.y, a.z, b.x, b.y, b.z);
+      const lines = (pts, opacity) => {
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+        const ls = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
+          color: COL.datum, transparent: true, opacity }));
+        ls.visible = false;                      // shown by the map's toggles
+        scene.add(ls);
+        return ls;
+      };
       add(P(rx, ry, cm(base)), P(rx, ry, cm(peak)));
       for (let L = base; L <= peak + 1e-9; L += step) {
         add(P(rx, ry, cm(L)), P(rx + tick, ry, cm(L)));
@@ -648,15 +645,14 @@ window.Growth3D = (function () {
       // "homes behind" box covers, and a caption you cannot read explains nothing.
       scaleLabels.push({ el: cap, at: P(rx, ry, cm(base)) });
 
+      rulerLines = lines(seg, 0.35);
+      seg = [];
       // The datum plane at the ruler's foot: the network's outline plus a 100 m grid.
       const z = cm(base), gx = 1000;                     // 1000 dm = 100 m
       const X0 = rx, X1 = x1 + pad, Y0 = ry, Y1 = y1 + pad;
       for (let x = Math.ceil(X0 / gx) * gx; x <= X1; x += gx) add(P(x, Y0, z), P(x, Y1, z));
       for (let y = Math.ceil(Y0 / gx) * gx; y <= Y1; y += gx) add(P(X0, y, z), P(X1, y, z));
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute("position", new THREE.Float32BufferAttribute(seg, 3));
-      scene.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
-        color: COL.datum, transparent: true, opacity: 0.35 })));
+      datumLines = lines(seg, 0.35);
     }
 
     /* Pump stations and their rising mains. A gravity main falls; a rising main is pumped
@@ -958,6 +954,21 @@ window.Growth3D = (function () {
       labelLayer.appendChild(el);
       sensorMarks.push({ group: grp, name, label: { el, at: mesh.position.clone().add(new THREE.Vector3(0, 114, 0)) } });
     });
+  }
+  /* The map's view toggles. Each returns the new state. */
+  function showRuler(on) {
+    rulerOn = !!on;
+    if (rulerLines) rulerLines.visible = rulerOn;
+    return rulerOn;
+  }
+  function showDatum(on) {
+    if (datumLines) datumLines.visible = !!on;
+    return !!on;
+  }
+  function setHomesRaised(on) {
+    homesRaised = !!on;
+    if (relift) relift();
+    return homesRaised;
   }
   /* A label at each pump station whose rate a scenario changes, e.g. "15.7 L/s (was 7.85)".
      items: [{rm, text}] keyed by the station's first rising main; [] clears them. */
@@ -1402,7 +1413,7 @@ window.Growth3D = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, setSpills, setPumpRates, mapState,
+  return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, setSpills, setPumpRates, mapState, showRuler, showDatum, setHomesRaised,
            frame, resize, heatHex,
            ZEXAG };
 })();

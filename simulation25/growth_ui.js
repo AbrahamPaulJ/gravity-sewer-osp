@@ -165,6 +165,7 @@ window.GrowthUI = (function () {
     $("#heatWhich").textContent = (st.obj === "worst" ? "worst of the " : "average of the ") + nCases() + " cases" +
       ", " + runs().rules[st.rule].label.toLowerCase();
     renderKnobs();
+    renderLegend();
   }
 
   /* ---------------------------------------------------------------- homes */
@@ -524,6 +525,7 @@ window.GrowthUI = (function () {
     $("#heatWhich").textContent = (st.obj === "worst" ? "worst of the " : "average of the ") +
       nCases() + " cases, " + runs().rules[st.rule].label.toLowerCase();
     renderKnobs();
+    renderLegend();
   }
 
   function renderScnList() {
@@ -750,6 +752,64 @@ window.GrowthUI = (function () {
       })
       .catch(() => { st.runner = false; })
       .finally(() => { if (st.mode === "scn") renderScnList(); });
+  }
+
+  /* The map's view toggles: the datum with its height ruler (one button), and raised homes.
+     Off and on by default; each viewer's choice is remembered in this browser only (a
+     convenience, not state). */
+  function wireViewToggles() {
+    const KEY = "sim25.view2";
+    let v = { datum: false, raised: true };
+    try { Object.assign(v, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (e) { /* none kept */ }
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) { /* not kept */ } };
+    const apply = () => {
+      Growth3D.showRuler(v.datum);
+      Growth3D.showDatum(v.datum);
+      Growth3D.setHomesRaised(v.raised);
+      $("#tglDatum").setAttribute("aria-pressed", String(v.datum));
+      $("#tglRaised").setAttribute("aria-pressed", String(v.raised));
+    };
+    const flip = k => () => { v[k] = !v[k]; save(); apply(); repaint(); };
+    $("#tglDatum").onclick = flip("datum");
+    $("#tglRaised").onclick = flip("raised");
+    apply();
+  }
+
+  /* The legend shows only what is on the map now: each item carries data-ctx, and the full
+     key opens from the toggle (remembered in this browser only). */
+  function renderLegend() {
+    const R = runs(), scn = st.mode === "scn";
+    const out = scn ? scnOutcome() : null;
+    const growth = scn ? !!out : (st.site != null && !noGrowth());
+    const newSpill = scn ? !!(out && out.source === "swmm" && [...out.per].some(([, v]) => v.spillNew))
+      : spillNew(st.site).length > 0;
+    const on = {
+      alarm: !graded() && R.baseOver[st.ii].length > 0,
+      growth,
+      falls: scn && !!out,
+      spillWas: spillBefore().length > 0,
+      spillNew: newSpill,
+      sensors: st.showSensors,
+      site: !scn && st.site != null,
+    };
+    document.querySelectorAll("#legend [data-ctx]").forEach(el => { el.hidden = !on[el.dataset.ctx]; });
+    $("#pumpKey").hidden = !(st.showPumps && geom().pumps && geom().pumps.length);
+  }
+  function wireLegend() {
+    const KEY = "sim25.legend";
+    let open = false;
+    try { open = localStorage.getItem(KEY) === "open"; } catch (e) { /* not kept */ }
+    const apply = () => {
+      $("#lgFull").hidden = !open;
+      $("#lgToggle").setAttribute("aria-expanded", String(open));
+      $("#lgToggle").innerHTML = open ? "Less &#9662;" : "Full legend &#9656;";
+    };
+    $("#lgToggle").onclick = () => {
+      open = !open;
+      try { localStorage.setItem(KEY, open ? "open" : "closed"); } catch (e) { /* not kept */ }
+      apply();
+    };
+    apply();
   }
 
   function renderBaseNote(c) {
@@ -1082,6 +1142,8 @@ window.GrowthUI = (function () {
       // How many sensors may be placed is config.js's max_sensors, as the build published it.
       $("#kRange").max = String(runs().maxSensors);
       st.k = Math.min(st.k, runs().maxSensors);
+      wireViewToggles();
+      wireLegend();
       buildKnobs();
       const order = buildList();
       wireScenario(order);
@@ -1137,7 +1199,8 @@ window.GrowthUI = (function () {
       st.showPumps = !st.showPumps;
       if (!Growth3D.showPumps(st.showPumps)) { st.showPumps = false; return; }
       $("#togglePumps").classList.toggle("primary", st.showPumps);
-      $("#togglePumps").textContent = st.showPumps ? "Hide pump stations" : "Pump stations";
+      // The label stays put, as on the other chips: a longer "Hide ..." wrapped the bar.
+      renderLegend();
     };
     // Connections: every property's published connection pipe. Offered only if the build
     // published them; the key carries the counts the 3D view actually drew.
