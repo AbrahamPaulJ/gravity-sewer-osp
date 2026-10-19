@@ -74,28 +74,33 @@ console.log("repository hygiene");
      Parsing cannot catch that and neither can a 200 from the server, so the order
      is checked here: whatever a script reads from window at the top level must be
      defined by a script the page loads earlier. */
-  const page = fs.readFileSync(path.join(ROOT, "osp_sandbox.html"), "utf8");
-  const order = [...page.matchAll(/<script src="([^"?]+)/g)].map(m => m[1]);
-  const definedBy = new Map();
-  order.forEach((f, i) => {
-    const t = fs.readFileSync(path.join(ROOT, f), "utf8");
-    for (const m of t.matchAll(/(?:window|root)\.(OSP[A-Za-z_]*)\s*=/g))
-      if (!definedBy.has(m[1])) definedBy.set(m[1], i);
-  });
-  const misordered = [];
-  order.forEach((f, i) => {
-    const t = fs.readFileSync(path.join(ROOT, f), "utf8");
-    // top-level capture only: `const X = window.OSPFoo;` at column 0
-    for (const m of t.matchAll(/^const\s+\w+\s*=\s*window\.(OSP[A-Za-z_]*)\s*;/gm)) {
-      const at = definedBy.get(m[1]);
-      if (at === undefined || at > i) misordered.push(`${f} reads ${m[1]} too early`);
-    }
-  });
-  check("scripts load in dependency order", misordered, []);
-  // The models take their settings from config.js when they load, so it must come first.
-  check("the sandbox loads config.js before the models",
-    order.indexOf("config.js") >= 0 && order.indexOf("config.js") < order.indexOf("src/model/osp_capacity.js")
-    && order.indexOf("config.js") < order.indexOf("src/model/osp_risk.js"), true);
+  for (const html of ["osp_sandbox.html", "story.html"]) {
+    const page = fs.readFileSync(path.join(ROOT, html), "utf8");
+    const order = [...page.matchAll(/<script src="([^"?]+)/g)].map(m => m[1]);
+    const definedBy = new Map();
+    order.forEach((f, i) => {
+      const t = fs.readFileSync(path.join(ROOT, f), "utf8");
+      for (const m of t.matchAll(/(?:window|root)\.(OSP[A-Za-z_]*)\s*=/g))
+        if (!definedBy.has(m[1])) definedBy.set(m[1], i);
+    });
+    const misordered = [];
+    order.forEach((f, i) => {
+      const t = fs.readFileSync(path.join(ROOT, f), "utf8");
+      // top-level capture only: `const X = window.OSPFoo;` at column 0
+      for (const m of t.matchAll(/^const\s+\w+\s*=\s*window\.(OSP[A-Za-z_]*)\s*;/gm)) {
+        const at = definedBy.get(m[1]);
+        if (at === undefined || at > i) misordered.push(`${f} reads ${m[1]} too early`);
+      }
+    });
+    check(`${html}: scripts load in dependency order`, misordered, []);
+    // The models take their settings from config.js when they load, so it must come first.
+    check(`${html}: config.js loads before the models`,
+      order.indexOf("config.js") >= 0 && order.indexOf("config.js") < order.indexOf("src/model/osp_capacity.js")
+      && order.indexOf("config.js") < order.indexOf("src/model/osp_risk.js"), true);
+    // One cache key per page: a script left on an old key is served stale behind a new page.
+    const keys = new Set([...page.matchAll(/<script src="[^"]+\?v=(\d+)"/g)].map(m => m[1]));
+    check(`${html}: every script carries the same cache key`, keys.size, 1);
+  }
 
   /* The data files are generated, and tools/format_data.py reads them by pulling
      the object text out and handing it to a JSON parser. A JS comment inside that
@@ -406,6 +411,32 @@ const gl = slots["doc-glossary"].innerHTML;
 check("glossary terms", (gl.match(/<dt>/g) || []).length, 35);
 check("glossary figures", (gl.match(/<figure class="gl-fig">/g) || []).length, 31);
 check("every figure titled", (gl.match(/<svg /g) || []).length === (gl.match(/<title>/g) || []).length, true);
+
+/* The story's takeaways are computed from the data, so they are checked here against the
+   figures the sections above pin. If one fails alongside its source check, the data
+   moved; if it fails alone, the story is reading the models differently. */
+console.log("story takeaways render from the data");
+{
+  const ST = require(path.join(ROOT, "src/docs/osp_story.js"));
+  const F = ST.facts({ raw, C, K, codes: D.codes });
+  const text = ST.STEPS.map(s => s.takeaway(F));
+  check("eight steps, each with a title, description and takeaway",
+    ST.STEPS.filter(s => s.title && s.description && typeof s.takeaway === "function").length, 8);
+  check("every step names its own view", new Set(ST.STEPS.map(s => s.view)).size, 8);
+  check("no undefined or NaN in any takeaway", text.filter(t => /undefined|NaN/.test(t)).length, 0);
+  check("sight: blind nodes under headroom, and under the published proxy",
+    [F.sight().blind, F.sight().pubBlind, F.sight().pubUniverse], [32, 840, 157]);
+  check("capacity: the surcharge ladder", F.capacity().ladder.map(r => r.surcharged), [0, 3, 30, 80, 132]);
+  check("placement: greedy at the comparison budget", F.placement().atBudget, 341);
+  const P = F.placement();
+  check("placement: greedy's reach is within the universe and its curve never falls",
+    P.reach <= P.universe && P.curve.every((v, i, a) => !i || v >= a[i - 1]), true);
+  const W = F.compare().watched;
+  check("compare: no method watches more than greedy",
+    Object.keys(W).filter(k => W[k] > W.greedy), []);
+  check("compare: the random baseline is seeded, so the takeaway is stable",
+    ST.facts({ raw, C, K, codes: D.codes }).compare().watched.random, W.random);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
