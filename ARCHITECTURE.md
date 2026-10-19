@@ -7,14 +7,17 @@ researcher open any file and read the method.
 ## Layout
 
 ```
-index.html               landing page; loads the three pages below in iframes
+index.html               landing page; loads the pages below in iframes
 osp_sandbox.html         the tool
+story.html               the guided story: eight steps from the network to its caveats
 manhole_anatomy.html     explainer, standalone, four 3D tabs
 why_observability.html   explainer, standalone
 src/model/               the models: pure JavaScript, no DOM, loadable in Node
 src/ui/                  the sandbox page's state, canvas, controls, worker, and the
-                         3D relief and long-section views
-src/docs/                the documentation panes, generated from the loaded data
+                         3D relief and long-section views; the story page's map,
+                         views and routing
+src/docs/                the documentation panes and the story's steps, generated
+                         from the loaded data
 data/                    generated datasets; never edited by hand
 tools/                   tests and the data formatter
 ```
@@ -45,6 +48,22 @@ src/ui/osp_profile.js      the long-section view. Draws water level from either 
                            backwater) or precomputed SWMM playback, and always says
                            which. UMD, so osp_ui.js reads it as window.OSPProfile.
 src/docs/osp_docs.js       assumptions register, Q&A, method, glossary (with figures)
+```
+
+The story page reads the same data and models through files of its own, so it never
+reaches into the sandbox's state:
+
+```
+src/docs/osp_story.js      the eight steps, and each one's takeaway as a function of
+                           facts computed through the models. Pure, no DOM; also the
+                           placement comparison and the caveats the views draw.
+src/ui/osp_map.js          a plan-view map for pages other than the sandbox: fit, pan,
+                           zoom, pinch, hover and click on chambers and pipes. The
+                           caller says how each reach and node is drawn.
+src/ui/osp_story_views.js  one screen per step, each drawing on osp_map.js and, for
+                           the long section, osp_profile.js
+src/ui/osp_story_ui.js     the story page's routing (#1 to #8), header and hover
+                           readout. Loaded last.
 ```
 
 The model files are wrapped UMD-style so they load unchanged in the page and in
@@ -78,13 +97,22 @@ the same commit.
 
 **Script order is dependency order.** `osp_sandbox.html` loads data, then models,
 then views, then `osp_ui.js` last, because the UI captures `window.OSPProfile` into a
-const at load time and a view loaded after it is simply undefined. The suite checks
-this, since neither parsing nor a 200 from the server can.
+const at load time and a view loaded after it is simply undefined. `story.html` does
+the same with `osp_story_ui.js` last. The suite checks both pages, since neither
+parsing nor a 200 from the server can.
+
+**The story's figures are computed, not typed.** Every takeaway and caveat in
+`osp_story.js` is a function of the loaded data, for the same reason the register is.
+The few figures the published payload cannot reproduce sit in its `CITED` table, each
+with the README finding it comes from. The suite renders every takeaway in Node and
+checks the headline figures.
 
 **Cache keys move together.** `index.html` loads each page as `page.html?v=N`, and
 `osp_sandbox.html` loads each script as `script.js?v=N`. Browsers refetch the document
 and reuse the scripts behind it, so a key on the page alone is not enough. Bump every
-`?v=` at once; the sanitiser refuses a page whose scripts disagree.
+`?v=` at once; the sanitiser refuses a page whose scripts disagree. `story.html` loads
+the same data and models, so it shares the sandbox's key, and the suite fails if the
+two pages or their iframe keys in `index.html` drift apart.
 
 **The data files are generated.** `data/osp_data.js` is written by the harvester in
 the private repository and formatted by `tools/format_data.py`; `data/osp_swmm.js` is
@@ -108,7 +136,7 @@ already is.
 
 ```
 python3 -m http.server 8001          # serve; file:// breaks the worker and the 3D view
-node tools/test_sandbox.js           # 38 regression checks against the shipped dataset
+node tools/test_sandbox.js           # 95 regression checks against the shipped dataset
 python3 tools/format_data.py --check # would the data file change if reformatted?
 ```
 
