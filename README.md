@@ -13,13 +13,13 @@ Everything runs in the browser. No server, no build step, no tracking.
 
 | Page | What it is |
 |---|---|
-| `story.html` | The guided story. Eight steps on the sandbox's network: what the data records, which way water flows, how stressed the pipes are, what a sensor can see, where greedy places sensors and how that compares with the rules of thumb, and the caveats. Each step's takeaway is computed from the data. |
+| `story.html`, `story_growth.html` | The guided story, in two parts of eight steps. Part 1, on the sandbox's network: what the data records, which way water flows, how stressed the pipes are, what a sensor can see of a blockage, where greedy places sensors against the rules of thumb, and the caveats. Part 2, on Simulation 2.5's SWMM grid: the model area and its load, the five cases, which manholes notice growth under each detection rule, the sensors chosen across all cases, the caveats, and a comparison that scores every method on both questions. Each step's takeaway is computed from the data. |
 | `osp_sandbox.html` | The tool. Place a sensor budget on a real network, compare seven algorithms against four objectives, inspect the assumptions. |
 | `manhole_anatomy.html` | Four rotatable 3D sections: one chamber inside, why every chamber on a run is a different depth, a chamber taking several pipes, and where a blockage sends the water. |
 | `why_observability.html` | Draggable long section: the backwater wedge, and the arithmetic that limits how far a sensor can see. |
 | `src/model/` | The models, pure and DOM-free: `osp_core.js` (graph, observability, placement), `osp_capacity.js`, `osp_risk.js`. Run from Node by the tests. |
-| `src/ui/` | `osp_ui.js`, the sandbox page's state, canvas and controls; `osp_3d.js`, the optional relief view; `osp_profile.js`, the long section. For the story: `osp_map.js`, a plan-view map; `osp_story_views.js`, one screen per step; `osp_story_ui.js`, its routing and header. |
-| `src/docs/` | `osp_docs.js`, the assumptions register, method, Q&A and illustrated glossary, generated from the loaded data; `osp_story.js`, the story's steps, with takeaways computed the same way. |
+| `src/ui/` | `osp_ui.js`, the sandbox page's state, canvas and controls; `osp_3d.js`, the optional relief view; `osp_profile.js`, the long section. For the story: `osp_map.js`, a plan-view map; `osp_story_views.js` and `osp_story_growth_views.js`, one screen per step of each part; `osp_story_ui.js`, the routing and header both parts share; `osp_story.css`, their styles. |
+| `src/docs/` | `osp_docs.js`, the assumptions register, method, Q&A and illustrated glossary, generated from the loaded data; `osp_story.js` and `osp_story_growth.js`, the story's two parts, with takeaways computed the same way. |
 | `data/` | `osp_data.js`, the generated dataset. Never edited by hand. |
 | `config.js` | Every setting in one file: which pages the site shows, pipe roughness and age weights, the sandbox's blockage weights, loads, Simulation 2.5's study area, cases, detection rules, map display and pump stations. Read by the browser, Node and Python (`simulation_src/osp_config.py`). |
 | `simulation25/` | Simulation 2.5, the browser view of the growth and sensor-placement grid, with a scenario builder and a choice of placement methods. |

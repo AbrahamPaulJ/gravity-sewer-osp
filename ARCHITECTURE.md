@@ -9,7 +9,9 @@ researcher open any file and read the method.
 ```
 index.html               landing page; loads the pages below in iframes
 osp_sandbox.html         the tool
-story.html               the guided story: eight steps from the network to its caveats
+story.html               the guided story, part 1: blockage, on the sandbox's network
+story_growth.html        part 2: growth, on Simulation 2.5's SWMM grid, ending with the
+                         two parts' results compared
 manhole_anatomy.html     explainer, standalone, four 3D tabs
 why_observability.html   explainer, standalone
 src/model/               the models: pure JavaScript, no DOM, loadable in Node
@@ -50,8 +52,8 @@ src/ui/osp_profile.js      the long-section view. Draws water level from either 
 src/docs/osp_docs.js       assumptions register, Q&A, method, glossary (with figures)
 ```
 
-The story page reads the same data and models through files of its own, so it never
-reaches into the sandbox's state:
+The story pages read the same data and models through files of their own, so they never
+reach into the sandbox's or Simulation 2.5's state:
 
 ```
 src/docs/osp_story.js      the eight steps, and each one's takeaway as a function of
@@ -62,8 +64,14 @@ src/ui/osp_map.js          a plan-view map for pages other than the sandbox: fit
                            caller says how each reach and node is drawn.
 src/ui/osp_story_views.js  one screen per step, each drawing on osp_map.js and, for
                            the long section, osp_profile.js
-src/ui/osp_story_ui.js     the story page's routing (#1 to #8), header and hover
-                           readout. Loaded last.
+src/docs/osp_story_growth.js   part 2's steps and takeaways, read from Sim 2.5's
+                           published grid and scored by simulation25/placement.js, the
+                           Sim 2.5 page's own scoring. Pure, no DOM.
+src/ui/osp_story_growth_views.js   one screen per part 2 step; the last also reads
+                           part 1's facts, to set the two parts' results side by side
+src/ui/osp_story_ui.js     routing (#1 to #8), header and hover readout for both parts.
+                           The page names its part on <body data-part>. Loaded last.
+src/ui/osp_story.css       both parts' styles
 ```
 
 The model files are wrapped UMD-style so they load unchanged in the page and in
@@ -112,7 +120,10 @@ checks the headline figures.
 and reuse the scripts behind it, so a key on the page alone is not enough. Bump every
 `?v=` at once; the sanitiser refuses a page whose scripts disagree. `story.html` loads
 the same data and models, so it shares the sandbox's key, and the suite fails if the
-two pages or their iframe keys in `index.html` drift apart.
+two pages or their iframe keys in `index.html` drift apart. `story_growth.html` reads
+Simulation 2.5's published data, so it shares `simulation25/index.html`'s key instead;
+`tools/build_sim25_web.py --publish` moves that key, and the suite fails until the story
+follows.
 
 **The data files are generated.** `data/osp_data.js` is written by the harvester in
 the private repository and formatted by `tools/format_data.py`; `data/osp_swmm.js` is
@@ -136,7 +147,7 @@ already is.
 
 ```
 python3 -m http.server 8001          # serve; file:// breaks the worker and the 3D view
-node tools/test_sandbox.js           # 95 regression checks against the shipped dataset
+node tools/test_sandbox.js           # 111 regression checks against the shipped dataset
 python3 tools/format_data.py --check # would the data file change if reformatted?
 ```
 
