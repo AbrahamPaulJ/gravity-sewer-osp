@@ -1,0 +1,118 @@
+/* The guided story's pages (story.html, story_growth.html): one stylesheet, so the two
+   parts cannot drift apart. Loaded with the page's cache key like its scripts. */
+:root{
+  --bg:#0b1220; --panel:#111c2f; --panel-2:#16233a; --line:#22314d;
+  --ink:#e7edf7; --ink-dim:#a9b8d4; --ink-faint:#6f81a3;
+  --accent:#38bdf8; --good:#34d399; --warn:#fbbf24; --bad:#f87171;
+  --map-pipe:#5b7096; --map-hole:#a9b8d4;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+#app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+button,a.btn{font:inherit;font-size:13px;border-radius:7px;cursor:pointer;text-decoration:none}
+
+/* ---------- story header ---------- */
+#head{flex:0 0 auto;padding:10px 18px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+#bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 14px}
+#lead{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px}
+#dots{display:flex;align-items:center;gap:6px}
+#dots button{height:10px;width:10px;padding:0;border:0;border-radius:99px;background:var(--line);
+  transition:width .15s,background .15s}
+#dots button.done{background:rgba(56,189,248,.5)}
+#dots button.on{width:24px;background:var(--accent)}
+#dots button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#count{margin-left:8px;color:var(--ink-faint);font-size:12.5px}
+#nav{display:flex;align-items:center;gap:8px}
+#keys{color:var(--ink-faint);font-size:12px}
+#back{background:none;border:1px solid var(--line);color:var(--ink-dim);padding:4px 12px}
+#back:disabled{opacity:.35;cursor:default}
+#next,a.go{background:var(--accent);border:0;color:#04111d;padding:5px 12px;font-weight:600}
+a.go2{border:1px solid var(--line);color:var(--ink-dim);padding:4px 12px}
+#parts{display:flex;gap:2px;margin-right:6px}
+#parts a{font-size:12px;color:var(--ink-faint);text-decoration:none;padding:2px 9px;border:1px solid var(--line);border-radius:99px}
+#parts a[aria-current]{color:var(--ink);border-color:var(--accent)}
+#titlerow{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:8px}
+#title{margin:0;font-size:19px;letter-spacing:-.2px}
+#more{display:none;background:none;border:0;color:var(--accent);padding:0;font-size:12.5px}
+#desc{margin:4px 0 0;color:var(--ink-dim);max-width:900px}
+#takeaway{margin:8px 0 0;padding:7px 12px;border-left:3px solid var(--accent);background:var(--panel-2);
+  border-radius:0 7px 7px 0;max-width:900px}
+#takeaway.err{border-left-color:var(--bad);color:var(--ink-dim)}
+
+/* ---------- stage: map and the step's panel ---------- */
+#stage{flex:1;min-height:0;display:grid;grid-template-columns:1fr 320px}
+#mapcol{display:flex;flex-direction:column;min-width:0;min-height:0}
+#mapwrap{position:relative;flex:1;min-width:0;min-height:0}
+/* The long section, for the steps that cut one. Hidden unless a view opens it. */
+#lower{position:relative;flex:0 0 40%;min-height:220px;border-top:1px solid var(--line)}
+#lower[hidden]{display:none}
+#prof{position:absolute;inset:0;width:100%;height:100%;display:block}
+#prof-close{position:absolute;right:10px;top:8px;background:var(--panel);border:1px solid var(--line);
+  color:var(--ink-dim);padding:2px 9px;font-size:12px}
+#map{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud{position:absolute;left:12px;top:12px;max-width:280px;padding:8px 11px;font-size:12px;line-height:1.5;
+  background:rgba(17,28,47,.94);border:1px solid var(--line);border-radius:8px;pointer-events:none;display:none}
+#hud.on{display:block}
+#hud .k{color:var(--ink-faint);display:inline-block;width:70px}
+#fit{position:absolute;right:12px;top:12px;background:var(--panel);border:1px solid var(--line);
+  color:var(--ink-dim);padding:4px 10px}
+#panel{overflow:auto;padding:14px 16px;background:var(--panel);border-left:1px solid var(--line);color:var(--ink-dim)}
+#panel h2{margin:0 0 8px;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-faint)}
+#panel p{margin:8px 0}
+.todo{border:1px dashed var(--line);border-radius:8px;padding:10px 12px;font-size:13px}
+
+/* ---------- what the views put in the panel ---------- */
+.stat{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid var(--line);font-size:13px}
+.stat b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.big{font-size:28px;font-weight:700;color:var(--ink);line-height:1.1;font-variant-numeric:tabular-nums}
+.big small{font-size:13px;font-weight:400;color:var(--ink-dim)}
+.hint{font-size:12px;color:var(--ink-faint);margin:6px 0}
+.sec{margin-top:16px}
+.seg{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
+.seg button{background:var(--panel-2);border:1px solid var(--line);color:var(--ink-dim);padding:3px 9px;font-size:12px}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:#04111d;font-weight:600}
+.legend{display:grid;grid-template-columns:auto 1fr auto;gap:3px 8px;align-items:center;font-size:12.5px;margin:6px 0}
+.legend .n{color:var(--ink-faint);font-variant-numeric:tabular-nums;text-align:right}
+.sw{display:inline-block;width:14px;height:4px;border-radius:2px}
+.sw.dot{width:9px;height:9px;border-radius:99px}
+.rows{display:flex;flex-direction:column;gap:2px;margin:6px 0}
+.rows button{display:flex;align-items:center;gap:8px;text-align:left;background:none;border:1px solid transparent;
+  color:var(--ink-dim);padding:3px 6px}
+.rows button:hover,.rows button.on{border-color:var(--line);background:var(--panel-2);color:var(--ink)}
+.bar{flex:1;height:6px;border-radius:3px;background:var(--line);position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:3px}
+.rows .num{min-width:34px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.rows .lab{width:132px;flex:0 0 auto}
+label.range{display:block;font-size:12.5px;margin:10px 0 2px}
+label.range b{color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.act{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);padding:4px 11px;margin:4px 4px 0 0}
+.card{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;cursor:pointer;background:none;
+  color:inherit;text-align:left;width:100%;display:block}
+.card.on{border-color:var(--accent);background:var(--panel-2)}
+.card h3{margin:0;font-size:13px;color:var(--ink)}
+.card p{margin:4px 0 0;font-size:12.5px}
+.card .src{font-size:11px;color:var(--ink-faint)}
+#cm-list .lab{width:92px;font-size:12px;line-height:1.25}
+#cm-list .num{min-width:30px;font-size:12px}
+table.side{width:100%;border-collapse:collapse;font-size:12px;margin:4px 0}
+table.side th,table.side td{text-align:left;vertical-align:top;padding:4px 4px;border-bottom:1px solid var(--line)}
+table.side thead th{color:var(--ink-faint);font-weight:600}
+table.side tbody th{color:var(--ink-faint);font-weight:400;width:68px}
+table.side td{color:var(--ink)}
+canvas.chart{width:100%;height:150px;display:block;margin-top:6px}
+
+/* Phone: the description folds behind a toggle so the map keeps its room, and the
+   panel moves under the map. */
+@media (max-width:640px){
+  #head{padding:8px 16px 10px}
+  #keys,.long{display:none}
+  #more{display:inline}
+  #desc{display:none}
+  #desc.open{display:block}
+  #stage{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}
+  #lower{min-height:180px}
+  #panel{border-left:0;border-top:1px solid var(--line);max-height:38vh}
+}
