@@ -4,19 +4,22 @@
    Steps live in the URL hash (#1 to #8), as the landing page and the sandbox already
    route, so a step can be linked to and the browser's back button walks the story.
 
-   What a step says is in osp_story.js; this file only puts it on screen. A step's view
-   is an entry in VIEWS with enter() and leave(). A step with no entry yet shows the
-   plain network and says its view is still to come, rather than borrowing another
-   step's screen. */
+   What a step says is in osp_story.js and what it shows is in osp_story_views.js; this
+   file routes between them and owns the header and the hover readout. A step whose view
+   is missing shows the plain network and says so, rather than borrowing another step's
+   screen. */
 "use strict";
 
 const $ = id => document.getElementById(id);
 const C = window.OSPCore;
 const K = window.OSPCapacity;
 const M = window.OSPMap;
+const P = window.OSPProfile;
 const ST = window.OSPStory;
+const SV = window.OSPStoryViews;
 const PAYLOAD = window.OSP_DATA || {};
 const CODES = PAYLOAD.codes || {};
+const VALID = PAYLOAD.validation || null;
 const REGIONS = PAYLOAD.regions || {};
 /* The story is told on one network: the first region, as the sandbox opens on. */
 const RAW = REGIONS[Object.keys(REGIONS)[0]];
@@ -34,6 +37,7 @@ const COVER_SRC = { 0: "unknown", 1: "surveyed", 2: "contour", 3: "transferred" 
 /* ---------------------------------------------------------------- hover readout */
 /* One field per line, labels in a fixed-width column, and a dash for anything not
    published: visibly absent beats quietly missing. */
+let active = null;
 const row = (k, v) => `<div><span class="k">${k}</span>${v}</div>`;
 const dash = "&ndash;";
 
@@ -62,15 +66,15 @@ function describeEdge(e) {
 map.on("hover", h => {
   const hud = $("hud");
   hud.classList.toggle("on", !!h);
-  hud.innerHTML = !h ? "" : h.kind === "node" ? describeNode(h.i) : describeEdge(h.e);
+  hud.innerHTML = !h ? "" : (h.kind === "node" ? describeNode(h.i) : describeEdge(h.e)) +
+    (active && active.hud ? active.hud(h) : "");
 });
 $("fit").addEventListener("click", () => map.fit());
 
 /* ---------------------------------------------------------------------- views */
-/* Each view gets the map and the panel, sets what it needs on enter, and undoes it on
-   leave. None is built yet beyond the plain network: the steps' own screens arrive one
-   commit each. */
-const VIEWS = {};
+const { views: VIEWS, long: LONG } = SV.make({
+  G, RAW, F, C, K, P, ST, CODES, VALID, map, esc, row, $,
+});
 
 function placeholder(step) {
   $("panel").innerHTML =
@@ -80,7 +84,7 @@ function placeholder(step) {
 }
 
 /* --------------------------------------------------------------------- routing */
-let current = 0, active = null;
+let current = 0;
 
 const stepFromHash = () => {
   const k = parseInt(location.hash.slice(1), 10);
@@ -104,6 +108,7 @@ function show(k) {
   const step = STEPS[k - 1];
 
   if (active && active.leave) active.leave(map);
+  LONG.hide();
   map.reset();
   current = k;
 

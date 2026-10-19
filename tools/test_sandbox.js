@@ -436,6 +436,21 @@ console.log("story takeaways render from the data");
     Object.keys(W).filter(k => W[k] > W.greedy), []);
   check("compare: the random baseline is seeded, so the takeaway is stable",
     ST.facts({ raw, C, K, codes: D.codes }).compare().watched.random, W.random);
+  check("compare: every method is listed once, greedy first",
+    [ST.METHODS[0][0], ST.METHODS.map(r => r[0]).sort().join()], ["greedy", Object.keys(W).sort().join()]);
+  check("flow: by node levels, one reach rises and two run level",
+    [F.flow().rising.length, F.flow().level.length], [1, 2]);
+  const cav = ST.CAVEATS.map(c => c.text(F));
+  check("caveats: each has a title, a source and a text with no undefined or NaN",
+    ST.CAVEATS.filter((c, i) => c.title && c.src && cav[i] && !/undefined|NaN/.test(cav[i])).length, ST.CAVEATS.length);
+  /* Every step's view must exist on the page, or the step falls back to a placeholder
+     and nothing fails. The views file is browser code, so its keys are read as text. */
+  const vsrc = require("fs").readFileSync(path.join(ROOT, "src/ui/osp_story_views.js"), "utf8");
+  const vm = vsrc.match(/return \{ views: \{([^}]*)\}/);
+  const built = vm ? vm[1].split(",").map(x => x.trim()).filter(Boolean) : [];
+  check("every step has a view on the page", ST.STEPS.map(s => s.view).filter(v => !built.includes(v)), []);
+  check("every caveat highlight is one the page draws",
+    ST.CAVEATS.map(c => c.show).filter(k => !new RegExp("\\b" + k + ": \\(").test(vsrc)), []);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

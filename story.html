@@ -43,7 +43,14 @@ button,a.btn{font:inherit;font-size:13px;border-radius:7px;cursor:pointer;text-d
 
 /* ---------- stage: map and the step's panel ---------- */
 #stage{flex:1;min-height:0;display:grid;grid-template-columns:1fr 320px}
-#mapwrap{position:relative;min-width:0;min-height:0}
+#mapcol{display:flex;flex-direction:column;min-width:0;min-height:0}
+#mapwrap{position:relative;flex:1;min-width:0;min-height:0}
+/* The long section, for the steps that cut one. Hidden unless a view opens it. */
+#lower{position:relative;flex:0 0 40%;min-height:220px;border-top:1px solid var(--line)}
+#lower[hidden]{display:none}
+#prof{position:absolute;inset:0;width:100%;height:100%;display:block}
+#prof-close{position:absolute;right:10px;top:8px;background:var(--panel);border:1px solid var(--line);
+  color:var(--ink-dim);padding:2px 9px;font-size:12px}
 #map{position:absolute;inset:0;width:100%;height:100%;display:block}
 #hud{position:absolute;left:12px;top:12px;max-width:280px;padding:8px 11px;font-size:12px;line-height:1.5;
   background:rgba(17,28,47,.94);border:1px solid var(--line);border-radius:8px;pointer-events:none;display:none}
@@ -56,6 +63,40 @@ button,a.btn{font:inherit;font-size:13px;border-radius:7px;cursor:pointer;text-d
 #panel p{margin:8px 0}
 .todo{border:1px dashed var(--line);border-radius:8px;padding:10px 12px;font-size:13px}
 
+/* ---------- what the views put in the panel ---------- */
+.stat{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid var(--line);font-size:13px}
+.stat b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.big{font-size:28px;font-weight:700;color:var(--ink);line-height:1.1;font-variant-numeric:tabular-nums}
+.big small{font-size:13px;font-weight:400;color:var(--ink-dim)}
+.hint{font-size:12px;color:var(--ink-faint);margin:6px 0}
+.sec{margin-top:16px}
+.seg{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
+.seg button{background:var(--panel-2);border:1px solid var(--line);color:var(--ink-dim);padding:3px 9px;font-size:12px}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:#04111d;font-weight:600}
+.legend{display:grid;grid-template-columns:auto 1fr auto;gap:3px 8px;align-items:center;font-size:12.5px;margin:6px 0}
+.legend .n{color:var(--ink-faint);font-variant-numeric:tabular-nums;text-align:right}
+.sw{display:inline-block;width:14px;height:4px;border-radius:2px}
+.sw.dot{width:9px;height:9px;border-radius:99px}
+.rows{display:flex;flex-direction:column;gap:2px;margin:6px 0}
+.rows button{display:flex;align-items:center;gap:8px;text-align:left;background:none;border:1px solid transparent;
+  color:var(--ink-dim);padding:3px 6px}
+.rows button:hover,.rows button.on{border-color:var(--line);background:var(--panel-2);color:var(--ink)}
+.bar{flex:1;height:6px;border-radius:3px;background:var(--line);position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:3px}
+.rows .num{min-width:34px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.rows .lab{width:132px;flex:0 0 auto}
+label.range{display:block;font-size:12.5px;margin:10px 0 2px}
+label.range b{color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.act{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);padding:4px 11px;margin:4px 4px 0 0}
+.card{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;cursor:pointer;background:none;
+  color:inherit;text-align:left;width:100%;display:block}
+.card.on{border-color:var(--accent);background:var(--panel-2)}
+.card h3{margin:0;font-size:13px;color:var(--ink)}
+.card p{margin:4px 0 0;font-size:12.5px}
+.card .src{font-size:11px;color:var(--ink-faint)}
+canvas.chart{width:100%;height:150px;display:block;margin-top:6px}
+
 /* Phone: the description folds behind a toggle so the map keeps its room, and the
    panel moves under the map. */
 @media (max-width:640px){
@@ -65,6 +106,7 @@ button,a.btn{font:inherit;font-size:13px;border-radius:7px;cursor:pointer;text-d
   #desc{display:none}
   #desc.open{display:block}
   #stage{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}
+  #lower{min-height:180px}
   #panel{border-left:0;border-top:1px solid var(--line);max-height:38vh}
 }
 </style>
@@ -89,10 +131,16 @@ button,a.btn{font:inherit;font-size:13px;border-radius:7px;cursor:pointer;text-d
     <p id="takeaway"></p>
   </header>
   <main id="stage">
-    <div id="mapwrap">
-      <canvas id="map" aria-label="Map of the network"></canvas>
-      <div id="hud"></div>
-      <button id="fit">Fit to network</button>
+    <div id="mapcol">
+      <div id="mapwrap">
+        <canvas id="map" aria-label="Map of the network"></canvas>
+        <div id="hud"></div>
+        <button id="fit">Fit to network</button>
+      </div>
+      <div id="lower" hidden>
+        <canvas id="prof" aria-label="Long section along one route"></canvas>
+        <button id="prof-close">Close</button>
+      </div>
     </div>
     <aside id="panel"></aside>
   </main>
@@ -103,7 +151,9 @@ button,a.btn{font:inherit;font-size:13px;border-radius:7px;cursor:pointer;text-d
 <script src="src/model/osp_capacity.js?v=1"></script>
 <script src="src/model/osp_risk.js?v=1"></script>
 <script src="src/ui/osp_map.js?v=1"></script>
+<script src="src/ui/osp_profile.js?v=1"></script>
 <script src="src/docs/osp_story.js?v=1"></script>
+<script src="src/ui/osp_story_views.js?v=1"></script>
 <script src="src/ui/osp_story_ui.js?v=1"></script>
 </body>
 </html>
