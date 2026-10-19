@@ -25,6 +25,7 @@
     "_note": "Allowed: true | false for each page. Which pages the site offers. false removes that page's tab, overview card and pane; a deep link to it falls back to the overview. Overview and Sandbox cannot be hidden: the overview is the fallback, and its prose links to the sandbox mid-sentence.",
     "anatomy": true,
     "observability": true,
+    "story": true,
     "sim1": false,
     "sim2": false,
     "sim25": true,

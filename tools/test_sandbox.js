@@ -102,6 +102,16 @@ console.log("repository hygiene");
     check(`${html}: every script carries the same cache key`, keys.size, 1);
   }
 
+  /* The story loads the sandbox's data and models, so it shares the sandbox's cache key:
+     bump one and the other must follow, or one page is served a stale model behind a
+     fresh one. The landing page embeds each at that same key. */
+  const keyOf = html => (fs.readFileSync(path.join(ROOT, html), "utf8").match(/<script src="[^"]+\?v=(\d+)"/) || [])[1];
+  const home = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const frameKey = page => (home.match(new RegExp(`data-src="${page.replace(".", "\\.")}\\?v=(\\d+)`)) || [])[1];
+  check("story.html and the sandbox share one cache key, and index.html embeds both at it",
+    [keyOf("story.html"), frameKey("story.html"), frameKey("osp_sandbox.html")],
+    [keyOf("osp_sandbox.html"), keyOf("osp_sandbox.html"), keyOf("osp_sandbox.html")]);
+
   /* The data files are generated, and tools/format_data.py reads them by pulling
      the object text out and handing it to a JSON parser. A JS comment inside that
      object is legal JavaScript, so the page and these tests load it happily, and
