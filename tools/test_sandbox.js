@@ -74,7 +74,7 @@ console.log("repository hygiene");
      Parsing cannot catch that and neither can a 200 from the server, so the order
      is checked here: whatever a script reads from window at the top level must be
      defined by a script the page loads earlier. */
-  for (const html of ["osp_sandbox.html", "story.html"]) {
+  for (const html of ["osp_sandbox.html", "story.html", "story_growth.html"]) {
     const page = fs.readFileSync(path.join(ROOT, html), "utf8");
     const order = [...page.matchAll(/<script src="([^"?]+)/g)].map(m => m[1]);
     const definedBy = new Map();
@@ -94,9 +94,11 @@ console.log("repository hygiene");
     });
     check(`${html}: scripts load in dependency order`, misordered, []);
     // The models take their settings from config.js when they load, so it must come first.
-    check(`${html}: config.js loads before the models`,
-      order.indexOf("config.js") >= 0 && order.indexOf("config.js") < order.indexOf("src/model/osp_capacity.js")
-      && order.indexOf("config.js") < order.indexOf("src/model/osp_risk.js"), true);
+    // A page that loads neither settings-reading model (story_growth.html) is exempt.
+    const reads = ["src/model/osp_capacity.js", "src/model/osp_risk.js"].filter(f => order.includes(f));
+    if (reads.length)
+      check(`${html}: config.js loads before the models`,
+        order.indexOf("config.js") >= 0 && reads.every(f => order.indexOf("config.js") < order.indexOf(f)), true);
     // One cache key per page: a script left on an old key is served stale behind a new page.
     const keys = new Set([...page.matchAll(/<script src="[^"]+\?v=(\d+)"/g)].map(m => m[1]));
     check(`${html}: every script carries the same cache key`, keys.size, 1);
@@ -111,6 +113,11 @@ console.log("repository hygiene");
   check("story.html and the sandbox share one cache key, and index.html embeds both at it",
     [keyOf("story.html"), frameKey("story.html"), frameKey("osp_sandbox.html")],
     [keyOf("osp_sandbox.html"), keyOf("osp_sandbox.html"), keyOf("osp_sandbox.html")]);
+  /* Part 2 of the story reads Sim 2.5's published data, so it follows that page's key:
+     tools/build_sim25_web.py --publish moves the Sim 2.5 key, and this fails until the
+     story follows. */
+  check("story_growth.html shares Simulation 2.5's cache key",
+    keyOf("story_growth.html"), keyOf("simulation25/index.html"));
 
   /* The data files are generated, and tools/format_data.py reads them by pulling
      the object text out and handing it to a JSON parser. A JS comment inside that
@@ -461,6 +468,61 @@ console.log("story takeaways render from the data");
   check("every step has a view on the page", ST.STEPS.map(s => s.view).filter(v => !built.includes(v)), []);
   check("every caveat highlight is one the page draws",
     ST.CAVEATS.map(c => c.show).filter(k => !new RegExp("\\b" + k + ": \\(").test(vsrc)), []);
+}
+
+/* Part 2 of the story reads Sim 2.5's published grid and scores with the Sim 2.5 page's own
+   placement.js, so its figures are checked against the builder's published ones: if the
+   grid is re-run these move together, and the story's text is re-read deliberately. */
+console.log("story part 2 (growth) renders from the Sim 2.5 data");
+{
+  const fs = require("fs");
+  const data = f => path.join(ROOT, "simulation25/data", f);
+  if (fs.existsSync(data("growth.js")) && fs.existsSync(data("index.js"))) {
+    const saved = global.window;
+    global.window = {};
+    for (const f of ["catchment.js", "growth.js", "index.js"]) {
+      delete require.cache[require.resolve(data(f))];
+      require(data(f));
+    }
+    const g = window.GROWTH_GEOM, R = window.GROWTH_RUNS, I = window.GROWTH_INDEX;
+    global.window = saved;
+    const PL = require(path.join(ROOT, "simulation25/placement.js"));
+    const SG = require(path.join(ROOT, "src/docs/osp_story_growth.js"));
+    const F = SG.facts({ g, R, I, C, PL });
+    const text = SG.STEPS.map(s => s.takeaway(F));
+    check("eight steps, each with a title, description and takeaway",
+      SG.STEPS.filter(s => s.title && s.description && typeof s.takeaway === "function").length, 8);
+    check("every step names its own view, and the comparison comes last",
+      [new Set(SG.STEPS.map(s => s.view)).size, SG.STEPS[SG.STEPS.length - 1].view], [8, "compare"]);
+    check("no undefined or NaN in any takeaway or caveat",
+      text.concat(SG.CAVEATS.map(c => c.text(F, I))).filter(t => !t || /undefined|NaN/.test(t)).length, 0);
+    check("the map's graph is Sim 2.5's, with a drawn line for every pipe",
+      [F.graph().G.n, F.graph().G.polylines.length, F.graph().G.polylines.every(l => l.length >= 2)],
+      [g.nodes.length, g.nPipes, true]);
+    check("every chamber is a node on the map", [...F.graph().nodeOfChamber].filter(v => v < 0).length, 0);
+    check("baseline over the alarm, by case", F.cases().map(c => c.over), R.baseOver.map(a => a.length));
+    const s = F.sensors();
+    check("sensors: the takeaway reads the builder's published curve", s.r25worst, R.sensors.r25.worst.worst);
+    /* The one shared sensor's worst-case share, recomputed by placement.js, must equal the
+       builder's first point on its published worst-case curve. */
+    check("robust: one shared sensor's worst case is the builder's first point",
+      ["alarm", "r25"].map(r => Math.abs(F.detect().sharedWorst(r) - R.sensors[r].worst.worst[0]) < 1e-4), [true, true]);
+    const cmp = F.compare();
+    check("compare: every method placed and scored both ways",
+      cmp.rows.filter(r => r.set.length === cmp.k && isFinite(r.worst) && isFinite(r.mean) && r.blockage >= 0).length,
+      PL.METHODS.length);
+    check("compare: the growth greedy is the published one",
+      Math.abs(cmp.by.swmm.worst - R.sensors[cmp.rule][cmp.obj].worst[cmp.k - 1]) < 1e-9, true);
+    check("compare: part 1's blockage greedy watches the most nodes on the blockage measure",
+      cmp.rows.filter(r => r.blockage > cmp.by.celf.blockage).map(r => r.id), []);
+
+    const vsrc = fs.readFileSync(path.join(ROOT, "src/ui/osp_story_growth_views.js"), "utf8");
+    const vm = vsrc.match(/return \{ views: \{([^}]*)\}/);
+    const built = vm ? vm[1].split(",").map(x => x.trim()).filter(Boolean) : [];
+    check("every step has a view on the page", SG.STEPS.map(s => s.view).filter(v => !built.includes(v)), []);
+    check("every caveat highlight is one the page draws",
+      SG.CAVEATS.map(c => c.show).filter(k => !new RegExp("\\b" + k + ": \\(").test(vsrc)), []);
+  }
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

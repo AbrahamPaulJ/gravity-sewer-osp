@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OSP Story: growth</title>
+<link rel="stylesheet" href="src/ui/osp_story.css?v=81">
+</head>
+<body data-part="growth">
+<div id="app">
+  <header id="head">
+    <div id="bar">
+      <div id="lead">
+        <nav id="parts" aria-label="Story parts"><a href="story.html">1 Blockage</a><a href="story_growth.html" aria-current="page">2 Growth</a></nav>
+        <nav id="dots" aria-label="Story progress"><span id="count"></span></nav>
+      </div>
+      <div id="nav">
+        <span id="keys">&larr; &rarr; to move</span>
+        <button id="back">Back</button>
+        <button id="next"></button>
+        <a class="btn go2 onlast" href="story.html" hidden>Back to part 1</a>
+        <a class="btn go onlast" href="index.html#sim25" target="_top" hidden>Open Simulation 2.5</a>
+      </div>
+    </div>
+    <div id="titlerow">
+      <h1 id="title"></h1>
+      <button id="more" aria-expanded="false" aria-controls="desc">How to use this</button>
+    </div>
+    <p id="desc"></p>
+    <p id="takeaway"></p>
+  </header>
+  <main id="stage">
+    <div id="mapcol">
+      <div id="mapwrap">
+        <canvas id="map" aria-label="Map of the network"></canvas>
+        <div id="hud"></div>
+        <button id="fit">Fit to network</button>
+      </div>
+    </div>
+    <aside id="panel"></aside>
+  </main>
+</div>
+<script src="simulation25/data/catchment.js?v=81"></script>
+<script src="simulation25/data/growth.js?v=81"></script>
+<script src="simulation25/data/index.js?v=81"></script>
+<script src="simulation25/osp_core.js?v=81"></script>
+<script src="simulation25/placement.js?v=81"></script>
+<script src="data/osp_data.js?v=81"></script>
+<script src="src/ui/osp_map.js?v=81"></script>
+<script src="src/docs/osp_story.js?v=81"></script>
+<script src="src/docs/osp_story_growth.js?v=81"></script>
+<script src="src/ui/osp_story_growth_views.js?v=81"></script>
+<script src="src/ui/osp_story_ui.js?v=81"></script>
+</body>
+</html>
