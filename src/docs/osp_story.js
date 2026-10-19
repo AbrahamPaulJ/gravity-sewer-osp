@@ -46,6 +46,9 @@ const ALGOS = [
   ["indeg", "highest in-degree"],
 ];
 
+/* Every method in the comparison, greedy first, as the compare view lists them. */
+const METHODS = [["greedy", "greedy"]].concat(ALGOS, [["random", "best of 20 random"]]);
+
 /* Seeded, so the random baseline in a takeaway is the same on every load. */
 function mulberry32(a) {
   return function () {
@@ -53,6 +56,26 @@ function mulberry32(a) {
     let t = Math.imul(a ^ a >>> 15, 1 | a);
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* Every method the comparison runs, at budget b, on a graph whose g.obs is already
+   computed. One function, so the takeaway and the compare view's budget slider place
+   sensors the same way. The weight vectors are computed once per graph: they do not
+   depend on the budget. */
+function placements(g, C, b) {
+  const w = g._storyW || (g._storyW = {
+    upstream: C.upstreamSize(g, null), between: C.betweenness(g, null),
+    outdeg: C.degreeWeight(g, null, "out"), indeg: C.degreeWeight(g, null, "in"),
+  });
+  return {
+    greedy: C.greedy(g, b, "nodes"),
+    twoupdown: C.twoUpTwoDown(g, b, 2, 2, "nodes").sensors,
+    upstream: C.topBy(g, b, i => w.upstream[i]),
+    between: C.topBy(g, b, i => w.between[i]),
+    outdeg: C.topBy(g, b, i => w.outdeg[i]),
+    indeg: C.topBy(g, b, i => w.indeg[i]),
+    random: C.randomPlace(g, b, "nodes", 20, mulberry32(1)).sensors,
   };
 }
 
@@ -103,6 +126,11 @@ function facts(ctx) {
         reaches: st.pipes_used,
         fromField: st.direction.from_field, fromGeometry: st.direction.geometry_fallback,
         hasCycle: st.has_cycle, invertBad: st.invert_violations,
+        /* The harvest counted invertBad from each pipe's own end levels, which the
+           payload does not carry. What it does carry is one invert per node, and read
+           that way these reaches rise or run level. */
+        rising: raw.edges.map((e, k) => k).filter(k => raw.nodes.inv[raw.edges[k][1]] > raw.nodes.inv[raw.edges[k][0]]),
+        level: raw.edges.map((e, k) => k).filter(k => raw.nodes.inv[raw.edges[k][1]] === raw.nodes.inv[raw.edges[k][0]]),
       };
     }),
 
@@ -147,20 +175,14 @@ function facts(ctx) {
 
     compare: once("compare", () => {
       const g = headroom(), b = BUDGET;
-      const placed = {
-        greedy: C.greedy(g, b, "nodes"),
-        twoupdown: C.twoUpTwoDown(g, b, 2, 2, "nodes").sensors,
-        upstream: (u => C.topBy(g, b, i => u[i]))(C.upstreamSize(g, null)),
-        between: (w => C.topBy(g, b, i => w[i]))(C.betweenness(g, null)),
-        outdeg: (d => C.topBy(g, b, i => d[i]))(C.degreeWeight(g, null, "out")),
-        indeg: (d => C.topBy(g, b, i => d[i]))(C.degreeWeight(g, null, "in")),
-        random: C.randomPlace(g, b, "nodes", 20, mulberry32(1)).sensors,
-      };
-      const watched = {};
+      const placed = placements(g, C, b), watched = {};
       for (const k in placed) watched[k] = C.score(g, placed[k]).nodes;
       const best = ALGOS.reduce((a, r) => (watched[r[0]] > watched[a[0]] ? r : a));
       return { budget: b, placed, watched, bestRule: { id: best[0], label: best[1] } };
     }),
+
+    /* The observability graph the facts above are read from, for a view that draws them. */
+    graph: headroom,
   };
 }
 
@@ -275,5 +297,59 @@ const STEPS = [
   },
 ];
 
-return { STEPS, CITED, THRESHOLD_M, BUDGET, DEMAND, facts };
+/* What every result above rests on, one card each on the caveats step: README "Limits",
+   restated with the loaded data's own figures. `show` names what the map highlights
+   while the card is open. The register in the sandbox's Assumptions tab stays the
+   canonical list; these are the ones a first reader most needs. */
+const CAVEATS = [
+  {
+    title: "Nothing is checked against a recorded blockage",
+    src: "README, Limits 1", show: "none",
+    text: () => "No public source lists past chokes or overflows, so every result says which " +
+      "chambers would see a blockage under this model, not which ever did.",
+  },
+  {
+    title: "The detection threshold is declared, not calibrated",
+    src: "README, Limits 2", show: "blind",
+    text: F => `${Math.round(THRESHOLD_M * 100)} cm is a setting, and no sensor readings for this ` +
+      `network are public. At that setting ${F.sight().blind} nodes see nothing, shown on the map.`,
+  },
+  {
+    title: "Depths rest mostly on contours",
+    src: "README, Data", show: "contour",
+    text: F => `${F.data().contour} of ${n(F.data().nodes)} cover levels are read from 1 m contours ` +
+      `and ${F.data().surveyed} are surveyed, the only ones the contours can be checked against. ` +
+      `A cover level that is out moves where backed-up water escapes, and so what a sensor sees.`,
+  },
+  {
+    title: "Property relief gullies are published nowhere",
+    src: "README, Limits 3", show: "none",
+    text: () => "They are usually the lowest opening, so they decide where water escapes. Their " +
+      "level is reasoned from the plumbing standard, not measured.",
+  },
+  {
+    title: "The network is clipped to a council boundary",
+    src: "README, Limits 4", show: "fragments",
+    text: F => `Anything near the edge is wrong in a known direction. ${F.network().components - 1} of the ` +
+      `${F.network().components} networks are fragments the boundary cut off, shown on the map, and ` +
+      `flow entering from outside is never counted, so edge reaches look healthier than they are.`,
+  },
+  {
+    title: "Demand is a setting, not a measurement",
+    src: "README, Limits 5", show: "surcharge",
+    text: F => {
+      const L = F.capacity().ladder, hi = L[L.length - 1];
+      return `The load per chamber is a slider, and it moves the headline: ${L[0].surcharged} chambers ` +
+        `surcharge at ${L[0].perNode} L/s and ${hi.surcharged} at ${hi.perNode} L/s, shown on the map.`;
+    },
+  },
+  {
+    title: "Greedy is not shown to be optimal",
+    src: "the compare step", show: "none",
+    text: () => "Greedy beats every rule here, but no exact optimum was solved on this network, so " +
+      "the distance to the best possible layout is not known.",
+  },
+];
+
+return { STEPS, CITED, CAVEATS, METHODS, THRESHOLD_M, BUDGET, DEMAND, facts, placements };
 });
