@@ -85,15 +85,31 @@ way, at a fold no step size passes. SWMM gets there by stepping through time. So
 surcharged conditions the practical method is one SWMM baseline per condition, then the
 network solve for every growth scenario from it: 1 SWMM run where the grid needed 1,641.
 
-### Growth scenarios, all conditions
+### Growth scenarios
 
-To be filled from `score_all.py` when `run_all.py` has finished every condition. The two
-conditions finished first:
+Four of the 17 committed conditions are solved (`results/approx/allcond/whole/`, 1,640
+scenarios each): every whole-area case but Severe. Two runs of `run_all.py` were stopped by
+the machine running low on memory, not by a fault; it resumes where it stopped. Still to run:
+whole-area Severe (its SWMM baseline is saved) and the 12 segment cases, which add I&I 0.25,
+the Harmon peak factor and outside inflow x0.5.
 
-| Condition | Runs converged | SWMM detections found / own false, at 10, 25, 50 mm | Median rise error where SWMM >= 10 mm |
-|---|---|---|---|
-| Dry (cold start) | 100% | 100/2, 100/0, 99/0 | 0.0 mm |
-| Design wet + outside x1.5 (one SWMM baseline) | 90% | 93/5, 91/13, 88/9 | 15.5 mm |
+SWMM detections found / the method's own detections that are false, at rises of 10, 25, 50 mm:
+
+| Condition | Baseline from | Runs converged | Network solve | One-pass method | Median rise error where SWMM >= 10 mm (network / one-pass) |
+|---|---|---|---|---|---|
+| Dry | cold start | 100% | 100/2, 100/0, 99/0 | 99/12, 99/6, 93/46 | 0.0 / 0.0 mm |
+| Design wet | cold start | 95% | 97/2, 98/3, 95/1 | 100/12, 100/16, 100/17 | 0.9 / 1.9 mm |
+| Design wet + age-weighted I&I | cold start | 95% | 99/3, 99/3, 96/1 | 88/14, 80/17, 82/25 | 0.5 / 7.6 mm |
+| Design wet + outside inflow x1.5 | one SWMM baseline | 90% | 93/5, 91/13, 88/9 | 99/17, 100/23, 99/30 | 15.5 / 18.7 mm |
+
+A run that does not converge (by Newton, then pseudo-transient stepping) keeps its last
+iterate, so its rises are scored as they are.
+
+Sensors chosen on each method's rises, worst-case greedy over these four conditions, scored on
+SWMM's (worst case / mean, 5 sensors): at 10 mm, network solve 47/62, one-pass 46/68, SWMM's own
+greedy 51/70; at 25 mm, 57/65, 64/76, 56/65; at 50 mm, 59/72, 58/66, 61/75. The network solve's
+choice is close to SWMM's own at every rule. SWMM's greedy is not optimal, which is how a method
+scored on SWMM can beat it.
 
 ## Limits
 
