@@ -9,6 +9,11 @@ they were run on and every run's output, so each result can be reproduced or che
 | Simulation 2, growth (superseded) | `catchment.py`, `growth_grid.py` | `python growth_grid.py` |
 | Simulation 2.5, growth and sensor placement | `sim25.py`, `sim25_grid.py` | see below |
 
+`approx/` checks whether Simulation 2.5's answers can be had without a SWMM run per scenario
+(a network solve by Newton's method, and a one-pass backwater method), measured against the
+committed grids. It also documents that SWMM's slot carries 12 to 19% more than a full pipe
+in deeply surcharged pipes. See `approx/README.md`.
+
 ## Setup
 
 Python 3.11. `pip install -r requirements.txt` (pyvista only for the desktop viewer
