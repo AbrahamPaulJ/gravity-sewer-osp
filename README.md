@@ -40,6 +40,10 @@ instead of a plain web server:
 ~/.venvs/sewer/bin/python simulation_src/sim25_serve.py      # http://localhost:8001
 ```
 
+A page opened from another local server (say `python3 -m http.server 8000`) finds the runner at
+port 8001 too, as long as it is running. Without it, **Run in SWMM** and the pump rates stay
+disabled and the page says so under the buttons.
+
 ## The problem
 
 Blockages in gravity sewers cause overflows. Utilities fit level sensors in maintenance holes to
@@ -256,6 +260,7 @@ marks 13 Oct 2026.
 | 14 Oct 2026 | All settings in one `config.js`, read by the browser, Node and Python. House connections drawn from the published connection layer, bends included, and checked line for line against the council map viewer; a Connections chip shows every one at its bore. Map controls: drag turns, right-drag moves, the wheel zooms to the pointer. Homes can sit at their main's level or above it. Pump stations at a set rate in growth scenarios (option A, below). |
 | 15 Oct 2026 | Validation end to end: cases, growth sizes, rules, sensors, depths and overflows checked against the SWMM runs and on 400 page views. Overflow (spills from the lid) and rises below the rule shown on the map. Pumps in rated scenarios follow a head curve, so a station delivers less as the level it pumps against rises; overflow pipe 4433446, which sent N183's discharge back to its own wet well, relieves only when surcharged in those scenarios. |
 | 16 Oct 2026 | Simulation 2.5 map made simpler to read: a **None** growth size, to select manholes and see the network before any growth; **Datum & ruler** and **Raised homes** toggles (the datum and ruler hidden by default; raised homes replace the `display` setting, removed from `config.js`); a one-line legend that shows only what is on the map, with the full key on demand; the scenario's **+ Add by number** list in manhole-number order; explanations folded behind ⓘ buttons; the optional map layers (heatmap, pump stations, house connections, datum and ruler, raised homes) in one **Layers** menu; the page opening on **None** with nothing selected. No result changes. |
+| 22 Oct 2026 | Simulation 2.5 fixes: a page served from another local port finds the SWMM runner at port 8001 (the runner answers localhost pages only), and a page with no runner says so under **Run in SWMM**, not only in a tooltip; the heatmap, pump-station, house-connection and whole-area keys show with their layer again, outside the collapsed full legend. No result changes. |
 
 **Pumps, now and next.** Every published result uses SWMM's ideal pumps, which pass on whatever
 reaches a wet well at once. Since 14 Oct 2026 a growth scenario may instead run the two modelled

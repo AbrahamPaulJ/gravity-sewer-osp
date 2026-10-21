@@ -172,10 +172,10 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 #pumpList .prow .rs:hover{color:var(--ink)}
 #pumpList .prow.changed input{border-color:#e3b341}
 #pumpNote{font-size:11.5px; margin:4px 0 0}
-#pumpBox .warnBox{margin:6px 0 2px; padding:7px 9px; font-size:11.5px; line-height:1.45; color:#e3b341;
+#scnBox .warnBox{margin:6px 0 2px; padding:7px 9px; font-size:11.5px; line-height:1.45; color:#e3b341;
   background:#3d2f1233; border:1px solid #e3b34166; border-radius:5px}
-#pumpBox .warnBox[hidden]{display:none}
-#pumpBox .warnBox code{font-size:10.5px; color:#f0d38a}
+#scnBox .warnBox[hidden]{display:none}
+#scnBox .warnBox code{font-size:10.5px; color:#f0d38a}
 .labels .lbl.pumprate{color:#e3b341; font-weight:600; transform:translate(-50%,160%)}
 .pipeCard button.pumpSet{margin:8px 0 2px; width:100%; padding:5px 8px; font-size:12px; cursor:pointer;
   background:#1f2a3a; color:#c9d1d9; border:1px solid #30363d; border-radius:5px}
@@ -237,6 +237,8 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .legend .lgShort{display:flex; gap:6px 16px; flex-wrap:wrap; align-items:center}
 .legend .lgFull{display:grid; gap:7px; padding-top:8px; margin-top:6px; border-top:1px solid #21262d}
 .legend .lgFull[hidden]{display:none}
+/* A layer's key shows with the layer, outside the collapsed full legend. */
+.legend .lgLayers>.grp{padding-top:8px; margin-top:6px; border-top:1px solid #21262d}
 .legend [data-ctx][hidden]{display:none}
 #lgToggle{margin-left:auto; font:inherit; font-size:11.5px; padding:2px 9px; cursor:pointer; border-radius:5px;
   background:transparent; color:#8b949e; border:1px solid #30363d}
@@ -371,9 +373,6 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
          cannot model stop-start pumping. Shown where the map has modelled stations. -->
     <div id="pumpBox" hidden>
       <div class="pumpRow"><label class="pumpOn"><input type="checkbox" id="pumpOn"> Pump stations at set rates</label> <button class="ib" data-for="pumpNote" aria-expanded="false" title="What pump rates means">&#9432;</button></div>
-      <p id="pumpWarn" class="warnBox" hidden><b>Needs the SWMM runner.</b> This page is served by a
-        plain web server, so pump rates cannot be solved and changing them changes nothing. Serve the
-        site with <code>~/.venvs/sewer/bin/python simulation_src/sim25_serve.py</code> and reload.</p>
       <div id="pumpList"></div>
       <p class="quiet fold" id="pumpNote" hidden></p>
     </div>
@@ -381,6 +380,10 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
       <button id="scnRun" class="primary">Run in SWMM</button>
       <button id="scnClear">Clear</button>
     </div>
+    <p id="runWarn" class="warnBox" hidden><b>No SWMM runner found.</b> Run in SWMM and pump
+      rates need it; until then the page shows its estimate. Start it with
+      <code>~/.venvs/sewer/bin/python simulation_src/sim25_serve.py</code> and reload. It serves
+      the site at localhost:8001, and a page opened from another local port finds it too.</p>
     <div id="scnStatus" class="quiet"></div>
   </div>
 
@@ -460,7 +463,7 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
       <span data-ctx="sensors"><span class="k" style="background:#2ef56b"></span>sensor S1, S2, &hellip;</span>
       <button id="lgToggle" aria-expanded="false" aria-controls="lgFull">Full legend &#9656;</button>
     </div>
-    <div class="lgFull" id="lgFull" hidden>
+    <div class="lgLayers">
       <div class="grp" id="heatKey" hidden><b>Heatmap</b>
         <span>rank by share of growth seen alone, <span id="heatWhich"></span>:</span>
         <span class="heatbar"><span>lowest</span><i></i><span>highest</span></span>
@@ -470,19 +473,6 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
         <span><span class="kl" style="background:#4f5d75"></span>rest of the network, solved, not a site or candidate</span>
         <span><span class="k" style="background:#f0f6fc"></span>outside inflow into the study area</span>
         <span><span class="k" style="background:#8b949e"></span>outside inflow elsewhere</span>
-      </div>
-      <div class="grp"><b>Pipes</b>
-        <span><span class="kl" style="background:#4c8bf5"></span>room to spare</span>
-        <span data-ctx="alarm"><span class="kl" style="background:#ffa500"></span>over the alarm before growth</span>
-        <span data-ctx="growth"><span class="kl" style="background:#ff2d55"></span>sees this growth</span>
-      </div>
-      <div class="grp"><b>Manholes</b>
-        <span data-ctx="growth"><span class="k" style="background:#ff2d55"></span>sees the growth (the selected rule)</span>
-        <span data-ctx="growth"><span class="k" style="background:#ff8c69"></span>rises &ge;10 mm, below the rule</span>
-        <span data-ctx="falls"><span class="k" style="background:#39d3c3"></span>falls &ge;10 mm</span>
-        <span data-ctx="alarm"><span class="k" style="background:#ffa500"></span>over the alarm before growth</span>
-        <span data-ctx="spillWas"><span class="kr" style="border-color:#bc8cff"></span>overflowing before growth</span>
-        <span data-ctx="spillNew"><span class="kr" style="border-color:#ff3df5"></span>overflows because of the growth</span>
       </div>
       <div class="grp" id="pumpKey" hidden><b>Pumped</b>
         <span><span class="ksq" style="background:#e3b341"></span>pump station</span>
@@ -496,6 +486,21 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
         <span><span class="kl" style="background:#8b949e"></span>branch to no property (<span id="connSpare"></span>)</span>
         <span><span class="kdl"></span>none published, a guess (<span id="connGuess"></span>)</span>
         <span>dot = the inspection point at the boundary; the house drain is private</span>
+      </div>
+    </div>
+    <div class="lgFull" id="lgFull" hidden>
+      <div class="grp"><b>Pipes</b>
+        <span><span class="kl" style="background:#4c8bf5"></span>room to spare</span>
+        <span data-ctx="alarm"><span class="kl" style="background:#ffa500"></span>over the alarm before growth</span>
+        <span data-ctx="growth"><span class="kl" style="background:#ff2d55"></span>sees this growth</span>
+      </div>
+      <div class="grp"><b>Manholes</b>
+        <span data-ctx="growth"><span class="k" style="background:#ff2d55"></span>sees the growth (the selected rule)</span>
+        <span data-ctx="growth"><span class="k" style="background:#ff8c69"></span>rises &ge;10 mm, below the rule</span>
+        <span data-ctx="falls"><span class="k" style="background:#39d3c3"></span>falls &ge;10 mm</span>
+        <span data-ctx="alarm"><span class="k" style="background:#ffa500"></span>over the alarm before growth</span>
+        <span data-ctx="spillWas"><span class="kr" style="border-color:#bc8cff"></span>overflowing before growth</span>
+        <span data-ctx="spillNew"><span class="kr" style="border-color:#ff3df5"></span>overflows because of the growth</span>
       </div>
       <div class="grp"><b>Points</b>
         <span><span class="k" style="background:#c9d1d9"></span>manhole (sensor candidate)</span>
@@ -525,14 +530,14 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=91"></script>
-<script src="data/growth.js?v=91"></script>
-<script src="data/index.js?v=91"></script>
-<script src="growth_3d.js?v=91"></script>
-<script src="osp_core.js?v=91"></script>
-<script src="placement.js?v=91"></script>
-<script src="growth_est.js?v=91"></script>
-<script src="growth_ui.js?v=91"></script>
+<script src="data/catchment.js?v=92"></script>
+<script src="data/growth.js?v=92"></script>
+<script src="data/index.js?v=92"></script>
+<script src="growth_3d.js?v=92"></script>
+<script src="osp_core.js?v=92"></script>
+<script src="placement.js?v=92"></script>
+<script src="growth_est.js?v=92"></script>
+<script src="growth_ui.js?v=92"></script>
 <script type="module">
   GrowthUI.init();
 </script>

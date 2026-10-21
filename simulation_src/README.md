@@ -59,7 +59,8 @@ the page always says which:
   ```
 
   It serves the repository like `python3 -m http.server`, and adds the endpoint the page's
-  **Run in SWMM** button calls. It solves a scenario with `sim25_grid._whole_task`, the
+  **Run in SWMM** button calls. A page served from another local port asks it at
+  `http://127.0.0.1:8001`; the API answers `localhost` and `127.0.0.1` origins only. It solves a scenario with `sim25_grid._whole_task`, the
   function the grid ran, so the answer is consistent with every published result: a single
   manhole at +150 in Design wet reproduces the grid's own run (the same 45 manholes rising,
   within 0.05 mm; all 328 baselines identical). About 25 s per scenario per case. Listens on
