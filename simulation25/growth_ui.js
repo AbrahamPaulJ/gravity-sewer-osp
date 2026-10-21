@@ -44,6 +44,11 @@ window.GrowthUI = (function () {
   // The SWMM runner's default address (simulation_src/sim25_serve.py), for a page that a
   // different local server serves.
   const RUNNER_LOCAL = "http://127.0.0.1:8001";
+  // Served from this computer, a runner can be started; on the public site it never can, as
+  // static hosting cannot run SWMM, so there the page points to a local copy instead.
+  const ON_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  const NO_RUNNER = ON_LOCAL ? "Start simulation_src/sim25_serve.py and reload to solve it in SWMM."
+    : "SWMM runs only on a local copy of this site (see the README).";
   const noGrowth = () => st.add === NO_GROWTH;
   function cell() {
     const R = runs(), rule = R.rules[st.rule].id;
@@ -551,10 +556,13 @@ window.GrowthUI = (function () {
     run.disabled = st.busy || (!st.scn.length && !st.pumpOn) || solved || st.runner !== true;
     run.textContent = st.busy ? "Solving…" : solved ? "Solved in SWMM" : "Run in SWMM";
     run.title = st.runner === true ? "Solve this scenario in EPA SWMM (about 25 s)"
-      : "Needs the local SWMM runner: simulation_src/sim25_serve.py";
+      : ON_LOCAL ? "Needs the local SWMM runner: simulation_src/sim25_serve.py"
+      : "SWMM runs only on a local copy of this site; see the README";
     $("#scnClear").disabled = (!st.scn.length && !st.pumpOn) || st.busy;
     // Say so on the page, not only in a tooltip, once the runner has been asked and not found.
     $("#runWarn").hidden = st.runner !== false;
+    $("#runWarnLocal").hidden = !ON_LOCAL;
+    $("#runWarnPublic").hidden = ON_LOCAL;
   }
 
   function renderPumps() {
@@ -602,7 +610,7 @@ window.GrowthUI = (function () {
         "With pump stations at set rates the answer comes from SWMM only: the estimate " +
         "cannot model a wet well filling and a pump starting and stopping. " +
         (st.runner === true ? "Press Run in SWMM (about 30 s)."
-          : "Run the site with simulation_src/sim25_serve.py to solve it.") + "</p>";
+          : NO_RUNNER) + "</p>";
       $("#tipList").innerHTML = "";
       return;
     }
@@ -623,7 +631,7 @@ window.GrowthUI = (function () {
           : "")
       : '<span class="badge est">Estimate</span>An instant estimate, not SWMM.' +
         (st.runner === true ? " Press Run in SWMM for the real answer."
-          : " For the real answer, run the site with simulation_src/sim25_serve.py.") +
+          : " " + NO_RUNNER) +
         ' <button class="ib" data-for="estNote" aria-expanded="' + openFolds.has("estNote") +
         '" title="How good the estimate is">&#9432;</button><span class="fold" id="estNote"' +
         (openFolds.has("estNote") ? "" : " hidden") + ">The estimate is " + EST_NOTE + "</span>";
@@ -671,8 +679,7 @@ window.GrowthUI = (function () {
   }
   async function runScn() {
     if ((!st.scn.length && !st.pumpOn) || st.busy) return;
-    if (st.runner !== true) return scnStatus("No SWMM runner here. Locally, start " +
-      "simulation_src/sim25_serve.py and reload; the public page shows the estimate only.");
+    if (st.runner !== true) return scnStatus("No SWMM runner here. " + NO_RUNNER);
     const key = scnKey(), R = runs(), t0 = Date.now();
     st.busy = true;
     renderScnList();
@@ -761,7 +768,7 @@ window.GrowthUI = (function () {
       .then(r => r.ok ? r.json() : null)
       .then(j => (j && j.ok && runs().cases.every(c => j.cases.includes(c.tag)) ? j : null))
       .catch(() => null);
-    const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && location.port !== "8001";
+    const local = ON_LOCAL && location.port !== "8001";
     ping("")
       .then(j => (j || !local ? { j, base: "" } : ping(RUNNER_LOCAL).then(k => ({ j: k, base: RUNNER_LOCAL }))))
       .then(({ j, base }) => {

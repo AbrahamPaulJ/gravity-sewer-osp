@@ -175,6 +175,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 #scnBox .warnBox{margin:6px 0 2px; padding:7px 9px; font-size:11.5px; line-height:1.45; color:#e3b341;
   background:#3d2f1233; border:1px solid #e3b34166; border-radius:5px}
 #scnBox .warnBox[hidden]{display:none}
+#scnBox .warnBox a{color:#f0d38a}
 #scnBox .warnBox code{font-size:10.5px; color:#f0d38a}
 .labels .lbl.pumprate{color:#e3b341; font-weight:600; transform:translate(-50%,160%)}
 .pipeCard button.pumpSet{margin:8px 0 2px; width:100%; padding:5px 8px; font-size:12px; cursor:pointer;
@@ -380,10 +381,18 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
       <button id="scnRun" class="primary">Run in SWMM</button>
       <button id="scnClear">Clear</button>
     </div>
-    <p id="runWarn" class="warnBox" hidden><b>No SWMM runner found.</b> Run in SWMM and pump
-      rates need it; until then the page shows its estimate. Start it with
-      <code>~/.venvs/sewer/bin/python simulation_src/sim25_serve.py</code> and reload. It serves
-      the site at localhost:8001, and a page opened from another local port finds it too.</p>
+    <!-- Without a runner: locally, how to start one; on the public site, why there is none. -->
+    <p id="runWarn" class="warnBox" hidden>
+      <span id="runWarnLocal"><b>No SWMM runner found.</b> Run in SWMM and pump rates need it;
+        until then the page shows its estimate. Start it with
+        <code>~/.venvs/sewer/bin/python simulation_src/sim25_serve.py</code> and reload. It serves
+        the site at localhost:8001, and a page opened from another local port finds it too.</span>
+      <span id="runWarnPublic" hidden><b>SWMM runs only on a local copy.</b> This public site is
+        static hosting, which cannot run SWMM, so Run in SWMM and pump rates are off here and the
+        page shows its instant estimate. To solve scenarios in SWMM, run the site on your own
+        computer as the <a href="https://github.com/AbrahamPaulJ/gravity-sewer-osp#what-is-here"
+        target="_blank" rel="noopener">README</a> describes.</span>
+    </p>
     <div id="scnStatus" class="quiet"></div>
   </div>
 
@@ -530,14 +539,14 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=92"></script>
-<script src="data/growth.js?v=92"></script>
-<script src="data/index.js?v=92"></script>
-<script src="growth_3d.js?v=92"></script>
-<script src="osp_core.js?v=92"></script>
-<script src="placement.js?v=92"></script>
-<script src="growth_est.js?v=92"></script>
-<script src="growth_ui.js?v=92"></script>
+<script src="data/catchment.js?v=93"></script>
+<script src="data/growth.js?v=93"></script>
+<script src="data/index.js?v=93"></script>
+<script src="growth_3d.js?v=93"></script>
+<script src="osp_core.js?v=93"></script>
+<script src="placement.js?v=93"></script>
+<script src="growth_est.js?v=93"></script>
+<script src="growth_ui.js?v=93"></script>
 <script type="module">
   GrowthUI.init();
 </script>
