@@ -19,8 +19,7 @@ Python 3.11. `pip install -r requirements.txt` (pyvista only for the desktop vie
 Every setting the project runs with is in one file, `config.js` at the repository root: which
 pages the site shows, the pipe attributes (roughness by material, infiltration weight by
 age, the sandbox's blockage-likelihood weights), the loads (people per house, litres per
-person, peaking), how the Simulation 2.5 map draws homes (`display`, read live by the page),
-pump stations at a set rate in scenarios (`pumps`), and Simulation 2.5's study area, growth
+person, peaking), pump stations at a set rate in scenarios (`pumps`), and Simulation 2.5's study area, growth
 sizes, alarm depth, detection rises, sensor limit and cases. The browser loads it as a script; Python reads it through
 `osp_config.py`. Its object is plain JSON, so keep double quotes and no comments or trailing
 commas inside it; explanations go in `"_"` keys. The comment at the top of the file says what
@@ -47,8 +46,11 @@ python test_simulation.py                            # the test suite
 ### Growth scenarios on the page, and the local SWMM runner
 
 The page's **Growth → Your scenario** builds a scenario of several manholes, each with its own
-number of new dwellings. The page is static and cannot run SWMM, so the answer comes from one
-of two places, and the page always says which:
+number of new dwellings: click a manhole on the map and press **+ Add the selected manhole**, or
+pick one from **+ Add by number** (all 328, in manhole-number order). In **At one manhole** mode,
+the growth size **None** selects a manhole without placing any growth, to look at the network as
+it is. The page is static and cannot run SWMM, so the answer comes from one of two places, and
+the page always says which:
 
 - **SWMM**, when the site is served by the local runner:
 

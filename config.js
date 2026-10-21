@@ -9,8 +9,6 @@
 //   pages                 the landing page, on reload.
 //   pipes.blockage_*      the sandbox, on reload.
 //   pipes.manning_*       the sandbox on reload; Simulation 2.5 after a re-run and republish.
-//   display               Simulation 2.5, on reload: how the map draws. Republish too
-//                         (tools/build_sim25_web.py --publish) so a copy hosted on its own follows.
 //   pumps                 Simulation 2.5 growth scenarios run in SWMM by the local runner
 //                         (simulation_src/sim25_serve.py): restart it after an edit, and
 //                         republish so the page shows the new default rates.
@@ -29,14 +27,6 @@
     "sim2": false,
     "sim25": true,
     "sim25legacy": true
-  },
-
-  "display": {
-    "_note": "How the Simulation 2.5 map draws things. Changes no result. The page reads this on reload; republish too so a copy of the page hosted on its own follows.",
-    "homes_level": "raised",
-    "_homes_level": "Allowed: \"main\" | \"raised\". main: each home sits at the level of the main its connection joins, so connections lie flat, as the utility's own map draws them. raised: each home sits raised_height_m above its main and its connection slopes down to it, which keeps the homes apart from the pipes but, with heights exaggerated x22, turns a 6.7 m connection into a near-vertical stick.",
-    "raised_height_m": 2.0,
-    "_raised_height_m": "Allowed: a number of metres from 0 to 20. Used only when homes_level is \"raised\"; about 0.5 to 1 keeps the homes apart from the pipes without the sticks."
   },
 
   "pumps": {
