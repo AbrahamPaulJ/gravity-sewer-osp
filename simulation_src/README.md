@@ -44,6 +44,17 @@ python sim25_daily.py                                # the daily-cycle check
 python test_simulation.py                            # the test suite
 ```
 
+### Faster grid runs (proposed): `speedups/`
+
+`speedups/README.md` documents five speed-ups, each in its own folder, with a grid runner that
+uses them (`python -m speedups.fast_grid`, results in a separate folder): growth runs started
+from the settled baseline's SWMM hotstart, runs that stop when settled instead of at 480
+minutes, one queue for every case, a hot-started local runner, and shards with a merge for
+running over several machines (Dask, GitHub Actions, SLURM). It also records a measurement
+that bears on the published results: at ii 0.25 the whole-domain runs are not settled at 480
+minutes (up to 25.9 mm short at the baseline, rises 11 to 30 mm off in three growth runs
+checked), so the wet cases want a re-run. The published pipeline is unchanged.
+
 ### Growth scenarios on the page, and the local SWMM runner
 
 The page's **Growth → Your scenario** builds a scenario of several manholes, each with its own

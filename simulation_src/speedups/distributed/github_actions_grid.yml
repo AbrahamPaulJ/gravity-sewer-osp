@@ -1,0 +1,73 @@
+# The Sim 2.5 fast grid as a GitHub Actions matrix: N shards in parallel, then one merge.
+#
+# Not active here. To use it, copy it to .github/workflows/sim25-grid.yml on a branch, push, and
+# start it from the Actions tab ("Run workflow"); it runs only when started by hand. The merged
+# results come back as the "sim25-grid-results" artifact; nothing is committed.
+#
+# Public repositories get standard Linux runners free (4 vCPU each, at most 20 jobs at once on
+# the Free plan, 6 hours a job). 20 shards x 4 workers is 80 SWMM runs at a time.
+#
+# Before trusting it: Linux and Windows builds of SWMM need not agree to the last bit. Run the
+# same small grid (--only <a tag> --sites 4) here and on the machine that made the published
+# results and compare them (python -m speedups.compare) before publishing a CI-built grid.
+name: sim25-grid
+
+on:
+  workflow_dispatch:
+    inputs:
+      cases:
+        description: "nominal or all"
+        default: "all"
+      extra:
+        description: "extra fast_grid arguments, e.g. --no-corridor or --only <tag>"
+        default: ""
+
+env:
+  SHARDS: 20
+
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      # requirements.txt without pyvista, which only the desktop 3D viewer uses.
+      - run: pip install pyswmm==2.1.0 swmm-toolkit==0.17.0 numpy==2.3.3 scipy==1.17.1
+      - working-directory: simulation_src
+        run: >
+          python -m speedups.fast_grid --cases ${{ inputs.cases }} ${{ inputs.extra }}
+          --workers 4 --shard ${{ matrix.shard }}/${{ env.SHARDS }} --out ../grid_out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shard-${{ matrix.shard }}
+          path: grid_out/shards
+
+  merge:
+    needs: shard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pyswmm==2.1.0 swmm-toolkit==0.17.0 numpy==2.3.3 scipy==1.17.1
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: shard-*
+          path: grid_out/shards
+          merge-multiple: true
+      - working-directory: simulation_src
+        run: python -m speedups.distributed.merge --out ../grid_out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sim25-grid-results
+          path: |
+            grid_out
+            !grid_out/shards
