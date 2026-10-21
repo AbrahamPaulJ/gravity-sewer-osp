@@ -65,6 +65,7 @@ h4{margin:14px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.
 #tipList ul{margin:0; padding-left:18px; font-size:12.5px; columns:2; column-gap:14px}
 #tipList li{margin-bottom:2px}
 .quiet{color:var(--faint); font-size:12px; margin:4px 0}
+#baseNote[hidden]{display:none}
 #baseNote{margin-top:12px; padding:9px 10px; border-radius:7px; background:#2a1f08;
   border:1px solid var(--amber); color:#ffcf7a; font-size:11.5px; line-height:1.45}
 #sensorBox{margin-top:14px; padding:11px; border:1px solid var(--line); border-radius:8px;
@@ -150,6 +151,15 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 #scnList .srow .x:hover{color:var(--ink)}
 #scnList .tot{font-size:12px; color:var(--dim); padding-top:5px; border-top:1px solid var(--line)}
 .scnAdd,.scnRun{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap}
+/* An (i) beside a heading opens the explanation folded under it. */
+.ib[hidden]{display:none}
+.ib{font:inherit; font-size:12px; line-height:1; padding:1px 4px; margin-left:3px; cursor:pointer;
+  background:none; border:0; color:#6e7681; vertical-align:0; text-transform:none; letter-spacing:0}
+.ib:hover,.ib[aria-expanded="true"]{color:#58a6ff}
+.ib:focus-visible{outline:2px solid #58a6ff; outline-offset:1px; border-radius:3px}
+.fold{margin-top:4px}
+.fold[hidden]{display:none}
+.pumpRow{display:flex; align-items:center; gap:2px}
 #pumpBox{margin-top:10px; padding-top:8px; border-top:1px solid var(--line)}
 #pumpBox[hidden]{display:none}
 #pumpBox .pumpOn{display:flex; align-items:center; gap:7px; font-size:12.5px; cursor:pointer}
@@ -198,12 +208,16 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   background:repeating-linear-gradient(90deg,#e3b341 0 5px,transparent 5px 8px)}
 .legend .kdl{display:inline-block; width:18px; height:2px; vertical-align:3px; margin-right:6px;
   background:repeating-linear-gradient(90deg,#d2a8ff 0 5px,transparent 5px 8px)}
-#viewToggles{position:absolute; right:12px; bottom:12px; z-index:3; display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end}
-#viewToggles button{font:inherit; font-size:12px; padding:5px 10px; cursor:pointer; border-radius:6px;
-  background:#161b22e6; color:#8b949e; border:1px solid #30363d}
-#viewToggles button:hover{color:#f0f6fc; border-color:#58a6ff}
-#viewToggles button[aria-pressed="true"]{color:#f0f6fc; border-color:#58a6ff; background:#1f2a3a}
-#viewToggles button:focus-visible{outline:2px solid #58a6ff; outline-offset:2px}
+.layers{position:relative}
+#layersMenu{position:absolute; top:calc(100% + 4px); left:0; z-index:20; display:grid; min-width:190px;
+  padding:4px; background:#161b22; border:1px solid #30363d; border-radius:8px; box-shadow:0 8px 24px #0008}
+#layersMenu[hidden]{display:none}
+#layersMenu button{display:flex; align-items:center; gap:8px; text-align:left; border:0; background:none;
+  padding:7px 10px; border-radius:5px; white-space:nowrap}
+#layersMenu button::before{content:""; width:14px; height:14px; flex:none; border:1px solid #484f58; border-radius:3px}
+#layersMenu button[aria-checked="true"]::before{content:"\2713"; color:#06131f; background:#58a6ff; border-color:#58a6ff;
+  font-size:11px; line-height:14px; text-align:center}
+#layersMenu button:hover{background:#21262d}
 /* The homes key: an overlay on the map, fixed width, so its text changing on hover
    cannot move anything. It ignores the pointer, so hovering through it still works. */
 #homeKey{position:absolute; left:12px; top:12px; z-index:3; width:330px; height:112px;
@@ -320,17 +334,17 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   <p class="sub">Where does new development show up in the water level, and which manholes
   would see it whatever the unknowns turn out to be?</p>
 
-  <label class="fld">Case (what cannot be measured yet)</label>
+  <div class="fld">Case (what cannot be measured yet) <button class="ib" data-for="iiNote" aria-expanded="false" title="What this case means">&#9432;</button></div>
   <div class="knob" id="iiKnob"></div>
-  <div class="quiet" id="iiNote"></div>
+  <div class="quiet fold" id="iiNote" hidden></div>
 
-  <label class="fld">A sensor sees growth when</label>
+  <div class="fld">A sensor sees growth when <button class="ib" data-for="ruleNote" aria-expanded="false" title="What this rule means">&#9432;</button></div>
   <div class="knob" id="ruleKnob"></div>
-  <div class="quiet" id="ruleNote"></div>
+  <div class="quiet fold" id="ruleNote" hidden></div>
 
   <!-- Growth either at one manhole, read from the grid the overnight runs solved, or as a
        scenario the reader builds: several manholes, each with its own dwellings. -->
-  <label class="fld">Growth</label>
+  <div class="fld">Growth <button class="ib" data-for="scnNote" aria-expanded="false" title="What a scenario means">&#9432;</button></div>
   <div class="knob" id="modeKnob">
     <button data-m="one">At one manhole</button>
     <button data-m="scn">Your scenario</button>
@@ -345,7 +359,7 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   </div>
 
   <div id="scnBox" hidden>
-    <p class="quiet">New dwellings at several manholes at once. Click a manhole on the map, then
+    <p class="quiet fold" id="scnNote" hidden>New dwellings at several manholes at once. Click a manhole on the map, then
     add it; or add one by number. In the network a home joins a main through its own
     connection; here its flow enters at the manhole, as each pipe's load does in the model.</p>
     <div id="scnList"></div>
@@ -356,12 +370,12 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
     <!-- Pump stations at a set rate (config.js pumps): SWMM runner only, as the estimate
          cannot model stop-start pumping. Shown where the map has modelled stations. -->
     <div id="pumpBox" hidden>
-      <label class="pumpOn"><input type="checkbox" id="pumpOn"> Pump stations at set rates</label>
+      <div class="pumpRow"><label class="pumpOn"><input type="checkbox" id="pumpOn"> Pump stations at set rates</label> <button class="ib" data-for="pumpNote" aria-expanded="false" title="What pump rates means">&#9432;</button></div>
       <p id="pumpWarn" class="warnBox" hidden><b>Needs the SWMM runner.</b> This page is served by a
         plain web server, so pump rates cannot be solved and changing them changes nothing. Serve the
         site with <code>~/.venvs/sewer/bin/python simulation_src/sim25_serve.py</code> and reload.</p>
       <div id="pumpList"></div>
-      <p class="quiet" id="pumpNote"></p>
+      <p class="quiet fold" id="pumpNote" hidden></p>
     </div>
     <div class="scnRun">
       <button id="scnRun" class="primary">Run in SWMM</button>
@@ -374,17 +388,23 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   <div id="tipList"></div>
   <div id="baseNote"></div>
   <div id="sensorBox">
-    <h4>Sensors, chosen once across all <span id="nCases">12</span> cases</h4>
-    <label class="fld" for="algo">Placement method</label>
+    <h4>Sensors, chosen once across all <span id="nCases">12</span> cases <button class="ib" data-for="objNote sensorMore" aria-expanded="false" title="What this placement means">&#9432;</button></h4>
+    <div class="quiet fold" id="sensorMore" hidden>Chosen one at a time: each sensor added is the manhole
+      that most improves the objective, so the set for one more sensor is this set plus one (except the
+      methods that choose afresh at each size). Scored on detectable growth: growth runs that at least one
+      manhole sees. This measures whether a sensor would notice a development, not whether it watches a
+      choke point: trunk manholes already over the alarm carry the most load yet rise only a few
+      millimetres per development, so they score low here.</div>
+    <div class="fld"><label for="algo">Placement method</label> <button class="ib" data-for="algoNote" aria-expanded="false" title="What this method means">&#9432;</button></div>
     <select id="algo"></select>
-    <div class="quiet" id="algoNote"></div>
+    <div class="quiet fold" id="algoNote" hidden></div>
     <label class="fld" for="kRange">Number of sensors: <b id="kVal"></b></label>
     <input type="range" id="kRange" min="1" max="10" step="1">
     <div class="knob" id="objKnob">
       <button data-o="worst" title="Each sensor is the one that most raises the WORST case of the 12">Best worst case</button>
       <button data-o="mean" title="Each sensor is the one that most raises the AVERAGE over all the cases">Best average</button>
     </div>
-    <div class="quiet" id="objNote"></div>
+    <div class="quiet fold" id="objNote" hidden></div>
     <div id="curve"></div>
     <div id="sensorList"></div>
   </div>
@@ -397,14 +417,22 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   <nav>
     <div class="navrow">
       <span class="navlbl">Map</span>
-      <button id="fitAll">Whole catchment</button>
+      <button id="fitAll" title="Show the whole area">Reset view</button>
       <button id="fitSite">Zoom to the growth</button>
       <button id="toggleRegion" title="Show the rest of the council network the model solves">Whole Walkerville</button>
       <span class="navsep"></span>
       <button id="toggleSensors">Show sensors</button>
-      <button id="toggleHeat" title="Colour every manhole by how much growth it would see on its own">Heatmap</button>
-      <button id="togglePumps" title="Highlight the pump stations, their rising mains and the pipes that drain to them">Pump stations</button>
-      <button id="toggleConn" title="Draw every connection pipe at its bore, coloured by how it joins the model">Connections</button>
+      <!-- The optional map layers, in one menu. Each item is a toggle; a tick shows it is on. -->
+      <div class="layers">
+        <button id="layersBtn" aria-haspopup="true" aria-expanded="false" aria-controls="layersMenu">Layers &#9662;</button>
+        <div id="layersMenu" role="menu" hidden>
+          <button id="toggleHeat" role="menuitemcheckbox" aria-checked="false" title="Colour every manhole by how much growth it would see on its own">Heatmap</button>
+          <button id="togglePumps" role="menuitemcheckbox" aria-checked="false" title="Highlight the pump stations, their rising mains and the pipes that drain to them">Pump stations</button>
+          <button id="toggleConn" role="menuitemcheckbox" aria-checked="false" title="Draw every connection pipe at its bore, coloured by how it joins the model">House connections</button>
+          <button id="tglDatum" role="menuitemcheckbox" aria-checked="false" title="Show the height ruler (levels in metres above the datum) and the datum plane under the network (a 100 m grid)">Datum &amp; ruler</button>
+          <button id="tglRaised" role="menuitemcheckbox" aria-checked="true" title="Draw homes 2 m above their main (on) or at the main's level (off)">Raised homes</button>
+        </div>
+      </div>
     </div>
     <div class="navrow">
       <span class="navlbl">Read</span>
@@ -416,11 +444,6 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   <div id="stageWrap">
     <div id="stage"></div>
     <div id="homeKey"></div>
-    <!-- What the map draws, on or off; kept per viewer in this browser. -->
-    <div id="viewToggles" role="group" aria-label="Map view">
-      <button id="tglDatum" aria-pressed="false" title="Show the height ruler (levels in metres above the datum) and the datum plane under the network (a 100 m grid)">Datum &amp; ruler</button>
-      <button id="tglRaised" aria-pressed="true" title="Draw homes 2 m above their main (on) or at the main's level (off)">Raised homes</button>
-    </div>
   </div>
 
   <!-- The legend: one line by default, the full key on demand. Items marked data-ctx show
@@ -502,14 +525,14 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=88"></script>
-<script src="data/growth.js?v=88"></script>
-<script src="data/index.js?v=88"></script>
-<script src="growth_3d.js?v=88"></script>
-<script src="osp_core.js?v=88"></script>
-<script src="placement.js?v=88"></script>
-<script src="growth_est.js?v=88"></script>
-<script src="growth_ui.js?v=88"></script>
+<script src="data/catchment.js?v=91"></script>
+<script src="data/growth.js?v=91"></script>
+<script src="data/index.js?v=91"></script>
+<script src="growth_3d.js?v=91"></script>
+<script src="osp_core.js?v=91"></script>
+<script src="placement.js?v=91"></script>
+<script src="growth_est.js?v=91"></script>
+<script src="growth_ui.js?v=91"></script>
 <script type="module">
   GrowthUI.init();
 </script>

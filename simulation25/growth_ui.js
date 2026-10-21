@@ -297,6 +297,9 @@ window.GrowthUI = (function () {
       b.classList.toggle("on", +b.dataset.i === st.rule));
     document.querySelectorAll("#modeKnob button").forEach(b =>
       b.classList.toggle("on", b.dataset.m === st.mode));
+    // The Growth (i) explains a scenario; in "At one manhole" there is nothing for it to open.
+    const gi = document.querySelector('.ib[data-for="scnNote"]');
+    if (gi) gi.hidden = st.mode !== "scn";
     // A scenario is only offered where the page carries what it needs: the per-case loads
     // the estimate starts from, which a whole-area build publishes.
     $("#modeKnob").hidden = !R.baseLoads;
@@ -612,9 +615,12 @@ window.GrowthUI = (function () {
             " minutes of a " + out.pumps.minutes + "-minute run, against the same network with " +
             "each station at its default rate."
           : "")
-      : '<span class="badge est">Estimate</span>' + EST_NOTE +
+      : '<span class="badge est">Estimate</span>An instant estimate, not SWMM.' +
         (st.runner === true ? " Press Run in SWMM for the real answer."
-          : " For the real answer, run the site with simulation_src/sim25_serve.py.");
+          : " For the real answer, run the site with simulation_src/sim25_serve.py.") +
+        ' <button class="ib" data-for="estNote" aria-expanded="' + openFolds.has("estNote") +
+        '" title="How good the estimate is">&#9432;</button><span class="fold" id="estNote"' +
+        (openFolds.has("estNote") ? "" : " hidden") + ">The estimate is " + EST_NOTE + "</span>";
     $("#siteFacts").innerHTML = '<p class="quiet">' + source + "</p>" +
       row2("Adding", st.scn.length ? "<b>" + st.scn.reduce((a, x) => a + x.n, 0) + "</b> dwellings, " +
         out.addedLps.toFixed(2) + " L/s" : "no new dwellings: pump rates only") +
@@ -766,8 +772,8 @@ window.GrowthUI = (function () {
       Growth3D.showRuler(v.datum);
       Growth3D.showDatum(v.datum);
       Growth3D.setHomesRaised(v.raised);
-      $("#tglDatum").setAttribute("aria-pressed", String(v.datum));
-      $("#tglRaised").setAttribute("aria-pressed", String(v.raised));
+      $("#tglDatum").setAttribute("aria-checked", String(v.datum));
+      $("#tglRaised").setAttribute("aria-checked", String(v.raised));
     };
     const flip = k => () => { v[k] = !v[k]; save(); apply(); repaint(); };
     $("#tglDatum").onclick = flip("datum");
@@ -812,18 +818,47 @@ window.GrowthUI = (function () {
     apply();
   }
 
+  /* (i) buttons: each opens the explanation(s) named in its data-for, folded by default.
+     Open ones stay open across repaints (openFolds), including notes rebuilt on repaint. */
+  const openFolds = new Set();
+  function wireFolds() {
+    document.addEventListener("click", e => {
+      const b = e.target.closest(".ib");
+      if (!b) return;
+      e.preventDefault();
+      const ids = b.dataset.for.split(" "), open = !openFolds.has(ids[0]);
+      ids.forEach(id => {
+        if (open) openFolds.add(id); else openFolds.delete(id);
+        const el = document.getElementById(id);
+        if (el) el.hidden = !open;
+      });
+      b.setAttribute("aria-expanded", String(open));
+    });
+  }
+  /* The Layers menu: the optional map layers in one place. Clicking an item toggles it and
+     leaves the menu open; a click elsewhere or Escape closes it. */
+  function wireLayers() {
+    const btn = $("#layersBtn"), menu = $("#layersMenu");
+    const set = open => { menu.hidden = !open; btn.setAttribute("aria-expanded", String(open)); };
+    btn.onclick = e => { e.stopPropagation(); set(menu.hidden); };
+    menu.addEventListener("click", e => e.stopPropagation());
+    document.addEventListener("click", () => set(false));
+    document.addEventListener("keydown", e => { if (e.key === "Escape") set(false); });
+  }
+
   function renderBaseNote(c) {
+    // Only facts about the case: how many manholes are over the alarm (alarm rule) or spill
+    // before any growth. What a graded rule means is in the rule's (i) note, not repeated here.
     const R = runs(), sp = spillBefore().length;
-    const spillNote = sp ? " <b>" + sp + "</b> manhole" + (sp === 1 ? " already spills" : "s already spill") +
+    const spillNote = sp ? "<b>" + sp + "</b> manhole" + (sp === 1 ? " already spills" : "s already spill") +
       " from the lid before any growth in this case." : "";
-    $("#baseNote").innerHTML = (graded()
-      ? "Graded rule: every manhole is judged against its own level before the growth, so " +
-        "nothing counts as already triggered."
-      : (c.base.length
-        ? "<b>" + c.base.length + "</b> of " + R.chambers.length + " manholes are already " +
-          "over the alarm in this case <b>before any houses are added</b>. They are amber and " +
-          "cannot report the growth."
-        : "No manhole is over the alarm before growth in this case.")) + spillNote;
+    const alarmNote = graded() ? "" : c.base.length
+      ? "<b>" + c.base.length + "</b> of " + R.chambers.length + " manholes are already over the " +
+        "alarm before any houses are added. They are amber and cannot report the growth."
+      : "No manhole is over the alarm before growth in this case.";
+    const html = [alarmNote, spillNote].filter(Boolean).join(" ");
+    $("#baseNote").innerHTML = html;
+    $("#baseNote").hidden = !html;
   }
 
   function renderPanel(c, row) {
@@ -835,8 +870,11 @@ window.GrowthUI = (function () {
     renderManhole();
     renderBaseNote(c);
     if (st.site == null) {
-      $("#siteFacts").innerHTML = '<p class="quiet">No manhole selected, so no growth is ' +
-        "placed. Click a manhole on the map, or choose one above.</p>";
+      $("#siteFacts").innerHTML = '<p class="quiet">' + (noGrowth()
+        ? "Click a manhole on the map to see it, then choose a growth size above to add new " +
+          "dwellings there."
+        : "No manhole selected, so no growth is placed. Click a manhole on the map, or choose " +
+          "one above.") + "</p>";
       $("#tipList").innerHTML = "";
       return;
     }
@@ -936,16 +974,7 @@ window.GrowthUI = (function () {
       ").</p><ol>" + chosenAt(pl, k).map((m, j) =>
         "<li><b>" + esc(label(m)) + "</b>" + (pl.nested === false ? "" :
           " <span class=quiet>worst " + pct(pl.worst[j]) + ", average " + pct(pl.mean[j]) +
-          "</span>") + "</li>").join("") + "</ol>" + worstNote +
-      "<p class=quiet>" + (pl.nested === false
-        ? "Chosen afresh for each number of sensors, so the set for " + (k + 1) +
-          " need not contain this one."
-        : "Chosen one at a time, so the set for " + (k + 1) + " is this set plus one.") +
-      " Detectable growth: growth scenarios that at least one manhole sees.</p>" +
-      "<p class=quiet>This scores whether a sensor would notice a development, not whether " +
-      "it watches a choke point. Trunk manholes already over the alarm before any growth " +
-      "carry the most load yet rise only a few millimetres per development, so they score " +
-      "low here; watching the bottlenecks is a different objective, not yet modelled.</p>";
+          "</span>") + "</li>").join("") + "</ol>" + worstNote;
   }
 
   /* Worst case and average against the number of sensors. One axis (percent), two series,
@@ -1144,6 +1173,8 @@ window.GrowthUI = (function () {
       st.k = Math.min(st.k, runs().maxSensors);
       wireViewToggles();
       wireLegend();
+      wireFolds();
+      wireLayers();
       buildKnobs();
       const order = buildList();
       wireScenario(order);
@@ -1161,10 +1192,10 @@ window.GrowthUI = (function () {
         " pipe ends with no manhole on record. Elevation is the pipe invert, exaggerated x" +
         Growth3D.ZEXAG + ". Click a manhole to move the growth there. Drag to turn the map, " +
         "right-drag to move it, scroll to zoom where the pointer is.";
-      // Open on the busiest manhole whose growth something sees under the default knobs,
-      // rather than one that reads "none at this size" before anyone has touched anything.
-      const seen = new Set(cell().rows.filter(r => r.tip.length).map(r => r.site));
-      select(order.find(i => seen.has(i)) ?? order[0]);
+      // Open calm: no growth and nothing selected, so the first view is the network as it is
+      // and the panels say what to do. A click selects a manhole; a growth size places it.
+      st.add = NO_GROWTH;
+      select(null);
     });
     $("#btn-info").onclick = showModal;
     $("#tab-ref").onclick = () => setTab($("#pane-ref").hidden ? "ref" : "map");
@@ -1198,7 +1229,7 @@ window.GrowthUI = (function () {
     $("#togglePumps").onclick = () => {
       st.showPumps = !st.showPumps;
       if (!Growth3D.showPumps(st.showPumps)) { st.showPumps = false; return; }
-      $("#togglePumps").classList.toggle("primary", st.showPumps);
+      $("#togglePumps").setAttribute("aria-checked", String(!!st.showPumps));
       // The label stays put, as on the other chips: a longer "Hide ..." wrapped the bar.
       renderLegend();
     };
@@ -1215,12 +1246,11 @@ window.GrowthUI = (function () {
       $("#connGuess").textContent = c.guess;
       $("#connKey").hidden = !st.showConn;
       // The label stays put: a longer "Hide ..." wrapped the map bar onto a second row.
-      $("#toggleConn").classList.toggle("primary", st.showConn);
+      $("#toggleConn").setAttribute("aria-checked", String(!!st.showConn));
     };
     $("#toggleHeat").onclick = () => {
       st.showHeat = !st.showHeat;
-      $("#toggleHeat").classList.toggle("primary", st.showHeat);
-      $("#toggleHeat").textContent = st.showHeat ? "Hide heatmap" : "Heatmap";
+      $("#toggleHeat").setAttribute("aria-checked", String(!!st.showHeat));
       repaint();
     };
     // Moving the slider or the objective shows the sensors: that is what it is asking to see.
