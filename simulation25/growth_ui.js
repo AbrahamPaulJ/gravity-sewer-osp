@@ -21,6 +21,8 @@ window.GrowthUI = (function () {
                // [{i: chamber index, n: dwellings}], runner whether a local SWMM runner
                // answered (null until asked), scnRuns the SWMM answers, by case and sites.
                mode: "one", scn: [], runner: null, scnRuns: {}, busy: false,
+               // Where the runner answers: "" when it serves this page, else its own address.
+               api: "",
                // Pump stations at a set rate in the scenario (SWMM runner only): on or off,
                // the rates changed from default by rising main id, the runner's defaults.
                pumpOn: false, pumpRates: {}, pumpDefaults: null,
@@ -39,6 +41,9 @@ window.GrowthUI = (function () {
      and panels show the network as it is in the case. Its cell has no growth rows; what is
      already over the alarm before growth is the same for every size, so it comes from any. */
   const NO_GROWTH = -1;
+  // The SWMM runner's default address (simulation_src/sim25_serve.py), for a page that a
+  // different local server serves.
+  const RUNNER_LOCAL = "http://127.0.0.1:8001";
   const noGrowth = () => st.add === NO_GROWTH;
   function cell() {
     const R = runs(), rule = R.rules[st.rule].id;
@@ -548,6 +553,8 @@ window.GrowthUI = (function () {
     run.title = st.runner === true ? "Solve this scenario in EPA SWMM (about 25 s)"
       : "Needs the local SWMM runner: simulation_src/sim25_serve.py";
     $("#scnClear").disabled = (!st.scn.length && !st.pumpOn) || st.busy;
+    // Say so on the page, not only in a tooltip, once the runner has been asked and not found.
+    $("#runWarn").hidden = st.runner !== false;
   }
 
   function renderPumps() {
@@ -580,7 +587,6 @@ window.GrowthUI = (function () {
         "Compared with the same network at the default rates; SWMM only. Defaults are " +
         "assumptions, not published pump data."
       : "";
-    $("#pumpWarn").hidden = can;
   }
 
   function renderScnResult(out) {
@@ -673,7 +679,7 @@ window.GrowthUI = (function () {
     const tick = setInterval(() => scnStatus("Solving in SWMM, " +
       Math.round((Date.now() - t0) / 1000) + " s (about 25 s)…"), 500);
     try {
-      const res = await fetch("/api/sim25/scenario", {
+      const res = await fetch(st.api + "/api/sim25/scenario", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ case: R.cases[st.ii].tag,
                                sites: st.scn.map(x => [R.manholeIds[x.i], x.n]),
@@ -749,14 +755,20 @@ window.GrowthUI = (function () {
       if (el) { el.focus(); el.select(); }
     });
     // Is a local SWMM runner serving this page? On the public site there is none, and the
-    // request fails, which is the answer.
-    fetch("/api/sim25/ping", { cache: "no-store" })
+    // request fails, which is the answer. A page opened from another local server (port 8000,
+    // an editor's live server) asks the runner at its default address instead.
+    const ping = base => fetch(base + "/api/sim25/ping", { cache: "no-store" })
       .then(r => r.ok ? r.json() : null)
-      .then(j => {
-        st.runner = !!(j && j.ok && runs().cases.every(c => j.cases.includes(c.tag)));
-        if (st.runner && j.pumpDefaults) st.pumpDefaults = j.pumpDefaults;
+      .then(j => (j && j.ok && runs().cases.every(c => j.cases.includes(c.tag)) ? j : null))
+      .catch(() => null);
+    const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && location.port !== "8001";
+    ping("")
+      .then(j => (j || !local ? { j, base: "" } : ping(RUNNER_LOCAL).then(k => ({ j: k, base: RUNNER_LOCAL }))))
+      .then(({ j, base }) => {
+        st.runner = !!j;
+        st.api = j ? base : "";
+        if (j && j.pumpDefaults) st.pumpDefaults = j.pumpDefaults;
       })
-      .catch(() => { st.runner = false; })
       .finally(() => { if (st.mode === "scn") renderScnList(); });
   }
 

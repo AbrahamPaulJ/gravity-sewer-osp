@@ -22,6 +22,9 @@ scenario uses SWMM's ideal pumps, exactly as the published grid did. Pump settin
 when the runner starts: restart it after editing config.js.
 
 On the public site there is no such server; the page detects that and shows its estimate.
+Opened from another local server instead (python3 -m http.server 8000, an editor's live
+server), the page asks this runner at 127.0.0.1:8001, so the API answers pages served from
+any localhost port (CORS for localhost and 127.0.0.1 origins only, never another site).
 
     ~/.venvs/sewer/bin/python simulation_src/sim25_serve.py            # http://localhost:8001
     ~/.venvs/sewer/bin/python simulation_src/sim25_serve.py --port 8002
@@ -31,7 +34,7 @@ Listens on 127.0.0.1 only. Endpoints:
     POST /api/sim25/scenario   {"case": "<case tag>", "sites": [[manhole_id, dwellings], ...],
                                 "pumps": null | {"<rising main id>": rate_lps, ...}}
 """
-import argparse, json, os, sys, tempfile, threading, time
+import argparse, json, os, re, sys, tempfile, threading, time
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -104,15 +107,37 @@ def scenario(tag, sites, by_mh, pumps=None):
     return out
 
 
+# Pages served from another port on this machine may call the API; no other site may.
+LOCAL_ORIGIN = re.compile(r"^http://(localhost|127\.0\.0\.1)(:\d+)?$")
+
+
 class Handler(SimpleHTTPRequestHandler):
+    def _cors(self):
+        origin = self.headers.get("Origin") or ""
+        if LOCAL_ORIGIN.match(origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+
     def _json(self, code, payload):
         body = json.dumps(payload).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self._cors()
         self.end_headers()
         self.wfile.write(body)
+
+    def do_OPTIONS(self):
+        # The preflight a JSON POST from another local port sends first.
+        if not self.path.startswith("/api/sim25/"):
+            return self._json(404, {"error": "no such endpoint"})
+        self.send_response(204)
+        self._cors()
+        self.send_header("Access-Control-Allow-Methods", "GET, POST")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Max-Age", "600")
+        self.end_headers()
 
     def do_GET(self):
         if self.path.split("?")[0] == "/api/sim25/ping":
