@@ -1,0 +1,142 @@
+/* Explore, on top of the presentation demo's welcome.css and demo.css: same tokens, type, sheet, map
+   furniture and tooltip. This file adds the controls the demo does not have. */
+
+/* the map takes the pointer: drag to pan, scroll to zoom; the overlay only draws */
+#stage, #labels { pointer-events: none; }
+#map { opacity: .62; }
+body #map { filter: saturate(.72); }
+.maplibregl-canvas { cursor: default; }
+
+/* ---------------------------------------------------------------- top right: where, and the view switch */
+#top { position: fixed; z-index: 20; top: 18px; right: 24px; display: flex; align-items: center; gap: 16px; }
+#top .where { text-align: right; line-height: 1.3; }
+#top .where b { display: block; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--ink); }
+#top .where span { font-size: 11px; color: var(--ink-muted); }
+.switch { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: rgba(148, 134, 110, .14); }
+.switch a, .switch span { padding: 5px 12px; border-radius: 999px; font-size: 11.5px; text-decoration: none; color: var(--ink-body); }
+.switch span { background: var(--ink); color: var(--paper); }
+.switch a:hover { color: var(--ink); background: rgba(255, 255, 255, .5); }
+#source { top: auto; bottom: 26px; right: 150px; }
+
+/* ---------------------------------------------------------------- the sheet */
+body .welcome-sheet { padding-top: 40px; padding-bottom: 24px; }
+.card { justify-content: flex-start; padding-bottom: 8px; }
+.xsec { padding: 12px 0 14px; border-top: 1px solid var(--rule); }
+.xsec:first-child { border-top: 0; padding-top: 0; }
+.hd { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 8px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-muted); }
+.seg { margin-bottom: 6px; }
+.card p.note { margin-bottom: 0; }
+
+/* a place on the map named in the text: hover it and the map points to it */
+.mh { border-bottom: 1px dotted currentColor; cursor: help; }
+.mh:hover, .mh:focus-visible { color: var(--teal-deep); outline: none; }
+
+/* small button that opens a map explanation */
+.mapbtn { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border: 1px solid var(--rule-strong);
+  border-radius: 999px; background: rgba(255, 255, 255, .55); cursor: pointer; font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0; text-transform: none; color: var(--teal-deep); white-space: nowrap; }
+.mapbtn:hover, .mapbtn:focus-visible { border-color: var(--teal); background: #fff; outline: none; }
+.mapbtn svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+
+/* the result */
+.card p.verdict { margin: 0 0 6px; font-size: clamp(22px, 1.9vw, 27px); font-weight: 400; line-height: 1.18; letter-spacing: -0.01em; color: var(--ink); }
+.card p.verdict.hit { color: var(--teal-deep); }
+.card p.verdict.miss { color: var(--rust); }
+.card p.verdict.none { color: var(--ink-muted); }
+.card p.sub { margin: 0 0 8px; font-size: 13px; line-height: 1.5; color: var(--ink-body); }
+.grades { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--ink-muted); }
+.grades span { display: inline-flex; align-items: center; gap: 5px; }
+.grades i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.grades i.ring { background: transparent !important; border: 2px solid #7a2a1d; }
+.grades b { color: var(--ink); font-weight: 600; }
+.card p.changed { margin: 10px 0 0; padding: 7px 10px; border-left: 2px solid var(--amber); border-radius: 0 6px 6px 0;
+  background: rgba(194, 122, 44, .10); font-size: 12px; line-height: 1.45; color: var(--ink-body); }
+.card p.changed[hidden] { display: none; }
+.card p.changed.flash { animation: flash 1.2s var(--ease); }
+@keyframes flash { 0% { background: rgba(194, 122, 44, .34); } 100% { background: rgba(194, 122, 44, .10); } }
+
+/* sensors */
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 8px; }
+.stepper { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border-radius: 999px; background: rgba(148, 134, 110, .10); }
+.stepper button { width: 26px; height: 26px; border: 0; border-radius: 50%; background: transparent; cursor: pointer; font-size: 15px; line-height: 1; color: var(--ink); }
+.stepper button:hover:not(:disabled) { background: #fff; }
+.stepper button:disabled { opacity: .3; cursor: default; }
+.stepper output { min-width: 86px; text-align: center; font-size: 12px; color: var(--ink); }
+.stepper output b { font-weight: 600; }
+.toggle { padding: 5px 11px; border: 1px solid var(--rule-strong); border-radius: 999px; background: transparent; cursor: pointer; font-size: 11.5px; color: var(--ink-body); }
+.toggle:hover { color: var(--ink); border-color: var(--ink-muted); }
+.toggle.on { background: var(--amber); border-color: var(--amber); color: #fff; }
+.linkbtn { padding: 0; border: 0; background: none; cursor: pointer; font-size: inherit; color: var(--teal-deep); text-decoration: underline; text-underline-offset: 2px; }
+
+.stats { margin: 10px 0 8px; }
+.stat { position: relative; }
+.stat b { cursor: help; }
+.stat .i { position: absolute; top: 9px; right: 0; display: grid; place-items: center; width: 18px; height: 18px; padding: 0;
+  border: 1px solid var(--rule-strong); border-radius: 50%; background: var(--paper); cursor: help;
+  font-size: 10.5px; font-weight: 600; font-style: normal; color: var(--teal-deep); }
+.stat .i:hover, .stat .i:focus-visible { border-color: var(--teal); background: #fff; outline: none; }
+.delta { font-style: normal; display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 4px; vertical-align: 8px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0; opacity: 0; transition: opacity .3s; }
+.delta.on { opacity: 1; }
+.delta.up { background: rgba(45, 106, 110, .12); color: var(--teal-deep); }
+.delta.down { background: rgba(184, 82, 59, .12); color: var(--rust); }
+.card p.yours { margin: 6px 0 0; padding: 8px 10px; border-radius: 6px; background: rgba(194, 122, 44, .10); font-size: 12px; line-height: 1.45; }
+
+
+/* ---------------------------------------------------------------- explain cards */
+.back { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin: 0 0 14px; padding: 5px 12px 5px 9px;
+  border: 1px solid var(--rule-strong); border-radius: 999px; background: rgba(255, 255, 255, .55); cursor: pointer; font-size: 11.5px; color: var(--ink); }
+.back:hover { background: #fff; border-color: var(--ink-muted); }
+.card h3 { margin: 16px 0 5px; font-size: 12px; font-weight: 600; letter-spacing: .01em; color: var(--ink); }
+.card .legend { margin: 6px 0 2px; }
+.legend b { color: var(--ink); font-weight: 600; }
+.legend i.sq { border-radius: 2px; }
+.ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; }
+.ctl > span { min-width: 58px; font-size: 11px; color: var(--ink-muted); }
+
+/* bar rows: the demo's chart look, but each row is a button */
+.bars { display: grid; gap: 3px; margin: 6px 0 4px; }
+.bars button { display: grid; grid-template-columns: 150px 1fr 40px; align-items: center; gap: 8px; padding: 3px 4px; border: 0; border-radius: 4px;
+  background: transparent; cursor: pointer; text-align: left; font-size: 11.5px; color: var(--ink-body); }
+.bars button:hover { background: rgba(148, 134, 110, .10); }
+.bars button.on { background: rgba(194, 122, 44, .12); color: var(--ink); }
+.bars button.fixed { cursor: default; }
+.bars button.fixed:hover { background: transparent; }
+.bars i { display: block; height: 12px; border-radius: 3px; background: #8f8270; transition: width .5s var(--ease); }
+.bars b { font-weight: 600; color: var(--ink); text-align: right; }
+.bars button.ours i { background: var(--ink); }
+.bars button.on i { background: var(--amber); }
+
+/* ---------------------------------------------------------------- the details card (manhole or pipe) */
+/* bottom right: the network runs south-west to north-east, so this corner of the map is open */
+#detail { top: auto; bottom: 58px; right: 24px; width: 300px; max-height: calc(100vh - 140px); padding-top: 12px; font-size: 12px; }
+#detail .casepill { margin-bottom: 6px; }
+#detail h3 { padding-right: 24px; font-size: 14px; font-weight: 500; }
+#detail p { margin: 0 0 6px; }
+#detail p b { color: var(--ink); font-weight: 600; }
+#detail .x { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; cursor: pointer; font-size: 16px; line-height: 1; color: var(--ink-muted); }
+#detail .x:hover { background: rgba(148, 134, 110, .14); color: var(--ink); }
+#detail details { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--rule); }
+#detail summary { cursor: pointer; font-size: 11px; font-weight: 600; color: var(--ink-muted); }
+#detail dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 8px 0 0; }
+#detail dt { color: var(--ink-muted); }
+#detail dd { margin: 0; color: var(--ink); }
+#detail .act { margin-top: 8px; }
+
+#tip i { color: rgba(251, 246, 238, .72); }
+
+/* ---------------------------------------------------------------- narrow: the sheet docks to the bottom (demo.css), the rest follows */
+@media (max-width: 900px), (max-aspect-ratio: 4/5) {
+  body .welcome-sheet { padding-top: 20px; }
+  #top { top: 10px; right: 10px; left: 10px; justify-content: space-between; }
+  #top .where { text-align: left; }
+  #top .where span { display: none; }
+  #source { display: none; }
+  #furniture { top: 52px; }
+  #detail { top: 52px; bottom: auto; left: 10px; right: 10px; width: auto; max-width: none; max-height: 34vh; }
+  .bars button { grid-template-columns: 112px 1fr 38px; }
+  /* the docked sheet has no blur, so its band needs no bleed (the bleed widened the page on phones) */
+  .blur-band.b0, .blur-band.b0 .blur-shape { inset: 0; }
+}

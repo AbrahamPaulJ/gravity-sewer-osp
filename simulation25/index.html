@@ -387,6 +387,13 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   /* Stacked: a folded panel just drops out; the page stays one column. */
   body.lbHidden,body.rbHidden{grid-template-columns:1fr}
 }
+/* The view switch: Explore is a separate page on the presentation demo's street map. */
+.viewSwitch{display:inline-flex; margin-left:6px; border:1px solid var(--line); border-radius:7px;
+  overflow:hidden}
+nav .viewSwitch a, nav .viewSwitch span{padding:6px 12px; background:var(--panel-2); color:var(--dim);
+  text-decoration:none; font-size:inherit}
+nav .viewSwitch a:hover{color:var(--ink)}
+nav .viewSwitch span{background:var(--accent); color:#06131f; font-weight:600}
 </style>
 <!-- live presentation sync -->
 <script>(function(){var l=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),s=document.createElement("script");s.src=(l?"http://localhost:8787":"https://capstone-live.sidcode3535.workers.dev")+"/present.js";s.defer=true;document.head.appendChild(s)})();</script>
@@ -512,6 +519,10 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
       <button id="tab-ref">Assumptions</button>
       <button id="tab-qa">Findings</button>
       <button id="btn-info" class="info">About this model</button>
+      <div class="viewSwitch" role="group" aria-label="View">
+        <a href="explore.html" title="New homes, weather and sensors on the street map">Explore</a>
+        <span aria-current="page">Workbench</span>
+      </div>
     </div>
   </nav>
   <div id="stageWrap">
@@ -612,6 +623,10 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 <script src="placement.js?v=104"></script>
 <script src="growth_est.js?v=104"></script>
 <script src="growth_ui.js?v=104"></script>
+<script>
+  // old links to the in-page Explore view
+  if (new URLSearchParams(location.search).get("view") === "explore") location.replace("explore.html");
+</script>
 <script type="module">
   GrowthUI.init();
 </script>

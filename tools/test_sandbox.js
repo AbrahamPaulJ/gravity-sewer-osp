@@ -252,6 +252,38 @@ console.log("placement methods on Sim 2.5 (simulation25/placement.js)");
   }
 }
 
+/* The Sim 2.5 Explore page (explore.html) runs only in a browser, so these check what can go
+   wrong without one: a missing file, a lost link from the Workbench, words that should never
+   reach the page, and the plan it shows drifting from the proof the Workbench uses. */
+console.log("Explore page on Sim 2.5 (simulation25/explore.html)");
+{
+  const fs = require("fs");
+  const dir = path.join(ROOT, "simulation25"), page = path.join(dir, "explore.html");
+  if (fs.existsSync(page)) {
+    const html = fs.readFileSync(page, "utf8");
+    const refs = [...html.matchAll(/(?:src|href)="([^"#:]+?)(?:\?[^"]*)?"/g)].map(m => m[1]);
+    check("every local file the page loads exists", refs.filter(r => !fs.existsSync(path.join(dir, r))), []);
+    const scripts = [...html.matchAll(/<script src="([^"?]+)/g)].map(m => m[1]);
+    check("loads the data, the proof and the shared scoring before its own script",
+      ["data/catchment.js", "data/growth.js", "data/proof.js", "placement.js", "explore/explore.js"].every((f, i, a) =>
+        scripts.includes(f) && (i === 0 || scripts.indexOf(a[i - 1]) < scripts.indexOf(f))), true);
+    check("the Workbench links to it", /href="explore\.html"/.test(fs.readFileSync(path.join(dir, "index.html"), "utf8")), true);
+    const text = ["explore.html", "explore/explore.js", "explore/explore.css"].map(f => fs.readFileSync(path.join(dir, f), "utf8")).join("\n");
+    check("no words about its audience or about being simplified", text.match(/\b(client|friendly|simplif\w*|kids)\b/gi), null);
+    check("no pipe slope or grade", /slope|gradient/i.test(fs.readFileSync(path.join(dir, "explore/explore.js"), "utf8")), false);
+    const pf = path.join(dir, "data/proof.js");
+    if (fs.existsSync(pf)) {
+      const saved = global.window; global.window = {};
+      delete require.cache[require.resolve(pf)]; require(pf);
+      const proof = window.SIM25_PROOF.rules.r25.worst; global.window = saved;
+      // explore.js: recommended(k) is the proof's own set below the first phase, the phased plan from it on
+      const first = proof.plan.phase1.length;
+      check("its first phase is the proven set of the same size",
+        JSON.stringify([...proof.plan.order.slice(0, first)].sort((a, b) => a - b)) === JSON.stringify([...proof.sets[first - 1]].sort((a, b) => a - b)), true);
+    }
+  }
+}
+
 /* The Sim 2.5 connections: each home's own published connection pipe. An off-by-one in the
    vertex pointers draws a home's pipe to a neighbour's main, and nothing else would notice. */
 console.log("house connections on Sim 2.5");
