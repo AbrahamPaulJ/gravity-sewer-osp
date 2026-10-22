@@ -30,7 +30,15 @@ body{background:var(--bg); color:var(--ink);
 /* Simple view hides the expert controls (.x); expert view hides the simple stand-ins (.s). */
 body.simple .x{display:none!important}
 body.expert .s{display:none!important}
-aside{border-right:1px solid var(--line); background:var(--panel); padding:15px; overflow-y:auto}
+/* Simple view: no left panel at all. The four-step strip over the map carries its controls.
+   The right panel can be folded away in either view. */
+body.simple{grid-template-columns:1fr var(--rside)}
+body.simple #side,body.simple #grip{display:none}
+body.rbHidden{grid-template-columns:var(--side) 6px 1fr}
+body.simple.rbHidden{grid-template-columns:1fr}
+body.rbHidden #mhSide{display:none}
+aside{border-right:1px solid var(--line); background:var(--panel); padding:15px; overflow-y:auto;
+  overflow-x:hidden; min-width:0; overflow-wrap:break-word}
 #mhSide{border-right:0; border-left:1px solid var(--line)}
 #mhSide h4:first-child{margin-top:0}
 #grip{cursor:col-resize; position:relative}
@@ -54,17 +62,53 @@ h1{font-size:15px; margin:0 0 3px}
 #iiKnob button,#ruleKnob button{flex:1 1 calc(50% - 4px); white-space:normal; line-height:1.25}
 #famKnob button{flex:1 1 calc(33% - 4px); white-space:normal; line-height:1.25}
 #typeKnob button{white-space:normal; line-height:1.25}
-/* The view switch sits at the very top, small, so it is found but does not compete. */
-#viewKnob{margin-bottom:10px}
-#viewKnob button{padding:4px 3px; font-size:11.5px}
+/* The view switch lives in the map's top bar so it is there in both views. */
+#viewKnob{margin-left:auto; gap:0; flex:none}
+#viewKnob button{flex:none; padding:5px 11px; font-size:12px; border-radius:0}
+#viewKnob button:first-child{border-radius:6px 0 0 6px}
+#viewKnob button:last-child{border-radius:0 6px 6px 0}
+#rbBack{font:inherit; font-size:12px; padding:5px 10px; border:1px solid var(--line); background:var(--panel-2);
+  color:var(--accent); border-radius:6px; cursor:pointer; margin-bottom:10px}
+#rbBack:hover{border-color:var(--accent)}
+#rightSensors .why{background:#0d1626}
 .quiet{color:var(--faint); font-size:12px; margin:4px 0}
 select{width:100%; padding:7px; font:inherit; border:1px solid var(--line);
   border-radius:7px; background:var(--panel-2); color:var(--ink)}
+/* A dropdown with step arrows either side, so the options can be walked through quickly. */
+.selwrap{display:flex; gap:4px; align-items:center}
+.selwrap select{flex:1; min-width:0}
+.arrow{font:inherit; font-size:12px; flex:none; width:30px; height:33px; border:1px solid var(--line);
+  background:var(--panel-2); color:var(--ink); border-radius:7px; cursor:pointer; padding:0}
+.arrow:hover{border-color:var(--accent); color:var(--accent)}
+.arrow:disabled{opacity:.35; cursor:default}
+/* Detail behind an (i): hover only, by decision (23 Oct 2026). */
+.info-i{display:inline-flex; width:16px; height:16px; border-radius:50%; border:1px solid var(--faint);
+  color:var(--faint); font-size:10px; font-weight:700; font-style:normal; align-items:center;
+  justify-content:center; cursor:help; position:relative; vertical-align:middle; flex:none;
+  text-transform:none; letter-spacing:0}
+.info-i:hover{border-color:var(--accent); color:var(--accent)}
+.info-i[data-tip]:hover::after{content:attr(data-tip); position:absolute; left:50%; top:calc(100% + 8px);
+  transform:translateX(-50%); width:320px; max-width:72vw; background:#0d1117; border:1px solid var(--line);
+  color:var(--ink); padding:9px 11px; border-radius:8px; font-size:12px; line-height:1.45; z-index:60;
+  white-space:normal; text-align:left; font-weight:400; box-shadow:0 8px 28px #0008}
+.info-i.up[data-tip]:hover::after{top:auto; bottom:calc(100% + 8px)}
+.info-i.left[data-tip]:hover::after{left:auto; right:-6px; transform:none}
+/* The four-step strip of the simple view. */
+#strip{display:flex; gap:9px; padding:9px 13px; border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap}
+.step{flex:1 1 190px; min-width:180px; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:8px 10px 9px}
+.step .t{display:flex; align-items:center; gap:6px; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--dim); margin-bottom:7px}
+.step .n{display:inline-flex; width:18px; height:18px; border-radius:50%; background:var(--accent); color:#06131f;
+  font-weight:700; font-size:11px; align-items:center; justify-content:center; flex:none}
+.step .big{font-size:14px; font-weight:600; color:var(--ink); line-height:1.3; min-height:20px}
+.step .quiet{margin:5px 0 0; font-size:11.5px}
+.step input[type=range]{margin:6px 0 0}
+.step .knob button{padding:7px 3px; font-size:13px}
+.step .selwrap .big{flex:1; text-align:center}
 input[type=range]{width:100%; accent-color:var(--accent)}
 .fact{display:flex; justify-content:space-between; gap:10px; padding:5px 0;
   border-bottom:1px solid var(--line); font-size:12.5px}
-.fact span:first-child{color:var(--faint)}
-.fact span:last-child{text-align:right}
+.fact span:first-child{color:var(--faint); white-space:nowrap}
+.fact span:last-child{text-align:right; min-width:0}
 .fact.sub2{border-bottom:0; padding:0 0 5px 12px; margin-top:-3px; font-size:11.5px}
 .fact b.bad{color:var(--warn)}
 .fact b.good{color:var(--green)}
@@ -102,7 +146,9 @@ h4{margin:14px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.
 .why.miss{border-color:#3a2430}
 .why .miss{color:var(--warn)}
 table.sm{width:100%; border-collapse:collapse; font-size:11.5px; margin-top:6px}
-table.sm th,table.sm td{padding:3px 4px; border-top:1px solid var(--line); text-align:right; white-space:nowrap}
+table.sm th,table.sm td{padding:3px 4px; border-top:1px solid var(--line); text-align:right; white-space:normal; vertical-align:top; overflow-wrap:normal}
+table.sm td.hi,table.sm td.never,table.sm td:last-child{white-space:nowrap}
+table.sm td:first-child{white-space:normal}
 table.sm th:first-child,table.sm td:first-child{text-align:left}
 table.sm th{color:var(--faint); font-weight:500; border-top:0}
 table.sm td.hi{color:var(--ink); font-weight:600}
@@ -118,6 +164,7 @@ nav button{font:inherit; padding:6px 13px; border:1px solid var(--line); backgro
 nav button:disabled{opacity:.4; cursor:not-allowed}
 nav button.primary{background:var(--accent); border-color:var(--accent); color:#06131f}
 nav button.info{margin-left:auto; border-color:var(--accent); color:var(--accent); font-weight:600}
+body.simple nav button.info{margin-left:0}
 nav button.info:hover{background:var(--accent); color:#06131f}
 #stageWrap{flex:1; min-height:0; position:relative}
 #stage{position:absolute; inset:0}
@@ -162,6 +209,14 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   background:repeating-linear-gradient(90deg,#e3b341 0 5px,transparent 5px 8px)}
 .legend .kdl{display:inline-block; width:18px; height:2px; vertical-align:3px; margin-right:6px;
   background:repeating-linear-gradient(90deg,#d2a8ff 0 5px,transparent 5px 8px)}
+/* One chip per area, in the area's map colour; click to select it. */
+.chip{display:inline-flex; align-items:center; gap:5px; padding:1px 8px; border-radius:99px; border:1px solid var(--line);
+  cursor:pointer; color:var(--dim); font-size:11.5px; background:none; font-family:inherit}
+.chip i{display:inline-block; width:10px; height:10px; border-radius:50%}
+.chip:hover{border-color:var(--dim); color:var(--ink)}
+.chip.on{border-color:#e7edf7; color:var(--ink); font-weight:600}
+.labels .lbl.region{color:#fff; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px;
+  transform:translate(-50%,-50%); text-shadow:0 0 3px #0d1117cc; box-shadow:0 0 0 1px #0d1117; opacity:.95}
 .heatbar{display:inline-flex; align-items:center; gap:6px}
 .heatbar i{display:inline-block; width:120px; height:9px; border-radius:2px;
   background:linear-gradient(90deg,#104281,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb)}
@@ -179,6 +234,9 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   background:rgba(13,17,23,.88); border:1px solid #22314d; border-radius:8px; padding:9px 12px;
   color:#c9d1d9; font-size:12.5px; line-height:1.45}
 #inWords b{color:#e7edf7}
+body.simple #inWords{top:auto; bottom:12px; left:12px; right:auto; max-width:min(760px, calc(100% - 24px));
+  pointer-events:auto; font-size:13px; padding:10px 13px}
+body.simple #inWords .info-i{margin-left:6px}
 #inWords .tag{display:inline-block; font-size:10px; letter-spacing:.04em; text-transform:uppercase;
   padding:1px 6px; border-radius:99px; background:#1c2942; color:#a9b8d4; margin-right:6px; vertical-align:1px}
 #scale{padding:2px 14px 10px; font-size:10.5px; color:#6e7681; background:#0d1117}
@@ -231,10 +289,6 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 <body class="simple">
 
 <aside id="side">
-  <div class="knob" id="viewKnob">
-    <button data-v="simple" title="The use case, the map, the recommended sensors and why">Simple view</button>
-    <button data-v="expert" title="Every case, rule, placement method and check">Expert view</button>
-  </div>
   <h1>Sim 3: growth and sensor placement</h1>
   <p class="sub">Where would new homes show up in the sewer's water level, and where would a few
   sensors see most of that growth, whatever the unknowns turn out to be?</p>
@@ -249,7 +303,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 
   <div id="infillBox">
     <label class="fld" for="region">Which area</label>
-    <select id="region"></select>
+    <div class="selwrap"><button class="arrow" data-for="region" data-step="-1" title="Previous area">&#9664;</button><select id="region"></select><button class="arrow" data-for="region" data-step="1" title="Next area">&#9654;</button></div>
     <label class="fld" for="stepRange">How much growth: <span id="stepLbl"></span></label>
     <input type="range" id="stepRange" min="0" max="6" step="1">
     <div class="quiet" id="stepNote"></div>
@@ -259,11 +313,10 @@ nav button.info:hover{background:var(--accent); color:#06131f}
     <label class="fld">New dwellings added</label>
     <div class="knob" id="addKnob"></div>
     <label class="fld" for="site">Connected at</label>
-    <select id="site"></select>
+    <div class="selwrap"><button class="arrow" data-for="site" data-step="-1" title="Previous manhole">&#9664;</button><select id="site"></select><button class="arrow" data-for="site" data-step="1" title="Next manhole">&#9654;</button></div>
   </div>
 
   <label class="fld">Weather: what cannot be measured yet</label>
-  <select id="caseSel" class="s"></select>
   <div class="knob x" id="iiKnob"></div>
   <div class="quiet" id="iiNote"></div>
 
@@ -278,7 +331,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   <div id="siteFacts"></div>
   <div id="tipList"></div>
   <div id="baseNote"></div>
-  <div id="pointNote">A point-in-time picture: the growth is added all at once to today's network,
+  <div id="pointNote" class="x">A point-in-time picture: the growth is added all at once to today's network,
     with no pipe upgrades. In reality the dwellings arrive over three to five years, which is why
     the time-to-notice figures matter as much as the millimetres.</div>
 
@@ -316,19 +369,46 @@ nav button.info:hover{background:var(--accent); color:#06131f}
       <button id="toggleHeat" class="x" title="Colour every manhole by how much growth it would see on its own">Heatmap</button>
       <button id="toggleConn" class="x" title="Draw every connection pipe at its bore">Connections</button>
       <button id="toggleIds" class="x" title="Label every manhole with its number">Manhole ids</button>
+      <div class="knob" id="viewKnob">
+        <button data-v="simple" title="The map, the recommended sensors and one sentence">Simple</button>
+        <button data-v="expert" title="Every case, rule, placement method and check">Expert</button>
+      </div>
+      <button id="rbToggle" title="Show or hide the right panel">Hide panel</button>
     </div>
     <div class="navrow">
-      <span class="navlbl">Legend</span>
-      <button id="lgResults" class="primary" title="Manhole and pipe colours: what the growth did">Results</button>
-      <button id="lgNetwork" title="Points, pumps and connections: what the network is">Network</button>
-      <button id="lgRegions" class="primary" title="The selected area's pipes and homes">Area</button>
-      <span class="navsep"></span>
+      <span class="navlbl x">Legend</span>
+      <button id="lgResults" class="primary x" title="Manhole and pipe colours: what the growth did">Results</button>
+      <button id="lgNetwork" class="x" title="Points, pumps and connections: what the network is">Network</button>
+      <button id="lgRegions" class="primary x" title="The selected area's pipes and homes">Area</button>
+      <span class="navsep x"></span>
       <span class="navlbl">Read</span>
       <button id="tab-ref">Assumptions</button>
       <button id="tab-qa">Findings</button>
       <button id="btn-info" class="info">About this model</button>
     </div>
   </nav>
+  <div id="strip" class="s">
+    <div class="step">
+      <div class="t"><span class="n">1</span>Where do the new homes go <i class="info-i" data-tip="Infill: new homes spread through one area of the suburb in proportion to the homes already there (a block split in two, a backyard subdivision). Greenfield: a new estate joining the sewer at one manhole; click a manhole on the map to place it. Nowhere: the suburb as it is today.">i</i></div>
+      <div class="selwrap"><button class="arrow" data-for="whereSel" data-step="-1" title="Previous">&#9664;</button><select id="whereSel"></select><button class="arrow" data-for="whereSel" data-step="1" title="Next">&#9654;</button></div>
+      <div class="quiet" id="whereHint"></div>
+    </div>
+    <div class="step" id="howStep">
+      <div class="t"><span class="n">2</span>How much growth <i class="info-i" id="howInfo" data-tip="">i</i></div>
+      <div class="big" id="howLbl"></div>
+      <input type="range" id="howRange" min="0" max="6" step="1">
+    </div>
+    <div class="step">
+      <div class="t"><span class="n">3</span>Weather <i class="info-i" data-tip="Rain and groundwater leak into old sewers, so a wet day carries far more flow than a dry one and the same new homes raise the water further. Dry: sewage only. Wet: the leak rate at which the pipes reach what they were designed for. The sensors are chosen for the worst of all the model's cases, not for the one shown.">i</i></div>
+      <div class="knob" id="wxKnob"><button data-w="dry">Dry</button><button data-w="wet">Wet</button></div>
+      <div class="quiet" id="wxHint"></div>
+    </div>
+    <div class="step">
+      <div class="t"><span class="n">4</span>Sensors <i class="info-i left" id="kInfo" data-tip="">i</i></div>
+      <div class="selwrap"><button class="arrow" id="kDown" title="One sensor fewer">&#9664;</button><div class="big" id="kBig"></div><button class="arrow" id="kUp" title="One sensor more">&#9654;</button></div>
+      <div class="quiet" id="kHint"></div>
+    </div>
+  </div>
   <div id="stageWrap">
     <div id="stage"></div>
     <div id="homeKey"></div>
@@ -336,17 +416,24 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   </div>
 
   <div class="legend">
+    <div class="grp" id="chipKey"><b>Areas</b><span id="areaChips"></span></div>
+    <div class="grp s"><b>Map</b>
+      <span><span class="k" style="background:#2ef56b"></span>recommended sensor, numbered as in the list</span>
+      <span><span class="k" style="background:#ff2d55"></span>sees this growth</span>
+      <span><span class="k" style="background:#ffa500"></span>over the alarm before any growth</span>
+      <span><span class="kl" style="background:#00d4ff"></span>the selected area's pipes</span>
+    </div>
     <div class="grp lg-results" id="heatKey" hidden><b>Heatmap</b>
       <span>manholes ranked by the share of detectable growth each sees on its own, <span id="heatWhich"></span>:</span>
       <span class="heatbar"><span>lowest</span><i></i><span>highest</span></span>
       <span>bigger = higher rank; hover a manhole for its real percentages</span>
     </div>
-    <div class="grp lg-results"><b>Pipes</b>
-      <span><span class="kl" style="background:#4c8bf5"></span>room to spare</span>
+    <div class="grp lg-results x"><b>Pipes</b>
+      <span><span class="kl" style="background:linear-gradient(90deg,#3987e5,#d55181,#199e70,#b06ad6)"></span>room to spare, drawn in its area's colour</span>
       <span><span class="kl" style="background:#ffa500"></span>already over the alarm before growth (alarm rule)</span>
       <span><span class="kl" style="background:#ff2d55"></span>sees this growth</span>
     </div>
-    <div class="grp lg-results"><b>Manholes</b>
+    <div class="grp lg-results x"><b>Manholes</b>
       <span><span class="k" style="background:#ff2d55"></span>sees the growth (the selected rule)</span>
       <span><span class="k" style="background:#ff8c69"></span>rises 10 mm or more, below the rule</span>
       <span><span class="k" style="background:#ffa500"></span>over the alarm before growth</span>
@@ -354,7 +441,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
       <span><span class="kr" style="border-color:#ff3df5"></span>overflows because of the growth</span>
       <span><span class="k" style="background:#2ef56b"></span>proposed sensor: green pin, numbered S1, S2, ... as in the sensor list</span>
     </div>
-    <div class="grp lg-regions" id="regionKey"><b>Area</b>
+    <div class="grp lg-regions x" id="regionKey"><b>Area</b>
       <span><span class="kl" style="background:#00d4ff"></span>the selected area's pipes: the new homes are spread over them in proportion to the homes already there</span>
       <span><span class="k" style="background:#7dc4e0"></span>a home in the area</span>
       <span><span class="k" style="background:#3a2430"></span>a home elsewhere</span>
@@ -388,20 +475,21 @@ nav button.info:hover{background:var(--accent); color:#06131f}
     <div id="qa"></div></section>
 </main>
 
-<aside id="mhSide" aria-label="The selected area or manhole">
+<aside id="mhSide" aria-label="The recommended sensors, or the selected manhole">
+  <div id="rightSensors" class="s"></div>
   <div id="mhFacts"></div>
 </aside>
 
 <div id="modal" hidden><div class="box" id="modalBox"></div></div>
 
-<script src="data/catchment.js?v=1"></script>
-<script src="data/growth.js?v=1"></script>
-<script src="data/regions.js?v=1"></script>
-<script src="data/index.js?v=1"></script>
-<script src="growth_3d.js?v=1"></script>
-<script src="osp_core.js?v=1"></script>
-<script src="placement.js?v=1"></script>
-<script src="sim3_ui.js?v=1"></script>
+<script src="data/catchment.js?v=2"></script>
+<script src="data/growth.js?v=2"></script>
+<script src="data/regions.js?v=2"></script>
+<script src="data/index.js?v=2"></script>
+<script src="growth_3d.js?v=2"></script>
+<script src="osp_core.js?v=2"></script>
+<script src="placement.js?v=2"></script>
+<script src="sim3_ui.js?v=2"></script>
 <script type="module">
   Sim3UI.init();
 </script>

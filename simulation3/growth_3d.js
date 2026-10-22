@@ -28,6 +28,11 @@ window.Growth3D = (function () {
   let houseGeo = null, houseColours = null, houseHi = null, houseRim = null, houseUp = null,
       sleeves = null;
   let siteLabel = null, bottleneckMesh = null, lastPipeState = null, region = null;
+  // SIM3: a persistent tint per manhole name ([r,g,b] 0-255) for the area it belongs to, and
+  // one label per area at its centroid. paint() uses the tint wherever a pipe or manhole has
+  // nothing else to say (state "ok", heatmap off), so the areas read at a glance; the result
+  // colours (amber, red, green) still win wherever they apply.
+  let regionTint = null, regionLabels = [];
   let scaleLabels = [];             // the height ruler's tick labels, projected like the rest
   let pipeLines = null, pipeCard = null;          // pipes as pickable lines; the details card
   let stationMeshes = [], risingLines = [];          // pump stations and their rising mains
@@ -197,7 +202,7 @@ window.Growth3D = (function () {
           stationMeshes.forEach(m => m.scale.setScalar(sc));
         }
         [outletLabel, siteLabel, ...scaleLabels, ...(pumpsOn ? pumpLabels : []),
-         ...scnMarks.map(m => m.label), ...spillMarks.filter(m => m.label).map(m => m.label), ...rateLabels, ...sensorMarks.map(m => m.label)].forEach(lbl => {
+         ...scnMarks.map(m => m.label), ...spillMarks.filter(m => m.label).map(m => m.label), ...rateLabels, ...sensorMarks.map(m => m.label), ...regionLabels].forEach(lbl => {
           if (!lbl) return;
           const v = lbl.at.clone().project(camera);
           const el = renderer.domElement;
@@ -1314,17 +1319,21 @@ window.Growth3D = (function () {
     // the three states the legend gives them.
     const rank = { ok: 0, was: 1, tip: 2 };
     const pipeState = name => { const v = nodeState(name); return v === "rise" || v === "fall" ? "ok" : v; };
-    const pipeCol = [];
+    const pipeCol = [], pipeTint = [];
     for (let p = 0; p < g.nPipes; p++) {
       const u = g.nodes[g.up[p]], d = g.nodes[g.down[p]];
       const su = pipeState(u.name), sd = pipeState(d.name);
       pipeCol.push(rank[su] >= rank[sd] ? su : sd);
+      // SIM3: the area tint, from whichever end is a manhole of an area (the downstream
+      // end first, so a pipe leaving an area is drawn in the area it drains).
+      pipeTint.push(regionTint ? (regionTint[d.name] || regionTint[u.name] || null) : null);
     }
     lastPipeState = pipeCol;   // read by highlight() to keep a sleeve off cyan-on-amber
     for (let s = 0; s < segPipe.length; s++) {
       // Heatmap on: pipes go neutral so the only colour on screen is the manholes' score.
-      const c = heat ? COL.heatPipe : COL[pipeCol[segPipe[s]] === "tip" ? "tip"
-        : pipeCol[segPipe[s]] === "was" ? "was" : "ok"];
+      const pc = pipeCol[segPipe[s]];
+      const c = heat ? COL.heatPipe : pc === "tip" ? COL.tip : pc === "was" ? COL.was
+        : (pipeTint[segPipe[s]] || COL.ok);
       for (let k = 0; k < 2; k++) {
         const o = (s * 2 + k) * 3;
         arr[o] = c[0] / 255; arr[o + 1] = c[1] / 255; arr[o + 2] = c[2] / 255;
@@ -1339,10 +1348,15 @@ window.Growth3D = (function () {
     chamberMeshes.forEach(m => {
       const nm = m.userData.node.name;
       const st = nodeState(nm);
+      const rt = regionTint && regionTint[nm];
       const c = sensorSet.has(nm) ? COL.sensor
         : heat ? heatHex(heat[nm] || 0)
         : st === "tip" ? 0xff2d55 : st === "was" ? 0xffa500 : st === "rise" ? COL.rise
-        : st === "fall" ? COL.fall : COL.chamber;
+        : st === "fall" ? COL.fall
+        // SIM3: a manhole with nothing to report wears its area's colour, lightened so it
+        // still stands off the pipes of the same colour.
+        : rt ? ((Math.round(rt[0] + (255 - rt[0]) * 0.45) << 16) | (Math.round(rt[1] + (255 - rt[1]) * 0.45) << 8) | Math.round(rt[2] + (255 - rt[2]) * 0.45))
+        : COL.chamber;
       m.material.color.setHex(c);
       m.scale.setScalar(sensorSet.has(nm) ? 2.1 : heat ? 0.9 + 1.4 * (heat[nm] || 0)
         : st === "ok" ? 1 : st === "rise" || st === "fall" ? 1.3 : 1.6);
@@ -1415,6 +1429,39 @@ window.Growth3D = (function () {
     controls.update();
   }
 
+  /* SIM3: the area tints and labels. byName maps a manhole name to "#rrggbb"; the labels take
+     [{names, text, col}] and sit at the centroid of each area's manholes. Both persist until
+     set again; paint() applies the tints on its next call. */
+  function setRegionTints(byName) {
+    regionTint = null;
+    if (!byName) return;
+    regionTint = {};
+    for (const nm in byName) {
+      const h = parseInt(String(byName[nm]).replace("#", ""), 16);
+      regionTint[nm] = [(h >> 16) & 255, (h >> 8) & 255, h & 255];
+    }
+  }
+  function setRegionLabels(list) {
+    regionLabels.forEach(l => l.el.remove());
+    regionLabels = [];
+    if (!built || !list) return;
+    list.forEach(r => {
+      const want = new Set(r.names || []);
+      const c = new THREE.Vector3(); let n = 0;
+      chamberMeshes.forEach(m => { if (want.has(m.userData.node.name)) { c.add(m.position); n++; } });
+      if (!n) return;
+      c.divideScalar(n);
+      const el = document.createElement("div");
+      el.className = "lbl region";
+      el.textContent = r.text;
+      el.style.background = r.col;
+      el.style.display = "none";
+      labelLayer.appendChild(el);
+      regionLabels.push({ el, at: c });
+    });
+  }
+  function showRegionLabels(on) { regionLabels.forEach(l => { l.el.style.visibility = on ? "" : "hidden"; }); }
+
   /* SIM3: frame a set of manholes (a region), from the same viewpoint frame() uses. */
   function frameNodes(names) {
     if (!built) return;
@@ -1442,6 +1489,7 @@ window.Growth3D = (function () {
   }
 
   return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, setSpills, setPumpRates, mapState, frameNodes,
+           setRegionTints, setRegionLabels, showRegionLabels,
            frame, resize, heatHex,
            ZEXAG };
 })();
