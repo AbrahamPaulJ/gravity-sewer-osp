@@ -15,7 +15,7 @@ window.GrowthUI = (function () {
   // ii = case index; add = growth size index; rule = detection rule index (25 mm rise).
   // k and obj drive the sensor set: k sensors chosen once across all cases, for the best
   // worst case or the best average. showHeat colours the manholes by their own coverage.
-  const st = { site: 0, showSensors: false, showHeat: false, k: 3, obj: "worst", ii: 1, add: 3, rule: 2,
+  const st = { site: 0, showSensors: false, showHeat: false, k: 5, obj: "worst", ii: 1, add: 3, rule: 2,
                hover: null,                                    // a manhole NAME, or null
                // Growth at one manhole (the grid), or a scenario the reader builds: scn is
                // [{i: chamber index, n: dwellings}], runner whether a local SWMM runner
@@ -26,7 +26,7 @@ window.GrowthUI = (function () {
                // Pump stations at a set rate in the scenario (SWMM runner only): on or off,
                // the rates changed from default by rising main id, the runner's defaults.
                pumpOn: false, pumpRates: {}, pumpDefaults: null,
-               algo: "swmm" };                                 // a Placement.METHODS id
+               algo: window.SIM25_PROOF ? "proven" : "swmm" };  // a Placement.METHODS id
 
   const runs = () => window.GROWTH_RUNS;
   const geom = () => window.GROWTH_GEOM;
@@ -73,15 +73,23 @@ window.GrowthUI = (function () {
      the sandbox's methods are run here by placement.js, once per method, rule and objective,
      and every method is scored against the same SWMM runs, so the numbers compare. */
   let _plCtx = null;
+  let _plError = "";
   const _plCache = {};
   function placement() {
-    if (st.algo === "swmm" || !window.Placement || !window.OSPCore) return runs().sensors[ruleId()][st.obj];
-    const key = st.algo + "|" + ruleId() + "|" + st.obj;
-    if (!_plCache[key]) {
-      if (!_plCtx) _plCtx = Placement.context(geom(), runs(), OSPCore);
-      _plCache[key] = Placement.place(st.algo, _plCtx, ruleId(), st.obj);
+    const fallback = runs().sensors[ruleId()][st.obj];
+    _plError = "";
+    if (st.algo === "swmm" || !window.Placement || !window.OSPCore) return fallback;
+    try {
+      const key = st.algo + "|" + ruleId() + "|" + st.obj;
+      if (!_plCache[key]) {
+        if (!_plCtx) _plCtx = Placement.context(geom(), runs(), OSPCore);
+        _plCache[key] = Placement.place(st.algo, _plCtx, ruleId(), st.obj);
+      }
+      return _plCache[key];
+    } catch (e) {
+      _plError = e.message || String(e);
+      return fallback;
     }
-    return _plCache[key];
   }
   // The k-sensor set. Nested methods add one sensor at a time; two-up-two-down and random
   // choose afresh at each size, so their k set is stored whole.
@@ -980,9 +988,9 @@ window.GrowthUI = (function () {
     document.querySelectorAll("#objKnob button").forEach(b =>
       b.classList.toggle("on", b.dataset.o === st.obj));
     const m = window.Placement ? Placement.METHODS.find(x => x[0] === st.algo) : null;
-    $("#algoNote").textContent = m ? m[2] + (st.algo === "swmm" ? "" :
-      " Scored, like every method here, on the SWMM growth runs.") : "";
-    $("#objNote").textContent = st.algo === "swmm" || st.algo === "random"
+    $("#algoNote").textContent = _plError || (m ? m[2] + (st.algo === "swmm" ? "" :
+      " Scored, like every method here, on the SWMM growth runs.") : "");
+    $("#objNote").textContent = ["proven", "swmm", "random"].includes(st.algo)
       ? OBJ_NOTE[st.obj].replace("{n}", nCases())
       : "This method does not use the objective; the curve shows both measures, worst case and average.";
     $("#nCases").textContent = nCases();
@@ -1361,8 +1369,11 @@ window.GrowthUI = (function () {
       const order = buildList();
       wireScenario(order);
       if (window.Placement && window.OSPCore) {
-        $("#algo").innerHTML = Placement.METHODS.map(([id, lab]) =>
-          "<option value=" + JSON.stringify(id) + ">" + esc(lab) + "</option>").join("");
+        $("#algo").innerHTML = Placement.METHODS.map(([id, lab]) => {
+          const missing = id === "proven" && !window.SIM25_PROOF;
+          return "<option value=" + JSON.stringify(id) + (missing ? " disabled" : "") + ">" +
+            esc(lab + (missing ? " (needs tools/prove_sim25.py)" : "")) + "</option>";
+        }).join("");
         $("#algo").value = st.algo;
         $("#algo").onchange = () => { st.algo = $("#algo").value; repaint(); };
       } else {
