@@ -63,6 +63,7 @@ window.Sim3UI = (function () {
     legend: false,                      // the colour key, off until asked for
     areasView: false,                   // every area in its colour, nothing else
     rb: true, lb: true, top: true,      // right panel, left panel, top bar shown
+    words: true,                        // the summary bubble on the map open
   };
 
   /* ------------------------------------------------------------- index spaces */
@@ -342,6 +343,13 @@ window.Sim3UI = (function () {
     $("#rTab").onclick = () => setFold("rb", !st.rb);
     $("#lTab").onclick = () => setFold("lb", !st.lb);
     $("#topTab").onclick = () => setFold("top", !st.top);
+    $("#wordsTab").onclick = () => setWords(!st.words);
+  }
+  function setWords(on) {
+    st.words = on;
+    $("#inWords").classList.toggle("collapsed", !on);
+    $("#wordsTab").innerHTML = on ? "&#9662;" : "&#9656;";
+    $("#wordsTab").title = on ? "Fold the summary away" : "Show the summary";
   }
   // The fold tabs on the map's edges: top bar, left panel (expert only), right panel.
   function setFold(which, on) {
@@ -980,6 +988,7 @@ window.Sim3UI = (function () {
       legendGroups();
       if (hp.get("panel") === "0") setFold("rb", false);
       if (hp.get("top") === "0") setFold("top", false);
+      if (hp.get("words") === "0") setWords(false);
       if (hp.get("open") === "ref" || hp.get("open") === "qa") showDoc(hp.get("open"));
       else if (hp.get("open") === "about") showModal();
       $("#scale").textContent = G().nPipes + " pipes, " + G().nChambers + " manholes, " + (G().nHouses || G().baseDwellings) + " connected properties, plus " +

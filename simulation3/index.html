@@ -257,6 +257,15 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   color:#c9d1d9; font-size:13px; line-height:1.45}
 #inWords b{color:#e7edf7}
 #inWords .info-i{margin-left:6px}
+#inWords{padding-right:34px}
+#wordsTab{position:absolute; right:7px; top:7px; width:20px; height:20px; border-radius:50%; font-size:11px; line-height:1; padding:0;
+  border:1px solid var(--line); background:var(--panel-2); color:var(--dim); cursor:pointer}
+#wordsTab:hover{border-color:var(--accent); color:var(--accent)}
+#inWords.collapsed{padding:5px 30px 5px 11px; font-size:12px; color:var(--dim)}
+#inWords.collapsed #wordsText,#inWords.collapsed #homesLine{display:none}
+#wordsMini{display:none}
+#inWords.collapsed #wordsMini{display:inline}
+#inWords.collapsed #wordsTab{top:3px}
 #homesLine{margin-top:5px; font-size:11.5px; color:#8b949e; display:flex; gap:4px 14px; flex-wrap:wrap; align-items:center}
 #homesLine:empty{display:none}
 #homesLine strong{color:#e7edf7; font-variant-numeric:tabular-nums}
@@ -424,7 +433,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
     <button class="tab" id="topTab" title="Fold the top bar away">&#9650;</button>
     <button class="tab" id="rTab" title="Fold the right panel away">&#9654;</button>
     <button class="tab" id="lTab" title="Fold the left panel away">&#9664;</button>
-    <div id="inWords"><div id="wordsText"></div><div id="homesLine"></div></div>
+    <div id="inWords"><button id="wordsTab" title="Fold the summary away">&#9662;</button><span id="wordsMini">Summary</span><div id="wordsText"></div><div id="homesLine"></div></div>
   </div>
 
   <div id="chipBar"><b>Select area</b><span id="areaChips"></span></div>
@@ -485,14 +494,14 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 
 <div id="modal" hidden><div class="box" id="modalBox"></div></div>
 
-<script src="data/catchment.js?v=6"></script>
-<script src="data/growth.js?v=6"></script>
-<script src="data/regions.js?v=6"></script>
-<script src="data/index.js?v=6"></script>
-<script src="growth_3d.js?v=6"></script>
-<script src="osp_core.js?v=6"></script>
-<script src="placement.js?v=6"></script>
-<script src="sim3_ui.js?v=6"></script>
+<script src="data/catchment.js?v=7"></script>
+<script src="data/growth.js?v=7"></script>
+<script src="data/regions.js?v=7"></script>
+<script src="data/index.js?v=7"></script>
+<script src="growth_3d.js?v=7"></script>
+<script src="osp_core.js?v=7"></script>
+<script src="placement.js?v=7"></script>
+<script src="sim3_ui.js?v=7"></script>
 <script type="module">
   Sim3UI.init();
 </script>
