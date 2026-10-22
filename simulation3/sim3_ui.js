@@ -36,7 +36,12 @@ window.Sim3UI = (function () {
   const ruleOf = id => RULES.find(r => r.id === id);
   // The selected area is shown by movement, not colour (23 Oct 2026, the team: colouring all
   // eight areas at once fought the result colours): its manholes pulse, its pipes carry the
-  // blinking cyan sleeves, and it alone has a label at its centre.
+  // blinking cyan sleeves, and it alone has a label at its centre. The colours below are for
+  // the "Areas" view only: a quick look at how the suburb is divided, with every result colour
+  // off while it is on.
+  const REGION_COLS = ["#3987e5", "#d55181", "#199e70", "#b06ad6", "#9ba33a", "#b08457", "#6a5acd", "#e39bb6"];
+  const regionCol = ri => REGION_COLS[ri % REGION_COLS.length];
+  const SIZES_TIP = "The size of the new estate, all of it draining into the sewer at the chosen manhole. 10, 30, 80 and 150 homes are realistic: one year of the whole council's growth landing at one point is about 30 to 80 homes, one apartment project 50 to 150. 700 is a stress case, roughly a decade of the council's growth in one place, kept as an upper bound and not a plausible development. For scale, the state projection (PlanSA, 2021 to 2041) is 390 to 485 new dwellings over twenty years for the whole council; the infill family spreads that figure over the areas, and Sim 2.5's corridor runs placed exactly 390 and 485 along Walkerville Terrace, where the state expects them.";
   // Region indices in the order of their ids (R1, R2, ...), for the dropdown and the chips;
   // the data lists them in another order.
   const regionOrder = () => S().regions.map((r, i) => i).sort((a, b) => String(S().regions[a].id).localeCompare(String(S().regions[b].id), undefined, { numeric: true }));
@@ -56,6 +61,7 @@ window.Sim3UI = (function () {
     showSensors: true, showHeat: false, showPumps: false, showConn: false,
     hover: null, pick: null,            // hovered / clicked manhole NAME for the right panel
     legend: false,                      // the colour key, off until asked for
+    areasView: false,                   // every area in its colour, nothing else
     rb: true, lb: true, top: true,      // right panel, left panel, top bar shown
   };
 
@@ -225,12 +231,23 @@ window.Sim3UI = (function () {
       spillsBefore = (S().base[curTag()] ? S().base[curTag()].spilled : spillBefore()).map(nameOf);
       Growth3D.setScenario([]);
     }
-    Growth3D.paint(named, site, sensors, heatValues());
-    if (st.fam === "infill") {
-      Growth3D.setPulse(region().manholes.map(nameOf));
-      Growth3D.setRegionLabels([{ names: region().manholes.map(nameOf), text: region().id, col: "#00d4ff" }]);
-    } else { Growth3D.setPulse([]); Growth3D.setRegionLabels([]); }
-    Growth3D.setSpills(spillsBefore, spillsNew);
+    if (st.areasView) {
+      const tints = {};
+      S().regions.forEach((r, ri) => r.manholes.forEach(i => { tints[nameOf(i)] = regionCol(ri); }));
+      Growth3D.setRegionTints(tints);
+      Growth3D.paint({}, null, [], null);
+      Growth3D.setPulse([]);
+      Growth3D.setRegionLabels(S().regions.map((r, ri) => ({ names: r.manholes.map(nameOf), text: r.id, col: regionCol(ri) })));
+      Growth3D.setSpills([], []);
+    } else {
+      Growth3D.setRegionTints(null);
+      Growth3D.paint(named, site, sensors, heatValues());
+      if (st.fam === "infill") {
+        Growth3D.setPulse(region().manholes.map(nameOf));
+        Growth3D.setRegionLabels([{ names: region().manholes.map(nameOf), text: region().id, col: "#00d4ff" }]);
+      } else { Growth3D.setPulse([]); Growth3D.setRegionLabels([]); }
+      Growth3D.setSpills(spillsBefore, spillsNew);
+    }
     Growth3D.setPumpRates([]);
     renderHomes(sensors);
     renderKnobs();
@@ -256,7 +273,8 @@ window.Sim3UI = (function () {
       $("#homesLine").innerHTML = (head ? '<span class="hd">' + head + "</span>" : "") + r1 + r2 + r3 + (hint ? '<span class="quiet2">' + hint + "</span>" : "");
     };
     let spec, lead;
-    if (st.hover) { spec = { mode: "site", name: st.hover }; lead = "Homes behind " + esc(mhName(st.hover)); }
+    if (st.areasView) spec = { mode: "none" };
+    else if (st.hover) { spec = { mode: "site", name: st.hover }; lead = "Homes behind " + esc(mhName(st.hover)); }
     else if (st.fam === "infill") spec = { mode: "region", names: region().manholes.map(nameOf) };
     else if (st.showSensors && sensors.length && st.fam !== "one") spec = { mode: "sensors", names: sensors };
     else if (st.fam === "one" && st.site != null) { spec = { mode: "site", name: nameOf(st.site) }; lead = "Homes behind " + esc(label(st.site)); }
@@ -363,8 +381,9 @@ window.Sim3UI = (function () {
         " today. 25% is roughly the first year or two of that; 300% is a stress test. The homes are added all at once to today's pipes, with no upgrades; in reality they arrive over three to five years.";
     } else if (st.fam === "one") {
       $("#howRange").disabled = false; $("#howRange").max = String(R().growthLevels.length - 1); $("#howRange").value = String(st.add);
-      $("#howLbl").textContent = "+" + R().growthLevels[st.add] + " homes in the new estate";
-      $("#howInfo").dataset.tip = "The size of the new estate, all of it draining into the sewer at the chosen manhole: " + R().growthLevels.join(", ") + " homes.";
+      const g = R().growthLevels[st.add];
+      $("#howLbl").innerHTML = "+" + g + " homes in the new estate" + (g >= 500 ? " <span class='quiet' style='display:inline'>(stress case)</span>" : "");
+      $("#howInfo").dataset.tip = SIZES_TIP;
     } else {
       $("#howRange").disabled = true; $("#howLbl").textContent = "No growth"; $("#howInfo").dataset.tip = "Nothing is added in this view; the map shows the network as it is in the selected weather.";
     }
@@ -391,7 +410,8 @@ window.Sim3UI = (function () {
   function buildKnobs() {
     const Rr = R();
     $("#ruleKnob").innerHTML = RULES.map(r => "<button data-r=" + JSON.stringify(r.id) + " title=" + JSON.stringify(r.note) + ">" + esc(r.label) + "</button>").join("");
-    $("#addKnob").innerHTML = Rr.growthLevels.map((g, i) => "<button data-i=" + JSON.stringify(String(i)) + ">+" + g + "</button>").join("");
+    $("#addKnob").innerHTML = Rr.growthLevels.map((g, i) => "<button data-i=" + JSON.stringify(String(i)) + (g >= 500 ? ' title="A stress case, not a plausible estate"' : "") + ">+" + g + (g >= 500 ? '<span class="knobNum">stress case</span>' : "") + "</button>").join("");
+    $("#addInfo").dataset.tip = SIZES_TIP;
     $("#region").innerHTML = regionOrder().map(i => { const r = S().regions[i]; return "<option value=" + JSON.stringify(String(i)) + " title=" + JSON.stringify(r.name) + ">" + esc(r.id + ": " + shortName(r)) + "</option>"; }).join("");
     $("#stepRange").max = String(ladder().length - 1);
     buildCaseKnobs();
@@ -402,6 +422,8 @@ window.Sim3UI = (function () {
     buildStrip();
     on("#ruleKnob", b => { st.rule = b.dataset.r; repaint(); });
     $("#toggleLegend").onclick = () => { st.legend = !st.legend; legendGroups(); };
+    $("#toggleAreas").onclick = () => { st.areasView = !st.areasView; legendGroups(); repaint(); };
+    $("#areasKeyList").innerHTML = regionOrder().map(i => { const r = S().regions[i]; return '<span><span class="k" style="background:' + regionCol(i) + '"></span>' + esc(r.id + " " + shortName(r)) + "</span>"; }).join("");
     on("#addKnob", b => { st.add = +b.dataset.i; repaint(); });
     on("#methKnob", b => { st.method = b.dataset.m; st.pickedGreedy = b.dataset.m === "greedy"; repaint(); });
     on("#objKnob", b => { st.obj = b.dataset.o; repaint(); });
@@ -904,10 +926,14 @@ window.Sim3UI = (function () {
   function legendGroups() {
     // One Legend button. Off by default; on, it shows the groups that apply (the heatmap key
     // is driven by repaint, the pump and connection keys by their own toggles).
-    $("#legend").hidden = !st.legend;
-    $$(".legend .lg-results").forEach(g => { if (g.id !== "heatKey") g.hidden = false; });
-    $$(".legend .lg-network").forEach(g => { g.hidden = g.id === "pumpKey" ? !st.showPumps : g.id === "connKey" ? !st.showConn : !(st.showPumps || st.showConn); });
-    $("#toggleLegend").classList.toggle("primary", st.legend);
+    const av = st.areasView;
+    $("#legend").hidden = !(st.legend || av);
+    $("#areasKey").hidden = !av;
+    $("#simpleKey").hidden = av;
+    $$(".legend .lg-results").forEach(g => { if (g.id !== "heatKey") g.hidden = av; else if (av) g.hidden = true; });
+    $$(".legend .lg-network").forEach(g => { g.hidden = av || (g.id === "pumpKey" ? !st.showPumps : g.id === "connKey" ? !st.showConn : !(st.showPumps || st.showConn)); });
+    $("#toggleLegend").classList.toggle("primary", st.legend && !av);
+    $("#toggleAreas").classList.toggle("primary", av);
     Growth3D.resize($("#stage"));
   }
   function init() {
@@ -931,6 +957,7 @@ window.Sim3UI = (function () {
     if (hp.get("site") != null && names()[+hp.get("site")]) st.site = +hp.get("site");
     if (st.fam === "one" && st.method === "exact") st.method = "greedy";
     if (st.view === "simple") st.rule = "r10";
+    if (hp.get("areas") === "1") st.areasView = true;
     document.body.classList.toggle("simple", st.view === "simple");
     document.body.classList.toggle("expert", st.view === "expert");
     Growth3D.build($("#stage"), nd => {
