@@ -33,6 +33,10 @@ window.Growth3D = (function () {
   // nothing else to say (state "ok", heatmap off), so the areas read at a glance; the result
   // colours (amber, red, green) still win wherever they apply.
   let regionTint = null, regionLabels = [];
+  // SIM3: the manholes of the selected area pulse (scale, in the shared beat) so the area is
+  // found by movement, not by a colour of its own. paint() records each manhole's resting
+  // scale; the loop breathes the pulsing ones around it.
+  let pulseMeshes = [];
   let scaleLabels = [];             // the height ruler's tick labels, projected like the rest
   let pipeLines = null, pipeCard = null;          // pipes as pickable lines; the details card
   let stationMeshes = [], risingLines = [];          // pump stations and their rising mains
@@ -195,7 +199,11 @@ window.Growth3D = (function () {
           houseUp.material.size = UP_MIN + (UP_MAX - UP_MIN) * b2;
           houseUp.material.opacity = 0.8 + 0.2 * b2;
         }
-        if (sleeves) sleeves.material.opacity = 0.20 + 0.22 * (0.5 + 0.5 * beat);
+        if (sleeves) sleeves.material.opacity = pulseMeshes.length ? 0.12 + 0.62 * (0.5 + 0.5 * beat) : 0.20 + 0.22 * (0.5 + 0.5 * beat);
+        if (pulseMeshes.length) {
+          const sc = 1.1 + 0.7 * (0.5 + 0.5 * beat);
+          pulseMeshes.forEach(m => m.scale.setScalar((m.userData.baseScale || 1) * sc));
+        }
         renderer.render(scene, camera);
         if (pumpsOn) {
           const sc = 2.0 + 0.45 * (0.5 + 0.5 * beat);    // in phase with the linked homes
@@ -1358,8 +1366,9 @@ window.Growth3D = (function () {
         : rt ? ((Math.round(rt[0] + (255 - rt[0]) * 0.45) << 16) | (Math.round(rt[1] + (255 - rt[1]) * 0.45) << 8) | Math.round(rt[2] + (255 - rt[2]) * 0.45))
         : COL.chamber;
       m.material.color.setHex(c);
-      m.scale.setScalar(sensorSet.has(nm) ? 2.1 : heat ? 0.9 + 1.4 * (heat[nm] || 0)
-        : st === "ok" ? 1 : st === "rise" || st === "fall" ? 1.3 : 1.6);
+      m.userData.baseScale = sensorSet.has(nm) ? 2.1 : heat ? 0.9 + 1.4 * (heat[nm] || 0)
+        : st === "ok" ? 1 : st === "rise" || st === "fall" ? 1.3 : 1.6;
+      m.scale.setScalar(m.userData.baseScale);
       if (nm === siteName) {
         focusRing.position.copy(m.position);
         focusRing.visible = true;
@@ -1461,6 +1470,11 @@ window.Growth3D = (function () {
     });
   }
   function showRegionLabels(on) { regionLabels.forEach(l => { l.el.style.visibility = on ? "" : "hidden"; }); }
+  function setPulse(names) {
+    pulseMeshes.forEach(m => m.scale.setScalar(m.userData.baseScale || 1));
+    const want = new Set(names || []);
+    pulseMeshes = built ? chamberMeshes.filter(m => want.has(m.userData.node.name)) : [];
+  }
 
   /* SIM3: frame a set of manholes (a region), from the same viewpoint frame() uses. */
   function frameNodes(names) {
@@ -1489,7 +1503,7 @@ window.Growth3D = (function () {
   }
 
   return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, setSpills, setPumpRates, mapState, frameNodes,
-           setRegionTints, setRegionLabels, showRegionLabels,
+           setRegionTints, setRegionLabels, showRegionLabels, setPulse,
            frame, resize, heatHex,
            ZEXAG };
 })();

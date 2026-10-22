@@ -34,9 +34,19 @@ body.expert .s{display:none!important}
    The right panel can be folded away in either view. */
 body.simple{grid-template-columns:1fr var(--rside)}
 body.simple #side,body.simple #grip{display:none}
-body.rbHidden{grid-template-columns:var(--side) 6px 1fr}
-body.simple.rbHidden{grid-template-columns:1fr}
+body.expert.lbHidden{grid-template-columns:1fr var(--rside)}
+body.expert.lbHidden #side,body.expert.lbHidden #grip{display:none}
+body.expert.rbHidden{grid-template-columns:var(--side) 6px 1fr}
+body.expert.lbHidden.rbHidden,body.simple.rbHidden{grid-template-columns:1fr}
 body.rbHidden #mhSide{display:none}
+body.topHidden #top{display:none}
+/* Fold tabs on the map's edges: top bar, left panel (expert), right panel. */
+.tab{position:absolute; z-index:8; font:inherit; font-size:10px; line-height:1; padding:0; cursor:pointer;
+  border:1px solid var(--line); background:#111c2fee; color:var(--dim)}
+.tab:hover{color:var(--accent); border-color:var(--accent)}
+#topTab{top:0; left:50%; transform:translateX(-50%); width:56px; height:15px; border-top:0; border-radius:0 0 8px 8px}
+#rTab{right:0; top:50%; transform:translateY(-50%); width:15px; height:56px; border-right:0; border-radius:8px 0 0 8px}
+#lTab{left:0; top:50%; transform:translateY(-50%); width:15px; height:56px; border-left:0; border-radius:0 8px 8px 0}
 aside{border-right:1px solid var(--line); background:var(--panel); padding:15px; overflow-y:auto;
   overflow-x:hidden; min-width:0; overflow-wrap:break-word}
 #mhSide{border-right:0; border-left:1px solid var(--line)}
@@ -210,13 +220,12 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .legend .kdl{display:inline-block; width:18px; height:2px; vertical-align:3px; margin-right:6px;
   background:repeating-linear-gradient(90deg,#d2a8ff 0 5px,transparent 5px 8px)}
 /* One chip per area, in the area's map colour; click to select it. */
-.chip{display:inline-flex; align-items:center; gap:5px; padding:1px 8px; border-radius:99px; border:1px solid var(--line);
+.chip{display:inline-flex; align-items:center; padding:1px 9px; border-radius:99px; border:1px solid var(--line);
   cursor:pointer; color:var(--dim); font-size:11.5px; background:none; font-family:inherit}
-.chip i{display:inline-block; width:10px; height:10px; border-radius:50%}
 .chip:hover{border-color:var(--dim); color:var(--ink)}
-.chip.on{border-color:#e7edf7; color:var(--ink); font-weight:600}
-.labels .lbl.region{color:#fff; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px;
-  transform:translate(-50%,-50%); text-shadow:0 0 3px #0d1117cc; box-shadow:0 0 0 1px #0d1117; opacity:.95}
+.chip.on{border-color:var(--accent); background:var(--accent); color:#06131f; font-weight:600}
+.labels .lbl.region{color:#04140a; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px;
+  transform:translate(-50%,-50%); text-shadow:none; box-shadow:0 0 0 2px #0d1117; opacity:.95}
 .heatbar{display:inline-flex; align-items:center; gap:6px}
 .heatbar i{display:inline-block; width:120px; height:9px; border-radius:2px;
   background:linear-gradient(90deg,#104281,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb)}
@@ -358,12 +367,10 @@ body.simple #inWords .info-i{margin-left:6px}
 <div id="grip" title="Drag to resize"></div>
 
 <main>
+  <div id="top">
   <nav>
     <div class="navrow">
       <span class="navlbl">Map</span>
-      <button id="fitAll">Whole catchment</button>
-      <button id="fitSite">Zoom to the growth</button>
-      <span class="navsep"></span>
       <button id="toggleSensors" class="primary">Hide sensors</button>
       <button id="togglePumps" title="Highlight the pump stations, their rising mains and the pipes that drain to them">Pump stations</button>
       <button id="toggleHeat" class="x" title="Colour every manhole by how much growth it would see on its own">Heatmap</button>
@@ -373,7 +380,6 @@ body.simple #inWords .info-i{margin-left:6px}
         <button data-v="simple" title="The map, the recommended sensors and one sentence">Simple</button>
         <button data-v="expert" title="Every case, rule, placement method and check">Expert</button>
       </div>
-      <button id="rbToggle" title="Show or hide the right panel">Hide panel</button>
     </div>
     <div class="navrow">
       <span class="navlbl x">Legend</span>
@@ -409,8 +415,12 @@ body.simple #inWords .info-i{margin-left:6px}
       <div class="quiet" id="kHint"></div>
     </div>
   </div>
+  </div>
   <div id="stageWrap">
     <div id="stage"></div>
+    <button class="tab" id="topTab" title="Fold the top bar away">&#9650;</button>
+    <button class="tab" id="rTab" title="Fold the right panel away">&#9654;</button>
+    <button class="tab x" id="lTab" title="Fold the left panel away">&#9664;</button>
     <div id="homeKey"></div>
     <div id="inWords"></div>
   </div>
@@ -429,7 +439,7 @@ body.simple #inWords .info-i{margin-left:6px}
       <span>bigger = higher rank; hover a manhole for its real percentages</span>
     </div>
     <div class="grp lg-results x"><b>Pipes</b>
-      <span><span class="kl" style="background:linear-gradient(90deg,#3987e5,#d55181,#199e70,#b06ad6)"></span>room to spare, drawn in its area's colour</span>
+      <span><span class="kl" style="background:#4c8bf5"></span>room to spare</span>
       <span><span class="kl" style="background:#ffa500"></span>already over the alarm before growth (alarm rule)</span>
       <span><span class="kl" style="background:#ff2d55"></span>sees this growth</span>
     </div>
@@ -482,14 +492,14 @@ body.simple #inWords .info-i{margin-left:6px}
 
 <div id="modal" hidden><div class="box" id="modalBox"></div></div>
 
-<script src="data/catchment.js?v=2"></script>
-<script src="data/growth.js?v=2"></script>
-<script src="data/regions.js?v=2"></script>
-<script src="data/index.js?v=2"></script>
-<script src="growth_3d.js?v=2"></script>
-<script src="osp_core.js?v=2"></script>
-<script src="placement.js?v=2"></script>
-<script src="sim3_ui.js?v=2"></script>
+<script src="data/catchment.js?v=3"></script>
+<script src="data/growth.js?v=3"></script>
+<script src="data/regions.js?v=3"></script>
+<script src="data/index.js?v=3"></script>
+<script src="growth_3d.js?v=3"></script>
+<script src="osp_core.js?v=3"></script>
+<script src="placement.js?v=3"></script>
+<script src="sim3_ui.js?v=3"></script>
 <script type="module">
   Sim3UI.init();
 </script>

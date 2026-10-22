@@ -34,12 +34,9 @@ window.Sim3UI = (function () {
     { id: "r50", label: "Rise 50 mm", note: "Seen when the depth rises at least 50 mm over that manhole's own level before the growth.", thr: 50 },
   ];
   const ruleOf = id => RULES.find(r => r.id === id);
-  // Area colours on the map (23 Oct 2026). Eight hues kept clear of the result colours the
-  // map already means something by (amber, hot red, salmon, green pins, cyan sleeves, gold
-  // pumps). No eight-hue set clears a colour-vision check on its own with those reserved, so
-  // every area also carries its label on the map and a chip in the legend.
-  const REGION_COLS = ["#3987e5", "#d55181", "#199e70", "#b06ad6", "#9ba33a", "#b08457", "#6a5acd", "#e39bb6"];
-  const regionCol = ri => REGION_COLS[ri % REGION_COLS.length];
+  // The selected area is shown by movement, not colour (23 Oct 2026, the team: colouring all
+  // eight areas at once fought the result colours): its manholes pulse, its pipes carry the
+  // blinking cyan sleeves, and it alone has a label at its centre.
   // Region indices in the order of their ids (R1, R2, ...), for the dropdown and the chips;
   // the data lists them in another order.
   const regionOrder = () => S().regions.map((r, i) => i).sort((a, b) => String(S().regions[a].id).localeCompare(String(S().regions[b].id), undefined, { numeric: true }));
@@ -59,7 +56,7 @@ window.Sim3UI = (function () {
     showSensors: true, showHeat: false, showPumps: false, showConn: false,
     hover: null, pick: null,            // hovered / clicked manhole NAME for the right panel
     lg: { results: true, network: false, regions: true },
-    rb: true,                           // right panel shown
+    rb: true, lb: true, top: true,      // right panel, left panel, top bar shown
   };
 
   /* ------------------------------------------------------------- index spaces */
@@ -229,6 +226,10 @@ window.Sim3UI = (function () {
       Growth3D.setScenario([]);
     }
     Growth3D.paint(named, site, sensors, heatValues());
+    if (st.fam === "infill") {
+      Growth3D.setPulse(region().manholes.map(nameOf));
+      Growth3D.setRegionLabels([{ names: region().manholes.map(nameOf), text: region().id, col: "#00d4ff" }]);
+    } else { Growth3D.setPulse([]); Growth3D.setRegionLabels([]); }
     Growth3D.setSpills(spillsBefore, spillsNew);
     Growth3D.setPumpRates([]);
     renderHomes(sensors);
@@ -304,7 +305,7 @@ window.Sim3UI = (function () {
       const v = $("#whereSel").value;
       if (v === "one" || v === "none") { setFamily(v); return; }
       st.region = +v.slice(1); st.pick = null;
-      if (st.fam !== "infill") setFamily("infill"); else { repaint(); Growth3D.frameNodes(region().manholes.map(nameOf)); }
+      if (st.fam !== "infill") setFamily("infill"); else repaint();
     };
     $("#howRange").oninput = () => {
       if (st.fam === "infill") st.step = +$("#howRange").value; else if (st.fam === "one") st.add = +$("#howRange").value;
@@ -320,14 +321,23 @@ window.Sim3UI = (function () {
       sel.selectedIndex = (sel.selectedIndex + (+b.dataset.step) + n) % n;
       sel.dispatchEvent(new Event("change"));
     }; });
-    $("#rbToggle").onclick = () => setRightPanel(!st.rb);
+    $("#rTab").onclick = () => setFold("rb", !st.rb);
+    $("#lTab").onclick = () => setFold("lb", !st.lb);
+    $("#topTab").onclick = () => setFold("top", !st.top);
   }
-  function setRightPanel(on) {
-    st.rb = on;
-    document.body.classList.toggle("rbHidden", !on);
-    $("#rbToggle").textContent = on ? "Hide panel" : "Show panel";
+  // The fold tabs on the map's edges: top bar, left panel (expert only), right panel.
+  function setFold(which, on) {
+    st[which] = on;
+    document.body.classList.toggle({ rb: "rbHidden", lb: "lbHidden", top: "topHidden" }[which], !on);
+    $("#rTab").innerHTML = st.rb ? "&#9654;" : "&#9664;";
+    $("#lTab").innerHTML = st.lb ? "&#9664;" : "&#9654;";
+    $("#topTab").innerHTML = st.top ? "&#9650;" : "&#9660;";
+    $("#rTab").title = st.rb ? "Fold the right panel away" : "Bring the right panel back";
+    $("#lTab").title = st.lb ? "Fold the left panel away" : "Bring the left panel back";
+    $("#topTab").title = st.top ? "Fold the top bar away" : "Bring the top bar back";
     Growth3D.resize($("#stage"));
   }
+  const setRightPanel = on => setFold("rb", on);
   // Simple weather: Dry is the family's 0.0 case, Wet its Design wet case (0.11).
   const wxOf = () => (curCase().ii < 1e-6 ? "dry" : "wet");
   function setWeather(w) {
@@ -370,8 +380,8 @@ window.Sim3UI = (function () {
   function renderChips() {
     const el = $("#areaChips");
     if (!el.dataset.built) {
-      el.innerHTML = regionOrder().map(i => { const r = S().regions[i]; return '<button class="chip" data-r="' + i + '" title="' + esc(r.name) + '"><i style="background:' + regionCol(i) + '"></i>' + esc(r.id) + "</button>"; }).join("");
-      el.onclick = e => { const b = e.target.closest(".chip"); if (!b) return; st.region = +b.dataset.r; st.pick = null; if (st.fam !== "infill") setFamily("infill"); else { repaint(); Growth3D.frameNodes(region().manholes.map(nameOf)); } };
+      el.innerHTML = regionOrder().map(i => { const r = S().regions[i]; return '<button class="chip" data-r="' + i + '" title="' + esc(r.name) + '">' + esc(r.id) + "</button>"; }).join("");
+      el.onclick = e => { const b = e.target.closest(".chip"); if (!b) return; st.region = +b.dataset.r; st.pick = null; if (st.fam !== "infill") setFamily("infill"); else repaint(); };
       el.dataset.built = "1";
     }
     $$("#areaChips .chip").forEach(b => b.classList.toggle("on", st.fam === "infill" && +b.dataset.r === st.region));
@@ -393,7 +403,7 @@ window.Sim3UI = (function () {
     on("#addKnob", b => { st.add = +b.dataset.i; repaint(); });
     on("#methKnob", b => { st.method = b.dataset.m; st.pickedGreedy = b.dataset.m === "greedy"; repaint(); });
     on("#objKnob", b => { st.obj = b.dataset.o; repaint(); });
-    $("#region").onchange = () => { st.region = +$("#region").value; st.pick = null; repaint(); Growth3D.frameNodes(region().manholes.map(nameOf)); };
+    $("#region").onchange = () => { st.region = +$("#region").value; st.pick = null; repaint(); };
     $("#stepRange").oninput = () => { st.step = +$("#stepRange").value; repaint(); };
     $("#kRange").oninput = () => { st.k = +$("#kRange").value; repaint(); };
     $("#site").onchange = () => { st.site = $("#site").value === "" ? null : +$("#site").value; st.pick = null; repaint(); };
@@ -440,8 +450,6 @@ window.Sim3UI = (function () {
     $("#objNote").textContent = st.obj === "worst"
       ? "Each sensor added is the one that most raises the worst of the cases: whatever the unknowns turn out to be, at least this much is caught."
       : "Each sensor added is the one that most raises the average over the cases. Catches more on average, but can leave one case poorly covered.";
-    $("#fitSite").textContent = st.fam === "infill" ? "Zoom to the area" : "Zoom to the growth";
-    $("#fitSite").disabled = st.fam === "none" || (st.fam === "one" && st.site == null);
     $("#regionKey").hidden = !(st.lg.regions && st.fam === "infill");
   }
 
@@ -462,9 +470,7 @@ window.Sim3UI = (function () {
     if (f === "one" && st.method === "exact") st.method = "greedy";
     if (f !== "one" && st.method === "greedy" && !st.pickedGreedy) st.method = "exact";
     buildCaseKnobs();
-    repaint();
-    if (f === "infill") Growth3D.frameNodes(region().manholes.map(nameOf));
-    else Growth3D.frame(null);
+    repaint();           // the camera stays where the reader left it
   }
 
   /* ------------------------------------------------------------ left panel */
@@ -912,12 +918,8 @@ window.Sim3UI = (function () {
       buildKnobs();
       buildSiteList();
       legendGroups();
-      // Every area in its colour, always, with its label at its centre.
-      const tints = {};
-      S().regions.forEach((r, ri) => r.manholes.forEach(i => { tints[nameOf(i)] = regionCol(ri); }));
-      Growth3D.setRegionTints(tints);
-      Growth3D.setRegionLabels(S().regions.map((r, ri) => ({ names: r.manholes.map(nameOf), text: r.id, col: regionCol(ri) })));
-      if (hp.get("panel") === "0") setRightPanel(false);
+      if (hp.get("panel") === "0") setFold("rb", false);
+      if (hp.get("top") === "0") setFold("top", false);
       $("#scale").textContent = G().nPipes + " pipes, " + G().nChambers + " manholes, " + (G().nHouses || G().baseDwellings) + " connected properties, plus " +
         G().nodes.filter(n => n.kind !== "chamber").length + " pipe ends with no manhole on record. Elevation is the pipe invert, exaggerated x" + Growth3D.ZEXAG +
         ". Drag to turn the map, right-drag to move it, scroll to zoom where the pointer is.";
@@ -931,8 +933,6 @@ window.Sim3UI = (function () {
     $("#qaClose").onclick = () => setTab("map");
     $("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").hidden = true; };
     document.addEventListener("keydown", e => { if (e.key === "Escape") { $("#modal").hidden = true; setTab("map"); } });
-    $("#fitAll").onclick = () => Growth3D.frame(null);
-    $("#fitSite").onclick = () => { if (st.fam === "infill") Growth3D.frameNodes(region().manholes.map(nameOf)); else if (st.site != null) Growth3D.frame(nameOf(st.site)); };
     $("#toggleSensors").onclick = () => {
       st.showSensors = !st.showSensors;
       $("#toggleSensors").classList.toggle("primary", st.showSensors);
