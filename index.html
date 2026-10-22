@@ -66,7 +66,8 @@ footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);
     <button data-tab="observability">Why observability is limited</button>
     <button data-tab="sim1">Simulation 1</button>
     <button data-tab="sim2">Simulation 2 (superseded)</button>
-    <button data-tab="sim25">Simulation 2.5 (latest)</button>
+    <button data-tab="sim3">Simulation 3 (latest)</button>
+    <button data-tab="sim25">Simulation 2.5</button>
     <button data-tab="sim25legacy">Simulation 2.5 (legacy)</button>
   </nav>
 </header>
@@ -77,7 +78,7 @@ footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);
 <div class="wrap">
 
 <h1>Optimal sensor placement in gravity sewers</h1>
-<p class="sub">An interactive sandbox, three simulations and two explainers, built on openly published South
+<p class="sub">An interactive sandbox, the growth simulations and two explainers, built on openly published South
 Australian network data.</p>
 
 <p>Water utilities put level sensors in sewer maintenance holes to catch blockages before they
@@ -93,8 +94,20 @@ This is a working tool for exploring that, running on a real network rather than
     for your own JavaScript. Includes an assumptions register, the method and its sources, and a
     glossary.</p>
   </a>
-  <a class="card big" href="#sim25" data-tab="sim25">
+  <a class="card big" href="#sim3" data-tab="sim3">
     <span class="tag">Interactive, latest</span>
+    <h3>Simulation 3: infill or greenfield growth, and the few sensors that would see it</h3>
+    <p>The growth model with the use case first: new homes spread through one of eight areas in
+    proportion to the homes already there (infill), or a new estate joining at one manhole
+    (greenfield), under eight cases for what cannot yet be measured, every run continued until the
+    levels stop moving. The finding: growth is a wet-weather signal. In dry weather a whole area's
+    build-out raises the best manhole by a few millimetres; in design wet weather by tens, and a
+    level sensor sees it at a quarter of the build-out. The recommended set is the exact optimum,
+    with greedy beside it; a simple view explains each pin, an expert view shows every case and
+    check.</p>
+  </a>
+  <a class="card big" href="#sim25" data-tab="sim25">
+    <span class="tag">Interactive</span>
     <h3>Simulation 2.5: which manholes see growth, whatever the unknowns</h3>
     <p>The growth model rebuilt on the whole council network below the catchment, solved in
     EPA SWMM, with outside inflows where other areas join. Twelve cases vary what cannot yet be
@@ -213,6 +226,7 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 <div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html?v=31" title="Why observability is limited"></iframe></div>
 <div class="pane" id="pane-sim1" hidden><iframe data-src="simulation_legacy/index.html?v=31" title="Simulation 1: warning time"></iframe></div>
 <div class="pane" id="pane-sim2" hidden><iframe data-src="simulation/index.html?v=31" title="Simulation 2: growth and sensor placement"></iframe></div>
+<div class="pane" id="pane-sim3" hidden><iframe data-src="simulation3/index.html?v=1" title="Simulation 3: growth and sensor placement"></iframe></div>
 <div class="pane" id="pane-sim25" hidden><iframe data-src="simulation25/index.html?v=93" title="Simulation 2.5: growth and sensor placement"></iframe></div>
 <div class="pane" id="pane-sim25legacy" hidden><iframe data-src="simulation25_legacy/index.html?v=1" title="Simulation 2.5 (legacy): as published 25 Sep 2026"></iframe></div>
 
@@ -221,7 +235,7 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 <!-- config.js holds the project's settings; its "pages" section decides which pages this site offers. It carries its own cache key for
      the same reason the iframes do: it is a script, and a browser will reuse the copy
      it has. Bump it when the config changes. -->
-<script src="config.js?v=34"></script>
+<script src="config.js?v=35"></script>
 <script>
 // Drop the pages config.js turns off (keys starting "_" are notes), before anything is wired up. Removing the button
 // is what makes a deep link to a hidden page fall back to the overview: showTab looks

@@ -21,6 +21,7 @@ Everything runs in the browser. No server, no build step, no tracking.
 | `src/docs/` | `osp_docs.js`, the assumptions register, method, Q&A and illustrated glossary, generated from the loaded data. |
 | `data/` | `osp_data.js`, the generated dataset. Never edited by hand. |
 | `config.js` | Every setting in one file: which pages the site shows, pipe roughness and age weights, the sandbox's blockage weights, loads, Simulation 2.5's study area, cases, detection rules and pump stations. Read by the browser, Node and Python (`simulation_src/osp_config.py`). |
+| `simulation3/` | Simulation 3, the latest page: infill (eight areas, a build-out ladder) and greenfield growth under eight settled cases, exact and greedy placement, a simple view with an expert toggle. Built by the private repository's `build_sim3_web.py` from the same SWMM outputs; its renderer is a copy of `simulation25/growth_3d.js`. |
 | `simulation25/` | Simulation 2.5, the browser view of the growth and sensor-placement grid, with a scenario builder and a choice of placement methods. |
 | `simulation_src/` | EPA SWMM source, the exact public-data snapshot, saved outputs and full reproduction commands for Simulations 1, 2 and 2.5. |
 | `tools/` | Regression tests, data formatting, and the public Sim 2.5 browser builder. The source-data harvester and sanitiser remain private. See `ARCHITECTURE.md`. |

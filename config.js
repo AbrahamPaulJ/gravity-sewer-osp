@@ -25,6 +25,7 @@
     "observability": true,
     "sim1": false,
     "sim2": false,
+    "sim3": true,
     "sim25": true,
     "sim25legacy": true
   },
