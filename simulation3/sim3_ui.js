@@ -235,6 +235,7 @@ window.Sim3UI = (function () {
     renderHomes(sensors);
     renderKnobs();
     renderStrip();
+    syncDDs();
     renderChips();
     renderPanel();
     renderSide();
@@ -250,9 +251,9 @@ window.Sim3UI = (function () {
   // selected area's homes (infill), the sensors' catchment, or the growth manhole's homes.
   function renderHomes(sensors) {
     const mhName = nm => { const n = G().nodes.find(x => x.name === nm); return n && n.mh ? "MH " + n.mh : nm; };
-    const row = (col, text, ring) => '<div class="row">' + (col ? '<span class="k' + (ring ? " ring" : "") + '" style="background:' + col + '"></span>' : "") + text + "</div>";
+    const row = (col, text, ring) => text && text !== "&nbsp;" ? "<span>" + (col ? '<span class="k' + (ring ? " ring" : "") + '" style="background:' + col + '"></span>' : "") + text + "</span>" : "";
     const put = (head, r1, r2, r3, hint) => {
-      $("#homeKey").innerHTML = '<div class="row head">' + head + "</div>" + r1 + r2 + r3 + '<div class="row quiet2">' + hint + "</div>";
+      $("#homesLine").innerHTML = (head ? '<span class="hd">' + head + "</span>" : "") + r1 + r2 + r3 + (hint ? '<span class="quiet2">' + hint + "</span>" : "");
     };
     let spec, lead;
     if (st.hover) { spec = { mode: "site", name: st.hover }; lead = "Homes behind " + esc(mhName(st.hover)); }
@@ -268,25 +269,24 @@ window.Sim3UI = (function () {
         row("#7dc4e0", "<strong>" + r.homes + "</strong> homes in the area, <strong>" + reg.nManholes + "</strong> manholes"),
         row("#00d4ff", "<strong>" + r.pipes + "</strong> pipes carry the new homes' flow"),
         row("#3a2430", "<strong>" + r.elsewhere + "</strong> homes elsewhere"),
-        "Click a manhole to inspect it");
+        "");
       return;
     }
     if (r.mode === "none") {
-      put("No growth placed", row("#ff6f9c", "<strong>" + r.total + "</strong> connected homes"), row("", "&nbsp;"), row("", "&nbsp;"),
-        "Pick a kind of growth on the left");
+      put("", row("#ff6f9c", "<strong>" + r.total + "</strong> connected homes"), "", "", "");
       return;
     }
     if (r.mode === "sensors") {
       put("Homes and the " + sensors.length + " sensor" + (sensors.length === 1 ? "" : "s"),
         row("#3fb950", "<strong>" + r.watched + "</strong> of " + r.total + " drain past a sensor (" + Math.round(100 * r.watched / r.total) + "%)"),
-        row("", "<strong>" + r.unwatched + "</strong> do not"), row("", "&nbsp;"), "Green sleeves: pipes feeding a sensor");
+        row("", "<strong>" + r.unwatched + "</strong> do not"), "", "");
       return;
     }
     put(lead,
       row("#1f4fff", "<strong>" + r.here + "</strong> reach it first" + (r.here > r.direct ? " (" + (r.here - r.direct) + " via unrecorded pipe ends)" : ""), true),
       row("#7dc4e0", "<strong>" + r.through + "</strong> drain through it from further up"),
       row("#3a2430", "<strong>" + r.elsewhere + "</strong> elsewhere"),
-      st.hover ? (st.fam === "one" ? "Previewing. Click to move the growth here." : "Previewing. Click to inspect it.") : "Hover any manhole to preview its homes");
+      st.hover ? (st.fam === "one" ? "Click to move the growth here" : "Click to inspect it") : "");
   }
   const shortName = reg => reg.name.split(":")[0];
 
@@ -553,15 +553,16 @@ window.Sim3UI = (function () {
 
   /* ------------------------------------------------------------- in words */
   function renderWords() {
-    const c = curCase(), el = $("#inWords");
+    const c = curCase(), el = $("#wordsText");
     const wx = st.view === "simple" ? (wxOf() === "dry" ? "dry" : "wet") + " weather" : "<b>" + esc(c.label) + "</b> weather";
+    const withTip = (short, long) => short + '<i class="info-i" data-tip="' + esc(long).replace(/"/g, "&quot;") + '">i</i>';
     if (st.fam === "infill") {
       const reg = region(), row = curRow();
       if (!row) { el.innerHTML = ""; return; }
       const seen = seers(row, st.rule), top = row.rise[0], chosen = placement().chosen, caught = chosen.filter(i => seen.includes(i));
       const fd = ((S().rules[st.rule] || {}).firstSeen || {})[reg.id] || {};
       const first = fd[curTag()];
-      if (st.view === "simple") {
+      {
         const S_ = caught.map(i => "S" + (chosen.indexOf(i) + 1));
         const short = "<b>" + esc(reg.id) + "</b>, +" + Math.round(row.dw) + " homes, " + wx + ": " +
           (caught.length ? "<b>sensor" + (S_.length === 1 ? " " : "s ") + S_.join(", ") + (S_.length === 1 ? " sees" : " see") + " it</b>" : seen.length ? "<b>no chosen sensor sees it</b>, " + seen.length + " other manhole" + (seen.length === 1 ? " does" : "s do") : "<b>nothing moves enough to see</b>") + "." +
@@ -570,7 +571,7 @@ window.Sim3UI = (function () {
           seen.length + " manhole" + (seen.length === 1 ? "" : "s") + " rise 10 mm or more (the level-sensor rule). " +
           "Full build-out here is " + Math.round(reg.nominal) + " homes, this area's share of the 2041 projection. The case shown is " + c.label + "; the sensors were chosen for the worst of all cases." +
           (first ? " First seen at " + label(first[0]) + "." : " Under this rule no manhole sees this area at any build-out in this case: a blind spot.");
-        el.innerHTML = '<span class="tag">Infill</span>' + short + '<i class="info-i up left" data-tip="' + esc(long).replace(/"/g, "&quot;") + '">i</i>';
+        el.innerHTML = '<span class="tag">Infill</span>' + withTip(short, long);
         return;
       }
       el.innerHTML = '<span class="tag">Infill</span><b>' + esc(reg.id + ", " + shortName(reg)) + "</b>: " + Math.round(row.dw) + " new dwellings (" +
@@ -827,33 +828,30 @@ window.Sim3UI = (function () {
     closeT();
     return out.join("\n");
   }
-  function renderRef() {
-    if ($("#ref").dataset.done) return;
+  function refHtml() {
     const g = G();
-    $("#ref").innerHTML = '<div class="lead"><p><strong>What this model is, in one paragraph.</strong> Every council pipe draining to the end of the council data, ' +
+    return '<div class="lead"><p><strong>What this model is, in one paragraph.</strong> Every council pipe draining to the end of the council data, ' +
       g.nPipes + " pipes and " + g.nChambers + " manholes, is solved together in EPA SWMM as a steady state, run until no manhole's level is still moving, and every one of those manholes is a growth site and a sensor candidate. " +
       "Pipes from outside the council area are not modelled; where they join, a constant inflow sized from their published length stands in for them. Two pump stations pass their flow on as ideal pumps. " +
       "Sewage comes from connected properties counted from the published record; infiltration is in proportion to pipe length.</p>" +
       "<p><strong>The register below</strong> is every assumption and constant the model rests on, with its value, how firm it is and its source. " + S().cases.length +
       " cases vary the ones no data pins yet. Sources cited as docs/ or papers/ are in the project's working repository, not this one.</p></div>" + markdown(IDX().docs.assumptions);
-    $("#ref").dataset.done = "1";
   }
-  function renderQA() {
-    if ($("#qa").dataset.done) return;
-    $("#qa").innerHTML = markdown(IDX().docs.findings);
-    $("#qa").dataset.done = "1";
-  }
-  function setTab(tab) {
-    const ref = tab === "ref", qa = tab === "qa";
-    $("#pane-ref").hidden = !ref; $("#pane-qa").hidden = !qa;
-    $("#tab-ref").classList.toggle("primary", ref); $("#tab-ref").textContent = ref ? "Back to the map" : "Assumptions";
-    $("#tab-qa").classList.toggle("primary", qa); $("#tab-qa").textContent = qa ? "Back to the map" : "Findings";
-    if (ref) renderRef(); else if (qa) renderQA(); else Growth3D.resize($("#stage"));
+  // Every document opens in the one popup: About (the scenario), Assumptions, Findings.
+  const CLOSE = '<button class="close" id="modalClose" title="Close (Esc)">&times;</button>';
+  function showDoc(kind) {
+    const box = $("#modalBox");
+    box.classList.add("wide");
+    box.innerHTML = CLOSE + '<div class="docbody">' + (kind === "ref" ? refHtml() : markdown(IDX().docs.findings)) + "</div>";
+    $("#modal").hidden = false;
+    box.scrollTop = 0;
+    $("#modalClose").onclick = () => { $("#modal").hidden = true; };
   }
   function showModal() {
     const sc = IDX().scenario, n = sc.numbers;
     const fact = (l, v) => v == null ? "" : '<div class="kfact">' + esc(l) + "<b>" + esc(v) + "</b></div>";
-    $("#modalBox").innerHTML = '<button class="close" id="modalClose">Close</button><h2>' + esc(sc.title) + '</h2><p class="q">' + esc(sc.question) + "</p>" +
+    $("#modalBox").classList.remove("wide");
+    $("#modalBox").innerHTML = CLOSE + '<h2>' + esc(sc.title) + '</h2><p class="q">' + esc(sc.question) + "</p>" +
       sc.what.map(p => "<p>" + esc(p) + "</p>").join("") + "<h3>What to look at</h3><ul>" + sc.read.map(r => "<li>" + esc(r) + "</li>").join("") + "</ul>" +
       "<h3>The numbers behind it</h3><div class=kfacts>" + fact("Pipes modelled", n.pipes) + fact("Manholes", n.chambers) + fact("Properties counted", n.dwellings) +
       fact("Areas (infill)", n.regions) + fact("Uncertainty cases", n.cases) + fact("Peak factor", n.peakFactor) + fact("Wet weather settings", n.iiRange ? n.iiRange + " L/s per 100 m" : null) +
@@ -872,6 +870,37 @@ window.Sim3UI = (function () {
     sel.innerHTML = '<option value="">No manhole selected</option>' + order.map(i => "<option value=" + JSON.stringify(String(i)) + ">" + esc(label(i)) + "  (" + n[i] + " homes)</option>").join("");
     return order;
   }
+  /* ---------------------------------------------------- dropdowns that wrap */
+  // The native select keeps the state (value, options, change event, the arrows step it);
+  // the button shows the chosen option's text wrapped, the list shows every option's full
+  // name (its title) or its text.
+  function enhanceSelect(sel) {
+    if (sel.dataset.dd) return;
+    const dd = document.createElement("div"); dd.className = "dd";
+    const btn = document.createElement("button"); btn.type = "button"; btn.className = "ddBtn";
+    const list = document.createElement("div"); list.className = "ddList"; list.hidden = true;
+    dd.appendChild(btn); dd.appendChild(list);
+    sel.insertAdjacentElement("afterend", dd);
+    sel.dataset.dd = "1";
+    btn.onclick = () => { const open = list.hidden; closeDDs(); if (open) { fillDD(sel); list.hidden = false; dd.classList.add("open"); } };
+    list.onclick = e => { const o = e.target.closest("[data-v]"); if (!o) return; sel.value = o.dataset.v; closeDDs(); syncDD(sel); sel.dispatchEvent(new Event("change")); };
+    sel.addEventListener("change", () => syncDD(sel));
+    syncDD(sel);
+  }
+  function fillDD(sel) {
+    const list = sel.nextElementSibling.querySelector(".ddList");
+    list.innerHTML = Array.from(sel.options).map(o => '<div data-v="' + esc(o.value) + '"' + (o.value === sel.value ? ' class="on"' : "") + ">" + esc(o.title || o.text) + "</div>").join("");
+    const on = list.querySelector(".on"); if (on) on.scrollIntoView({ block: "center" });
+  }
+  function syncDD(sel) {
+    const dd = sel.nextElementSibling; if (!dd || !dd.classList.contains("dd")) return;
+    const o = sel.options[sel.selectedIndex];
+    dd.querySelector(".ddBtn").textContent = o ? o.text : "";
+    dd.querySelector(".ddBtn").title = o && o.title ? o.title : "";
+  }
+  function syncDDs() { $$("select[data-dd]").forEach(syncDD); }
+  function closeDDs() { $$(".dd").forEach(d => { d.classList.remove("open"); d.querySelector(".ddList").hidden = true; }); }
+
   function legendGroups() {
     // One Legend button. Off by default; on, it shows the groups that apply (the heatmap key
     // is driven by repaint, the pump and connection keys by their own toggles).
@@ -924,6 +953,8 @@ window.Sim3UI = (function () {
       legendGroups();
       if (hp.get("panel") === "0") setFold("rb", false);
       if (hp.get("top") === "0") setFold("top", false);
+      if (hp.get("open") === "ref" || hp.get("open") === "qa") showDoc(hp.get("open"));
+      else if (hp.get("open") === "about") showModal();
       $("#scale").textContent = G().nPipes + " pipes, " + G().nChambers + " manholes, " + (G().nHouses || G().baseDwellings) + " connected properties, plus " +
         G().nodes.filter(n => n.kind !== "chamber").length + " pipe ends with no manhole on record. Elevation is the pipe invert, exaggerated x" + Growth3D.ZEXAG +
         ". Drag to turn the map, right-drag to move it, scroll to zoom where the pointer is.";
@@ -931,12 +962,35 @@ window.Sim3UI = (function () {
       Growth3D.frame(null);            // the whole network, orbiting about its centre
     });
     $("#btn-info").onclick = showModal;
-    $("#tab-ref").onclick = () => setTab($("#pane-ref").hidden ? "ref" : "map");
-    $("#refClose").onclick = () => setTab("map");
-    $("#tab-qa").onclick = () => setTab($("#pane-qa").hidden ? "qa" : "map");
-    $("#qaClose").onclick = () => setTab("map");
+    $("#tab-ref").onclick = () => showDoc("ref");
+    $("#tab-qa").onclick = () => showDoc("qa");
     $("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").hidden = true; };
-    document.addEventListener("keydown", e => { if (e.key === "Escape") { $("#modal").hidden = true; setTab("map"); } });
+    document.addEventListener("keydown", e => { if (e.key === "Escape") { $("#modal").hidden = true; closeDDs(); } });
+    // The (i) bubble: one fixed box, placed under the icon and kept inside the window.
+    const tipBox = document.createElement("div");
+    tipBox.id = "tipBox"; tipBox.hidden = true;
+    document.body.appendChild(tipBox);
+    const placeTip = i => {
+      const r = i.getBoundingClientRect(), w = tipBox.offsetWidth, h = tipBox.offsetHeight;
+      let left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+      let top = r.bottom + 8;
+      if (top + h > window.innerHeight - 8) top = r.top - 8 - h;
+      if (top < 8) top = 8;
+      tipBox.style.left = left + "px"; tipBox.style.top = top + "px";
+    };
+    document.addEventListener("mouseover", e => {
+      const i = e.target.closest && e.target.closest(".info-i[data-tip]");
+      if (!i || !i.dataset.tip) return;
+      tipBox.textContent = i.dataset.tip; tipBox.hidden = false; placeTip(i);
+    });
+    document.addEventListener("mouseout", e => {
+      const i = e.target.closest && e.target.closest(".info-i[data-tip]");
+      if (i && !(e.relatedTarget && i.contains(e.relatedTarget))) tipBox.hidden = true;
+    });
+    document.addEventListener("scroll", () => { tipBox.hidden = true; }, true);
+    // Dropdowns that wrap: a button and a list drawn beside each hidden native select.
+    $$("select").forEach(enhanceSelect);
+    document.addEventListener("click", e => { if (!e.target.closest(".dd")) closeDDs(); });
     $("#toggleSensors").onclick = () => {
       st.showSensors = !st.showSensors;
       $("#toggleSensors").classList.toggle("primary", st.showSensors);

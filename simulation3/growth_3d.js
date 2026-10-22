@@ -1424,20 +1424,14 @@ window.Growth3D = (function () {
 
   function frame(tightOn) {
     if (!built) return;
-    // SIM3: the orbit centre is the centre of the manholes themselves, not of everything in
-    // the scene (the datum grid and the height ruler pulled it towards a corner).
-    const box = new THREE.Box3();
-    chamberMeshes.forEach(m => box.expandByPoint(m.position));
-    if (box.isEmpty()) box.setFromObject(scene);
+    const box = new THREE.Box3().setFromObject(scene);
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     let centre = sphere.center, span = sphere.radius * 2;
     if (tightOn) {
       const m = chamberMeshes.find(x => x.userData.node.name === tightOn);
       if (m) { centre = m.position.clone(); span = 420; }
     }
-    // 0.95, not 0.72: the manhole-only sphere is tighter than the old scene sphere, and
-    // 0.72 cut the network's far end off on a 16:9 window.
-    const r = span / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)) * (tightOn ? 0.72 : 0.95);
+    const r = span / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)) * 0.72;
     controls.target.copy(centre);
     camera.position.set(centre.x + r * 0.62, centre.y + r * 0.48, centre.z + r * 0.62);
     camera.updateProjectionMatrix();
