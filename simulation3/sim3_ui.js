@@ -55,7 +55,7 @@ window.Sim3UI = (function () {
     rule: "r10", k: 5, method: "exact", obj: "worst",
     showSensors: true, showHeat: false, showPumps: false, showConn: false,
     hover: null, pick: null,            // hovered / clicked manhole NAME for the right panel
-    lg: { results: true, network: false, regions: true },
+    legend: false,                      // the colour key, off until asked for
     rb: true, lb: true, top: true,      // right panel, left panel, top bar shown
   };
 
@@ -268,7 +268,7 @@ window.Sim3UI = (function () {
         row("#7dc4e0", "<strong>" + r.homes + "</strong> homes in the area, <strong>" + reg.nManholes + "</strong> manholes"),
         row("#00d4ff", "<strong>" + r.pipes + "</strong> pipes carry the new homes' flow"),
         row("#3a2430", "<strong>" + r.elsewhere + "</strong> homes elsewhere"),
-        "Click a manhole to inspect it; the area follows your click");
+        "Click a manhole to inspect it");
       return;
     }
     if (r.mode === "none") {
@@ -349,7 +349,9 @@ window.Sim3UI = (function () {
     if (st.view !== "simple") return;
     $("#whereSel").value = st.fam === "infill" ? "r" + st.region : st.fam;
     const reg = region();
-    $("#whereHint").textContent = st.fam === "infill" ? reg.dwellings + " homes, " + reg.nManholes + " manholes today"
+    const desc = String(reg.name).split(":").slice(1).join(":").trim();
+    $("#whereSel").title = st.fam === "infill" ? reg.name : "";
+    $("#whereHint").textContent = st.fam === "infill" ? (desc ? desc.charAt(0).toUpperCase() + desc.slice(1) + "; " : "") + reg.dwellings + " homes, " + reg.nManholes + " manholes today"
       : st.fam === "one" ? (st.site != null ? "At " + label(st.site) + ". Click another manhole to move it." : "Click a manhole on the map to place it.")
       : "No homes added. Amber manholes are over the alarm already.";
     const how = $("#howStep");
@@ -390,7 +392,7 @@ window.Sim3UI = (function () {
     const Rr = R();
     $("#ruleKnob").innerHTML = RULES.map(r => "<button data-r=" + JSON.stringify(r.id) + " title=" + JSON.stringify(r.note) + ">" + esc(r.label) + "</button>").join("");
     $("#addKnob").innerHTML = Rr.growthLevels.map((g, i) => "<button data-i=" + JSON.stringify(String(i)) + ">+" + g + "</button>").join("");
-    $("#region").innerHTML = S().regions.map((r, i) => "<option value=" + JSON.stringify(String(i)) + ">" + esc(r.id + ": " + shortName(r)) + " (" + r.dwellings + " homes)</option>").join("");
+    $("#region").innerHTML = regionOrder().map(i => { const r = S().regions[i]; return "<option value=" + JSON.stringify(String(i)) + " title=" + JSON.stringify(r.name) + ">" + esc(r.id + ": " + shortName(r)) + "</option>"; }).join("");
     $("#stepRange").max = String(ladder().length - 1);
     buildCaseKnobs();
     const on = (sel, fn) => { $(sel).onclick = e => { const b = e.target.closest("button"); if (!b) return; fn(b); }; };
@@ -399,7 +401,7 @@ window.Sim3UI = (function () {
     on("#iiKnob", b => { st.caseTag = famCases()[+b.dataset.i].tag; repaint(); });
     buildStrip();
     on("#ruleKnob", b => { st.rule = b.dataset.r; repaint(); });
-    on("#typeKnob", b => { st.rule = b.dataset.r; repaint(); });
+    $("#toggleLegend").onclick = () => { st.legend = !st.legend; legendGroups(); };
     on("#addKnob", b => { st.add = +b.dataset.i; repaint(); });
     on("#methKnob", b => { st.method = b.dataset.m; st.pickedGreedy = b.dataset.m === "greedy"; repaint(); });
     on("#objKnob", b => { st.obj = b.dataset.o; repaint(); });
@@ -414,43 +416,47 @@ window.Sim3UI = (function () {
     $$("#famKnob button").forEach(b => b.classList.toggle("on", b.dataset.f === st.fam));
     $$("#iiKnob button").forEach(b => b.classList.toggle("on", +b.dataset.i === ci));
     $$("#ruleKnob button").forEach(b => b.classList.toggle("on", b.dataset.r === st.rule));
-    $$("#typeKnob button").forEach(b => b.classList.toggle("on", b.dataset.r === st.rule || (b.dataset.r === "r10" && st.rule !== "alarm")));
     $$("#addKnob button").forEach(b => b.classList.toggle("on", +b.dataset.i === st.add));
     $$("#methKnob button").forEach(b => b.classList.toggle("on", b.dataset.m === st.method));
     $$("#objKnob button").forEach(b => b.classList.toggle("on", b.dataset.o === st.obj));
-    $("#famNote").textContent = FAM_NOTE[st.fam];
+    $("#famInfo").dataset.tip = FAM_NOTE[st.fam];
     $("#infillBox").hidden = st.fam !== "infill";
     $("#oneBox").hidden = st.fam !== "one";
     $("#region").value = String(st.region);
+    $("#region").title = region().name;
     $("#stepRange").value = String(st.step);
     $("#kRange").value = String(st.k);
     $("#kVal").textContent = String(st.k);
     $("#site").value = st.site == null ? "" : String(st.site);
     const settled = c.settled !== false;
-    $("#iiNote").innerHTML = '<span class="badge ' + (settled ? "settled" : "fixed") + '">' + (settled ? "settled runs" : "480-minute runs") + "</span>" +
-      esc(c.note || "") + (caseFellBack() ? " <b>This family has not run the selected variant yet; its " + esc(c.label) + " case is shown.</b>" : "") +
-      (st.view === "simple" ? " The sensors are chosen for the worst of all " + famCases().length + " cases, not just this one." : "");
+    $("#iiBadge").innerHTML = '<span class="badge ' + (settled ? "settled" : "fixed") + '">' + (settled ? "settled runs" : "480-minute runs") + "</span>" +
+      (caseFellBack() ? " <b>This family has not run the selected variant yet; its " + esc(c.label) + " case is shown.</b>" : "");
+    $("#iiInfo").dataset.tip = (c.note || "") + " The sensors are chosen for the worst of all " + famCases().length + " cases, not just the one shown." +
+      (settled ? "" : " This case's runs are the fixed 480-minute ones from Sim 2.5, not yet re-run to settlement.");
     const rl = ruleOf(st.rule);
-    $("#ruleNote").textContent = rl.note + (st.view === "simple" && st.rule !== "alarm" && st.rule !== "r10" ? " (Expert rule " + rl.label + " selected.)" : "");
+    $("#ruleInfo").dataset.tip = rl.note + (st.rule === "alarm"
+      ? " Manholes already over the alarm before any growth are amber: they cannot report it."
+      : " Every manhole is judged against its own level before the growth, so nothing counts as already triggered.");
     if (st.fam === "infill") {
       const reg = region(), f = ladder()[st.step], row = curRow();
       $("#stepLbl").innerHTML = "<b>+" + (row ? Math.round(row.dw) : Math.round(reg.nominal * f)) + "</b> dwellings (" + Math.round(f * 100) + "% of the area's share)";
-      $("#stepNote").textContent = "100% is this area's share of the 2041 projection, " + Math.round(reg.nominal) + " dwellings on its " + reg.dwellings +
-        " today. 25% is roughly the first year or two; 300% is a stress test.";
+      $("#stepInfo").dataset.tip = "100% is this area's share of the 2041 projection, " + Math.round(reg.nominal) + " dwellings on its " + reg.dwellings +
+        " today. 25% is roughly the first year or two; 300% is a stress test. The growth is added all at once to today's network, with no pipe upgrades; " +
+        "in reality the dwellings arrive over three to five years, which is why the time-to-notice figures matter as much as the millimetres.";
     }
     $("#objKnob").style.display = st.fam !== "one" && st.method !== "greedy" ? "none" : "";
     const hasRisk = st.fam !== "one" && !!((S().rules[st.rule] || {}).risk);
     $("#methRisk").hidden = !hasRisk;
     if (!hasRisk && st.method === "risk") st.method = "exact";
-    $("#methNote").textContent = st.fam !== "one"
-      ? (st.method === "exact" ? "The best set of this size, solved exactly over all cases for the worst case (PuLP + HiGHS). The recommendation."
-         : st.method === "risk" ? "Kimbrough's risk score: each scenario weighted by severity (homes draining through the manhole where it bites) x occurrence (how far it pushes that manhole towards 0.7 of its bore). The set that notices the most RISK, solved exactly. A comparison, not the recommendation: it pulls sensors towards trunk mains already near capacity."
-                               : "Each sensor is the best addition to the ones before it. Up to 10 points below the exact optimum at the same size.")
+    const methText = st.fam !== "one"
+      ? (st.method === "exact" ? "Exact: the best set of this size, solved exactly over all cases for the worst case (PuLP + HiGHS). The recommendation."
+         : st.method === "risk" ? "Risk-weighted (Kimbrough): each scenario weighted by severity (homes draining through the manhole where it bites) x occurrence (how far it pushes that manhole towards 0.7 of its bore). The set that notices the most risk, solved exactly. A comparison, not the recommendation: it pulls sensors towards trunk mains already near capacity."
+                               : "Greedy: each sensor is the best addition to the ones before it. Up to 10 points below the exact optimum at the same size.")
       : "The greenfield grid publishes the greedy order only; the exact solver has run on the infill family.";
-    $("#objNote").textContent = st.obj === "worst"
-      ? "Each sensor added is the one that most raises the worst of the cases: whatever the unknowns turn out to be, at least this much is caught."
-      : "Each sensor added is the one that most raises the average over the cases. Catches more on average, but can leave one case poorly covered.";
-    $("#regionKey").hidden = !(st.lg.regions && st.fam === "infill");
+    const objText = st.fam !== "one" && st.method !== "greedy" ? "" : (st.obj === "worst"
+      ? " Best worst case: each sensor added is the one that most raises the worst of the cases, so whatever the unknowns turn out to be at least this much is caught."
+      : " Best average: each sensor added is the one that most raises the average over the cases; catches more on average, but can leave one case poorly covered.");
+    $("#sensInfo").dataset.tip = methText + objText + " Detectable growth: scenarios that at least one manhole sees. This scores whether a sensor would notice growth, not whether it watches a choke point; the choke points are under No growth.";
   }
 
   function setView(v) {
@@ -540,7 +546,7 @@ window.Sim3UI = (function () {
     $("#baseNote").innerHTML = baseNote(base.alarm.length, base.spilled.length, names().length);
   }
   const baseNote = (nAlarm, nSpill, n) => (st.rule !== "alarm"
-    ? "Graded rule: every manhole is judged against its own level before the growth, so nothing counts as already triggered."
+    ? ""
     : nAlarm ? "<b>" + nAlarm + "</b> of " + n + " manholes are already over the alarm in this case <b>before any houses are added</b>. They are amber and cannot report the growth."
     : "No manhole is over the alarm before growth in this case.") +
     (nSpill ? " <b>" + nSpill + "</b> manhole" + (nSpill === 1 ? " already spills" : "s already spill") + " from the lid before any growth." : "");
@@ -615,21 +621,21 @@ window.Sim3UI = (function () {
     }).join("") + "</table>";
     const days = tr && tr.days ? Object.entries(tr.days).map(([sg, d]) => "<tr><td>" + (+sg).toFixed(0) + " mm</td><td" + (d >= 1825 ? ' class="never"' : "") + ">" + (d >= 1825 ? "over 5 years" : d + " day" + (d === 1 ? "" : "s")) + "</td></tr>").join("") : "";
     const rw = st.view === "expert" && S().riskWeights && S().riskWeights[tag] ? S().riskWeights[tag][reg.id + "|" + ladder()[st.step]] : null;
-    box.innerHTML = "<h4>This area</h4>" +
+    const h4i = (t, tip) => "<h4>" + t + ' <i class="info-i left" data-tip="' + esc(tip).replace(/"/g, "&quot;") + '">i</i></h4>';
+    box.innerHTML = h4i("This area", reg.name) +
       row2("Area", "<b>" + esc(reg.id) + "</b> " + esc(shortName(reg))) +
       (rw ? row2("Risk weight (expert)", "<b>" + rw.w + "</b> = S " + rw.S + " x O " + rw.O + (rw.at != null ? ", at " + esc(label(rw.at)) + (rw.ddAfter != null ? " (d/D " + rw.ddBefore + " to " + rw.ddAfter + ")" : "") : "")) : "") +
       row2("Today", reg.dwellings + " homes, " + reg.nManholes + " manholes, " + (reg.lengthM / 1000).toFixed(1) + " km of pipe") +
       row2("Its 2041 share", "<b>" + Math.round(reg.nominal) + "</b> dwellings (100%)" + (reg.exitPipe ? ", drains out through pipe " + reg.exitPipe : "")) +
-      '<p class="quiet">' + esc(reg.name) + "</p>" +
-      "<h4>First build-out a sensor sees it (" + esc(ruleOf(st.rule).label.toLowerCase()) + ")</h4>" + seenTable +
-      '<p class="quiet">The best single manhole in each case. A blank row means no manhole passes the rule even at 300%: the area is a blind spot under this rule.</p>' +
-      (tr ? "<h4>Time to notice full build-out, " + esc(curCase().label) + "</h4>" +
+      h4i("First build-out a sensor sees it (" + esc(ruleOf(st.rule).label.toLowerCase()) + ")",
+          "The best single manhole in each case, and the build-out at which it first passes the rule. A 'never' row means no manhole passes the rule even at 300%: the area is a blind spot under this rule.") + seenTable +
+      (tr ? h4i("Time to notice full build-out, " + esc(curCase().label),
+                "How many days of same-hour readings separate the new level from the old one, if the day-to-day scatter is the figure in the first column. The scatter is assumed until normal-day level records arrive.") +
         row2("Best manhole", esc(label(tr.best)) + ", <b>+" + tr.riseMm.toFixed(1) + " mm</b> at 100%") +
-        '<table class="sm"><tr><th>Day-to-day noise</th><th>Days of readings</th></tr>' + days + "</table>" +
-        '<p class="quiet">How many days of same-hour readings separate the new level from the old one, if the day-to-day scatter is the figure in the first column. The scatter is assumed until normal-day level records arrive.</p>' : "") +
-      (pi ? "<h4>Pump stations, " + esc(curCase().label) + ", 100% build-out</h4>" + Object.entries(pi).map(([p, v]) =>
-        row2(esc(p.replace(/^P/, "Station ")), v.baseline_lps.toFixed(2) + " to " + v.with_growth_lps.toFixed(2) + " L/s (" + (v.change_pct >= 0 ? "+" : "") + v.change_pct.toFixed(1) + "%)")).join("") +
-        '<p class="quiet">Pumped flow is a growth indicator only for the part of the suburb that drains through a station; a zero change means this area does not.</p>' : "");
+        '<table class="sm"><tr><th>Day-to-day noise</th><th>Days of readings</th></tr>' + days + "</table>" : "") +
+      (pi ? h4i("Pump stations, " + esc(curCase().label) + ", 100% build-out",
+                "Pumped flow is a growth indicator only for the part of the suburb that drains through a station; a zero change means this area does not.") + Object.entries(pi).map(([p, v]) =>
+        row2(esc(p.replace(/^P/, "Station ")), v.baseline_lps.toFixed(2) + " to " + v.with_growth_lps.toFixed(2) + " L/s (" + (v.change_pct >= 0 ? "+" : "") + v.change_pct.toFixed(1) + "%)")).join("") : "");
   }
   let _incoming = null;
   function upstreamOf(g, ni) {
@@ -687,7 +693,7 @@ window.Sim3UI = (function () {
     const chosen = placement().chosen, k = chosen.indexOf(i);
     const rank = 1 + h[st.obj].filter(x => x > h[st.obj][i]).length;
     const ri = regionOf[i];
-    box.innerHTML = "<h4>This manhole</h4>" +
+    box.innerHTML = '<h4>This manhole <i class="info-i left" data-tip="' + esc("Water and headroom are for " + curCase().label + ". Click empty ground, or Back, to leave it.") + '">i</i></h4>' +
       row2("Asset", "MH " + n.mh + (n.yr ? ", built " + n.yr : ", year not recorded")) +
       (ri >= 0 ? row2("Area", esc(S().regions[ri].id + ", " + shortName(S().regions[ri]))) : "") +
       (water ? row2("Water before growth", water) : "") + (head ? row2("Headroom", head) : "") +
@@ -697,7 +703,7 @@ window.Sim3UI = (function () {
       row2("Drains through it", up.chambers + " manholes, " + (up.metres / 1000).toFixed(2) + " km of pipe") +
       row2("As a sensor", "alone it sees " + pct(h.mean[i]) + " of " + (st.fam === "one" ? "greenfield" : "infill") + " growth on average, " + pct(h.worst[i]) + " in the worst case; rank " + rank + " of " + names().length +
         (k >= 0 ? ", <b>chosen as S" + (k + 1) + "</b>" : "")) +
-      '<p class="quiet">Water and headroom are for ' + esc(curCase().label) + ". Click empty ground to go back to the area card.</p>";
+      "";
   }
 
   /* -------------------------------------------------------------- sensors */
@@ -711,8 +717,7 @@ window.Sim3UI = (function () {
     const type = st.rule === "alarm" ? "float switch at the alarm level" : "level sensor";
     const lead = "<p><b>" + k + "</b> sensor" + (k === 1 ? "" : "s") + (pl.worst != null ? " catch <b>" + pct(pl.worst) + "</b> of detectable " + (isIn ? "infill" : "greenfield") +
       " growth in the worst case" + (pl.average != null ? " and <b>" + pct(pl.average) + "</b> on average" : "") : "") +
-      (pl.riskWorst != null ? ", and <b>" + pct(pl.riskWorst) + "</b> of the risk-weighted total" : "") + " (" + esc(ruleOf(st.rule).label.toLowerCase()) +
-      (isIn ? ", " + S().cases.length + " cases, " + S().regions.length + " areas x " + ladder().length + " build-outs" : ", all " + R().growthLevels.length + " growth sizes, " + R().cases.length + " cases") + ").</p>";
+      (pl.riskWorst != null ? ", and <b>" + pct(pl.riskWorst) + "</b> of the risk-weighted total" : "") + ".</p>";
     const cards = chosen.map((i, j) => {
       const nm = nameOf(i), ri = regionOf[i];
       let watch = "";
@@ -742,20 +747,18 @@ window.Sim3UI = (function () {
     let extra = "";
     if (isIn && st.view === "expert" && pl.compare && pl.compare.plain_set) {
       const c = pl.compare, hi = ' class="hi"';
-      extra += "<h4>Plain against risk-weighted, " + k + " sensors</h4><table class='sm'><tr><th>Set</th><th>Plain coverage</th><th>Risk-weighted</th></tr>" +
+      extra += "<h4>Plain against risk-weighted, " + k + " sensors <i class='info-i left' data-tip='Worst case over the cases, each set scored both ways. Risk weight = severity x occurrence per scenario (Kimbrough 2019, as applied in the risk note of 22 Oct 2026); the current scenario&#39;s weight is in the area card.'>i</i></h4><table class='sm'><tr><th>Set</th><th>Plain coverage</th><th>Risk-weighted</th></tr>" +
         "<tr><td>Exact (plain)</td><td" + (st.method !== "risk" ? hi : "") + ">" + pct(c.plain_set.plain) + "</td><td>" + pct(c.plain_set.risk) + "</td></tr>" +
         "<tr><td>Risk-weighted</td><td>" + pct(c.risk_set.plain) + "</td><td" + (st.method === "risk" ? hi : "") + ">" + pct(c.risk_set.risk) + "</td></tr></table>" +
-        "<p class='quiet'>Worst case over the cases. The two sets share " + c.shared + " of " + k + " manholes. Risk weight = severity x occurrence per scenario (Kimbrough 2019, as applied in the risk note of 22 Oct 2026); the current scenario's weight is in the area card.</p>";
+        "<p class='quiet'>The two sets share " + c.shared + " of " + k + " manholes.</p>";
     }
     if (isIn && st.view === "expert" && rr.loo && Object.keys(rr.loo).length) {
       const n0 = Object.values(rr.loo)[0].chosen.length;
-      extra = "<h4>Leave one case out (" + n0 + " sensors)</h4><table class='sm'><tr><th>Held out</th><th>Score on it</th></tr>" +
+      extra = "<h4>Leave one case out (" + n0 + " sensors) <i class='info-i left' data-tip='Sensors chosen on the other cases, scored on the one held out: how much the recommendation depends on any single assumption about the weather.'>i</i></h4><table class='sm'><tr><th>Held out</th><th>Score on it</th></tr>" +
         S().cases.map(c => rr.loo[c.tag] ? "<tr><td>" + esc(c.label) + "</td><td" + (rr.loo[c.tag].score < 0.5 ? ' class="hi"' : "") + ">" + pct(rr.loo[c.tag].score) + "</td></tr>" : "").join("") +
-        "</table><p class='quiet'>Sensors chosen on the other cases, scored on the one held out: how much the recommendation depends on any single assumption about the weather.</p>";
+        "</table>";
     }
-    $("#sensorList").innerHTML = lead + cards + extra +
-      "<p class=quiet>" + (isIn && st.method === "exact" ? "Each size is solved on its own, so the set for " + (k + 1) + " need not contain this one." : "Chosen one at a time, so the set for " + (k + 1) + " is this set plus one.") +
-      " Detectable growth: scenarios that at least one manhole sees. This scores whether a sensor would notice growth, not whether it watches a choke point; the choke points are under No growth.</p>";
+    $("#sensorList").innerHTML = lead + cards + extra;
     if (st.view === "simple") {
       const tip = "Detectable growth: the scenarios (every area at every build-out, or every estate size at every manhole) that at least one manhole anywhere would see. " +
         "The worst case is the lowest share over all " + famCases().length + " weather and leakage cases; the set is chosen to make that worst case as high as possible. " +
@@ -870,12 +873,13 @@ window.Sim3UI = (function () {
     return order;
   }
   function legendGroups() {
-    const show = (cls, on) => $$(".legend ." + cls).forEach(g => { if (g.id === "heatKey") return; if (g.id === "pumpKey") { g.hidden = !(on && st.showPumps); return; } if (g.id === "connKey") { g.hidden = !(on && st.showConn); return; } if (g.id === "regionKey") { g.hidden = !(on && st.fam === "infill"); return; } g.hidden = !on; });
-    show("lg-results", st.lg.results); show("lg-network", st.lg.network); show("lg-regions", st.lg.regions);
-    $("#chipKey").hidden = false;
-    $("#lgResults").classList.toggle("primary", st.lg.results);
-    $("#lgNetwork").classList.toggle("primary", st.lg.network);
-    $("#lgRegions").classList.toggle("primary", st.lg.regions);
+    // One Legend button. Off by default; on, it shows the groups that apply (the heatmap key
+    // is driven by repaint, the pump and connection keys by their own toggles).
+    $("#legend").hidden = !st.legend;
+    $$(".legend .lg-results").forEach(g => { if (g.id !== "heatKey") g.hidden = false; });
+    $$(".legend .lg-network").forEach(g => { g.hidden = g.id === "pumpKey" ? !st.showPumps : g.id === "connKey" ? !st.showConn : !(st.showPumps || st.showConn); });
+    $("#toggleLegend").classList.toggle("primary", st.legend);
+    Growth3D.resize($("#stage"));
   }
   function init() {
     names().forEach((c, i) => { idxOfName[c] = i; });
@@ -906,7 +910,7 @@ window.Sim3UI = (function () {
       if (!(nd.name in idxOfName)) return;
       const i = idxOfName[nd.name];
       if (st.fam === "one") { st.site = i; st.pick = null; }
-      else { st.pick = nd.name; if (st.fam === "infill" && regionOf[i] >= 0) st.region = regionOf[i]; }
+      else st.pick = nd.name;          // inspect it; the selected area stays (23 Oct 2026)
       repaint();
     }, nd => {
       const name = nd && !(st.fam === "one" && st.site != null && nd.name === nameOf(st.site)) ? nd.name : null;
@@ -924,7 +928,7 @@ window.Sim3UI = (function () {
         G().nodes.filter(n => n.kind !== "chamber").length + " pipe ends with no manhole on record. Elevation is the pipe invert, exaggerated x" + Growth3D.ZEXAG +
         ". Drag to turn the map, right-drag to move it, scroll to zoom where the pointer is.";
       repaint();
-      if (st.fam === "infill") Growth3D.frameNodes(region().manholes.map(nameOf)); else Growth3D.frame(null);
+      Growth3D.frame(null);            // the whole network, orbiting about its centre
     });
     $("#btn-info").onclick = showModal;
     $("#tab-ref").onclick = () => setTab($("#pane-ref").hidden ? "ref" : "map");
@@ -936,7 +940,6 @@ window.Sim3UI = (function () {
     $("#toggleSensors").onclick = () => {
       st.showSensors = !st.showSensors;
       $("#toggleSensors").classList.toggle("primary", st.showSensors);
-      $("#toggleSensors").textContent = st.showSensors ? "Hide sensors" : "Show sensors";
       repaint();
     };
     const hasPumps = !!(G().pumps && G().pumps.length);
@@ -945,7 +948,6 @@ window.Sim3UI = (function () {
       st.showPumps = !st.showPumps;
       if (!Growth3D.showPumps(st.showPumps)) { st.showPumps = false; return; }
       $("#togglePumps").classList.toggle("primary", st.showPumps);
-      $("#togglePumps").textContent = st.showPumps ? "Hide pump stations" : "Pump stations";
       legendGroups();
     };
     $("#toggleHeat").onclick = () => { st.showHeat = !st.showHeat; $("#toggleHeat").classList.toggle("primary", st.showHeat); repaint(); };
@@ -959,9 +961,6 @@ window.Sim3UI = (function () {
       legendGroups();
     };
     $("#toggleIds").hidden = true;      // not in this build; the hover and the card give the id
-    $("#lgResults").onclick = () => { st.lg.results = !st.lg.results; legendGroups(); };
-    $("#lgNetwork").onclick = () => { st.lg.network = !st.lg.network; legendGroups(); };
-    $("#lgRegions").onclick = () => { st.lg.regions = !st.lg.regions; legendGroups(); renderKnobs(); };
     // The sidebar grip, as on the Sim 2.5 page.
     const grip = $("#grip");
     grip.onpointerdown = e => {
