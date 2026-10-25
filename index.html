@@ -42,6 +42,13 @@ a{color:var(--accent)}
 .card .tag{display:inline-block;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;
   color:var(--accent);border:1px solid var(--line);border-radius:99px;padding:1px 8px;margin-bottom:7px}
 .big{grid-column:1/-1;border-left:3px solid var(--accent)}
+/* Sim 4 and the changelog: the violet accent the site uses for what is new. */
+.tabs button.newtab{color:#e3c8ff}
+.tabs button.newtab.on{color:#c084fc;border-bottom-color:#c084fc}
+.tabs button .nb{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1;padding:2px 5px;border-radius:99px;background:#c084fc;color:#1a0d2b;margin-left:5px;vertical-align:1px}
+.card.isnew{border-left-color:#c084fc;background:linear-gradient(90deg,#1d1430,var(--panel) 60%)}
+.card.isnew:hover{border-color:#c084fc}
+.card.isnew .tag{color:#e3c8ff;border-color:#5b3d86}
 table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px}
 th,td{border:1px solid var(--line);padding:7px 10px;text-align:left}
 th{background:var(--panel-2)}
@@ -66,9 +73,11 @@ footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);
     <button data-tab="observability">Why observability is limited</button>
     <button data-tab="sim1">Simulation 1</button>
     <button data-tab="sim2">Simulation 2 (superseded)</button>
-    <button data-tab="sim3">Simulation 3 (latest)</button>
+    <button data-tab="sim4" class="newtab">Simulation 4<span class="nb">new</span></button>
+    <button data-tab="sim3">Simulation 3</button>
     <button data-tab="sim25">Simulation 2.5</button>
     <button data-tab="sim25legacy">Simulation 2.5 (legacy)</button>
+    <button data-tab="changelog" class="newtab">Changelog</button>
   </nav>
 </header>
 
@@ -94,8 +103,18 @@ This is a working tool for exploring that, running on a real network rather than
     for your own JavaScript. Includes an assumptions register, the method and its sources, and a
     glossary.</p>
   </a>
+  <a class="card big isnew" href="#sim4" data-tab="sim4">
+    <span class="tag">New, interactive</span>
+    <h3>Simulation 4: warn before surcharge, and say where</h3>
+    <p>Simulation 3's runs, re-scored on the question the operator asks: does a sensor respond
+    before the first manhole surcharges? Growth takes years, so "before" is counted in build-out,
+    not minutes. Of the 64 area build-outs, the 29 that overload a manhole are what the sensors
+    must warn of; the best five sensors warn of every one that any manhole could. Adds a locating
+    method, triggers set by how full the pipe is, a dashboard of eight pictures, and a tour of what
+    changed. No model was re-run.</p>
+  </a>
   <a class="card big" href="#sim3" data-tab="sim3">
-    <span class="tag">Interactive, latest</span>
+    <span class="tag">Interactive</span>
     <h3>Simulation 3: infill or greenfield growth, and the few sensors that would see it</h3>
     <p>The growth model with the use case first: new homes spread through one of eight areas in
     proportion to the homes already there (infill), or a new estate joining at one manhole
@@ -226,6 +245,8 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 <div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html?v=31" title="Why observability is limited"></iframe></div>
 <div class="pane" id="pane-sim1" hidden><iframe data-src="simulation_legacy/index.html?v=31" title="Simulation 1: warning time"></iframe></div>
 <div class="pane" id="pane-sim2" hidden><iframe data-src="simulation/index.html?v=31" title="Simulation 2: growth and sensor placement"></iframe></div>
+<div class="pane" id="pane-sim4" hidden><iframe data-src="simulation4/index.html?v=1" title="Simulation 4: warn before surcharge"></iframe></div>
+<div class="pane" id="pane-changelog" hidden><iframe data-src="changelog.html?v=1" title="Changelog"></iframe></div>
 <div class="pane" id="pane-sim3" hidden><iframe data-src="simulation3/index.html?v=10" title="Simulation 3: growth and sensor placement"></iframe></div>
 <div class="pane" id="pane-sim25" hidden><iframe data-src="simulation25/index.html?v=93" title="Simulation 2.5: growth and sensor placement"></iframe></div>
 <div class="pane" id="pane-sim25legacy" hidden><iframe data-src="simulation25_legacy/index.html?v=1" title="Simulation 2.5 (legacy): as published 25 Sep 2026"></iframe></div>
@@ -235,7 +256,7 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 <!-- config.js holds the project's settings; its "pages" section decides which pages this site offers. It carries its own cache key for
      the same reason the iframes do: it is a script, and a browser will reuse the copy
      it has. Bump it when the config changes. -->
-<script src="config.js?v=35"></script>
+<script src="config.js?v=36"></script>
 <script>
 // Drop the pages config.js turns off (keys starting "_" are notes), before anything is wired up. Removing the button
 // is what makes a deep link to a hidden page fall back to the overview: showTab looks

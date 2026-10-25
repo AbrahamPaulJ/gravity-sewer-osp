@@ -407,5 +407,91 @@ check("glossary terms", (gl.match(/<dt>/g) || []).length, 35);
 check("glossary figures", (gl.match(/<figure class="gl-fig">/g) || []).length, 31);
 check("every figure titled", (gl.match(/<svg /g) || []).length === (gl.match(/<title>/g) || []).length, true);
 
+/* Simulation 4: Sim 3's runs re-scored on warning before surcharge. The tool (Python, HiGHS)
+   chose the sets; the page scores any set with before_views.js. The two must agree on every
+   published figure, and the scoring must still match the Sim 3 runs it was built from. */
+console.log("Simulation 4 (before surcharge)");
+{
+  const fs = require("fs"), crypto = require("crypto");
+  const saved = global.window;
+  const parseGen = f => { const s = fs.readFileSync(path.join(ROOT, f), "utf8"); return JSON.parse(s.slice(s.indexOf("{"), s.trimEnd().replace(/;$/, "").lastIndexOf("}") + 1)); };
+  const Bd = parseGen("simulation4/data/before.js");
+  check("before.js parses as JSON", typeof Bd === "object" && !!Bd.results, true);
+  const regText = fs.readFileSync(path.join(ROOT, "simulation3/data/regions.js"), "utf8").replace(/\r\n/g, "\n");
+  check("before.js was scored from the published Sim 3 regions.js (hash)",
+    crypto.createHash("sha256").update(regText, "utf8").digest("hex"), Bd.provenance.regionsSha256);
+
+  global.window = { SIM4_BEFORE: Bd, SIM3_REGIONS: parseGen("simulation3/data/regions.js") };
+  delete require.cache[require.resolve(path.join(ROOT, "simulation4/before_views.js"))];
+  require(path.join(ROOT, "simulation4/before_views.js"));
+  const V = window.Before;
+  let n = 0, bad = 0;
+  for (const r of Bd.rules) {
+    const res = Bd.results[r];
+    if (!res.exact) continue;
+    for (const w of ["equal", "homes"]) for (const e of res.exact[w]) {
+      n++; const v = V.evaluate(e.chosen, r, w);
+      if (Math.abs(v.worst - e.worst) > 1e-3 || Math.abs(v.average - e.average) > 1e-3) bad++;
+    }
+    for (const rad of Object.keys(res.locate)) for (const e of res.locate[rad].sets) {
+      n++; if (Math.abs(V.evaluate(e.chosen, r, Bd.settings.weights, +rad).worst - e.worst) > 1e-3) bad++;
+    }
+    for (const e of Bd.newSets[r]) { n++; if (JSON.stringify(V.outcomes(e.chosen, r).cnt) !== JSON.stringify(e.counts)) bad++; }
+  }
+  for (const r of Object.keys(Bd.published)) for (const e of Bd.published[r].exact) {
+    n++; const c = V.credited(e.chosen, r); if (c.all !== e.credited || c.late !== e.creditedSurcharged) bad++;
+  }
+  check("the page's scoring reproduces the tool's on every published set (" + n + " checks)", bad, 0);
+
+  const nT = V.targets().length;
+  check("29 of the 64 area build-outs overload a manhole", [nT, Bd.paths.length], [29, 64]);
+  check("Sim 3's exact 5 sensors, rise 10: 24 before, 1 same step, 4 after, 0 never",
+    Bd.published.r10.exact[4].counts, { before: 24, same: 1, after: 4, never: 0 });
+  check("Sim 3's exact 5 sensors are credited with 184 runs, 80 already surcharged",
+    [Bd.published.r10.exact[4].credited, Bd.published.r10.exact[4].creditedSurcharged], [184, 80]);
+  check("Sim 4's 5 sensors, rise 10, reach the ceiling (every warnable overload)",
+    Bd.newSets.r10[4].counts.before, Bd.ceiling.r10.before);
+  check("re-solving Sim 3's own objective reaches every published exact score",
+    Object.values(Bd.oldObjectiveCheck).flat().filter(e => !e.match).length, 0);
+  check("every new register row has an id, item, meaning and source",
+    Bd.register.filter(r => r.length !== 4 || r.some(x => !x)).length, 0);
+
+  /* A hand-made locating example with a known answer. Three areas in one case, each
+     surcharging at its second step; at the first, A moves manholes 0 and 1, B moves 1, C
+     moves 2. A and B are far apart and must be told apart; C need not be. */
+  const toy = {
+    SIM4_BEFORE: { cases: ["t"], ladder: [0.5, 1], settings: { margin_steps: 1 }, geometry: [{}, {}, {}],
+      paths: [0, 1, 2].map(r => ({ c: 0, r, s: 1, F: [r], w: { equal: 1 } })),
+      results: { r10: { need: 10, cases: [0], locate: { "300": { pairs: [[[0, 1]]] } } } } },
+    SIM3_REGIONS: { regions: [{ id: "A" }, { id: "B" }, { id: "C" }], cases: [{ tag: "t", label: "t" }],
+      rows: { t: [[0, [0, 1]], [1, [1]], [2, [2]]].flatMap(([r, ms]) => [
+        { r, s: 0, rise: ms.map(i => [i, 12]), alarm: [], sur: [], spill: [] },
+        { r, s: 1, rise: ms.map(i => [i, 40]), alarm: [], sur: [r], spill: [] }]) } },
+  };
+  global.window = toy;
+  delete require.cache[require.resolve(path.join(ROOT, "simulation4/before_views.js"))];
+  require(path.join(ROOT, "simulation4/before_views.js"));
+  const T = window.Before;
+  const r3 = x => Math.round(x * 1000) / 1000;
+  check("toy: sensor at 1 detects A and B but locates neither",
+    [r3(T.evaluate([1], "r10", "equal").worst), r3(T.evaluate([1], "r10", "equal", 300).worst)], [0.667, 0]);
+  check("toy: sensors at 0 and 1 locate A and B", r3(T.evaluate([0, 1], "r10", "equal", 300).worst), 0.667);
+  check("toy: sensors at 0, 1 and 2 detect and locate all three", r3(T.evaluate([0, 1, 2], "r10", "equal", 300).worst), 1);
+  global.window = saved;
+
+  const page = fs.readFileSync(path.join(ROOT, "simulation4/index.html"), "utf8");
+  const keys = [...page.matchAll(/<script src="([^"?]+)\?v=(\d+)"/g)];
+  check("every script on the Sim 4 page carries the same cache key", new Set(keys.map(m => m[2])).size, 1);
+  check("every script the Sim 4 page loads exists",
+    keys.map(m => m[1]).filter(f => !fs.existsSync(path.join(ROOT, "simulation4", f))), []);
+  const home = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  check("the landing page embeds Sim 4 and the changelog with cache keys",
+    [/simulation4\/index\.html\?v=\d+/.test(home), /changelog\.html\?v=\d+/.test(home)], [true, true]);
+  check("the landing card's figures match before.js",
+    home.includes("Of the " + Bd.paths.length + " area build-outs, the " + nT + " that overload"), true);
+  const cl = fs.readFileSync(path.join(ROOT, "changelog.html"), "utf8");
+  check("the changelog reads its Sim 4 figures from before.js", /<script src="simulation4\/data\/before\.js\?v=\d+"><\/script>/.test(cl), true);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

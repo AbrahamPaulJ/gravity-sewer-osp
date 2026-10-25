@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Site Changelog</title>
+<style>
+/* The landing page's look, plus the violet accent Sim 4 uses for everything new. */
+:root{--bg:#0b1220;--panel:#111c2f;--panel-2:#16233a;--line:#22314d;
+  --ink:#e7edf7;--ink-dim:#a9b8d4;--ink-faint:#6f81a3;--accent:#38bdf8;
+  --new:#c084fc;--new-bg:#1d1430;--new-ink:#e3c8ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:34px 22px 80px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:-.4px}
+.sub{color:var(--ink-faint);margin:0 0 26px}
+h2{font-size:17px;margin:34px 0 10px;color:var(--accent)}
+h3{font-size:14.5px;margin:20px 0 6px;color:var(--ink)}
+p,li{color:var(--ink-dim)}
+li{margin:4px 0}
+a{color:var(--accent)}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:var(--panel-2)}
+td{color:var(--ink-dim)}
+td:first-child{white-space:nowrap}
+.entry{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:16px 0}
+.entry.new{border-color:var(--new);background:linear-gradient(180deg,var(--new-bg),var(--panel) 160px)}
+.entry .date{font-size:12px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em}
+.entry h2{margin:2px 0 8px}
+.entry.new h2{color:var(--new-ink)}
+.newb{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1;
+  padding:3px 6px;border-radius:99px;background:var(--new);color:#1a0d2b;vertical-align:2px;margin-left:6px}
+.figs{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
+.fig{flex:1 1 170px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:12.5px;color:var(--ink-dim)}
+.fig b{display:block;font-size:21px;color:var(--new-ink);font-variant-numeric:tabular-nums;line-height:1.25}
+.kind{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--ink-faint);margin-right:6px;text-transform:uppercase;letter-spacing:.04em}
+.kind.n{border-color:var(--new);color:var(--new-ink)}
+.note{border-left:3px solid var(--new);background:var(--panel-2);border-radius:8px;padding:10px 14px;margin:12px 0;font-size:13.5px;color:var(--ink-dim)}
+@media(max-width:600px){td:first-child{white-space:normal}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Changelog</h1>
+<p class="sub">Every change to the site, newest first. Entries marked <span class="newb" style="margin:0">new</span> are the latest
+and carry the same violet accent on the pages they change.</p>
+
+<div class="entry new" id="sim4">
+  <div class="date">25 October 2026</div>
+  <h2>Simulation 4: warn before surcharge <span class="newb">new</span></h2>
+  <p>A new page, <b>Simulation 4</b>, that re-scores Simulation 3's runs on the question the network operator asks:
+  <b>is a plausible overcapacity detected, and located, before any manhole surcharges?</b> Growth takes years, so
+  "before" is counted in build-out steps (10% to 300% of each area's share of the 2021&ndash;41 projection), not minutes.
+  <b>No model was re-run</b>: Simulation 4 reads Simulation 3's published runs and map, and Simulation 3's page is unchanged.</p>
+
+  <div class="figs" id="figs">
+    <div class="fig"><b id="fTargets">&ndash;</b>area build-outs (area &times; case) overload a manhole by 300%</div>
+    <div class="fig"><b id="fNew">&ndash;</b>warned before surcharge by Sim 4's 5 sensors (rise 10 mm)</div>
+    <div class="fig"><b id="fOld">&ndash;</b>by Sim 3's exact 5 sensors, same rule</div>
+    <div class="fig"><b id="fLate">&ndash;</b>of the runs Sim 3's score credits that set with had already surcharged</div>
+  </div>
+  <p style="font-size:12.5px;color:var(--ink-faint)" id="figsNote">Figures are read from <code>simulation4/data/before.js</code> when this page loads, so they cannot drift from the published scoring.</p>
+
+  <h3>What changed, and why</h3>
+  <table>
+    <thead><tr><th>Change</th><th>What it does</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><span class="kind n">score</span>Warn before surcharge</td><td>A sensor set is scored on the build-outs that <b>do</b> newly surcharge or spill a manhole (the "overloads"), and counts one only if a chosen sensor responds at least one build-out step earlier.</td><td>Sim 3's score credited a set for every run one of its sensors saw, including runs where a manhole had already surcharged, and counted build-outs that never overload.</td></tr>
+      <tr><td><span class="kind n">method</span>Before surcharge</td><td>The best set of each size (1&ndash;10) for that score, solved exactly with HiGHS; worst case over the cases that have overloads. The page's default.</td><td>Dry weather has no overloads, so scoring it as 0 dragged every worst case down; it is now reported as "nothing to warn of".</td></tr>
+      <tr><td><span class="kind n">method</span>Before + locate</td><td>As above, and the pattern of sensors that respond must differ between overloads whose first-surcharge manholes are more than 0, 300 or 1,000 m apart along the pipes.</td><td>An alarm should say where the problem is, not only that there is one.</td></tr>
+      <tr><td><span class="kind n">rule</span>70% and 80% full</td><td>New triggers: water reaching 70% or 80% of the bore of a manhole's lowest outlet pipe, computed from Sim 3's stored depths and the published pipe sizes.</td><td>A level sensor's natural trigger is how full the pipe is. The geometry reproduces Sim 3's own surcharge flags in all eight cases.</td></tr>
+      <tr><td><span class="kind n">map</span>Where it surcharges first</td><td>A violet label on the map marks the manholes where the shown area first surcharges, and at what build-out.</td><td>Locating needs a place to point at.</td></tr>
+      <tr><td><span class="kind n">words</span>Summary and cards</td><td>The summary on the map says at which build-out a sensor first responds and at which the first manhole surcharges ("warns at 25%; surcharges at 100%, 4 times the growth"). Each sensor card lists the overloads it warns of on its own. A manhole's card says how many overloads it would warn of.</td><td>The answer in the operator's terms.</td></tr>
+      <tr><td><span class="kind n">dashboard</span>Before surcharge</td><td>Eight pictures in one popup: the build-out ladder per case; where Sim 3's score came from; warned-before curves against sensors; outcomes per set (before, same step, after, never); warning margins; the locating pattern of sensors; which trigger can warn; and whether the weighting changes the set.</td><td>To see the change, not only read it.</td></tr>
+      <tr><td><span class="kind n">help</span>What's new tour</td><td>A short tour on the first visit (and from the <b>What's new</b> button) that points at each new part of the page.</td><td>Readers who know Sim 3 should find the differences at once.</td></tr>
+      <tr><td><span class="kind n">register</span>B01&ndash;B08</td><td>New assumption rows at the head of Sim 4's register: path, target, "warned before", worst case, located, fullness rules, weights, coarse ladder.</td><td>Every new choice is stated where it is used.</td></tr>
+      <tr><td><span class="kind n">settings</span><code>simulation.before_surcharge</code></td><td>Margin (build-out steps), locating radii, fullness fractions and weighting, in <code>config.js</code>. A change needs <code>tools/sim4_before.py --publish</code>, not a SWMM run.</td><td>One settings file for the whole project.</td></tr>
+      <tr><td><span class="kind n">tool</span><code>tools/sim4_before.py</code></td><td>Reads Sim 3's published files and writes <code>simulation4/data/before.js</code>; <code>--check</code> rebuilds and compares byte for byte. Re-solving Sim 3's own objective reaches every published Sim 3 exact score, so the tool reads the data as Sim 3 did.</td><td>Reproducible from the public repository.</td></tr>
+      <tr><td><span class="kind n">site</span>This changelog</td><td>A Changelog tab on the landing page.</td><td>One place that says what changed.</td></tr>
+    </tbody>
+  </table>
+  <div class="note"><b>Limits, carried over and new.</b> Only seven build-out steps, so an overload that jumps from no response
+  anywhere to surcharge in one step cannot be warned of by any sensor (finer steps need new solves). The pipe that causes
+  a surcharge is not recorded, so locating uses the first-surcharge manholes. Greenfield growth is not re-scored. Everything
+  Simulation 3 assumes still holds: uncalibrated, steady state, ideal pumps, thresholds not yet set from real level records.
+  The method is written up in <code>docs/sim3_before_surcharge.md</code>.</div>
+  <p><b>Planned next (not built):</b> level sensors with two more roles, both computable from the same runs: tracking the
+  shrinking headroom at the pipes that surcharge first, and guarding the manholes where a spill can occur. See
+  <code>docs/sim4_level_sensor_roles.md</code>.</p>
+</div>
+
+<div class="entry">
+  <div class="date">22&ndash;23 October 2026</div>
+  <h2>Simulation 3</h2>
+  <ul>
+    <li>Infill growth (eight areas grown in proportion to the homes already there, 10% to 300% of each area's share of the 2041 projection) and greenfield growth (10 to 700 dwellings at one manhole), on runs continued until levels stop moving, under eight cases.</li>
+    <li>Exact placement (integer program) beside greedy, a risk-weighted comparison and leave-one-case-out.</li>
+    <li>A simple view built around the sensor pins, with an expert view; the selected area pulses; fold tabs; wrapping dropdowns; (i) bubbles; documents as popups; an Areas view; the summary on the map folds to a pill.</li>
+    <li>All three Beyond design (0.25) greenfield cases settled.</li>
+  </ul>
+</div>
+
+<div class="entry">
+  <div class="date">24 September &ndash; 22 October 2026</div>
+  <h2>Simulation 2.5 and the site</h2>
+  <table>
+    <thead><tr><th>Date</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr><td>24 Sep</td><td>Sandbox: growth headroom per chamber, and an objective that maximises the growth capacity watched.</td></tr>
+      <tr><td>25 Sep</td><td>Every declared number cited where it is declared. Manning's n from each pipe's material; Simulation 2.5 re-run. Reproducible page builder published. Tag <code>v1.0</code>.</td></tr>
+      <tr><td>27 Sep</td><td>Pipes drawn at their own bore. <code>config.js</code> chooses which pages the site offers.</td></tr>
+      <tr><td>1 Oct</td><td>Simulation 2.5 cases defined in one file and published with one command.</td></tr>
+      <tr><td>2 Oct</td><td>Whole-area placement: all 328 manholes are growth sites and sensor candidates (8,200 SWMM runs). Height datum and ruler, each home's lateral, a details card for any pipe, a panel for the selected manhole.</td></tr>
+      <tr><td>3 Oct</td><td>Pump stations and rising mains drawn apart from the gravity mains.</td></tr>
+      <tr><td>8 Oct</td><td>Growth scenarios over many manholes, solved by a local SWMM runner or estimated in the page. The sandbox's algorithms on this network, scored on the same runs.</td></tr>
+      <tr><td>13 Oct</td><td>Review fixes. Tag <code>v1.1</code>.</td></tr>
+      <tr><td>14 Oct</td><td>All settings in one <code>config.js</code>. House connections from the published layer. Map controls. Pump stations at a set rate in growth scenarios.</td></tr>
+      <tr><td>15 Oct</td><td>Validation end to end on 400 page views. Overflow and sub-rule rises on the map. Pumps follow a head curve in rated scenarios.</td></tr>
+      <tr><td>16 Oct</td><td>Simulation 2.5 map made simpler to read: a None growth size, toggles, a one-line legend, a Layers menu. No result changes.</td></tr>
+      <tr><td>22 Oct</td><td>The SWMM runner found from any local port; layer keys back in view. No result changes.</td></tr>
+    </tbody>
+  </table>
+  <p>The same history is kept in the repository's <code>README.md</code>.</p>
+</div>
+</div>
+
+<script src="simulation4/data/before.js?v=1"></script>
+<script>
+// The Sim 4 headline figures, read from the published scoring rather than typed.
+(function (b) {
+  if (!b) { document.getElementById("figsNote").textContent = "The scoring file did not load, so the figures are not shown."; return; }
+  var set = function (id, v) { document.getElementById(id).textContent = v; };
+  var nT = b.paths.filter(function (p) { return p.s != null; }).length;
+  set("fTargets", nT + " of " + b.paths.length);
+  var n = b.newSets.r10 && b.newSets.r10[4], o = b.published.r10 && b.published.r10.exact[4];
+  if (n) set("fNew", n.counts.before + " of " + nT);
+  if (o) {
+    set("fOld", o.counts.before + " of " + nT);
+    set("fLate", Math.round(100 * o.creditedSurcharged / o.credited) + "%");
+  }
+})(window.SIM4_BEFORE);
+</script>
+</body>
+</html>

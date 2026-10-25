@@ -29,8 +29,10 @@
     "sim1": false,
     "sim2": false,
     "sim3": true,
+    "sim4": true,
     "sim25": true,
-    "sim25legacy": true
+    "sim25legacy": true,
+    "changelog": true
   },
 
   "pumps": {
