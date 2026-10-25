@@ -187,17 +187,18 @@ Changing any of them needs only `python tools/sim3_before.py --publish`. **No SW
 
 ## 8. Files
 
+As built (section 11 says what moved from the plan).
+
 | File | New/changed | What |
 |---|---|---|
-| `tools/sim3_before.py` | new | Reads `simulation3/data/{regions,catchment,growth}.js` and `config.js`; computes section 3–6; writes `simulation3/data/before.js`. `--check` rebuilds in memory and compares byte for byte; `--publish` writes and bumps the page's cache keys |
-| `simulation3/data/before.js` | new, generated | `window.SIM3_BEFORE`: settings, provenance (a hash of `regions.js`, SciPy version), paths, per-rule results, diagnostics of the published sets, register rows |
-| `simulation3/before_views.js` | new | The visualisations (section 9), pure functions returning SVG/HTML from `SIM3_BEFORE` |
-| `simulation3/sim3_ui.js` | changed | A "Before surcharge" method; a "Before surcharge" button opening the dashboard; summary line and cards say warn/surcharge build-outs; the new rules in the expert rule list; the register rows appended to Assumptions |
-| `simulation3/index.html` | changed | Button, styles, script tags, cache keys |
-| `changelog.html` | new | The site's changelog page |
-| `index.html` | changed | A Changelog tab, card and pane; iframe cache keys |
-| `config.js` | changed | `pages.changelog`, `simulation.before_surcharge` |
-| `tools/test_sandbox.js` | changed | Checks in section 10 |
+| `tools/sim4_before.py` | new | Reads `simulation3/data/{regions,catchment,growth}.js` and `config.js`; computes sections 3 to 6; writes `simulation4/data/before.js`. `--check` rebuilds in memory and compares; `--publish` writes |
+| `simulation4/data/before.js` | new, generated | `window.SIM4_BEFORE`: settings, provenance (a hash of `regions.js`, the SciPy version), geometry, paths, per-rule results, Sim 3's sets re-scored, the ceiling, the old-objective check, register rows |
+| `simulation4/before_views.js` | new | Scores any set exactly as the tool does; the eight pictures (section 9), pure functions returning SVG/HTML |
+| `simulation4/sim4_ui.js`, `simulation4/index.html` | new (fork of Sim 3's) | The Simulation 4 page |
+| `changelog.html` | new | The site's changelog |
+| `index.html` | changed | Simulation 4 and Changelog tabs, card and panes |
+| `config.js` | changed | `pages.sim4`, `pages.changelog`, `simulation.before_surcharge` |
+| `tools/test_sandbox.js` | changed | Section 10's checks |
 | `README.md`, `ARCHITECTURE.md` | changed | History row, the method, the new files |
 
 ## 9. Visualisations
@@ -271,4 +272,47 @@ On the map, when the new method is selected:
 
 ## 11. Changes during implementation
 
-(Filled in as the work proceeds.)
+1. **A new page, Simulation 4, instead of changing Sim 3's.** The user asked for the new work to be
+   seen as its own simulation, with every change highlighted. Sim 3's page and files are unchanged.
+   Sim 4 is a fork of its page (`simulation4/sim4_ui.js` from `simulation3/sim3_ui.js`). It loads
+   Sim 3's data and map from `../simulation3/` rather than copying 4 MB of generated data, so it
+   must sit beside that folder. The tool, data and views moved from `simulation3/` to
+   `simulation4/`, and the tool is named `tools/sim4_before.py`.
+2. **Highlighting.** Everything new carries one violet accent (`--new`) and a NEW badge:
+   - the methods, triggers and radius buttons;
+   - the summary line on the map, and the map label at the first-surcharge manholes;
+   - the sensor-card lines, and the expert box comparing sets;
+   - the dashboard, the register rows, and the landing tab and card.
+
+   A **What's new** tour opens on the first visit (it remembers being seen in the browser, and
+   `#tour=0` skips it) and points at each new part in turn. The dashboard's outcome colours
+   (before, same step, after, never) were checked for colour-blind separation on the page's dark
+   background. Every bar and cell also carries a count or label, so colour is never the only cue.
+3. **The alarm rule uses Sim 3's own alarm lists.** Rebuilt as a threshold from the stored baseline
+   depths, it disagreed with Sim 3 in 1 of 448 runs: depths are stored to the whole millimetre,
+   which moves a manhole within 0.5 mm of 150 mm across the line. The fullness rules carry the
+   same ±0.5 mm precision, which is stated.
+4. **"Warnable" denominators.** As planned, each case's score is over its targets that some manhole
+   could warn of. The absolute counts (before, same step, after, never, out of all 29) are reported
+   beside it, so the denominator hides nothing. The worst case is harsh where a case has few
+   targets with different warn sets: under `f70`, 7 cases with disjoint sets need 8 sensors before
+   the worst case leaves 0.
+5. **Cache keys are set by hand**, not bumped by `--publish`. The suite checks that every script on
+   the Sim 4 page carries one key, and that the landing page embeds Sim 4 and the changelog with
+   keys.
+6. **The changelog reads its figures from `before.js`** when it loads, so they cannot drift.
+
+**Results as built (rule `r10`, 5 sensors, equal weights):**
+- 29 of 64 paths are targets, and 25 of them are warnable.
+- The new exact set warns of all 25 (before 25, same 0, after 2, never 2: the 4 unwarnable). Sim 3's
+  exact set warns of 24 (1 same step, 4 after). 80 of the 184 runs Sim 3's score credits it with (43%)
+  had already surcharged.
+- Three sensors are enough to warn of every warnable target in every case.
+- Locating changes nothing at 0, 300 or 1,000 m on this data: targets in the same case mostly share
+  their first-surcharge manhole, so there are few pairs to tell apart (10 at 300 m). A finer ladder
+  or the bottleneck pipe would make locating more demanding.
+- Re-solving Sim 3's own objective reaches every published exact score under `r10`, `r25`, `r50` and
+  `alarm`. The page's scoring and the tool's agree on all 400 published sets (suite).
+
+**Next:** level sensors with two more roles, capacity trend and spill guard, planned with measured
+viability in `docs/sim4_level_sensor_roles.md`.

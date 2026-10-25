@@ -17,6 +17,13 @@ src/ui/                  the sandbox page's state, canvas, controls, worker, and
 src/docs/                the documentation panes, generated from the loaded data
 data/                    generated datasets; never edited by hand
 tools/                   tests and the data formatter
+simulation3/             Simulation 3: generated data (data/) and its page
+simulation4/             Simulation 4: Sim 3's runs re-scored on warning before
+                         surcharge. Loads Sim 3's data and map from ../simulation3/,
+                         adds data/before.js (written by tools/sim4_before.py),
+                         before_views.js (scoring and the dashboard's pictures) and
+                         sim4_ui.js (a fork of sim3_ui.js)
+changelog.html           the site's changelog, loaded by the landing page
 ```
 
 ## Modules and what reads what
@@ -92,6 +99,28 @@ written by `tools/build_swmm.py`, which runs EPA SWMM offline because the solve 
 happen in a browser. Do not edit either by hand, and close them in editors that format
 on save; that has reverted the data file twice.
 
+## Simulation 4
+
+```
+simulation3/data/regions.js ─┐   Sim 3's published infill runs and geometry
+simulation3/data/catchment.js┤
+config.js (before_surcharge) ┤
+                             ▼
+tools/sim4_before.py         (Python, SciPy/HiGHS) paths, targets, warn sets, exact
+                             placements, locating, Sim 3's sets re-scored, register rows
+                             ▼
+simulation4/data/before.js   generated; --check compares byte for byte
+                             ▼
+simulation4/before_views.js  scores any set the same way, draws the eight pictures
+simulation4/sim4_ui.js       the page
+```
+
+Sim 4 runs no model and copies none of Sim 3's 4 MB of data, so the folder must sit beside
+`simulation3/`, as it does on the site. Unlike the other pages it does not stand alone when served
+as a site root. The suite checks that the page's scoring and the tool's agree on every published set,
+and that `before.js` was scored from the `regions.js` that is published (by its hash), so a Sim 3
+republish without a re-score fails. Everything new on the page carries the `--new` violet accent.
+
 ## Private and public
 
 This repository is the **public output** of a private one. The private repository
@@ -108,7 +137,8 @@ already is.
 
 ```
 python3 -m http.server 8001          # serve; file:// breaks the worker and the 3D view
-node tools/test_sandbox.js           # 38 regression checks against the shipped dataset
+node tools/test_sandbox.js           # 93 regression checks against the shipped datasets
+~/.venvs/sewer/bin/python tools/sim4_before.py --check   # would Sim 4's scoring change?
 python3 tools/format_data.py --check # would the data file change if reformatted?
 ```
 

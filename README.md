@@ -21,7 +21,9 @@ Everything runs in the browser. No server, no build step, no tracking.
 | `src/docs/` | `osp_docs.js`, the assumptions register, method, Q&A and illustrated glossary, generated from the loaded data. |
 | `data/` | `osp_data.js`, the generated dataset. Never edited by hand. |
 | `config.js` | Every setting in one file: which pages the site shows, pipe roughness and age weights, the sandbox's blockage weights, loads, Simulation 2.5's study area, cases, detection rules and pump stations. Read by the browser, Node and Python (`simulation_src/osp_config.py`). |
-| `simulation3/` | Simulation 3, the latest page: infill (eight areas, a build-out ladder) and greenfield growth under eight settled cases, exact and greedy placement, a simple view with an expert toggle. Built by the private repository's `build_sim3_web.py` from the same SWMM outputs; its renderer is a copy of `simulation25/growth_3d.js`. |
+| `simulation4/` | Simulation 4, the latest page: Simulation 3's runs re-scored on warning **before** the first manhole surcharges, with a locating method, triggers set by how full the pipe is, a dashboard of eight pictures and a tour of what changed. Runs no model; reads `simulation3/` and `data/before.js` from `tools/sim4_before.py`. See [`docs/sim3_before_surcharge.md`](docs/sim3_before_surcharge.md). |
+| `changelog.html` | The site's changelog. |
+| `simulation3/` | Simulation 3: infill (eight areas, a build-out ladder) and greenfield growth under eight settled cases, exact and greedy placement, a simple view with an expert toggle. Built by the private repository's `build_sim3_web.py` from the same SWMM outputs; its renderer is a copy of `simulation25/growth_3d.js`. |
 | `simulation25/` | Simulation 2.5, the browser view of the growth and sensor-placement grid, with a scenario builder and a choice of placement methods. |
 | `simulation_src/` | EPA SWMM source, the exact public-data snapshot, saved outputs and full reproduction commands for Simulations 1, 2 and 2.5. |
 | `tools/` | Regression tests, data formatting, and the public Sim 2.5 browser builder. The source-data harvester and sanitiser remain private. See `ARCHITECTURE.md`. |
@@ -242,6 +244,7 @@ the top of the file says what each section takes effect on:
 | `pipes.blockage_likelihood`, `pipes.manning_*` | the sandbox, on reload; Manning also feeds SWMM, so Simulation 2.5 needs a re-run |
 | `pumps` | growth scenarios run by the local SWMM runner; restart it after an edit |
 | `loads`, `simulation` | Simulation 2.5, after re-running the grid and `python tools/build_sim25_web.py --publish` |
+| `simulation.before_surcharge` | Simulation 4, after `~/.venvs/sewer/bin/python tools/sim4_before.py --publish` (no SWMM run) |
 
 ## History
 
@@ -261,7 +264,24 @@ marks 13 Oct 2026.
 | 14 Oct 2026 | All settings in one `config.js`, read by the browser, Node and Python. House connections drawn from the published connection layer, bends included, and checked line for line against the council map viewer; a Connections chip shows every one at its bore. Map controls: drag turns, right-drag moves, the wheel zooms to the pointer. Homes can sit at their main's level or above it. Pump stations at a set rate in growth scenarios (option A, below). |
 | 15 Oct 2026 | Validation end to end: cases, growth sizes, rules, sensors, depths and overflows checked against the SWMM runs and on 400 page views. Overflow (spills from the lid) and rises below the rule shown on the map. Pumps in rated scenarios follow a head curve, so a station delivers less as the level it pumps against rises; overflow pipe 4433446, which sent N183's discharge back to its own wet well, relieves only when surcharged in those scenarios. |
 | 16 Oct 2026 | Simulation 2.5 map made simpler to read: a **None** growth size, to select manholes and see the network before any growth; **Datum & ruler** and **Raised homes** toggles (the datum and ruler hidden by default; raised homes replace the `display` setting, removed from `config.js`); a one-line legend that shows only what is on the map, with the full key on demand; the scenario's **+ Add by number** list in manhole-number order; explanations folded behind ⓘ buttons; the optional map layers (heatmap, pump stations, house connections, datum and ruler, raised homes) in one **Layers** menu; the page opening on **None** with nothing selected. No result changes. |
+| 25 Oct 2026 | **Simulation 4**: Sim 3's runs re-scored on warning before surcharge (below). A Changelog page on the site. |
 | 22 Oct 2026 | Simulation 2.5 fixes: a page served from another local port finds the SWMM runner at port 8001 (the runner answers localhost pages only), and a page with no runner says so under **Run in SWMM**, not only in a tooltip (on the public site: that SWMM runs only on a local copy, with a link to how); the heatmap, pump-station, house-connection and whole-area keys show with their layer again, outside the collapsed full legend. No result changes. |
+
+**Simulation 4: warn before surcharge.** Sim 3 scores a sensor set by the share of runs in which one
+of its sensors responds. That credits runs where a manhole has already surcharged (43% of the runs
+credited to Sim 3's exact five sensors under the 10 mm rule), and counts build-outs that never
+overload anything. Sim 4 asks the operator's question instead: along each area's build-out, does a
+chosen sensor respond at least one build-out step **before** the first manhole newly surcharges?
+Growth takes years, so "before" is counted in build-out, not minutes. 29 of the 64 area build-outs
+(8 areas × 8 cases) overload a manhole by 300%. The best five sensors for the new score warn of all
+25 that any manhole could; Sim 3's exact five warn of 24. A second method also asks that the pattern
+of sensors that respond tells far-apart overloads apart, and two new triggers fire when the water
+reaches 70% or 80% of the outlet pipe's bore. No SWMM run: `tools/sim4_before.py` re-scores the
+published runs (`--check` to verify, `--publish` after changing `simulation.before_surcharge` in
+`config.js`). It needs the SciPy in the project's venv. The method, definitions and limits are in
+[`docs/sim3_before_surcharge.md`](docs/sim3_before_surcharge.md). The next step, level sensors that
+also track headroom at the bottleneck and guard the manholes that could spill, is planned in
+[`docs/sim4_level_sensor_roles.md`](docs/sim4_level_sensor_roles.md).
 
 **Pumps, now and next.** Every published result uses SWMM's ideal pumps, which pass on whatever
 reaches a wet well at once. Since 14 Oct 2026 a growth scenario may instead run the two modelled
