@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sim25_grid.py - the Sim 2.5 growth grid and placement robustness (register G3 to G14).
+sim25_grid.py - the Sim 2.5 growth grid and placement robustness (register G3 to G11; the corridor, G14, is in the legacy register).
 
 For each CASE (weather level x peak factor x I&I distribution x boundary factor, G10), every
 study manhole x every growth size, then placement by greedy set cover per detection rule (G6:

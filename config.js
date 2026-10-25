@@ -88,7 +88,7 @@
     "litres_per_person_day": 200.0,
     "peak_factor": 2.0,
     "trough_factor": 0.2,
-    "_sources": "P01 2.81 = 8,023 people / 2,851 connections (ABS 2021); G4 2.3 = ABS 2021 household size; P02 200 L/person/day (Barwon Water, WSAA supplement s3.2.2); P03 peak 2.0; R3 trough 0.2, the midpoint of 0.10-0.30 x ADF (UW CEE 481)."
+    "_sources": "P01 2.81 = 8,023 people / 2,851 connections (ABS 2021); G4 2.3 = ABS 2021 household size; P02 200 L/person/day (Barwon Water, WSAA supplement s3.2.2); P03 peak 2.0; the daily-cycle trough 0.2 (legacy register R9), the midpoint of 0.10-0.30 x ADF (UW CEE 481)."
   },
 
   "simulation": {
