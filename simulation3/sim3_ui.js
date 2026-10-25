@@ -34,6 +34,18 @@ window.Sim3UI = (function () {
     { id: "r50", label: "Rise 50 mm", note: "Seen when the depth rises at least 50 mm over that manhole's own level before the growth.", thr: 50 },
   ];
   const ruleOf = id => RULES.find(r => r.id === id);
+  // The selected area is shown by movement, not colour (23 Oct 2026, the team: colouring all
+  // eight areas at once fought the result colours): its manholes pulse, its pipes carry the
+  // blinking cyan sleeves, and it alone has a label at its centre. The colours below are for
+  // the "Areas" view only: a quick look at how the suburb is divided, with every result colour
+  // off while it is on.
+  const REGION_COLS = ["#3987e5", "#d55181", "#199e70", "#b06ad6", "#9ba33a", "#b08457", "#6a5acd", "#e39bb6"];
+  const regionCol = ri => REGION_COLS[ri % REGION_COLS.length];
+  const SIZES_TIP = "The size of the new estate, all of it draining into the sewer at the chosen manhole. 10, 30, 80 and 150 homes are realistic: one year of the whole council's growth landing at one point is about 30 to 80 homes, one apartment project 50 to 150. 700 is a stress case, roughly a decade of the council's growth in one place, kept as an upper bound and not a plausible development. For scale, the state projection (PlanSA, 2021 to 2041) is 390 to 485 new dwellings over twenty years for the whole council; the infill family spreads that figure over the areas, and Sim 2.5's corridor runs placed exactly 390 and 485 along Walkerville Terrace, where the state expects them.";
+  // Region indices in the order of their ids (R1, R2, ...), for the dropdown and the chips;
+  // the data lists them in another order.
+  const regionOrder = () => S().regions.map((r, i) => i).sort((a, b) => String(S().regions[a].id).localeCompare(String(S().regions[b].id), undefined, { numeric: true }));
+  const strip = html => String(html).replace(/<[^>]+>/g, "");
   const FAM_NOTE = {
     infill: "New homes spread through one area in proportion to the homes already there. The area's 100% is its share of the planning projection for the whole council area (" + S().anchor + " dwellings by 2041).",
     one: "A new estate joining the sewer at one manhole, all its flow entering there. Click a manhole to move it.",
@@ -48,7 +60,10 @@ window.Sim3UI = (function () {
     rule: "r10", k: 5, method: "exact", obj: "worst",
     showSensors: true, showHeat: false, showPumps: false, showConn: false,
     hover: null, pick: null,            // hovered / clicked manhole NAME for the right panel
-    lg: { results: true, network: false, regions: true },
+    legend: false,                      // the colour key, off until asked for
+    areasView: false,                   // every area in its colour, nothing else
+    rb: true, lb: true, top: true,      // right panel, left panel, top bar shown
+    words: true,                        // the summary bubble on the map open
   };
 
   /* ------------------------------------------------------------- index spaces */
@@ -217,11 +232,29 @@ window.Sim3UI = (function () {
       spillsBefore = (S().base[curTag()] ? S().base[curTag()].spilled : spillBefore()).map(nameOf);
       Growth3D.setScenario([]);
     }
-    Growth3D.paint(named, site, sensors, heatValues());
-    Growth3D.setSpills(spillsBefore, spillsNew);
+    if (st.areasView) {
+      const tints = {};
+      S().regions.forEach((r, ri) => r.manholes.forEach(i => { tints[nameOf(i)] = regionCol(ri); }));
+      Growth3D.setRegionTints(tints);
+      Growth3D.paint({}, null, [], null);
+      Growth3D.setPulse([]);
+      Growth3D.setRegionLabels(S().regions.map((r, ri) => ({ names: r.manholes.map(nameOf), text: r.id, col: regionCol(ri) })));
+      Growth3D.setSpills([], []);
+    } else {
+      Growth3D.setRegionTints(null);
+      Growth3D.paint(named, site, sensors, heatValues());
+      if (st.fam === "infill") {
+        Growth3D.setPulse(region().manholes.map(nameOf));
+        Growth3D.setRegionLabels([{ names: region().manholes.map(nameOf), text: region().id, col: "#00d4ff" }]);
+      } else { Growth3D.setPulse([]); Growth3D.setRegionLabels([]); }
+      Growth3D.setSpills(spillsBefore, spillsNew);
+    }
     Growth3D.setPumpRates([]);
     renderHomes(sensors);
     renderKnobs();
+    renderStrip();
+    syncDDs();
+    renderChips();
     renderPanel();
     renderSide();
     renderSensors();
@@ -236,12 +269,13 @@ window.Sim3UI = (function () {
   // selected area's homes (infill), the sensors' catchment, or the growth manhole's homes.
   function renderHomes(sensors) {
     const mhName = nm => { const n = G().nodes.find(x => x.name === nm); return n && n.mh ? "MH " + n.mh : nm; };
-    const row = (col, text, ring) => '<div class="row">' + (col ? '<span class="k' + (ring ? " ring" : "") + '" style="background:' + col + '"></span>' : "") + text + "</div>";
+    const row = (col, text, ring) => text && text !== "&nbsp;" ? "<span>" + (col ? '<span class="k' + (ring ? " ring" : "") + '" style="background:' + col + '"></span>' : "") + text + "</span>" : "";
     const put = (head, r1, r2, r3, hint) => {
-      $("#homeKey").innerHTML = '<div class="row head">' + head + "</div>" + r1 + r2 + r3 + '<div class="row quiet2">' + hint + "</div>";
+      $("#homesLine").innerHTML = (head ? '<span class="hd">' + head + "</span>" : "") + r1 + r2 + r3 + (hint ? '<span class="quiet2">' + hint + "</span>" : "");
     };
     let spec, lead;
-    if (st.hover) { spec = { mode: "site", name: st.hover }; lead = "Homes behind " + esc(mhName(st.hover)); }
+    if (st.areasView) spec = { mode: "none" };
+    else if (st.hover) { spec = { mode: "site", name: st.hover }; lead = "Homes behind " + esc(mhName(st.hover)); }
     else if (st.fam === "infill") spec = { mode: "region", names: region().manholes.map(nameOf) };
     else if (st.showSensors && sensors.length && st.fam !== "one") spec = { mode: "sensors", names: sensors };
     else if (st.fam === "one" && st.site != null) { spec = { mode: "site", name: nameOf(st.site) }; lead = "Homes behind " + esc(label(st.site)); }
@@ -254,25 +288,24 @@ window.Sim3UI = (function () {
         row("#7dc4e0", "<strong>" + r.homes + "</strong> homes in the area, <strong>" + reg.nManholes + "</strong> manholes"),
         row("#00d4ff", "<strong>" + r.pipes + "</strong> pipes carry the new homes' flow"),
         row("#3a2430", "<strong>" + r.elsewhere + "</strong> homes elsewhere"),
-        "Click a manhole to inspect it; the area follows your click");
+        "");
       return;
     }
     if (r.mode === "none") {
-      put("No growth placed", row("#ff6f9c", "<strong>" + r.total + "</strong> connected homes"), row("", "&nbsp;"), row("", "&nbsp;"),
-        "Pick a kind of growth on the left");
+      put("", row("#ff6f9c", "<strong>" + r.total + "</strong> connected homes"), "", "", "");
       return;
     }
     if (r.mode === "sensors") {
       put("Homes and the " + sensors.length + " sensor" + (sensors.length === 1 ? "" : "s"),
         row("#3fb950", "<strong>" + r.watched + "</strong> of " + r.total + " drain past a sensor (" + Math.round(100 * r.watched / r.total) + "%)"),
-        row("", "<strong>" + r.unwatched + "</strong> do not"), row("", "&nbsp;"), "Green sleeves: pipes feeding a sensor");
+        row("", "<strong>" + r.unwatched + "</strong> do not"), "", "");
       return;
     }
     put(lead,
       row("#1f4fff", "<strong>" + r.here + "</strong> reach it first" + (r.here > r.direct ? " (" + (r.here - r.direct) + " via unrecorded pipe ends)" : ""), true),
       row("#7dc4e0", "<strong>" + r.through + "</strong> drain through it from further up"),
       row("#3a2430", "<strong>" + r.elsewhere + "</strong> elsewhere"),
-      st.hover ? (st.fam === "one" ? "Previewing. Click to move the growth here." : "Previewing. Click to inspect it.") : "Hover any manhole to preview its homes");
+      st.hover ? (st.fam === "one" ? "Click to move the growth here" : "Click to inspect it") : "");
   }
   const shortName = reg => reg.name.split(":")[0];
 
@@ -281,27 +314,128 @@ window.Sim3UI = (function () {
     const cs = famCases();
     $("#iiKnob").innerHTML = cs.map((c, i) => "<button data-i=" + JSON.stringify(String(i)) + " title=" + JSON.stringify(c.note || "") + ">" +
       esc(c.label) + '<span class="knobNum">' + c.ii.toFixed(2) + " L/s/100m" + (c.settled === false ? ", 480 min" : "") + "</span></button>").join("");
-    $("#caseSel").innerHTML = cs.map((c, i) => "<option value=" + JSON.stringify(String(i)) + ">" + esc(c.label) + "</option>").join("");
     $("#nCases").textContent = cs.length;
+  }
+  // The simple strip's "where": the eight areas, then greenfield, then no growth.
+  function buildStrip() {
+    $("#whereSel").innerHTML = regionOrder().map(i => { const r = S().regions[i]; return "<option value=" + JSON.stringify("r" + i) + ">" + esc(r.id + ": " + shortName(r)) + "</option>"; }).join("") +
+      '<option value="one">A new estate at one manhole</option><option value="none">Nowhere: the suburb today</option>';
+    $("#whereSel").onchange = () => {
+      const v = $("#whereSel").value;
+      if (v === "one" || v === "none") { setFamily(v); return; }
+      st.region = +v.slice(1); st.pick = null;
+      if (st.fam !== "infill") setFamily("infill"); else repaint();
+    };
+    $("#howRange").oninput = () => {
+      if (st.fam === "infill") st.step = +$("#howRange").value; else if (st.fam === "one") st.add = +$("#howRange").value;
+      repaint();
+    };
+    $("#wxKnob").onclick = e => { const b = e.target.closest("button"); if (b) setWeather(b.dataset.w); };
+    $("#kDown").onclick = () => { st.k = Math.max(1, st.k - 1); repaint(); };
+    $("#kUp").onclick = () => { st.k = Math.min(+$("#kRange").max || 10, st.k + 1); repaint(); };
+    // Arrows beside every dropdown: step through its options.
+    $$(".arrow[data-for]").forEach(b => { b.onclick = () => {
+      const sel = $("#" + b.dataset.for), n = sel.options.length;
+      if (!n) return;
+      sel.selectedIndex = (sel.selectedIndex + (+b.dataset.step) + n) % n;
+      sel.dispatchEvent(new Event("change"));
+    }; });
+    $("#rTab").onclick = () => setFold("rb", !st.rb);
+    $("#lTab").onclick = () => setFold("lb", !st.lb);
+    $("#topTab").onclick = () => setFold("top", !st.top);
+    $("#wordsTab").onclick = () => setWords(!st.words);
+  }
+  function setWords(on) {
+    st.words = on;
+    $("#inWords").classList.toggle("collapsed", !on);
+    $("#wordsTab").innerHTML = on ? "&#9662;" : "&#9656;";
+    $("#wordsTab").title = on ? "Fold the summary away" : "Show the summary";
+  }
+  // The fold tabs on the map's edges: top bar, left panel (expert only), right panel.
+  function setFold(which, on) {
+    st[which] = on;
+    document.body.classList.toggle({ rb: "rbHidden", lb: "lbHidden", top: "topHidden" }[which], !on);
+    $("#rTab").innerHTML = st.rb ? "&#9654;" : "&#9664;";
+    $("#lTab").innerHTML = st.lb ? "&#9664;" : "&#9654;";
+    $("#topTab").innerHTML = st.top ? "&#9650;" : "&#9660;";
+    $("#rTab").title = st.rb ? "Fold the right panel away" : "Bring the right panel back";
+    $("#lTab").title = st.lb ? "Fold the left panel away" : "Bring the left panel back";
+    $("#topTab").title = st.top ? "Fold the top bar away" : "Bring the top bar back";
+    Growth3D.resize($("#stage"));
+  }
+  const setRightPanel = on => setFold("rb", on);
+  // Simple weather: Dry is the family's 0.0 case, Wet its Design wet case (0.11).
+  const wxOf = () => (curCase().ii < 1e-6 ? "dry" : "wet");
+  function setWeather(w) {
+    const cs = famCases();
+    const c = w === "dry" ? cs.find(x => x.ii < 1e-6) : (cs.find(x => Math.abs(x.ii - 0.11) < 1e-6 && /^Design wet$/.test(x.label)) || cs.find(x => Math.abs(x.ii - 0.11) < 1e-6));
+    if (c) { st.caseTag = c.tag; repaint(); }
+  }
+  function renderStrip() {
+    if (st.view !== "simple") return;
+    $("#whereSel").value = st.fam === "infill" ? "r" + st.region : st.fam;
+    const reg = region();
+    const desc = String(reg.name).split(":").slice(1).join(":").trim();
+    $("#whereSel").title = st.fam === "infill" ? reg.name : "";
+    $("#whereHint").textContent = st.fam === "infill" ? (desc ? desc.charAt(0).toUpperCase() + desc.slice(1) + "; " : "") + reg.dwellings + " homes, " + reg.nManholes + " manholes today"
+      : st.fam === "one" ? (st.site != null ? "At " + label(st.site) + ". Click another manhole to move it." : "Click a manhole on the map to place it.")
+      : "No homes added. Amber manholes are over the alarm already.";
+    const how = $("#howStep");
+    if (st.fam === "infill") {
+      const row = curRow(), f = ladder()[st.step];
+      $("#howRange").disabled = false; $("#howRange").max = String(ladder().length - 1); $("#howRange").value = String(st.step);
+      $("#howLbl").innerHTML = "+" + (row ? Math.round(row.dw) : Math.round(reg.nominal * f)) + " homes <span class='quiet' style='display:inline'>(" + Math.round(f * 100) + "% of its share)</span>";
+      $("#howInfo").dataset.tip = "100% is this area's share of the council's 2021 to 2041 planning projection, " + Math.round(reg.nominal) + " homes on top of its " + reg.dwellings +
+        " today. 25% is roughly the first year or two of that; 300% is a stress test. The homes are added all at once to today's pipes, with no upgrades; in reality they arrive over three to five years.";
+    } else if (st.fam === "one") {
+      $("#howRange").disabled = false; $("#howRange").max = String(R().growthLevels.length - 1); $("#howRange").value = String(st.add);
+      const g = R().growthLevels[st.add];
+      $("#howLbl").innerHTML = "+" + g + " homes in the new estate" + (g >= 500 ? " <span class='quiet' style='display:inline'>(stress case)</span>" : "");
+      $("#howInfo").dataset.tip = SIZES_TIP;
+    } else {
+      $("#howRange").disabled = true; $("#howLbl").textContent = "No growth"; $("#howInfo").dataset.tip = "Nothing is added in this view; the map shows the network as it is in the selected weather.";
+    }
+    $$("#wxKnob button").forEach(b => b.classList.toggle("on", b.dataset.w === wxOf()));
+    const c = curCase();
+    $("#wxHint").textContent = c.label + (c.settled === false ? " (480-minute runs)" : "");
+    $("#kBig").textContent = st.k + " sensor" + (st.k === 1 ? "" : "s");
+    const pl = placement();
+    $("#kHint").textContent = pl.worst != null ? "catch " + pct(pl.worst) + " of detectable growth, worst case" : "";
+    $("#kInfo").dataset.tip = "The best set of this many level sensors, chosen once for the worst of all " + famCases().length + " weather and leakage cases. " +
+      "A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth. " +
+      "Detectable growth means the scenarios that at least one manhole anywhere would see; the percentage is the share of those that this set notices." +
+      (st.fam === "one" ? " For a new estate the set is built one sensor at a time (greedy); the infill set is the exact optimum." : " Each size is solved on its own, so the set for one more sensor need not contain this one.");
+  }
+  function renderChips() {
+    const el = $("#areaChips");
+    if (!el.dataset.built) {
+      el.innerHTML = regionOrder().map(i => { const r = S().regions[i]; return '<button class="chip" data-r="' + i + '" title="' + esc(r.name) + '">' + esc(r.id) + "</button>"; }).join("");
+      el.onclick = e => { const b = e.target.closest(".chip"); if (!b) return; st.region = +b.dataset.r; st.pick = null; if (st.fam !== "infill") setFamily("infill"); else repaint(); };
+      el.dataset.built = "1";
+    }
+    $$("#areaChips .chip").forEach(b => b.classList.toggle("on", st.fam === "infill" && +b.dataset.r === st.region));
   }
   function buildKnobs() {
     const Rr = R();
     $("#ruleKnob").innerHTML = RULES.map(r => "<button data-r=" + JSON.stringify(r.id) + " title=" + JSON.stringify(r.note) + ">" + esc(r.label) + "</button>").join("");
-    $("#addKnob").innerHTML = Rr.growthLevels.map((g, i) => "<button data-i=" + JSON.stringify(String(i)) + ">+" + g + "</button>").join("");
-    $("#region").innerHTML = S().regions.map((r, i) => "<option value=" + JSON.stringify(String(i)) + ">" + esc(r.id + ": " + shortName(r)) + " (" + r.dwellings + " homes)</option>").join("");
+    $("#addKnob").innerHTML = Rr.growthLevels.map((g, i) => "<button data-i=" + JSON.stringify(String(i)) + (g >= 500 ? ' title="A stress case, not a plausible estate"' : "") + ">+" + g + (g >= 500 ? '<span class="knobNum">stress case</span>' : "") + "</button>").join("");
+    $("#addInfo").dataset.tip = SIZES_TIP;
+    $("#region").innerHTML = regionOrder().map(i => { const r = S().regions[i]; return "<option value=" + JSON.stringify(String(i)) + " title=" + JSON.stringify(r.name) + ">" + esc(r.id + ": " + shortName(r)) + "</option>"; }).join("");
     $("#stepRange").max = String(ladder().length - 1);
     buildCaseKnobs();
     const on = (sel, fn) => { $(sel).onclick = e => { const b = e.target.closest("button"); if (!b) return; fn(b); }; };
     on("#viewKnob", b => setView(b.dataset.v));
     on("#famKnob", b => setFamily(b.dataset.f));
     on("#iiKnob", b => { st.caseTag = famCases()[+b.dataset.i].tag; repaint(); });
-    $("#caseSel").onchange = () => { st.caseTag = famCases()[+$("#caseSel").value].tag; repaint(); };
+    buildStrip();
     on("#ruleKnob", b => { st.rule = b.dataset.r; repaint(); });
-    on("#typeKnob", b => { st.rule = b.dataset.r; repaint(); });
+    $("#toggleLegend").onclick = () => { st.legend = !st.legend; legendGroups(); };
+    $("#toggleAreas").onclick = () => { st.areasView = !st.areasView; legendGroups(); repaint(); };
+    $("#areasKeyList").innerHTML = regionOrder().map(i => { const r = S().regions[i]; return '<span><span class="k" style="background:' + regionCol(i) + '"></span>' + esc(r.id + " " + shortName(r)) + "</span>"; }).join("");
     on("#addKnob", b => { st.add = +b.dataset.i; repaint(); });
     on("#methKnob", b => { st.method = b.dataset.m; st.pickedGreedy = b.dataset.m === "greedy"; repaint(); });
     on("#objKnob", b => { st.obj = b.dataset.o; repaint(); });
-    $("#region").onchange = () => { st.region = +$("#region").value; st.pick = null; repaint(); Growth3D.frameNodes(region().manholes.map(nameOf)); };
+    $("#region").onchange = () => { st.region = +$("#region").value; st.pick = null; repaint(); };
     $("#stepRange").oninput = () => { st.step = +$("#stepRange").value; repaint(); };
     $("#kRange").oninput = () => { st.k = +$("#kRange").value; repaint(); };
     $("#site").onchange = () => { st.site = $("#site").value === "" ? null : +$("#site").value; st.pick = null; repaint(); };
@@ -311,55 +445,59 @@ window.Sim3UI = (function () {
     $$("#viewKnob button").forEach(b => b.classList.toggle("on", b.dataset.v === st.view));
     $$("#famKnob button").forEach(b => b.classList.toggle("on", b.dataset.f === st.fam));
     $$("#iiKnob button").forEach(b => b.classList.toggle("on", +b.dataset.i === ci));
-    $("#caseSel").value = String(ci);
     $$("#ruleKnob button").forEach(b => b.classList.toggle("on", b.dataset.r === st.rule));
-    $$("#typeKnob button").forEach(b => b.classList.toggle("on", b.dataset.r === st.rule || (b.dataset.r === "r10" && st.rule !== "alarm")));
     $$("#addKnob button").forEach(b => b.classList.toggle("on", +b.dataset.i === st.add));
     $$("#methKnob button").forEach(b => b.classList.toggle("on", b.dataset.m === st.method));
     $$("#objKnob button").forEach(b => b.classList.toggle("on", b.dataset.o === st.obj));
-    $("#famNote").textContent = FAM_NOTE[st.fam];
+    $("#famInfo").dataset.tip = FAM_NOTE[st.fam];
     $("#infillBox").hidden = st.fam !== "infill";
     $("#oneBox").hidden = st.fam !== "one";
     $("#region").value = String(st.region);
+    $("#region").title = region().name;
     $("#stepRange").value = String(st.step);
     $("#kRange").value = String(st.k);
     $("#kVal").textContent = String(st.k);
     $("#site").value = st.site == null ? "" : String(st.site);
     const settled = c.settled !== false;
-    $("#iiNote").innerHTML = '<span class="badge ' + (settled ? "settled" : "fixed") + '">' + (settled ? "settled runs" : "480-minute runs") + "</span>" +
-      esc(c.note || "") + (caseFellBack() ? " <b>This family has not run the selected variant yet; its " + esc(c.label) + " case is shown.</b>" : "") +
-      (st.view === "simple" ? " The sensors are chosen for the worst of all " + famCases().length + " cases, not just this one." : "");
+    $("#iiBadge").innerHTML = '<span class="badge ' + (settled ? "settled" : "fixed") + '">' + (settled ? "settled runs" : "480-minute runs") + "</span>" +
+      (caseFellBack() ? " <b>This family has not run the selected variant yet; its " + esc(c.label) + " case is shown.</b>" : "");
+    $("#iiInfo").dataset.tip = (c.note || "") + " The sensors are chosen for the worst of all " + famCases().length + " cases, not just the one shown." +
+      (settled ? "" : " This case's runs are the fixed 480-minute ones from Sim 2.5, not yet re-run to settlement.");
     const rl = ruleOf(st.rule);
-    $("#ruleNote").textContent = rl.note + (st.view === "simple" && st.rule !== "alarm" && st.rule !== "r10" ? " (Expert rule " + rl.label + " selected.)" : "");
+    $("#ruleInfo").dataset.tip = rl.note + (st.rule === "alarm"
+      ? " Manholes already over the alarm before any growth are amber: they cannot report it."
+      : " Every manhole is judged against its own level before the growth, so nothing counts as already triggered.");
     if (st.fam === "infill") {
       const reg = region(), f = ladder()[st.step], row = curRow();
       $("#stepLbl").innerHTML = "<b>+" + (row ? Math.round(row.dw) : Math.round(reg.nominal * f)) + "</b> dwellings (" + Math.round(f * 100) + "% of the area's share)";
-      $("#stepNote").textContent = "100% is this area's share of the 2041 projection, " + Math.round(reg.nominal) + " dwellings on its " + reg.dwellings +
-        " today. 25% is roughly the first year or two; 300% is a stress test.";
+      $("#stepInfo").dataset.tip = "100% is this area's share of the 2041 projection, " + Math.round(reg.nominal) + " dwellings on its " + reg.dwellings +
+        " today. 25% is roughly the first year or two; 300% is a stress test. The growth is added all at once to today's network, with no pipe upgrades; " +
+        "in reality the dwellings arrive over three to five years, which is why the time-to-notice figures matter as much as the millimetres.";
     }
     $("#objKnob").style.display = st.fam !== "one" && st.method !== "greedy" ? "none" : "";
     const hasRisk = st.fam !== "one" && !!((S().rules[st.rule] || {}).risk);
     $("#methRisk").hidden = !hasRisk;
     if (!hasRisk && st.method === "risk") st.method = "exact";
-    $("#methNote").textContent = st.fam !== "one"
-      ? (st.method === "exact" ? "The best set of this size, solved exactly over all cases for the worst case (PuLP + HiGHS). The recommendation."
-         : st.method === "risk" ? "Kimbrough's risk score: each scenario weighted by severity (homes draining through the manhole where it bites) x occurrence (how far it pushes that manhole towards 0.7 of its bore). The set that notices the most RISK, solved exactly. A comparison, not the recommendation: it pulls sensors towards trunk mains already near capacity."
-                               : "Each sensor is the best addition to the ones before it. Up to 10 points below the exact optimum at the same size.")
+    const methText = st.fam !== "one"
+      ? (st.method === "exact" ? "Exact: the best set of this size, solved exactly over all cases for the worst case (PuLP + HiGHS). The recommendation."
+         : st.method === "risk" ? "Risk-weighted (Kimbrough): each scenario weighted by severity (homes draining through the manhole where it bites) x occurrence (how far it pushes that manhole towards 0.7 of its bore). The set that notices the most risk, solved exactly. A comparison, not the recommendation: it pulls sensors towards trunk mains already near capacity."
+                               : "Greedy: each sensor is the best addition to the ones before it. Up to 10 points below the exact optimum at the same size.")
       : "The greenfield grid publishes the greedy order only; the exact solver has run on the infill family.";
-    $("#objNote").textContent = st.obj === "worst"
-      ? "Each sensor added is the one that most raises the worst of the cases: whatever the unknowns turn out to be, at least this much is caught."
-      : "Each sensor added is the one that most raises the average over the cases. Catches more on average, but can leave one case poorly covered.";
-    $("#fitSite").textContent = st.fam === "infill" ? "Zoom to the area" : "Zoom to the growth";
-    $("#fitSite").disabled = st.fam === "none" || (st.fam === "one" && st.site == null);
-    $("#regionKey").hidden = !(st.lg.regions && st.fam === "infill");
+    const objText = st.fam !== "one" && st.method !== "greedy" ? "" : (st.obj === "worst"
+      ? " Best worst case: each sensor added is the one that most raises the worst of the cases, so whatever the unknowns turn out to be at least this much is caught."
+      : " Best average: each sensor added is the one that most raises the average over the cases; catches more on average, but can leave one case poorly covered.");
+    $("#sensInfo").dataset.tip = methText + objText + " Detectable growth: scenarios that at least one manhole sees. This scores whether a sensor would notice growth, not whether it watches a choke point; the choke points are under No growth.";
   }
 
   function setView(v) {
     st.view = v;
     document.body.classList.toggle("simple", v === "simple");
     document.body.classList.toggle("expert", v === "expert");
-    if (v === "simple" && st.rule !== "alarm" && st.rule !== "r10") st.rule = "r10";
-    if (v === "simple") { st.showHeat = false; $("#toggleHeat").classList.remove("primary"); }
+    if (v === "simple") {
+      st.rule = "r10"; st.showHeat = false; $("#toggleHeat").classList.remove("primary");
+      if (st.method === "risk") st.method = "exact";
+      if (wxOf() !== "dry" && wxOf() !== "wet") setWeather("wet"); else if (!/^(Dry|Design wet)$/.test(curCase().label)) setWeather(wxOf());
+    }
     repaint();
     Growth3D.resize($("#stage"));
   }
@@ -368,9 +506,7 @@ window.Sim3UI = (function () {
     if (f === "one" && st.method === "exact") st.method = "greedy";
     if (f !== "one" && st.method === "greedy" && !st.pickedGreedy) st.method = "exact";
     buildCaseKnobs();
-    repaint();
-    if (f === "infill") Growth3D.frameNodes(region().manholes.map(nameOf));
-    else Growth3D.frame(null);
+    repaint();           // the camera stays where the reader left it
   }
 
   /* ------------------------------------------------------------ left panel */
@@ -440,20 +576,34 @@ window.Sim3UI = (function () {
     $("#baseNote").innerHTML = baseNote(base.alarm.length, base.spilled.length, names().length);
   }
   const baseNote = (nAlarm, nSpill, n) => (st.rule !== "alarm"
-    ? "Graded rule: every manhole is judged against its own level before the growth, so nothing counts as already triggered."
+    ? ""
     : nAlarm ? "<b>" + nAlarm + "</b> of " + n + " manholes are already over the alarm in this case <b>before any houses are added</b>. They are amber and cannot report the growth."
     : "No manhole is over the alarm before growth in this case.") +
     (nSpill ? " <b>" + nSpill + "</b> manhole" + (nSpill === 1 ? " already spills" : "s already spill") + " from the lid before any growth." : "");
 
   /* ------------------------------------------------------------- in words */
   function renderWords() {
-    const c = curCase(), el = $("#inWords");
+    const c = curCase(), el = $("#wordsText");
+    const wx = st.view === "simple" ? (wxOf() === "dry" ? "dry" : "wet") + " weather" : "<b>" + esc(c.label) + "</b> weather";
+    const withTip = (short, long) => short + '<i class="info-i" data-tip="' + esc(long).replace(/"/g, "&quot;") + '">i</i>';
     if (st.fam === "infill") {
       const reg = region(), row = curRow();
       if (!row) { el.innerHTML = ""; return; }
       const seen = seers(row, st.rule), top = row.rise[0], chosen = placement().chosen, caught = chosen.filter(i => seen.includes(i));
       const fd = ((S().rules[st.rule] || {}).firstSeen || {})[reg.id] || {};
       const first = fd[curTag()];
+      {
+        const S_ = caught.map(i => "S" + (chosen.indexOf(i) + 1));
+        const short = "<b>" + esc(reg.id) + "</b>, +" + Math.round(row.dw) + " homes, " + wx + ": " +
+          (caught.length ? "<b>sensor" + (S_.length === 1 ? " " : "s ") + S_.join(", ") + (S_.length === 1 ? " sees" : " see") + " it</b>" : seen.length ? "<b>no chosen sensor sees it</b>, " + seen.length + " other manhole" + (seen.length === 1 ? " does" : "s do") : "<b>nothing moves enough to see</b>") + "." +
+          (first ? " A sensor first sees this area at <b>" + Math.round(first[1] * 100) + "%</b> of its growth." : "");
+        const long = (top && top[1] >= 0.5 ? "Largest rise " + top[1].toFixed(1) + " mm at " + label(top[0]) + ". " : "No manhole rises as much as half a millimetre. ") +
+          seen.length + " manhole" + (seen.length === 1 ? "" : "s") + " rise 10 mm or more (the level-sensor rule). " +
+          "Full build-out here is " + Math.round(reg.nominal) + " homes, this area's share of the 2041 projection. The case shown is " + c.label + "; the sensors were chosen for the worst of all cases." +
+          (first ? " First seen at " + label(first[0]) + "." : " Under this rule no manhole sees this area at any build-out in this case: a blind spot.");
+        el.innerHTML = '<span class="tag">Infill</span>' + withTip(short, long);
+        return;
+      }
       el.innerHTML = '<span class="tag">Infill</span><b>' + esc(reg.id + ", " + shortName(reg)) + "</b>: " + Math.round(row.dw) + " new dwellings (" +
         Math.round(ladder()[st.step] * 100) + "% of its 2041 share) in <b>" + esc(c.label) + "</b> weather. " +
         (top && top[1] >= 0.5 ? "Largest rise <b>" + top[1].toFixed(1) + " mm</b> at " + label(top[0]) + "; " : "No manhole rises as much as half a millimetre; ") +
@@ -465,17 +615,27 @@ window.Sim3UI = (function () {
     if (st.fam === "one") {
       if (st.site == null) { el.innerHTML = '<span class="tag">Greenfield</span>Click a manhole to place the new estate there.'; return; }
       const cl = cell(), row = rowFor(cl, st.site), tipped = row ? row.tip : [], chosen = placement().chosen, caught = chosen.filter(i => tipped.includes(i));
-      el.innerHTML = '<span class="tag">Greenfield</span><b>' + R().growthLevels[st.add] + " dwellings</b> joining at <b>" + esc(label(st.site)) + "</b> in <b>" + esc(c.label) + "</b> weather: " +
+      el.innerHTML = '<span class="tag">Greenfield</span><b>' + R().growthLevels[st.add] + " dwellings</b> joining at <b>" + esc(label(st.site)) + "</b> in " + wx + ": " +
         (tipped.length ? "<b>" + tipped.length + "</b> manhole" + (tipped.length === 1 ? "" : "s") + " see it" : "no manhole passes the rule") + ". " +
         (st.showSensors ? (caught.length ? "Sensor" + (caught.length === 1 ? " " : "s ") + caught.map(i => "S" + (chosen.indexOf(i) + 1)).join(", ") + " see" + (caught.length === 1 ? "s" : "") + " it." : "<b>None of the chosen sensors sees it.</b>") : "");
       return;
     }
-    el.innerHTML = '<span class="tag">No growth</span>The suburb as the model has it in <b>' + esc(c.label) + "</b> weather. Amber manholes are already over the " + ALARM_MM + " mm alarm; the choke points are listed on the left.";
+    el.innerHTML = '<span class="tag">No growth</span>The suburb as the model has it in ' + wx + ". Amber manholes are already over the " + ALARM_MM + " mm alarm" +
+      (st.view === "simple" ? "." : "; the choke points are listed on the left.");
   }
 
   /* ------------------------------------------------------------ right panel */
   function renderSide() {
     const box = $("#mhFacts");
+    if (st.view === "simple") {
+      const show = st.pick || (st.fam === "one" && st.site != null ? nameOf(st.site) : null);
+      $("#rightSensors").hidden = !!show;
+      if (!show) { box.innerHTML = ""; return; }
+      renderManhole(box, show);
+      box.insertAdjacentHTML("afterbegin", '<button id="rbBack">&#9664; Back to the sensors</button>');
+      $("#rbBack").onclick = () => { st.pick = null; if (st.fam === "one") st.site = null; repaint(); };
+      return;
+    }
     if (st.pick) return renderManhole(box, st.pick);
     if (st.fam === "infill") return renderRegionCard(box);
     if (st.fam === "one" && st.site != null) return renderManhole(box, nameOf(st.site));
@@ -492,21 +652,21 @@ window.Sim3UI = (function () {
     }).join("") + "</table>";
     const days = tr && tr.days ? Object.entries(tr.days).map(([sg, d]) => "<tr><td>" + (+sg).toFixed(0) + " mm</td><td" + (d >= 1825 ? ' class="never"' : "") + ">" + (d >= 1825 ? "over 5 years" : d + " day" + (d === 1 ? "" : "s")) + "</td></tr>").join("") : "";
     const rw = st.view === "expert" && S().riskWeights && S().riskWeights[tag] ? S().riskWeights[tag][reg.id + "|" + ladder()[st.step]] : null;
-    box.innerHTML = "<h4>This area</h4>" +
+    const h4i = (t, tip) => "<h4>" + t + ' <i class="info-i left" data-tip="' + esc(tip).replace(/"/g, "&quot;") + '">i</i></h4>';
+    box.innerHTML = h4i("This area", reg.name) +
       row2("Area", "<b>" + esc(reg.id) + "</b> " + esc(shortName(reg))) +
       (rw ? row2("Risk weight (expert)", "<b>" + rw.w + "</b> = S " + rw.S + " x O " + rw.O + (rw.at != null ? ", at " + esc(label(rw.at)) + (rw.ddAfter != null ? " (d/D " + rw.ddBefore + " to " + rw.ddAfter + ")" : "") : "")) : "") +
       row2("Today", reg.dwellings + " homes, " + reg.nManholes + " manholes, " + (reg.lengthM / 1000).toFixed(1) + " km of pipe") +
       row2("Its 2041 share", "<b>" + Math.round(reg.nominal) + "</b> dwellings (100%)" + (reg.exitPipe ? ", drains out through pipe " + reg.exitPipe : "")) +
-      '<p class="quiet">' + esc(reg.name) + "</p>" +
-      "<h4>First build-out a sensor sees it (" + esc(ruleOf(st.rule).label.toLowerCase()) + ")</h4>" + seenTable +
-      '<p class="quiet">The best single manhole in each case. A blank row means no manhole passes the rule even at 300%: the area is a blind spot under this rule.</p>' +
-      (tr ? "<h4>Time to notice full build-out, " + esc(curCase().label) + "</h4>" +
+      h4i("First build-out a sensor sees it (" + esc(ruleOf(st.rule).label.toLowerCase()) + ")",
+          "The best single manhole in each case, and the build-out at which it first passes the rule. A 'never' row means no manhole passes the rule even at 300%: the area is a blind spot under this rule.") + seenTable +
+      (tr ? h4i("Time to notice full build-out, " + esc(curCase().label),
+                "How many days of same-hour readings separate the new level from the old one, if the day-to-day scatter is the figure in the first column. The scatter is assumed until normal-day level records arrive.") +
         row2("Best manhole", esc(label(tr.best)) + ", <b>+" + tr.riseMm.toFixed(1) + " mm</b> at 100%") +
-        '<table class="sm"><tr><th>Day-to-day noise</th><th>Days of readings</th></tr>' + days + "</table>" +
-        '<p class="quiet">How many days of same-hour readings separate the new level from the old one, if the day-to-day scatter is the figure in the first column. The scatter is assumed until normal-day level records arrive.</p>' : "") +
-      (pi ? "<h4>Pump stations, " + esc(curCase().label) + ", 100% build-out</h4>" + Object.entries(pi).map(([p, v]) =>
-        row2(esc(p.replace(/^P/, "Station ")), v.baseline_lps.toFixed(2) + " to " + v.with_growth_lps.toFixed(2) + " L/s (" + (v.change_pct >= 0 ? "+" : "") + v.change_pct.toFixed(1) + "%)")).join("") +
-        '<p class="quiet">Pumped flow is a growth indicator only for the part of the suburb that drains through a station; a zero change means this area does not.</p>' : "");
+        '<table class="sm"><tr><th>Day-to-day noise</th><th>Days of readings</th></tr>' + days + "</table>" : "") +
+      (pi ? h4i("Pump stations, " + esc(curCase().label) + ", 100% build-out",
+                "Pumped flow is a growth indicator only for the part of the suburb that drains through a station; a zero change means this area does not.") + Object.entries(pi).map(([p, v]) =>
+        row2(esc(p.replace(/^P/, "Station ")), v.baseline_lps.toFixed(2) + " to " + v.with_growth_lps.toFixed(2) + " L/s (" + (v.change_pct >= 0 ? "+" : "") + v.change_pct.toFixed(1) + "%)")).join("") : "");
   }
   let _incoming = null;
   function upstreamOf(g, ni) {
@@ -564,7 +724,7 @@ window.Sim3UI = (function () {
     const chosen = placement().chosen, k = chosen.indexOf(i);
     const rank = 1 + h[st.obj].filter(x => x > h[st.obj][i]).length;
     const ri = regionOf[i];
-    box.innerHTML = "<h4>This manhole</h4>" +
+    box.innerHTML = '<h4>This manhole <i class="info-i left" data-tip="' + esc("Water and headroom are for " + curCase().label + ". Click empty ground, or Back, to leave it.") + '">i</i></h4>' +
       row2("Asset", "MH " + n.mh + (n.yr ? ", built " + n.yr : ", year not recorded")) +
       (ri >= 0 ? row2("Area", esc(S().regions[ri].id + ", " + shortName(S().regions[ri]))) : "") +
       (water ? row2("Water before growth", water) : "") + (head ? row2("Headroom", head) : "") +
@@ -574,7 +734,7 @@ window.Sim3UI = (function () {
       row2("Drains through it", up.chambers + " manholes, " + (up.metres / 1000).toFixed(2) + " km of pipe") +
       row2("As a sensor", "alone it sees " + pct(h.mean[i]) + " of " + (st.fam === "one" ? "greenfield" : "infill") + " growth on average, " + pct(h.worst[i]) + " in the worst case; rank " + rank + " of " + names().length +
         (k >= 0 ? ", <b>chosen as S" + (k + 1) + "</b>" : "")) +
-      '<p class="quiet">Water and headroom are for ' + esc(curCase().label) + ". Click empty ground to go back to the area card.</p>";
+      "";
   }
 
   /* -------------------------------------------------------------- sensors */
@@ -588,8 +748,7 @@ window.Sim3UI = (function () {
     const type = st.rule === "alarm" ? "float switch at the alarm level" : "level sensor";
     const lead = "<p><b>" + k + "</b> sensor" + (k === 1 ? "" : "s") + (pl.worst != null ? " catch <b>" + pct(pl.worst) + "</b> of detectable " + (isIn ? "infill" : "greenfield") +
       " growth in the worst case" + (pl.average != null ? " and <b>" + pct(pl.average) + "</b> on average" : "") : "") +
-      (pl.riskWorst != null ? ", and <b>" + pct(pl.riskWorst) + "</b> of the risk-weighted total" : "") + " (" + esc(ruleOf(st.rule).label.toLowerCase()) +
-      (isIn ? ", " + S().cases.length + " cases, " + S().regions.length + " areas x " + ladder().length + " build-outs" : ", all " + R().growthLevels.length + " growth sizes, " + R().cases.length + " cases") + ").</p>";
+      (pl.riskWorst != null ? ", and <b>" + pct(pl.riskWorst) + "</b> of the risk-weighted total" : "") + ".</p>";
     const cards = chosen.map((i, j) => {
       const nm = nameOf(i), ri = regionOf[i];
       let watch = "";
@@ -619,20 +778,26 @@ window.Sim3UI = (function () {
     let extra = "";
     if (isIn && st.view === "expert" && pl.compare && pl.compare.plain_set) {
       const c = pl.compare, hi = ' class="hi"';
-      extra += "<h4>Plain against risk-weighted, " + k + " sensors</h4><table class='sm'><tr><th>Set</th><th>Plain coverage</th><th>Risk-weighted</th></tr>" +
+      extra += "<h4>Plain against risk-weighted, " + k + " sensors <i class='info-i left' data-tip='Worst case over the cases, each set scored both ways. Risk weight = severity x occurrence per scenario (Kimbrough 2019, as applied in the risk note of 22 Oct 2026); the current scenario&#39;s weight is in the area card.'>i</i></h4><table class='sm'><tr><th>Set</th><th>Plain coverage</th><th>Risk-weighted</th></tr>" +
         "<tr><td>Exact (plain)</td><td" + (st.method !== "risk" ? hi : "") + ">" + pct(c.plain_set.plain) + "</td><td>" + pct(c.plain_set.risk) + "</td></tr>" +
         "<tr><td>Risk-weighted</td><td>" + pct(c.risk_set.plain) + "</td><td" + (st.method === "risk" ? hi : "") + ">" + pct(c.risk_set.risk) + "</td></tr></table>" +
-        "<p class='quiet'>Worst case over the cases. The two sets share " + c.shared + " of " + k + " manholes. Risk weight = severity x occurrence per scenario (Kimbrough 2019, as applied in the risk note of 22 Oct 2026); the current scenario's weight is in the area card.</p>";
+        "<p class='quiet'>The two sets share " + c.shared + " of " + k + " manholes.</p>";
     }
     if (isIn && st.view === "expert" && rr.loo && Object.keys(rr.loo).length) {
       const n0 = Object.values(rr.loo)[0].chosen.length;
-      extra = "<h4>Leave one case out (" + n0 + " sensors)</h4><table class='sm'><tr><th>Held out</th><th>Score on it</th></tr>" +
+      extra = "<h4>Leave one case out (" + n0 + " sensors) <i class='info-i left' data-tip='Sensors chosen on the other cases, scored on the one held out: how much the recommendation depends on any single assumption about the weather.'>i</i></h4><table class='sm'><tr><th>Held out</th><th>Score on it</th></tr>" +
         S().cases.map(c => rr.loo[c.tag] ? "<tr><td>" + esc(c.label) + "</td><td" + (rr.loo[c.tag].score < 0.5 ? ' class="hi"' : "") + ">" + pct(rr.loo[c.tag].score) + "</td></tr>" : "").join("") +
-        "</table><p class='quiet'>Sensors chosen on the other cases, scored on the one held out: how much the recommendation depends on any single assumption about the weather.</p>";
+        "</table>";
     }
-    $("#sensorList").innerHTML = lead + cards + extra +
-      "<p class=quiet>" + (isIn && st.method === "exact" ? "Each size is solved on its own, so the set for " + (k + 1) + " need not contain this one." : "Chosen one at a time, so the set for " + (k + 1) + " is this set plus one.") +
-      " Detectable growth: scenarios that at least one manhole sees. This scores whether a sensor would notice growth, not whether it watches a choke point; the choke points are under No growth.</p>";
+    $("#sensorList").innerHTML = lead + cards + extra;
+    if (st.view === "simple") {
+      const tip = "Detectable growth: the scenarios (every area at every build-out, or every estate size at every manhole) that at least one manhole anywhere would see. " +
+        "The worst case is the lowest share over all " + famCases().length + " weather and leakage cases; the set is chosen to make that worst case as high as possible. " +
+        "Each card names the areas this sensor is the first to notice, and how many manholes and homes drain past it.";
+      $("#rightSensors").innerHTML = "<h4 style='margin-top:0'>Where to put " + k + " sensor" + (k === 1 ? "" : "s") + ' <i class="info-i left" data-tip="' + esc(tip) + '">i</i></h4>' +
+        (pl.worst != null ? "<p style='margin:0 0 8px;color:var(--dim)'>Together they notice <b>" + pct(pl.worst) + "</b> of detectable " + (isIn ? "infill" : "greenfield") + " growth in the worst case.</p>" : "") +
+        cards + "<p class='quiet'>Click a pin or any manhole for its details.</p>";
+    }
   }
   function renderCurve() {
     const el = $("#curve");
@@ -693,17 +858,14 @@ window.Sim3UI = (function () {
     closeT();
     return out.join("\n");
   }
-  function renderRef() {
-    if ($("#ref").dataset.done) return;
+  function refHtml() {
     const g = G();
-    $("#ref").innerHTML = '<div class="lead"><p><strong>What this model is, in one paragraph.</strong> Every council pipe draining to the end of the council data, ' +
+    return '<div class="lead"><p><strong>What this model is, in one paragraph.</strong> Every council pipe draining to the end of the council data, ' +
       g.nPipes + " pipes and " + g.nChambers + " manholes, is solved together in EPA SWMM as a steady state, run until no manhole's level is still moving, and every one of those manholes is a growth site and a sensor candidate. " +
       "Pipes from outside the council area are not modelled; where they join, a constant inflow sized from their published length stands in for them. Two pump stations pass their flow on as ideal pumps. " +
       "Sewage comes from connected properties counted from the published record; infiltration is in proportion to pipe length.</p>" +
       "<p><strong>The register below</strong> is every assumption and constant the model rests on, with its value, how firm it is and its source. " + S().cases.length +
       " cases vary the ones no data pins yet. Sources cited as docs/ or papers/ are in the project's working repository, not this one.</p></div>" + '<div class="regBody">' + markdown(IDX().docs.assumptions) + "</div>";
-    wireRegister($("#ref .regBody"));
-    $("#ref").dataset.done = "1";
   }
 
   /* The register's legend, which is also its filter. An assumption's ID starts with the
@@ -828,22 +990,22 @@ window.Sim3UI = (function () {
     };
     apply();
   }
-  function renderQA() {
-    if ($("#qa").dataset.done) return;
-    $("#qa").innerHTML = markdown(IDX().docs.findings);
-    $("#qa").dataset.done = "1";
-  }
-  function setTab(tab) {
-    const ref = tab === "ref", qa = tab === "qa";
-    $("#pane-ref").hidden = !ref; $("#pane-qa").hidden = !qa;
-    $("#tab-ref").classList.toggle("primary", ref); $("#tab-ref").textContent = ref ? "Back to the map" : "Assumptions";
-    $("#tab-qa").classList.toggle("primary", qa); $("#tab-qa").textContent = qa ? "Back to the map" : "Findings";
-    if (ref) renderRef(); else if (qa) renderQA(); else Growth3D.resize($("#stage"));
+  // Every document opens in the one popup: About (the scenario), Assumptions, Findings.
+  const CLOSE = '<button class="close" id="modalClose" title="Close (Esc)">&times;</button>';
+  function showDoc(kind) {
+    const box = $("#modalBox");
+    box.classList.add("wide");
+    box.innerHTML = CLOSE + '<div class="docbody">' + (kind === "ref" ? refHtml() : markdown(IDX().docs.findings)) + "</div>";
+    if (kind === "ref") wireRegister(box.querySelector(".docbody .regBody"));
+    $("#modal").hidden = false;
+    box.scrollTop = 0;
+    $("#modalClose").onclick = () => { $("#modal").hidden = true; };
   }
   function showModal() {
     const sc = IDX().scenario, n = sc.numbers;
     const fact = (l, v) => v == null ? "" : '<div class="kfact">' + esc(l) + "<b>" + esc(v) + "</b></div>";
-    $("#modalBox").innerHTML = '<button class="close" id="modalClose">Close</button><h2>' + esc(sc.title) + '</h2><p class="q">' + esc(sc.question) + "</p>" +
+    $("#modalBox").classList.remove("wide");
+    $("#modalBox").innerHTML = CLOSE + '<h2>' + esc(sc.title) + '</h2><p class="q">' + esc(sc.question) + "</p>" +
       sc.what.map(p => "<p>" + esc(p) + "</p>").join("") + "<h3>What to look at</h3><ul>" + sc.read.map(r => "<li>" + esc(r) + "</li>").join("") + "</ul>" +
       "<h3>The numbers behind it</h3><div class=kfacts>" + fact("Pipes modelled", n.pipes) + fact("Manholes", n.chambers) + fact("Properties counted", n.dwellings) +
       fact("Areas (infill)", n.regions) + fact("Uncertainty cases", n.cases) + fact("Peak factor", n.peakFactor) + fact("Wet weather settings", n.iiRange ? n.iiRange + " L/s per 100 m" : null) +
@@ -862,12 +1024,49 @@ window.Sim3UI = (function () {
     sel.innerHTML = '<option value="">No manhole selected</option>' + order.map(i => "<option value=" + JSON.stringify(String(i)) + ">" + esc(label(i)) + "  (" + n[i] + " homes)</option>").join("");
     return order;
   }
+  /* ---------------------------------------------------- dropdowns that wrap */
+  // The native select keeps the state (value, options, change event, the arrows step it);
+  // the button shows the chosen option's text wrapped, the list shows every option's full
+  // name (its title) or its text.
+  function enhanceSelect(sel) {
+    if (sel.dataset.dd) return;
+    const dd = document.createElement("div"); dd.className = "dd";
+    const btn = document.createElement("button"); btn.type = "button"; btn.className = "ddBtn";
+    const list = document.createElement("div"); list.className = "ddList"; list.hidden = true;
+    dd.appendChild(btn); dd.appendChild(list);
+    sel.insertAdjacentElement("afterend", dd);
+    sel.dataset.dd = "1";
+    btn.onclick = () => { const open = list.hidden; closeDDs(); if (open) { fillDD(sel); list.hidden = false; dd.classList.add("open"); } };
+    list.onclick = e => { const o = e.target.closest("[data-v]"); if (!o) return; sel.value = o.dataset.v; closeDDs(); syncDD(sel); sel.dispatchEvent(new Event("change")); };
+    sel.addEventListener("change", () => syncDD(sel));
+    syncDD(sel);
+  }
+  function fillDD(sel) {
+    const list = sel.nextElementSibling.querySelector(".ddList");
+    list.innerHTML = Array.from(sel.options).map(o => '<div data-v="' + esc(o.value) + '"' + (o.value === sel.value ? ' class="on"' : "") + ">" + esc(o.title || o.text) + "</div>").join("");
+    const on = list.querySelector(".on"); if (on) on.scrollIntoView({ block: "center" });
+  }
+  function syncDD(sel) {
+    const dd = sel.nextElementSibling; if (!dd || !dd.classList.contains("dd")) return;
+    const o = sel.options[sel.selectedIndex];
+    dd.querySelector(".ddBtn").textContent = o ? o.text : "";
+    dd.querySelector(".ddBtn").title = o && o.title ? o.title : "";
+  }
+  function syncDDs() { $$("select[data-dd]").forEach(syncDD); }
+  function closeDDs() { $$(".dd").forEach(d => { d.classList.remove("open"); d.querySelector(".ddList").hidden = true; }); }
+
   function legendGroups() {
-    const show = (cls, on) => $$(".legend ." + cls).forEach(g => { if (g.id === "heatKey") return; if (g.id === "pumpKey") { g.hidden = !(on && st.showPumps); return; } if (g.id === "connKey") { g.hidden = !(on && st.showConn); return; } if (g.id === "regionKey") { g.hidden = !(on && st.fam === "infill"); return; } g.hidden = !on; });
-    show("lg-results", st.lg.results); show("lg-network", st.lg.network); show("lg-regions", st.lg.regions);
-    $("#lgResults").classList.toggle("primary", st.lg.results);
-    $("#lgNetwork").classList.toggle("primary", st.lg.network);
-    $("#lgRegions").classList.toggle("primary", st.lg.regions);
+    // One Legend button. Off by default; on, it shows the groups that apply (the heatmap key
+    // is driven by repaint, the pump and connection keys by their own toggles).
+    const av = st.areasView;
+    $("#legend").hidden = !(st.legend || av);
+    $("#areasKey").hidden = !av;
+    $("#simpleKey").hidden = av;
+    $$(".legend .lg-results").forEach(g => { if (g.id !== "heatKey") g.hidden = av; else if (av) g.hidden = true; });
+    $$(".legend .lg-network").forEach(g => { g.hidden = av || (g.id === "pumpKey" ? !st.showPumps : g.id === "connKey" ? !st.showConn : !(st.showPumps || st.showConn)); });
+    $("#toggleLegend").classList.toggle("primary", st.legend && !av);
+    $("#toggleAreas").classList.toggle("primary", av);
+    Growth3D.resize($("#stage"));
   }
   function init() {
     names().forEach((c, i) => { idxOfName[c] = i; });
@@ -889,6 +1088,8 @@ window.Sim3UI = (function () {
     if (hp.get("method") === "greedy" || hp.get("method") === "risk") st.method = hp.get("method");
     if (hp.get("site") != null && names()[+hp.get("site")]) st.site = +hp.get("site");
     if (st.fam === "one" && st.method === "exact") st.method = "greedy";
+    if (st.view === "simple") st.rule = "r10";
+    if (hp.get("areas") === "1") st.areasView = true;
     document.body.classList.toggle("simple", st.view === "simple");
     document.body.classList.toggle("expert", st.view === "expert");
     Growth3D.build($("#stage"), nd => {
@@ -897,7 +1098,7 @@ window.Sim3UI = (function () {
       if (!(nd.name in idxOfName)) return;
       const i = idxOfName[nd.name];
       if (st.fam === "one") { st.site = i; st.pick = null; }
-      else { st.pick = nd.name; if (st.fam === "infill" && regionOf[i] >= 0) st.region = regionOf[i]; }
+      else st.pick = nd.name;          // inspect it; the selected area stays (23 Oct 2026)
       repaint();
     }, nd => {
       const name = nd && !(st.fam === "one" && st.site != null && nd.name === nameOf(st.site)) ? nd.name : null;
@@ -909,25 +1110,50 @@ window.Sim3UI = (function () {
       buildKnobs();
       buildSiteList();
       legendGroups();
+      if (hp.get("panel") === "0") setFold("rb", false);
+      if (hp.get("top") === "0") setFold("top", false);
+      if (hp.get("words") === "0") setWords(false);
+      if (hp.get("open") === "ref" || hp.get("open") === "qa") showDoc(hp.get("open"));
+      else if (hp.get("open") === "about") showModal();
       $("#scale").textContent = G().nPipes + " pipes, " + G().nChambers + " manholes, " + (G().nHouses || G().baseDwellings) + " connected properties, plus " +
         G().nodes.filter(n => n.kind !== "chamber").length + " pipe ends with no manhole on record. Elevation is the pipe invert, exaggerated x" + Growth3D.ZEXAG +
         ". Drag to turn the map, right-drag to move it, scroll to zoom where the pointer is.";
       repaint();
-      if (st.fam === "infill") Growth3D.frameNodes(region().manholes.map(nameOf)); else Growth3D.frame(null);
+      Growth3D.frame(null);            // the whole network, orbiting about its centre
     });
     $("#btn-info").onclick = showModal;
-    $("#tab-ref").onclick = () => setTab($("#pane-ref").hidden ? "ref" : "map");
-    $("#refClose").onclick = () => setTab("map");
-    $("#tab-qa").onclick = () => setTab($("#pane-qa").hidden ? "qa" : "map");
-    $("#qaClose").onclick = () => setTab("map");
+    $("#tab-ref").onclick = () => showDoc("ref");
+    $("#tab-qa").onclick = () => showDoc("qa");
     $("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").hidden = true; };
-    document.addEventListener("keydown", e => { if (e.key === "Escape") { $("#modal").hidden = true; setTab("map"); } });
-    $("#fitAll").onclick = () => Growth3D.frame(null);
-    $("#fitSite").onclick = () => { if (st.fam === "infill") Growth3D.frameNodes(region().manholes.map(nameOf)); else if (st.site != null) Growth3D.frame(nameOf(st.site)); };
+    document.addEventListener("keydown", e => { if (e.key === "Escape") { $("#modal").hidden = true; closeDDs(); } });
+    // The (i) bubble: one fixed box, placed under the icon and kept inside the window.
+    const tipBox = document.createElement("div");
+    tipBox.id = "tipBox"; tipBox.hidden = true;
+    document.body.appendChild(tipBox);
+    const placeTip = i => {
+      const r = i.getBoundingClientRect(), w = tipBox.offsetWidth, h = tipBox.offsetHeight;
+      let left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+      let top = r.bottom + 8;
+      if (top + h > window.innerHeight - 8) top = r.top - 8 - h;
+      if (top < 8) top = 8;
+      tipBox.style.left = left + "px"; tipBox.style.top = top + "px";
+    };
+    document.addEventListener("mouseover", e => {
+      const i = e.target.closest && e.target.closest(".info-i[data-tip]");
+      if (!i || !i.dataset.tip) return;
+      tipBox.textContent = i.dataset.tip; tipBox.hidden = false; placeTip(i);
+    });
+    document.addEventListener("mouseout", e => {
+      const i = e.target.closest && e.target.closest(".info-i[data-tip]");
+      if (i && !(e.relatedTarget && i.contains(e.relatedTarget))) tipBox.hidden = true;
+    });
+    document.addEventListener("scroll", () => { tipBox.hidden = true; }, true);
+    // Dropdowns that wrap: a button and a list drawn beside each hidden native select.
+    $$("select").forEach(enhanceSelect);
+    document.addEventListener("click", e => { if (!e.target.closest(".dd")) closeDDs(); });
     $("#toggleSensors").onclick = () => {
       st.showSensors = !st.showSensors;
       $("#toggleSensors").classList.toggle("primary", st.showSensors);
-      $("#toggleSensors").textContent = st.showSensors ? "Hide sensors" : "Show sensors";
       repaint();
     };
     const hasPumps = !!(G().pumps && G().pumps.length);
@@ -936,7 +1162,6 @@ window.Sim3UI = (function () {
       st.showPumps = !st.showPumps;
       if (!Growth3D.showPumps(st.showPumps)) { st.showPumps = false; return; }
       $("#togglePumps").classList.toggle("primary", st.showPumps);
-      $("#togglePumps").textContent = st.showPumps ? "Hide pump stations" : "Pump stations";
       legendGroups();
     };
     $("#toggleHeat").onclick = () => { st.showHeat = !st.showHeat; $("#toggleHeat").classList.toggle("primary", st.showHeat); repaint(); };
@@ -950,9 +1175,6 @@ window.Sim3UI = (function () {
       legendGroups();
     };
     $("#toggleIds").hidden = true;      // not in this build; the hover and the card give the id
-    $("#lgResults").onclick = () => { st.lg.results = !st.lg.results; legendGroups(); };
-    $("#lgNetwork").onclick = () => { st.lg.network = !st.lg.network; legendGroups(); };
-    $("#lgRegions").onclick = () => { st.lg.regions = !st.lg.regions; legendGroups(); renderKnobs(); };
     // The sidebar grip, as on the Sim 2.5 page.
     const grip = $("#grip");
     grip.onpointerdown = e => {

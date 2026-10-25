@@ -30,7 +30,23 @@ body{background:var(--bg); color:var(--ink);
 /* Simple view hides the expert controls (.x); expert view hides the simple stand-ins (.s). */
 body.simple .x{display:none!important}
 body.expert .s{display:none!important}
-aside{border-right:1px solid var(--line); background:var(--panel); padding:15px; overflow-y:auto}
+/* Simple view: no left panel at all. The four-step strip over the map carries its controls.
+   The right panel can be folded away in either view. */
+body.lbHidden{grid-template-columns:1fr var(--rside)}
+body.lbHidden #side,body.lbHidden #grip{display:none}
+body.rbHidden{grid-template-columns:var(--side) 6px 1fr}
+body.lbHidden.rbHidden{grid-template-columns:1fr}
+body.rbHidden #mhSide{display:none}
+body.topHidden #top{display:none}
+/* Fold tabs on the map's edges: top bar, left panel (expert), right panel. */
+.tab{position:absolute; z-index:8; font:inherit; font-size:10px; line-height:1; padding:0; cursor:pointer;
+  border:1px solid var(--line); background:#111c2fee; color:var(--dim)}
+.tab:hover{color:var(--accent); border-color:var(--accent)}
+#topTab{top:0; left:50%; transform:translateX(-50%); width:56px; height:15px; border-top:0; border-radius:0 0 8px 8px}
+#rTab{right:0; top:50%; transform:translateY(-50%); width:15px; height:56px; border-right:0; border-radius:8px 0 0 8px}
+#lTab{left:0; top:50%; transform:translateY(-50%); width:15px; height:56px; border-left:0; border-radius:0 8px 8px 0}
+aside{border-right:1px solid var(--line); background:var(--panel); padding:15px; overflow-y:auto;
+  overflow-x:hidden; min-width:0; overflow-wrap:break-word}
 #mhSide{border-right:0; border-left:1px solid var(--line)}
 #mhSide h4:first-child{margin-top:0}
 #grip{cursor:col-resize; position:relative}
@@ -39,8 +55,11 @@ aside{border-right:1px solid var(--line); background:var(--panel); padding:15px;
 body.dragging{cursor:col-resize; user-select:none}
 h1{font-size:15px; margin:0 0 3px}
 .sub{color:var(--dim); font-size:12px; margin:0 0 12px}
-.fld{display:block; margin:14px 0 5px; font-size:11px; color:var(--dim);
+.fld{display:flex; align-items:center; gap:6px; margin:14px 0 5px; font-size:11px; color:var(--dim);
   text-transform:uppercase; letter-spacing:.05em}
+h4 .info-i{margin-left:4px}
+#iiBadge{margin:6px 0 0; font-size:11.5px; color:var(--dim)}
+#iiBadge:empty{display:none}
 .knob{display:flex; gap:4px}
 .knob button{flex:1; font:inherit; font-size:12px; padding:6px 3px; cursor:pointer;
   background:var(--panel-2); color:var(--dim); border:1px solid var(--line);
@@ -50,21 +69,73 @@ h1{font-size:15px; margin:0 0 3px}
 .knob button .knobNum{display:block; font-size:9.5px; font-weight:400; opacity:.72;
   margin-top:3px; font-variant-numeric:tabular-nums}
 .knob button.on .knobNum{opacity:.85}
-#iiKnob,#ruleKnob,#famKnob{flex-wrap:wrap}
+#iiKnob,#ruleKnob,#famKnob,#methKnob{flex-wrap:wrap}
+#methKnob button{flex:1 1 calc(50% - 4px); white-space:normal; line-height:1.25}
 #iiKnob button,#ruleKnob button{flex:1 1 calc(50% - 4px); white-space:normal; line-height:1.25}
 #famKnob button{flex:1 1 calc(33% - 4px); white-space:normal; line-height:1.25}
 #typeKnob button{white-space:normal; line-height:1.25}
-/* The view switch sits at the very top, small, so it is found but does not compete. */
-#viewKnob{margin-bottom:10px}
-#viewKnob button{padding:4px 3px; font-size:11.5px}
+/* The view switch lives in the map's top bar so it is there in both views. */
+#viewKnob{margin-left:auto; gap:0; flex:none}
+#viewKnob button{flex:none; height:32px; padding:0 12px; font-size:12.5px; border-radius:0}
+#viewKnob button:first-child{border-radius:6px 0 0 6px}
+#viewKnob button:last-child{border-radius:0 6px 6px 0}
+#rbBack{font:inherit; font-size:12px; padding:5px 10px; border:1px solid var(--line); background:var(--panel-2);
+  color:var(--accent); border-radius:6px; cursor:pointer; margin-bottom:10px}
+#rbBack:hover{border-color:var(--accent)}
+#rightSensors .why{background:#0d1626}
 .quiet{color:var(--faint); font-size:12px; margin:4px 0}
 select{width:100%; padding:7px; font:inherit; border:1px solid var(--line);
   border-radius:7px; background:var(--panel-2); color:var(--ink)}
+/* A dropdown with step arrows either side, so the options can be walked through quickly. The
+   native select stays (hidden) as the state and the arrows' target; the button and list beside
+   it are what is seen, and the button wraps its text instead of cutting it. */
+.selwrap{display:flex; gap:4px; align-items:center}
+.selwrap select{display:none}
+.dd{flex:1; min-width:0; position:relative}
+.ddBtn{width:100%; text-align:left; font:inherit; font-size:13px; padding:7px 24px 7px 9px; border:1px solid var(--line);
+  border-radius:7px; background:var(--panel-2); color:var(--ink); cursor:pointer; white-space:normal; line-height:1.3; position:relative}
+.ddBtn::after{content:"\25BE"; position:absolute; right:8px; top:50%; transform:translateY(-50%); color:var(--dim); font-size:12px}
+.ddBtn:hover,.dd.open .ddBtn{border-color:var(--accent)}
+.ddList{position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:30; background:#0d1117; border:1px solid var(--line);
+  border-radius:8px; max-height:320px; overflow-y:auto; box-shadow:0 8px 28px #000a}
+.ddList[hidden]{display:none}
+.ddList div{padding:7px 10px; cursor:pointer; font-size:12.5px; color:var(--dim); border-top:1px solid #16233a; line-height:1.35}
+.ddList div:first-child{border-top:0}
+.ddList div:hover{background:var(--panel-2); color:var(--ink)}
+.ddList div.on{color:var(--accent); font-weight:600}
+.arrow{font:inherit; font-size:12px; flex:none; width:30px; height:33px; border:1px solid var(--line);
+  background:var(--panel-2); color:var(--ink); border-radius:7px; cursor:pointer; padding:0}
+.arrow:hover{border-color:var(--accent); color:var(--accent)}
+.arrow:disabled{opacity:.35; cursor:default}
+/* Detail behind an (i): hover only, by decision (23 Oct 2026). */
+.info-i{display:inline-flex; width:16px; height:16px; border-radius:50%; border:1px solid var(--faint);
+  color:var(--faint); font-size:10px; font-weight:700; font-style:normal; align-items:center;
+  justify-content:center; cursor:help; position:relative; vertical-align:middle; flex:none;
+  text-transform:none; letter-spacing:0}
+.info-i:hover{border-color:var(--accent); color:var(--accent)}
+/* The bubble itself is one fixed element placed by script, so it is never clipped by a
+   scrolling panel and never leaves the window. */
+#tipBox{position:fixed; z-index:200; width:330px; max-width:calc(100vw - 16px); background:#0d1117;
+  border:1px solid var(--line); color:var(--ink); padding:9px 11px; border-radius:8px; font-size:12px;
+  line-height:1.45; box-shadow:0 8px 28px #000a; pointer-events:none; white-space:normal; text-align:left;
+  font-weight:400; text-transform:none; letter-spacing:0}
+#tipBox[hidden]{display:none}
+/* The four steps of the simple view, stacked in the left panel. */
+#strip{display:flex; flex-direction:column; gap:9px; margin-top:12px}
+.step{background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:8px 10px 9px; min-width:0}
+.step .t{display:flex; align-items:center; gap:6px; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--dim); margin-bottom:7px}
+.step .n{display:inline-flex; width:18px; height:18px; border-radius:50%; background:var(--accent); color:#06131f;
+  font-weight:700; font-size:11px; align-items:center; justify-content:center; flex:none}
+.step .big{font-size:14px; font-weight:600; color:var(--ink); line-height:1.3; min-height:20px}
+.step .quiet{margin:5px 0 0; font-size:11.5px}
+.step input[type=range]{margin:6px 0 0}
+.step .knob button{padding:7px 3px; font-size:13px}
+.step .selwrap .big{flex:1; text-align:center}
 input[type=range]{width:100%; accent-color:var(--accent)}
 .fact{display:flex; justify-content:space-between; gap:10px; padding:5px 0;
   border-bottom:1px solid var(--line); font-size:12.5px}
-.fact span:first-child{color:var(--faint)}
-.fact span:last-child{text-align:right}
+.fact span:first-child{color:var(--faint); white-space:nowrap}
+.fact span:last-child{text-align:right; min-width:0}
 .fact.sub2{border-bottom:0; padding:0 0 5px 12px; margin-top:-3px; font-size:11.5px}
 .fact b.bad{color:var(--warn)}
 .fact b.good{color:var(--green)}
@@ -102,22 +173,24 @@ h4{margin:14px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.
 .why.miss{border-color:#3a2430}
 .why .miss{color:var(--warn)}
 table.sm{width:100%; border-collapse:collapse; font-size:11.5px; margin-top:6px}
-table.sm th,table.sm td{padding:3px 4px; border-top:1px solid var(--line); text-align:right; white-space:nowrap}
+table.sm th,table.sm td{padding:3px 4px; border-top:1px solid var(--line); text-align:right; white-space:normal; vertical-align:top; overflow-wrap:normal}
+table.sm td.hi,table.sm td.never,table.sm td:last-child{white-space:nowrap}
+table.sm td:first-child{white-space:normal}
 table.sm th:first-child,table.sm td:first-child{text-align:left}
 table.sm th{color:var(--faint); font-weight:500; border-top:0}
 table.sm td.hi{color:var(--ink); font-weight:600}
 table.sm td.never{color:var(--faint)}
 table.sm td:last-child{white-space:normal}
 main{display:flex; flex-direction:column; min-width:0; overflow:hidden; position:relative}
-nav{display:flex; flex-direction:column; gap:6px; padding:8px 13px; border-bottom:1px solid var(--line); background:var(--panel)}
-.navrow{display:flex; gap:5px; align-items:center; flex-wrap:wrap}
-.navlbl{width:48px; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--faint)}
-.navsep{width:1px; height:22px; background:var(--line); margin:0 6px}
-nav button{font:inherit; padding:6px 13px; border:1px solid var(--line); background:var(--panel-2);
-  border-radius:6px; cursor:pointer; color:var(--ink)}
+/* One row: map toggles, a separator, the reading buttons, and the view switch at the right. */
+nav{display:flex; align-items:center; gap:8px; padding:8px 14px; border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap}
+.navgrp{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+.navsep{width:1px; height:22px; background:var(--line); flex:none}
+nav button{font:inherit; font-size:12.5px; height:32px; padding:0 11px; border:1px solid var(--line); background:var(--panel-2);
+  border-radius:6px; cursor:pointer; color:var(--ink); white-space:nowrap}
 nav button:disabled{opacity:.4; cursor:not-allowed}
 nav button.primary{background:var(--accent); border-color:var(--accent); color:#06131f}
-nav button.info{margin-left:auto; border-color:var(--accent); color:var(--accent); font-weight:600}
+nav button.info{border-color:var(--accent); color:var(--accent); font-weight:600}
 nav button.info:hover{background:var(--accent); color:#06131f}
 #stageWrap{flex:1; min-height:0; position:relative}
 #stage{position:absolute; inset:0}
@@ -150,6 +223,11 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .labels .lbl.scale.cap{color:#a9b8d4; transform:translate(6px, 80%)}
 .legend{padding:10px 14px 4px; background:#0d1117; color:#8b949e; font-size:11.5px;
   display:flex; gap:7px 18px; flex-wrap:wrap; align-items:center}
+.legend[hidden]{display:none}
+#chipBar{padding:7px 14px 0; background:#0d1117; color:#8b949e; font-size:11.5px; display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+#chipBar b{color:#c9d1d9; font-weight:600; margin-right:4px}
+#areasKeyList{display:inline-flex; gap:6px 16px; flex-wrap:wrap}
+#areasKeyList span{white-space:nowrap}
 .legend b{color:#c9d1d9; font-weight:600; margin-right:2px}
 .legend .grp{display:flex; gap:14px; align-items:center; flex-wrap:wrap}
 .legend .grp[hidden]{display:none}
@@ -162,77 +240,90 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   background:repeating-linear-gradient(90deg,#e3b341 0 5px,transparent 5px 8px)}
 .legend .kdl{display:inline-block; width:18px; height:2px; vertical-align:3px; margin-right:6px;
   background:repeating-linear-gradient(90deg,#d2a8ff 0 5px,transparent 5px 8px)}
+/* One chip per area, in the area's map colour; click to select it. */
+.chip{display:inline-flex; align-items:center; padding:1px 9px; border-radius:99px; border:1px solid var(--line);
+  cursor:pointer; color:var(--dim); font-size:11.5px; background:none; font-family:inherit}
+.chip:hover{border-color:var(--dim); color:var(--ink)}
+.chip.on{border-color:var(--accent); background:var(--accent); color:#06131f; font-weight:600}
+.labels .lbl.region{color:#04140a; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px;
+  transform:translate(-50%,-50%); text-shadow:none; box-shadow:0 0 0 2px #0d1117; opacity:.95}
 .heatbar{display:inline-flex; align-items:center; gap:6px}
 .heatbar i{display:inline-block; width:120px; height:9px; border-radius:2px;
   background:linear-gradient(90deg,#104281,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb)}
-#homeKey{position:absolute; left:12px; top:12px; z-index:3; width:340px; height:112px;
-  max-width:calc(100% - 24px); overflow:hidden; pointer-events:none;
-  background:rgba(13,17,23,.88); border:1px solid #22314d; border-radius:8px; padding:8px 11px; color:#8b949e; font-size:11.5px}
-#homeKey .row{height:19px; line-height:19px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-#homeKey .row.head{color:#c9d1d9; font-weight:600}
-#homeKey strong{color:#e7edf7; font-variant-numeric:tabular-nums}
-#homeKey .k{display:inline-block; width:11px; height:11px; border-radius:50%; vertical-align:-2px; margin-right:6px}
-#homeKey .k.ring{box-shadow:0 0 0 2px #ffffff}
-#homeKey .quiet2{color:#6e7681; font-size:11px}
-/* The one sentence a reader must not miss, on the map, top right. */
-#inWords{position:absolute; right:12px; top:12px; z-index:3; max-width:420px; pointer-events:none;
-  background:rgba(13,17,23,.88); border:1px solid #22314d; border-radius:8px; padding:9px 12px;
-  color:#c9d1d9; font-size:12.5px; line-height:1.45}
+/* The one overlay on the map: the sentence (its long form behind the (i)) and, under it, the
+   homes line (the selected area's homes, or the hovered manhole's). Foot of the map, both views. */
+#inWords{position:absolute; left:12px; bottom:12px; z-index:3; max-width:min(760px, calc(100% - 24px));
+  background:rgba(13,17,23,.9); border:1px solid #22314d; border-radius:8px; padding:9px 13px;
+  color:#c9d1d9; font-size:13px; line-height:1.45}
 #inWords b{color:#e7edf7}
+#inWords .info-i{margin-left:6px}
+#inWords{padding-right:34px}
+#wordsTab{position:absolute; right:7px; top:7px; width:20px; height:20px; border-radius:50%; font-size:11px; line-height:1; padding:0;
+  border:1px solid var(--line); background:var(--panel-2); color:var(--dim); cursor:pointer}
+#wordsTab:hover{border-color:var(--accent); color:var(--accent)}
+#inWords.collapsed{padding:5px 30px 5px 11px; font-size:12px; color:var(--dim)}
+#inWords.collapsed #wordsText,#inWords.collapsed #homesLine{display:none}
+#wordsMini{display:none}
+#inWords.collapsed #wordsMini{display:inline}
+#inWords.collapsed #wordsTab{top:3px}
+#homesLine{margin-top:5px; font-size:11.5px; color:#8b949e; display:flex; gap:4px 14px; flex-wrap:wrap; align-items:center}
+#homesLine:empty{display:none}
+#homesLine strong{color:#e7edf7; font-variant-numeric:tabular-nums}
+#homesLine .k{display:inline-block; width:10px; height:10px; border-radius:50%; vertical-align:-1px; margin-right:5px}
+#homesLine .k.ring{box-shadow:0 0 0 2px #ffffff}
+#homesLine .hd{color:#c9d1d9; font-weight:600}
+#homesLine .quiet2{color:#6e7681}
 #inWords .tag{display:inline-block; font-size:10px; letter-spacing:.04em; text-transform:uppercase;
   padding:1px 6px; border-radius:99px; background:#1c2942; color:#a9b8d4; margin-right:6px; vertical-align:1px}
 #scale{padding:2px 14px 10px; font-size:10.5px; color:#6e7681; background:#0d1117}
-.pane.doc{position:absolute; inset:0; overflow-y:auto; padding:22px 30px; background:var(--bg); z-index:5}
-#refClose,#qaClose{position:sticky; top:0; float:right; z-index:6; font:inherit; font-weight:600;
-  padding:6px 13px; border:1px solid var(--accent); background:var(--panel-2); color:var(--accent); border-radius:6px; cursor:pointer}
-#refClose:hover,#qaClose:hover{background:var(--accent); color:#06131f}
-.pane[hidden]{display:none!important}
-.pane h1{font-size:19px; margin:18px 0 6px}
-.pane h2{font-size:15px; margin:22px 0 8px; color:var(--accent); border-bottom:1px solid var(--line); padding-bottom:5px}
-.pane h3,.pane h4{font-size:13.5px; margin:16px 0 6px; text-transform:none; letter-spacing:0; color:var(--ink)}
-.pane p{margin:8px 0; color:var(--dim); font-size:13px; max-width:82ch}
-.pane table{border-collapse:collapse; margin:12px 0; font-size:12.5px; width:100%}
-.pane th,.pane td{border:1px solid var(--line); padding:6px 9px; text-align:left; vertical-align:top; color:var(--dim)}
-.pane th{background:var(--panel-2); color:var(--ink)}
-.pane code{background:var(--panel-2); border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-size:12px}
-.pane strong{color:var(--ink)}
-.pane hr{border:0; border-top:1px solid var(--line); margin:18px 0}
-.pane li{color:var(--dim); font-size:13px}
+/* Documents (About, Assumptions, Findings) open in the same popup. */
+.docbody h1{font-size:19px; margin:4px 0 6px}
+.docbody h2{font-size:15px; margin:22px 0 8px; color:var(--accent); border-bottom:1px solid var(--line); padding-bottom:5px}
+.docbody h3,.docbody h4{font-size:13.5px; margin:16px 0 6px; text-transform:none; letter-spacing:0; color:var(--ink)}
+.docbody p{margin:8px 0; color:var(--dim); font-size:13px; max-width:82ch}
+.docbody table{border-collapse:collapse; margin:12px 0; font-size:12.5px; width:100%}
+.docbody th,.docbody td{border:1px solid var(--line); padding:6px 9px; text-align:left; vertical-align:top; color:var(--dim)}
+.docbody th{background:var(--panel-2); color:var(--ink)}
+.docbody code{background:var(--panel-2); border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-size:12px}
+.docbody strong{color:var(--ink)}
+.docbody hr{border:0; border-top:1px solid var(--line); margin:18px 0}
+.docbody li{color:var(--dim); font-size:13px}
 /* The register's legend, which is also its filter (sim3_ui.js wireRegister, as in Sim 2.5). */
-#pane-ref .regKey{background:var(--panel); border:1px solid var(--line); border-radius:8px;
+.docbody .regKey{background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
   padding:10px 14px 12px; margin:0 0 12px}
-#pane-ref .regKey p{margin:2px 0 8px}
-#pane-ref .regRow h4{margin:10px 0 6px; font-size:11px; text-transform:uppercase;
+.docbody .regKey p{margin:2px 0 8px}
+.docbody .regRow h4{margin:10px 0 6px; font-size:11px; text-transform:uppercase;
   letter-spacing:.05em; color:var(--faint)}
-#pane-ref .regGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:6px}
-#pane-ref .rf{font:inherit; text-align:left; cursor:pointer; padding:6px 9px; border-radius:6px;
-  background:var(--panel-2); border:1px solid var(--line); color:var(--dim)}
-#pane-ref .rf:hover{border-color:var(--accent)}
-#pane-ref .rf[aria-pressed="true"]{border-color:var(--accent); background:#0f2a40; color:var(--ink);
+.docbody .regGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:6px}
+.docbody .rf{font:inherit; text-align:left; cursor:pointer; padding:6px 9px; border-radius:6px;
+  background:var(--panel); border:1px solid var(--line); color:var(--dim)}
+.docbody .rf:hover{border-color:var(--accent)}
+.docbody .rf[aria-pressed="true"]{border-color:var(--accent); background:#0f2a40; color:var(--ink);
   box-shadow:inset 3px 0 0 var(--accent)}
-#pane-ref .rf .rfTop{display:flex; gap:6px; align-items:baseline; font-size:12.5px; color:var(--ink)}
-#pane-ref .rf .rfTop b{color:var(--accent)}
-#pane-ref .rf .rfN{margin-left:auto; font-size:11px; color:var(--faint)}
-#pane-ref .rf .rfDesc{display:block; font-size:11px; line-height:1.35; margin-top:2px}
-#pane-ref .regBar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px}
-#pane-ref .regBar input{font:inherit; font-size:12.5px; padding:5px 9px; min-width:220px; flex:1;
-  max-width:360px; background:var(--panel-2); color:var(--ink); border:1px solid var(--line); border-radius:6px}
-#pane-ref .regBar span{font-size:12px; color:var(--faint)}
-#pane-ref .regBar button{font:inherit; font-size:12px; padding:4px 10px; cursor:pointer;
+.docbody .rf .rfTop{display:flex; gap:6px; align-items:baseline; font-size:12.5px; color:var(--ink)}
+.docbody .rf .rfTop b{color:var(--accent)}
+.docbody .rf .rfN{margin-left:auto; font-size:11px; color:var(--faint)}
+.docbody .rf .rfDesc{display:block; font-size:11px; line-height:1.35; margin-top:2px}
+.docbody .regBar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px}
+.docbody .regBar input{font:inherit; font-size:12.5px; padding:5px 9px; min-width:220px; flex:1;
+  max-width:360px; background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:6px}
+.docbody .regBar span{font-size:12px; color:var(--faint)}
+.docbody .regBar button{font:inherit; font-size:12px; padding:4px 10px; cursor:pointer;
   background:none; color:var(--accent); border:1px solid var(--accent); border-radius:6px}
-#pane-ref tr[hidden],#pane-ref table[hidden]{display:none}
+.docbody tr[hidden],.docbody table[hidden]{display:none}
 /* The register's sections (h3) and sub-sections (h4), so the two levels read apart. */
-#pane-ref .regBody h3{font-size:15px; margin:26px 0 2px; color:var(--accent);
+.docbody .regBody h3{font-size:15px; margin:26px 0 2px; color:var(--accent);
   border-bottom:1px solid var(--line); padding-bottom:5px}
-#pane-ref .regBody h3+p{margin:4px 0 6px}
-#pane-ref .regBody h4{font-size:12px; margin:14px 0 2px; color:var(--ink); font-weight:600}
-#pane-ref .regBody h3[hidden],#pane-ref .regBody h4[hidden],#pane-ref .regBody p[hidden]{display:none}
-.pane .lead{background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--accent);
+.docbody .regBody h3+p{margin:4px 0 6px}
+.docbody .regBody h4{font-size:12px; margin:14px 0 2px; color:var(--ink); font-weight:600}
+.docbody .regBody h3[hidden],.docbody .regBody h4[hidden],.docbody .regBody p[hidden]{display:none}
+.docbody .lead{background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--accent);
   border-radius:8px; padding:13px 16px; margin:0 0 14px; max-width:82ch}
 #modal{position:fixed; inset:0; background:rgba(4,8,15,.72); display:flex; align-items:center; justify-content:center; padding:24px; z-index:50}
 #modal[hidden]{display:none}
 #modal .box{background:var(--panel); color:var(--ink); border-radius:12px; max-width:780px; width:100%;
-  max-height:88vh; overflow-y:auto; padding:26px 30px; box-shadow:0 12px 40px rgba(0,0,0,.25)}
+  max-height:88vh; overflow-y:auto; padding:26px 30px; box-shadow:0 12px 40px rgba(0,0,0,.25); position:relative}
+#modal .box.wide{max-width:960px}
 #modal h2{margin:0 0 4px; font-size:19px}
 #modal .q{color:var(--accent); font-size:14px; margin:0 0 16px; font-weight:600}
 #modal h3{font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--dim); margin:20px 0 7px}
@@ -243,7 +334,9 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .kfact{background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-size:12px; color:var(--dim)}
 .kfact b{display:block; font-size:15px; font-variant-numeric:tabular-nums}
 #modal .caveat{background:#2b0d14; border:1px solid var(--warn); color:#ff9aac; border-radius:8px; padding:11px 13px; margin-top:18px; font-size:12.5px}
-#modal .close{float:right; font:inherit; border:1px solid var(--line); background:var(--panel-2); border-radius:6px; padding:5px 13px; cursor:pointer; color:var(--ink)}
+#modal .close{position:sticky; top:0; float:right; z-index:2; width:32px; height:32px; padding:0; border-radius:50%;
+  border:1px solid var(--line); background:var(--panel-2); color:var(--dim); font-size:20px; line-height:1; cursor:pointer}
+#modal .close:hover{border-color:var(--accent); color:var(--accent)}
 .badge{display:inline-block; font-size:10.5px; letter-spacing:.04em; text-transform:uppercase;
   padding:1px 7px; border-radius:99px; margin-right:6px; vertical-align:1px}
 .badge.settled{background:#1f3d2a; color:#3fb950; border:1px solid #2ea04366}
@@ -260,133 +353,145 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 <body class="simple">
 
 <aside id="side">
-  <div class="knob" id="viewKnob">
-    <button data-v="simple" title="The use case, the map, the recommended sensors and why">Simple view</button>
-    <button data-v="expert" title="Every case, rule, placement method and check">Expert view</button>
-  </div>
   <h1>Sim 3: growth and sensor placement</h1>
+  <div id="strip" class="s">
+    <div class="step">
+      <div class="t"><span class="n">1</span>Where do the new homes go <i class="info-i" data-tip="Infill: new homes spread through one area of the suburb in proportion to the homes already there (a block split in two, a backyard subdivision). Greenfield: a new estate joining the sewer at one manhole; click a manhole on the map to place it. Nowhere: the suburb as it is today.">i</i></div>
+      <div class="selwrap"><button class="arrow" data-for="whereSel" data-step="-1" title="Previous">&#9664;</button><select id="whereSel"></select><button class="arrow" data-for="whereSel" data-step="1" title="Next">&#9654;</button></div>
+      <div class="quiet" id="whereHint"></div>
+    </div>
+    <div class="step" id="howStep">
+      <div class="t"><span class="n">2</span>How much growth <i class="info-i" id="howInfo" data-tip="">i</i></div>
+      <div class="big" id="howLbl"></div>
+      <input type="range" id="howRange" min="0" max="6" step="1">
+    </div>
+    <div class="step">
+      <div class="t"><span class="n">3</span>Weather <i class="info-i" data-tip="Rain and groundwater leak into old sewers, so a wet day carries far more flow than a dry one and the same new homes raise the water further. Dry: sewage only. Wet: the leak rate at which the pipes reach what they were designed for. The sensors are chosen for the worst of all the model's cases, not for the one shown.">i</i></div>
+      <div class="knob" id="wxKnob"><button data-w="dry">Dry</button><button data-w="wet">Wet</button></div>
+      <div class="quiet" id="wxHint"></div>
+    </div>
+    <div class="step">
+      <div class="t"><span class="n">4</span>Sensors <i class="info-i" id="kInfo" data-tip="">i</i></div>
+      <div class="selwrap"><button class="arrow" id="kDown" title="One sensor fewer">&#9664;</button><div class="big" id="kBig"></div><button class="arrow" id="kUp" title="One sensor more">&#9654;</button></div>
+      <div class="quiet" id="kHint"></div>
+    </div>
+  </div>
+  <div id="expertSide" class="x">
   <p class="sub">Where would new homes show up in the sewer's water level, and where would a few
   sensors see most of that growth, whatever the unknowns turn out to be?</p>
 
-  <label class="fld">What kind of growth</label>
+  <label class="fld">What kind of growth <i class="info-i" id="famInfo" data-tip="">i</i></label>
   <div class="knob" id="famKnob">
     <button data-f="infill" title="New homes spread through an area, in proportion to the homes already there">Infill: an area densifies</button>
     <button data-f="one" title="A new estate joining the sewer at one manhole">Greenfield: one point</button>
     <button data-f="none" title="The suburb as it is today, no growth placed">No growth: the suburb today</button>
   </div>
-  <div class="quiet" id="famNote"></div>
 
   <div id="infillBox">
     <label class="fld" for="region">Which area</label>
-    <select id="region"></select>
-    <label class="fld" for="stepRange">How much growth: <span id="stepLbl"></span></label>
+    <div class="selwrap"><button class="arrow" data-for="region" data-step="-1" title="Previous area">&#9664;</button><select id="region"></select><button class="arrow" data-for="region" data-step="1" title="Next area">&#9654;</button></div>
+    <label class="fld" for="stepRange"><span>How much growth: <span id="stepLbl"></span></span><i class="info-i" id="stepInfo" data-tip="">i</i></label>
     <input type="range" id="stepRange" min="0" max="6" step="1">
-    <div class="quiet" id="stepNote"></div>
   </div>
 
   <div id="oneBox" hidden>
-    <label class="fld">New dwellings added</label>
+    <label class="fld">New dwellings added <i class="info-i" id="addInfo" data-tip="">i</i></label>
     <div class="knob" id="addKnob"></div>
     <label class="fld" for="site">Connected at</label>
-    <select id="site"></select>
+    <div class="selwrap"><button class="arrow" data-for="site" data-step="-1" title="Previous manhole">&#9664;</button><select id="site"></select><button class="arrow" data-for="site" data-step="1" title="Next manhole">&#9654;</button></div>
   </div>
 
-  <label class="fld">Weather: what cannot be measured yet</label>
-  <select id="caseSel" class="s"></select>
+  <label class="fld">Weather: what cannot be measured yet <i class="info-i" id="iiInfo" data-tip="">i</i></label>
   <div class="knob x" id="iiKnob"></div>
-  <div class="quiet" id="iiNote"></div>
+  <div id="iiBadge"></div>
 
-  <label class="fld">A sensor sees growth when</label>
-  <div class="knob s" id="typeKnob">
-    <button data-r="r10" title="A level sensor reads the depth continuously, so a steady rise over its own normal level is a signal">Level sensor: rises 10 mm</button>
-    <button data-r="alarm" title="A float switch only trips at a fixed depth">Float switch: passes the alarm</button>
-  </div>
+  <label class="fld">A sensor sees growth when <i class="info-i" id="ruleInfo" data-tip="">i</i></label>
   <div class="knob x" id="ruleKnob"></div>
-  <div class="quiet" id="ruleNote"></div>
 
   <div id="siteFacts"></div>
   <div id="tipList"></div>
   <div id="baseNote"></div>
-  <div id="pointNote">A point-in-time picture: the growth is added all at once to today's network,
-    with no pipe upgrades. In reality the dwellings arrive over three to five years, which is why
-    the time-to-notice figures matter as much as the millimetres.</div>
 
   <div id="sensorBox">
-    <h4>Sensors, chosen once across all <span id="nCases">8</span> cases</h4>
+    <h4>Sensors, chosen once across all <span id="nCases">8</span> cases <i class="info-i" id="sensInfo" data-tip="">i</i></h4>
     <div class="knob x" id="methKnob">
       <button data-m="exact" title="The best set of this size, solved exactly (integer program)">Exact optimum</button>
       <button data-m="greedy" title="One sensor at a time, each the best addition to the ones before">Greedy, one at a time</button>
       <button data-m="risk" id="methRisk" hidden title="Every scenario weighted by severity x occurrence (Kimbrough 2019): the share of total risk noticed, not the share of scenarios">Risk-weighted</button>
     </div>
-    <div class="quiet x" id="methNote"></div>
     <label class="fld" for="kRange">Number of sensors: <b id="kVal"></b></label>
     <input type="range" id="kRange" min="1" max="10" step="1">
     <div class="knob x" id="objKnob">
       <button data-o="worst" title="Each sensor is the one that most raises the WORST case">Best worst case</button>
       <button data-o="mean" title="Each sensor is the one that most raises the AVERAGE over the cases">Best average</button>
     </div>
-    <div class="quiet x" id="objNote"></div>
     <div id="curve" class="x"></div>
     <div id="sensorList"></div>
+  </div>
   </div>
 </aside>
 
 <div id="grip" title="Drag to resize"></div>
 
 <main>
+  <div id="top">
   <nav>
-    <div class="navrow">
-      <span class="navlbl">Map</span>
-      <button id="fitAll">Whole catchment</button>
-      <button id="fitSite">Zoom to the growth</button>
-      <span class="navsep"></span>
-      <button id="toggleSensors" class="primary">Hide sensors</button>
-      <button id="togglePumps" title="Highlight the pump stations, their rising mains and the pipes that drain to them">Pump stations</button>
+    <div class="navgrp">
+      <button id="toggleSensors" class="primary" title="Show or hide the recommended sensors">Sensors</button>
+      <button id="togglePumps" title="Highlight the pump stations, their rising mains and the pipes that drain to them">Pumps</button>
       <button id="toggleHeat" class="x" title="Colour every manhole by how much growth it would see on its own">Heatmap</button>
       <button id="toggleConn" class="x" title="Draw every connection pipe at its bore">Connections</button>
       <button id="toggleIds" class="x" title="Label every manhole with its number">Manhole ids</button>
+      <button id="toggleLegend" title="Show what the colours mean">Legend</button>
+      <button id="toggleAreas" title="See how the suburb is divided into areas, each in its own colour; click again to come back">Areas</button>
     </div>
-    <div class="navrow">
-      <span class="navlbl">Legend</span>
-      <button id="lgResults" class="primary" title="Manhole and pipe colours: what the growth did">Results</button>
-      <button id="lgNetwork" title="Points, pumps and connections: what the network is">Network</button>
-      <button id="lgRegions" class="primary" title="The selected area's pipes and homes">Area</button>
-      <span class="navsep"></span>
-      <span class="navlbl">Read</span>
+    <span class="navsep"></span>
+    <div class="navgrp">
       <button id="tab-ref">Assumptions</button>
       <button id="tab-qa">Findings</button>
-      <button id="btn-info" class="info">About this model</button>
+      <button id="btn-info" class="info" title="What this model is and the numbers behind it">About</button>
+    </div>
+    <div class="knob" id="viewKnob">
+      <button data-v="simple" title="The map, the recommended sensors and one sentence">Simple</button>
+      <button data-v="expert" title="Every case, rule, placement method and check">Expert</button>
     </div>
   </nav>
+  </div>
   <div id="stageWrap">
     <div id="stage"></div>
-    <div id="homeKey"></div>
-    <div id="inWords"></div>
+    <button class="tab" id="topTab" title="Fold the top bar away">&#9650;</button>
+    <button class="tab" id="rTab" title="Fold the right panel away">&#9654;</button>
+    <button class="tab" id="lTab" title="Fold the left panel away">&#9664;</button>
+    <div id="inWords"><button id="wordsTab" title="Fold the summary away">&#9662;</button><span id="wordsMini">Summary</span><div id="wordsText"></div><div id="homesLine"></div></div>
   </div>
 
-  <div class="legend">
+  <div id="chipBar"><b>Select area</b><span id="areaChips"></span></div>
+  <div class="legend" id="legend" hidden>
+    <div class="grp" id="areasKey" hidden><b>Areas</b><span id="areasKeyList"></span></div>
+    <div class="grp s" id="simpleKey"><b>Map</b>
+      <span><span class="k" style="background:#2ef56b"></span>recommended sensor, numbered as in the list</span>
+      <span><span class="k" style="background:#ff2d55"></span>sees this growth</span>
+      <span><span class="k" style="background:#ffa500"></span>over the alarm before any growth</span>
+      <span><span class="kl" style="background:#00d4ff"></span>the selected area's pipes</span>
+    </div>
     <div class="grp lg-results" id="heatKey" hidden><b>Heatmap</b>
       <span>manholes ranked by the share of detectable growth each sees on its own, <span id="heatWhich"></span>:</span>
       <span class="heatbar"><span>lowest</span><i></i><span>highest</span></span>
       <span>bigger = higher rank; hover a manhole for its real percentages</span>
     </div>
-    <div class="grp lg-results"><b>Pipes</b>
+    <div class="grp lg-results x"><b>Pipes</b>
       <span><span class="kl" style="background:#4c8bf5"></span>room to spare</span>
       <span><span class="kl" style="background:#ffa500"></span>already over the alarm before growth (alarm rule)</span>
       <span><span class="kl" style="background:#ff2d55"></span>sees this growth</span>
     </div>
-    <div class="grp lg-results"><b>Manholes</b>
+    <div class="grp lg-results x"><b>Manholes</b>
       <span><span class="k" style="background:#ff2d55"></span>sees the growth (the selected rule)</span>
       <span><span class="k" style="background:#ff8c69"></span>rises 10 mm or more, below the rule</span>
       <span><span class="k" style="background:#ffa500"></span>over the alarm before growth</span>
       <span><span class="kr" style="border-color:#bc8cff"></span>overflowing before growth</span>
       <span><span class="kr" style="border-color:#ff3df5"></span>overflows because of the growth</span>
       <span><span class="k" style="background:#2ef56b"></span>proposed sensor: green pin, numbered S1, S2, ... as in the sensor list</span>
-    </div>
-    <div class="grp lg-regions" id="regionKey"><b>Area</b>
-      <span><span class="kl" style="background:#00d4ff"></span>the selected area's pipes: the new homes are spread over them in proportion to the homes already there</span>
-      <span><span class="k" style="background:#7dc4e0"></span>a home in the area</span>
-      <span><span class="k" style="background:#3a2430"></span>a home elsewhere</span>
+      <span><span class="kl" style="background:#00d4ff"></span>the selected area's pipes</span>
     </div>
     <div class="grp lg-network" id="pumpKey" hidden><b>Pumped</b>
       <span><span class="ksq" style="background:#e3b341"></span>pump station</span>
@@ -409,28 +514,23 @@ nav button.info:hover{background:var(--accent); color:#06131f}
     </div>
   </div>
   <div id="scale"></div>
-  <section class="pane doc" id="pane-ref" hidden>
-    <button id="refClose" title="Close (Esc)">Close, back to the map</button>
-    <div id="ref"></div></section>
-  <section class="pane doc" id="pane-qa" hidden>
-    <button id="qaClose" title="Close (Esc)">Close, back to the map</button>
-    <div id="qa"></div></section>
 </main>
 
-<aside id="mhSide" aria-label="The selected area or manhole">
+<aside id="mhSide" aria-label="The recommended sensors, or the selected manhole">
+  <div id="rightSensors" class="s"></div>
   <div id="mhFacts"></div>
 </aside>
 
 <div id="modal" hidden><div class="box" id="modalBox"></div></div>
 
-<script src="data/catchment.js?v=5"></script>
-<script src="data/growth.js?v=5"></script>
-<script src="data/regions.js?v=5"></script>
-<script src="data/index.js?v=5"></script>
-<script src="growth_3d.js?v=5"></script>
-<script src="osp_core.js?v=5"></script>
-<script src="placement.js?v=5"></script>
-<script src="sim3_ui.js?v=5"></script>
+<script src="data/catchment.js?v=8"></script>
+<script src="data/growth.js?v=8"></script>
+<script src="data/regions.js?v=8"></script>
+<script src="data/index.js?v=8"></script>
+<script src="growth_3d.js?v=8"></script>
+<script src="osp_core.js?v=8"></script>
+<script src="placement.js?v=8"></script>
+<script src="sim3_ui.js?v=8"></script>
 <script type="module">
   Sim3UI.init();
 </script>
