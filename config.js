@@ -12,6 +12,9 @@
 //   pumps                 Simulation 2.5 growth scenarios run in SWMM by the local runner
 //                         (simulation_src/sim25_serve.py): restart it after an edit, and
 //                         republish so the page shows the new default rates.
+//   simulation.before_surcharge
+//                         Simulation 4, after re-scoring Sim 3's published runs (no SWMM run):
+//                           ~/.venvs/sewer/bin/python tools/sim4_before.py --publish
 //   everything else       Simulation 2.5, after re-running the grid and republishing:
 //                           ~/.venvs/sewer/bin/python simulation_src/sim25_grid.py --cases all --resume
 //                           ~/.venvs/sewer/bin/python tools/build_sim25_web.py --publish
@@ -108,6 +111,20 @@
     "_republish_only": "detection_rises_mm and max_sensors are applied to the stored runs by the builder.",
     "max_sensors": 10,
     "scenario_default_dwellings": 50,
+
+    "before_surcharge": {
+      "_note": "Simulation 4: Sim 3's published infill runs re-scored on whether a sensor warns BEFORE the first manhole newly surcharges, and whether the pattern of sensors locates it (docs/sim3_before_surcharge.md). No SWMM run: an edit needs only ~/.venvs/sewer/bin/python tools/sim4_before.py --publish.",
+      "margin_steps": 1,
+      "_margin_steps": "Allowed: 1, 2 or 3. How many build-out steps (10, 25, 50, 75, 100, 150, 300%) before the first surcharge a sensor must respond. 1: the step before.",
+      "radii_m": [0, 300, 1000],
+      "_radii_m": "Allowed: a list of distances in metres, 0 or more. Two overloads whose first-surcharge manholes lie further apart than this, along the pipes, must give different sensor patterns to count as located.",
+      "default_radius_m": 300,
+      "_default_radius_m": "Allowed: one of radii_m. The radius the page opens on.",
+      "fullness": [0.7, 0.8],
+      "_fullness": "Allowed: fractions above 0 and below 1. Rules f70, f80: water newly reaches this share of the manhole's lowest outlet pipe's bore, above that pipe's invert.",
+      "weights": "equal",
+      "_weights": "Allowed: \"equal\" | \"homes\". equal: every overloading build-out counts once. homes: by the homes its area has today, which is how Sim 3 spreads infill. The other is always published as a sensitivity."
+    },
 
     "case_set": "five",
     "_case_set": "Allowed: the name of any set under case_sets (as committed, \"five\" | \"all_twelve\"). Which of case_sets below is run and published. Each case is one combination of what cannot be measured yet, and costs 1,641 whole-domain SWMM runs (about 87 min on 9 workers) in the whole area.",
