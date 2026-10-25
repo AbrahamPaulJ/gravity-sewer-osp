@@ -48,6 +48,33 @@ td:first-child{white-space:nowrap}
 <p class="sub">Every change to the site, newest first. Entries marked <span class="newb" style="margin:0">new</span> are the latest
 and carry the same violet accent on the pages they change.</p>
 
+<div class="entry new" id="monitoring">
+  <div class="date">25 October 2026, later</div>
+  <h2>Simulation 4: monitoring points (where, what to monitor, which sensor) <span class="newb">new</span></h2>
+  <p>The page no longer proposes anonymous "sensors S1, S2, ...". Each proposal is a <b>monitoring point</b>:
+  <b>where</b> (the manhole), <b>what to monitor</b> there (the reading and what trips an alert) and <b>which sensor</b>
+  (the recommended device, alternatives and mounting). Two kinds are placed:</p>
+  <div class="figs">
+    <div class="fig"><b id="fLevel">&ndash;</b>level sensors (green pins L1, L2, ...): early warning of overcapacity, where the Before surcharge placement puts them</div>
+    <div class="fig"><b id="fFloat">&ndash;</b>float switches (yellow pins F1, F2, ...): early warning of a spill, in every manhole the model says can spill</div>
+    <div class="fig"><b id="fNear">&ndash;</b>float locations if the near-spill manholes are added (water within 300 mm of the lid by 100% build-out)</div>
+    <div class="fig"><b id="fPress">&ndash;</b>manholes where the water comes within 500 mm of the lid, so a submersible pressure sensor is recommended over radar</div>
+  </div>
+  <table>
+    <thead><tr><th>Change</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><span class="kind n">map</span>Two pin types</td><td>Level sensors keep the green pin, labelled L1, L2, ...; float switches have a yellow pin with a downward cone, labelled F1, F2, ....</td></tr>
+      <tr><td><span class="kind n">plan</span>Monitoring plan</td><td>One card per location, giving the reading and its trigger, the recommended sensor (with an alternative), and the evidence: "warns of R1 at 25% (surcharges at 100%)", or "spills before any growth in Severe".</td></tr>
+      <tr><td><span class="kind n">hover</span>Hover and click</td><td>Hovering a monitoring point on the map, or its card, shows what to monitor and with what. Clicking opens the full specification in the right panel: reading, how often, trigger, sensor, its limits, mounting, alternatives, why this sensor here, and the evidence.</td></tr>
+      <tr><td><span class="kind n">rule</span>Which level sensor</td><td>Radar (or ultrasonic) under the lid where the water stays at least 500 mm below the lid in every case and build-out; a submersible pressure sensor where it comes closer (register row B11).</td></tr>
+      <tr><td><span class="kind n">floats</span>Where the floats go</td><td>Every manhole that spills in a published run (B09), each float hung 300 mm below the lid (B10; 500 mm also published). Expert view: add the near-spill manholes, or none.</td></tr>
+      <tr><td><span class="kind n">catalogue</span>Readings and sensors</td><td>A catalogue in <code>config.js</code> (<code>simulation.monitoring</code>): water level, high level, flow and pump run-hours, and radar, ultrasonic, pressure, float switch, area-velocity flow meter and pump telemetry. Flow and pump run-hours are described but not yet placed, so further readings can be added without changing the page.</td></tr>
+      <tr><td><span class="kind n">dashboard</span>Two more pictures</td><td>Spill floats: how close each float location comes to the lid, by build-out, in the chosen case. The catalogue of readings and sensors.</td></tr>
+    </tbody>
+  </table>
+  <p>Design: <code>docs/sim4_monitoring_points.md</code>. No model was re-run.</p>
+</div>
+
 <div class="entry new" id="sim4">
   <div class="date">25 October 2026</div>
   <h2>Simulation 4: warn before surcharge <span class="newb">new</span></h2>
@@ -127,7 +154,7 @@ and carry the same violet accent on the pages they change.</p>
 </div>
 </div>
 
-<script src="simulation4/data/before.js?v=1"></script>
+<script src="simulation4/data/before.js?v=2"></script>
 <script>
 // The Sim 4 headline figures, read from the published scoring rather than typed.
 (function (b) {
@@ -137,6 +164,14 @@ and carry the same violet accent on the pages they change.</p>
   set("fTargets", nT + " of " + b.paths.length);
   var n = b.newSets.r10 && b.newSets.r10[4], o = b.published.r10 && b.published.r10.exact[4];
   if (n) set("fNew", n.counts.before + " of " + nT);
+  var mon = b.monitoring;
+  if (mon) {
+    set("fLevel", "5 by default");
+    set("fFloat", mon.spillManholes.length);
+    set("fNear", mon.floats["300"] ? mon.floats["300"].length : "");
+    var cl = mon.settings.noncontact_clearance_mm;
+    set("fPress", mon.minFreeboard.filter(function (v) { return v < cl; }).length + " of " + mon.minFreeboard.length);
+  }
   if (o) {
     set("fOld", o.counts.before + " of " + nT);
     set("fLate", Math.round(100 * o.creditedSurcharged / o.credited) + "%");

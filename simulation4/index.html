@@ -384,6 +384,29 @@ nav a.navlink:hover{color:var(--new-ink)}
 .bvChip{display:inline-block; font-size:11px; padding:1px 6px; margin:1px 3px 1px 0; border-radius:4px; border:1px solid var(--line); color:var(--dim); font-variant-numeric:tabular-nums}
 .bvChip.on{border-color:var(--new); color:var(--new-ink)}
 table.bvT td:nth-child(2){text-align:left}
+.labels .lbl.sensor.float{background:#ffd60a; color:#1a1400}
+.why .pin.fl{background:#ffd60a; color:#1a1400}
+.why .hd .pin + .pin{margin-left:-4px}
+.why.mon{cursor:pointer}
+.why.mon:hover{border-color:var(--new)}
+.monline{margin:3px 0 0!important; font-size:12px}
+.rd{display:inline-block; min-width:52px; font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--faint); margin-right:6px}
+.monspec{margin:0 0 12px}
+.monspec .monitem{margin-top:6px}
+.monspec .monitem + .monitem{border-top:1px solid #3a2a55; padding-top:8px; margin-top:8px}
+.monspec dl{display:grid; grid-template-columns:70px 1fr; gap:3px 8px; margin:6px 0 0; font-size:11.5px}
+.monspec dt{color:#b9a3d6; text-transform:uppercase; font-size:9.5px; letter-spacing:.05em; padding-top:2px}
+.monspec dd{margin:0; color:var(--new-ink)}
+.monspec .lim{color:#cdb8ea}
+#monHover{position:fixed; z-index:150; width:290px; background:#0d1117; border:1px solid var(--new); border-radius:9px; padding:8px 10px; font-size:12px;
+  color:var(--ink); box-shadow:0 8px 28px #000a; pointer-events:none; line-height:1.4}
+#monHover[hidden]{display:none}
+#monHover .hd{display:flex; gap:5px; align-items:center; margin-bottom:4px}
+#monHover .pin{display:inline-block; background:#2ef56b; color:#04140a; font-weight:700; font-size:11px; padding:1px 6px; border-radius:4px}
+#monHover .pin.fl{background:#ffd60a; color:#1a1400}
+#monHover hr{border:0; border-top:1px solid var(--line); margin:5px 0}
+#monHover .quiet{margin:0}
+table.cat td,table.cat th{text-align:left!important; vertical-align:top}
 .linkish{font:inherit; background:none; border:0; padding:0; color:var(--new); text-decoration:underline; cursor:pointer}
 @media (max-width:820px){
   body{grid-template-columns:1fr; grid-template-rows:auto 6px 1fr auto}
@@ -416,7 +439,7 @@ table.bvT td:nth-child(2){text-align:left}
       <div class="quiet" id="wxHint"></div>
     </div>
     <div class="step">
-      <div class="t"><span class="n">4</span>Sensors <i class="info-i" id="kInfo" data-tip="">i</i></div>
+      <div class="t"><span class="n">4</span>Monitoring <span class="newb">new</span><i class="info-i" id="kInfo" data-tip="">i</i></div>
       <div class="selwrap"><button class="arrow" id="kDown" title="One sensor fewer">&#9664;</button><div class="big" id="kBig"></div><button class="arrow" id="kUp" title="One sensor more">&#9654;</button></div>
       <div class="quiet" id="kHint"></div>
     </div>
@@ -468,7 +491,10 @@ table.bvT td:nth-child(2){text-align:left}
     </div>
     <div id="radBox" hidden><label class="fld">Locate within <span class="newb">new</span><i class="info-i" data-tip="Two overloads whose first-surcharge manholes lie further apart than this, along the pipes, must give different sensor patterns. 0 m: every overload with its own first-surcharge manholes must be told apart.">i</i></label>
       <div class="knob" id="radKnob"></div></div>
-    <label class="fld" for="kRange">Number of sensors: <b id="kVal"></b></label>
+    <label class="fld">Float switches <span class="newb">new</span><i class="info-i" data-tip="Early warning of a spill: a float switch hung a set distance below the lid trips before the water reaches it. Where it spills: every manhole the model has spilling in some case. + near spill: also where the water comes within the trip distance of the lid by 100% build-out.">i</i></label>
+    <div class="knob" id="floatKnob"></div>
+    <div class="knob" id="fbKnob" style="margin-top:4px"></div>
+    <label class="fld" for="kRange">Number of level sensors: <b id="kVal"></b></label>
     <input type="range" id="kRange" min="1" max="10" step="1">
     <div class="knob x" id="objKnob">
       <button data-o="worst" title="Each sensor is the one that most raises the WORST case">Best worst case</button>
@@ -522,7 +548,8 @@ table.bvT td:nth-child(2){text-align:left}
   <div class="legend" id="legend" hidden>
     <div class="grp" id="areasKey" hidden><b>Areas</b><span id="areasKeyList"></span></div>
     <div class="grp s" id="simpleKey"><b>Map</b>
-      <span><span class="k" style="background:#2ef56b"></span>recommended sensor, numbered as in the list</span>
+      <span><span class="k" style="background:#2ef56b"></span>level sensor L1, L2 ...: early warning of overcapacity<span class="newb">new</span></span>
+      <span><span class="k" style="background:#ffd60a"></span>float switch F1, F2 ...: early warning of a spill<span class="newb">new</span></span>
       <span><span class="k" style="background:#ff2d55"></span>sees this growth</span>
       <span><span class="k" style="background:#ffa500"></span>over the alarm before any growth</span>
       <span><span class="kl" style="background:#00d4ff"></span>the selected area's pipes</span>
@@ -544,7 +571,8 @@ table.bvT td:nth-child(2){text-align:left}
       <span><span class="k" style="background:#ffa500"></span>over the alarm before growth</span>
       <span><span class="kr" style="border-color:#bc8cff"></span>overflowing before growth</span>
       <span><span class="kr" style="border-color:#ff3df5"></span>overflows because of the growth</span>
-      <span><span class="k" style="background:#2ef56b"></span>proposed sensor: green pin, numbered S1, S2, ... as in the sensor list</span>
+      <span><span class="k" style="background:#2ef56b"></span>level sensor: green pin L1, L2, ...<span class="newb">new</span></span>
+      <span><span class="k" style="background:#ffd60a"></span>float switch: yellow pin F1, F2, ... with a downward cone<span class="newb">new</span></span>
       <span><span class="kl" style="background:#00d4ff"></span>the selected area's pipes</span>
     </div>
     <div class="grp lg-network" id="pumpKey" hidden><b>Pumped</b>
@@ -577,19 +605,20 @@ table.bvT td:nth-child(2){text-align:left}
 
 <div id="modal" hidden><div class="box" id="modalBox"></div></div>
 <div id="tour" hidden></div>
+<div id="monHover" hidden></div>
 
 <!-- Sim 3's published data and map, shared rather than copied: Sim 4 re-scores them and runs no
      model of its own, so it must sit beside simulation3/ (as it does on the site). -->
-<script src="../simulation3/data/catchment.js?v=1"></script>
-<script src="../simulation3/data/growth.js?v=1"></script>
-<script src="../simulation3/data/regions.js?v=1"></script>
-<script src="../simulation3/data/index.js?v=1"></script>
-<script src="data/before.js?v=1"></script>
-<script src="../simulation3/growth_3d.js?v=1"></script>
-<script src="../simulation3/osp_core.js?v=1"></script>
-<script src="../simulation3/placement.js?v=1"></script>
-<script src="before_views.js?v=1"></script>
-<script src="sim4_ui.js?v=1"></script>
+<script src="../simulation3/data/catchment.js?v=2"></script>
+<script src="../simulation3/data/growth.js?v=2"></script>
+<script src="../simulation3/data/regions.js?v=2"></script>
+<script src="../simulation3/data/index.js?v=2"></script>
+<script src="data/before.js?v=2"></script>
+<script src="growth_3d.js?v=2"></script>
+<script src="../simulation3/osp_core.js?v=2"></script>
+<script src="../simulation3/placement.js?v=2"></script>
+<script src="before_views.js?v=2"></script>
+<script src="sim4_ui.js?v=2"></script>
 <script type="module">
   Sim4UI.init();
 </script>

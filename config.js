@@ -128,6 +128,33 @@
       "_weights": "Allowed: \"equal\" | \"homes\". equal: every overloading build-out counts once. homes: by the homes its area has today, which is how Sim 3 spreads infill. The other is always published as a sensitivity."
     },
 
+    "monitoring": {
+      "_note": "Simulation 4's monitoring points: for each location, what must be monitored and the recommended sensor (docs/sim4_monitoring_points.md). Level sensors go where Sim 4's Before surcharge placement puts them; float switches go where the model says a manhole can spill. No SWMM run: an edit needs only tools/sim4_before.py --publish.",
+      "float_freeboard_mm": [300, 500],
+      "_float_freeboard_mm": "Allowed: distances in mm, above 0. How far below the lid a float switch hangs, so it trips before water reaches the lid. The first is the page's default. A manhole whose water comes within this distance of the lid is near-spill.",
+      "noncontact_clearance_mm": 500,
+      "_noncontact_clearance_mm": "Allowed: mm, 100 to 2000. A non-contact level sensor (radar, ultrasonic) under the lid keeps reading as long as the water stays at least this far below the lid in every case and build-out, surcharged or not: its blind zone plus mounting room. Where the water comes closer, a submersible pressure sensor is recommended instead.",
+      "near_spill_max_buildout": 1.0,
+      "_near_spill_max_buildout": "Allowed: one of the build-out steps 0.1 to 3.0. Near-spill counts only up to this build-out (1.0 = each area's full 2041 share); spills count at any build-out.",
+      "catalogue": {
+        "_note": "What can be monitored and with what. A reading with status \"placed\" is placed by the model; \"catalogue\" readings are described on the page but not yet placed. Add a reading or sensor here and the page lists it. The descriptions are general practice, not a supplier's specification.",
+        "readings": {
+          "level": { "name": "Water level", "purpose": "Early warning of overcapacity: growth using up a pipe's capacity before any manhole surcharges", "how": "Continuous, logged every 5 to 15 minutes and sent daily; judged on wet-weather peaks against the manhole's own level before growth", "unit": "mm above the manhole floor", "sensors": ["radar", "ultrasonic", "pressure"], "status": "placed" },
+          "high_level": { "name": "High level near the lid", "purpose": "Early warning of a spill: water approaching the lid", "how": "On/off, sent the moment it trips", "unit": "tripped or not", "sensors": ["float", "radar"], "status": "placed" },
+          "flow": { "name": "Flow rate", "purpose": "Confirms load growth from an area, and what reaches a bottleneck", "how": "Continuous at an area's outlet pipe, logged every 2 to 5 minutes", "unit": "L/s", "sensors": ["area_velocity"], "status": "catalogue" },
+          "pump_runtime": { "name": "Pump run-hours and starts", "purpose": "Load growth behind a pump station, read from its own controls", "how": "Daily totals from the station's telemetry", "unit": "hours, starts per day", "sensors": ["pump_telemetry"], "status": "catalogue" }
+        },
+        "sensors": {
+          "radar": { "name": "Radar level sensor", "reads": "level", "good": "Non-contact; little affected by foam, condensation, temperature or fat on the surface", "limits": "Blind within a short distance of its face; cannot read once the water reaches it", "mount": "Under the lid or on a bracket in the shaft, looking straight down at the flow, clear of steps and the inlet" },
+          "ultrasonic": { "name": "Ultrasonic level sensor", "reads": "level", "good": "Non-contact; low cost and widely used in sewers", "limits": "A blind zone of about 0.3 m below its face; foam, condensation and temperature disturb it; cannot read once submerged", "mount": "As radar, with the blind zone above the highest water expected" },
+          "pressure": { "name": "Submersible pressure (hydrostatic) level sensor", "reads": "level", "good": "Keeps reading when the manhole surcharges and the shaft fills", "limits": "In the flow, so it fouls and needs cleaning; needs its depth datum checked", "mount": "On the manhole floor or in a stilling tube on the benching, cable to a logger under the lid" },
+          "float": { "name": "Float switch", "reads": "high_level", "good": "Simple, robust, cheap; works without power until it trips; the usual spill alarm", "limits": "On/off only, says nothing about the trend; can be fouled by rags", "mount": "Hung on its cable from the lid frame so it tips at the trip level below the lid" },
+          "area_velocity": { "name": "Area-velocity flow meter", "reads": "flow", "good": "Measures flow directly, part full or surcharged", "limits": "Costly, needs a straight pipe run and regular maintenance; uncertain at low depth", "mount": "On a band in the outlet pipe, a few diameters downstream of the manhole" },
+          "pump_telemetry": { "name": "Pump station telemetry", "reads": "pump_runtime", "good": "Already installed at most stations; no new hardware", "limits": "Only for the part of the network behind a station", "mount": "The station's existing controls" }
+        }
+      }
+    },
+
     "case_set": "five",
     "_case_set": "Allowed: the name of any set under case_sets (as committed, \"five\" | \"all_twelve\"). Which of case_sets below is run and published. Each case is one combination of what cannot be measured yet, and costs 1,641 whole-domain SWMM runs (about 87 min on 9 workers) in the whole area.",
     "case_sets": {

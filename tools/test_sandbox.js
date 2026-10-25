@@ -456,6 +456,42 @@ console.log("Simulation 4 (before surcharge)");
   check("every new register row has an id, item, meaning and source",
     Bd.register.filter(r => r.length !== 4 || r.some(x => !x)).length, 0);
 
+  /* Monitoring points: float locations and the level-sensor rule, recomputed here from Sim 3's
+     rows and the geometry, independently of the tool. */
+  {
+    const reg = window.SIM3_REGIONS, mon = Bd.monitoring, geo = Bd.geometry, n = geo.length, L = Bd.ladder;
+    const spill = new Set(), fbMin = new Array(n).fill(Infinity), byCap = {};
+    const capK = L.indexOf(mon.settings.near_spill_max_buildout);
+    for (const t of Bd.cases) {
+      const base = reg.base[t];
+      base.spilled.forEach(i => spill.add(i));
+      const runs = [{ s: -1, rise: [], spill: [] }].concat(reg.rows[t]);
+      for (const x of runs) {
+        const rise = new Map(x.rise);
+        x.spill.forEach(i => spill.add(i));
+        for (let i = 0; i < n; i++) {
+          const f = geo[i].rim - ((base.depthMm[String(i)] || 0) + (rise.get(i) || 0));
+          fbMin[i] = Math.min(fbMin[i], f);
+          if (x.s <= capK) byCap[i] = Math.min(byCap[i] == null ? Infinity : byCap[i], f);
+        }
+      }
+    }
+    check("7 manholes spill in some published run, as the tool found",
+      [spill.size, [...spill].sort((a, b) => a - b).join()], [7, mon.spillManholes.join()]);
+    for (const X of mon.settings.float_freeboard_mm) {
+      const near = Object.keys(byCap).filter(i => !spill.has(+i) && byCap[i] < X).length;
+      check("float locations at " + X + " mm below the lid: spill manholes plus near-spill", spill.size + near, mon.floats[String(X)].length);
+    }
+    check("float locations at 300 and 500 mm: 21 and 43", mon.settings.float_freeboard_mm.map(X => mon.floats[String(X)].length), [21, 43]);
+    check("each manhole's least freeboard, as the level-sensor rule reads it",
+      fbMin.filter((v, i) => Math.abs(v - mon.minFreeboard[i]) > 0.5).length, 0);   // Python rounds halves to even
+    const cat = mon.catalogue;
+    check("every reading names sensors that are in the catalogue",
+      Object.values(cat.readings).flatMap(r => r.sensors).filter(x => !cat.sensors[x]), []);
+    check("level and high-level readings are placed; the rest are catalogue only",
+      Object.keys(cat.readings).filter(k => cat.readings[k].status === "placed").sort(), ["high_level", "level"]);
+  }
+
   /* A hand-made locating example with a known answer. Three areas in one case, each
      surcharging at its second step; at the first, A moves manholes 0 and 1, B moves 1, C
      moves 2. A and B are far apart and must be told apart; C need not be. */

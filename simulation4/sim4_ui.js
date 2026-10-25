@@ -9,8 +9,12 @@
      - two triggers, f70 and f80 (water at 70% / 80% of the outlet pipe's bore);
      - the summary line and sensor cards say at what build-out a sensor warns, and when the
        first manhole surcharges; the map labels where the area first surcharges;
-     - the "Before surcharge" dashboard (eight pictures), the "What's new" tour, and the new
-       assumption rows (B01-B08) at the head of the register.
+     - monitoring points: each location says what to monitor and the recommended sensor, level
+       sensors (L pins) for early warning of overcapacity and float switches (F pins) for early
+       warning of a spill, from the catalogue in config.js; hover for a summary, click for the
+       full specification (docs/sim4_monitoring_points.md);
+     - the "Before surcharge" dashboard (ten pictures), the "What's new" tour, and the new
+       assumption rows (B01-B11) at the head of the register.
    Everything else is Sim 3's behaviour, unchanged. */
 "use strict";
 window.Sim4UI = (function () {
@@ -62,6 +66,8 @@ window.Sim4UI = (function () {
     rule: "r10", k: 5, method: "before", obj: "worst",
     radius: window.SIM4_BEFORE.settings.default_radius_m,   // locating radius, metres
     scheme: window.SIM4_BEFORE.settings.weights,            // "equal" | "homes"
+    floats: "spill",                                        // float switches: "spill" | "near" | "none"
+    fb: window.SIM4_BEFORE.monitoring.settings.float_freeboard_mm[0],   // float trip distance below the lid, mm
     showSensors: true, showHeat: false, showPumps: false, showConn: false,
     hover: null, pick: null,            // hovered / clicked manhole NAME for the right panel
     legend: false,                      // the colour key, off until asked for
@@ -258,7 +264,9 @@ window.Sim4UI = (function () {
       Growth3D.setSpills([], []);
     } else {
       Growth3D.setRegionTints(null);
-      Growth3D.paint(named, site, sensors, heatValues());
+      const marks = st.showSensors ? monitoringPoints().flatMap(p => p.items.map(it => ({ name: nameOf(p.i), label: it.label, kind: it.kind === "float" ? "float" : "level",
+        title: it.label + ": " + readingName(it.reading) + ", " + sensorName(it.sensor) }))) : [];
+      Growth3D.paint(named, site, sensors, heatValues(), marks);
       if (st.fam === "infill") {
         Growth3D.setPulse(region().manholes.map(nameOf));
         const lbls = [{ names: region().manholes.map(nameOf), text: region().id, col: "#00d4ff" }];
@@ -285,6 +293,110 @@ window.Sim4UI = (function () {
 
   // The shown area's build-out in the shown case, as Sim 4 scores it.
   const curPath = () => B().paths.find(q => q.c === caseIdxB(curTag()) && q.r === st.region) || null;
+
+  /* ------------------------------------------------------- monitoring points */
+  // New in Sim 4. A monitoring point is a location, what must be monitored there and the
+  // recommended sensor. Level sensors (early warning of overcapacity) go where the placement
+  // puts them; float switches (early warning of a spill) where the model says a manhole can
+  // spill. The readings and sensors come from the catalogue in config.js.
+  const MON = () => B().monitoring;
+  const CAT = () => MON().catalogue;
+  const stepTxt = k => k === 0 ? "before any growth" : "at " + Math.round(ladder()[k - 1] * 100) + "% build-out";
+  function floatLocs() {
+    if (st.floats === "none") return [];
+    const all = MON().floats[String(st.fb)] || [];
+    return st.floats === "near" ? all : all.filter(f => f.kind === "spill");
+  }
+  // Which level sensor suits this manhole (register row B11).
+  function levelRec(i) {
+    if (st.rule === "alarm") return { id: "float", alts: ["radar"], rule: "The 150 mm alarm rule is one trip level, which a float switch at 150 mm above the floor gives; a level sensor with an alarm at that depth also works." };
+    const g = B().geometry[i], m = MON().minFreeboard[i], cl = MON().settings.noncontact_clearance_mm, sur = MON().overCrown.includes(i);
+    return m < cl
+      ? { id: "pressure", alts: ["radar"], rule: "In the worst case the water here comes within " + Math.max(0, m) + " mm of the lid, closer than the " + cl + " mm a non-contact sensor under the lid needs to keep reading. A submersible pressure sensor keeps reading through a full shaft (B11)." }
+      : { id: "radar", alts: ["ultrasonic"], rule: "The water here stays at least " + m + " mm below the lid in every case and build-out" + (sur ? " (it does rise above the outlet pipe's top in some, so the sensor must read a surcharged shaft)" : ", below the top of the outlet pipe") + ": room for a non-contact sensor under the lid, which needs " + cl + " mm (B11)." };
+  }
+  function levelTrigger(i) {
+    const g = B().geometry[i];
+    if (st.rule === "alarm") return "alert when the water passes " + ALARM_MM + " mm above the floor";
+    if (ruleOf(st.rule).isNew) { const f = B().settings.fullness[st.rule === "f70" ? 0 : 1]; return "alert when the water reaches " + Math.round(f * 100) + "% of the outlet pipe's bore: " + Math.round(g.off + f * g.bore) + " mm above the floor here"; }
+    return "alert when wet-weather peaks rise " + ruleOf(st.rule).thr + " mm or more over this manhole's own level before growth";
+  }
+  function levelEvidence(i) {
+    if (st.fam === "one" || !B().results[st.rule] || !B().results[st.rule].exact) return "";
+    const ws = Before.targets().filter(p => p.c === caseIdxB(curTag())).map(p => ({ p, f: Before.firstStep(p, st.rule, new Set([i])) }))
+      .filter(o => o.f != null && o.f <= o.p.s - B().settings.margin_steps);
+    return ws.length ? "In " + curCase().label + " it warns of " + ws.map(o => Before.areaId(o.p.r) + " at " + pc(o.f) + " (surcharges at " + pc(o.p.s) + ")").join(", ") + "."
+      : "On its own it warns of no overload in " + curCase().label + "; it covers other cases.";
+  }
+  function floatEvidence(f) {
+    const cs = B().cases.map((t, ci) => ({ ci, label: Before.caseLabel(ci), sp: f.spill[ci], tr: f.trip[ci], fb: f.fb[ci] }));
+    const sp = cs.filter(c => c.sp != null);
+    if (sp.length) return "Spills " + sp.map(c => stepTxt(c.sp) + " in " + c.label + (c.tr != null && c.tr < c.sp ? " (the float trips " + stepTxt(c.tr) + ")" : "")).join("; ") + ".";
+    const worst = cs.map(c => ({ c, v: Math.min(...c.fb.filter(v => v != null)) })).sort((a, b) => a.v - b.v)[0];
+    return "Never spills in the model, but comes within " + worst.v + " mm of the lid in " + worst.c.label + "; the float trips " + stepTxt(worst.c.tr) + " there.";
+  }
+  function monitoringPoints() {
+    const pts = new Map(), pl = placement();
+    const at = i => { if (!pts.has(i)) pts.set(i, { i, items: [] }); return pts.get(i); };
+    pl.chosen.forEach((i, j) => {
+      const rec = levelRec(i);
+      at(i).items.push({ kind: "level", label: "L" + (j + 1), reading: st.rule === "alarm" ? "high_level" : "level", trigger: levelTrigger(i), sensor: rec.id, alts: rec.alts, rule: rec.rule, evidence: levelEvidence(i) });
+    });
+    floatLocs().forEach((f, j) => {
+      const g = B().geometry[f.i], has = pts.has(f.i);
+      at(f.i).items.push({ kind: "float", label: "F" + (j + 1), reading: "high_level", trigger: "trips when the water comes within " + st.fb + " mm of the lid: hung " + (g.rim - st.fb) + " mm above the floor in a " + (g.rim / 1000).toFixed(1) + " m deep manhole",
+        sensor: "float", alts: has ? ["level sensor's own high alarm, as well"] : ["radar"], rule: f.kind === "spill" ? "The model has water reaching this lid in at least one case (B09)." : "Water comes within " + st.fb + " mm of this lid by " + Math.round(MON().settings.near_spill_max_buildout * 100) + "% build-out in at least one case (B09).",
+        evidence: floatEvidence(f), near: f.kind === "near" });
+    });
+    return [...pts.values()];
+  }
+  const sensorName = id => (CAT().sensors[id] || { name: id }).name;
+  const readingName = id => (CAT().readings[id] || { name: id }).name;
+  const pinHtml = it => '<span class="pin' + (it.kind === "float" ? " fl" : "") + '">' + it.label + "</span>";
+  function monSummary(p) {
+    return label(p.i) + ": " + p.items.map(it => it.label + " " + readingName(it.reading).toLowerCase() + " (" + it.trigger + "), " + sensorName(it.sensor)).join("; ") + ". Click for the full specification.";
+  }
+  // The full specification of one monitoring point, for the right panel.
+  function monSpec(p) {
+    return '<div class="newbox monspec"><h4>Monitoring point' + NEWB + "</h4>" + p.items.map(it => {
+      const rd = CAT().readings[it.reading] || {}, sn = CAT().sensors[it.sensor] || {};
+      return '<div class="monitem">' + pinHtml(it) + " <b>" + esc(it.kind === "float" ? "Early warning of a spill" : "Early warning of overcapacity") + "</b>" +
+        "<dl><dt>Monitor</dt><dd><b>" + esc(rd.name || it.reading) + "</b>: " + esc(rd.purpose || "") + "</dd>" +
+        "<dt>How</dt><dd>" + esc(rd.how || "") + " (" + esc(rd.unit || "") + ")</dd>" +
+        "<dt>Trigger</dt><dd>" + esc(it.trigger) + "</dd>" +
+        "<dt>Sensor</dt><dd><b>" + esc(sn.name || it.sensor) + "</b>. " + esc(sn.good || "") + ". <span class='lim'>Limits: " + esc(sn.limits || "") + ".</span></dd>" +
+        "<dt>Mounting</dt><dd>" + esc(sn.mount || "") + "</dd>" +
+        "<dt>Instead</dt><dd>" + it.alts.map(a => esc(CAT().sensors[a] ? CAT().sensors[a].name : a)).join(", ") + "</dd>" +
+        "<dt>Why here</dt><dd>" + esc(it.rule) + "</dd>" +
+        (it.evidence ? "<dt>Evidence</dt><dd>" + esc(it.evidence) + "</dd>" : "") + "</dl></div>";
+    }).join("") + "</div>";
+  }
+  // One card per monitoring point, for the lists.
+  function monCard(p, extra) {
+    const ri = regionOf[p.i];
+    return '<div class="why mon isNewCard" data-mh="' + esc(nameOf(p.i)) + '" data-vt="' + esc(monSummary(p)) + '"><div class="hd">' + p.items.map(pinHtml).join("") + esc(label(p.i)) +
+      (ri >= 0 ? ' <span class="quiet">' + esc(S().regions[ri].id) + "</span>" : "") + "</div>" +
+      p.items.map(it => '<p class="monline"><span class="rd">Monitor</span>' + esc(readingName(it.reading)) + ": " + esc(it.trigger) + '</p><p class="monline"><span class="rd">Sensor</span><b>' + esc(sensorName(it.sensor)) + "</b>" +
+        (it.alts.length ? ' <span class="quiet">(or ' + esc(it.alts.map(sensorName).join(", ")) + ")</span>" : "") + "</p>" +
+        (it.evidence ? '<p class="warnline">' + esc(it.evidence) + "</p>" : "")).join("") + (extra || "") + "</div>";
+  }
+  function wireMonCards(root) {
+    root.querySelectorAll("[data-mh]").forEach(c => { c.onclick = () => { st.pick = c.dataset.mh; repaint(); }; });
+  }
+  // The hover card over the map: what to monitor here and with what.
+  let mouseXY = [0, 0];
+  function showMonHover(name) {
+    const el = $("#monHover");
+    const p = name && monitoringPoints().find(q => nameOf(q.i) === name);
+    if (!p || !st.showSensors) { el.hidden = true; return; }
+    el.innerHTML = "<div class='hd'>" + p.items.map(pinHtml).join("") + "<b>" + esc(label(p.i)) + "</b></div>" + p.items.map(it =>
+      "<div><span class='rd'>Monitor</span>" + esc(readingName(it.reading)) + "</div><div class='quiet'>" + esc(it.trigger) + "</div><div><span class='rd'>Sensor</span><b>" + esc(sensorName(it.sensor)) + "</b></div>").join("<hr>") +
+      "<div class='quiet' style='margin-top:4px'>Click for the full specification</div>";
+    el.hidden = false;
+    const w = el.offsetWidth, h = el.offsetHeight;
+    el.style.left = Math.min(window.innerWidth - w - 8, mouseXY[0] + 16) + "px";
+    el.style.top = Math.max(8, Math.min(window.innerHeight - h - 8, mouseXY[1] + 16)) + "px";
+  }
 
   /* ------------------------------------------------------------------ homes */
   // The homes key, fixed shape (see Sim 2.5): hover previews a manhole's homes; otherwise the
@@ -420,11 +532,13 @@ window.Sim4UI = (function () {
     $$("#wxKnob button").forEach(b => b.classList.toggle("on", b.dataset.w === wxOf()));
     const c = curCase();
     $("#wxHint").textContent = c.label + (c.settled === false ? " (480-minute runs)" : "");
-    $("#kBig").textContent = st.k + " sensor" + (st.k === 1 ? "" : "s");
+    $("#kBig").textContent = st.k + " level sensor" + (st.k === 1 ? "" : "s");
     const pl = placement();
     if (pl.before && pl.outcomes) $("#kHint").innerHTML = '<span class="newhint">warn of <b>' + pl.outcomes.cnt.before + "</b> of " + Before.targets().length + " overloads before surcharge</span>";
     else $("#kHint").textContent = pl.worst != null ? "catch " + pct(pl.worst) + " of detectable growth, worst case" : "";
     $("#kBig").closest(".step").classList.toggle("isNew", !!pl.before);
+    const nFl = floatLocs().length;
+    $("#kHint").insertAdjacentHTML("beforeend", nFl ? '<br><span class="newhint">+ <b>' + nFl + "</b> float switch" + (nFl === 1 ? "" : "es") + " where a spill can occur</span>" : "");
     $("#kInfo").dataset.tip = "The best set of this many level sensors, chosen once for the worst of all " + famCases().length + " weather and leakage cases. " +
       "A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth. " +
       "Detectable growth means the scenarios that at least one manhole anywhere would see; the percentage is the share of those that this set notices." +
@@ -464,6 +578,12 @@ window.Sim4UI = (function () {
     on("#methKnob", b => { st.method = b.dataset.m; st.pickedGreedy = b.dataset.m === "greedy"; repaint(); });
     on("#objKnob", b => { st.obj = b.dataset.o; repaint(); });
     on("#radKnob", b => { st.radius = +b.dataset.r; repaint(); });
+    const fl = MON().floats, nSp = MON().spillManholes.length;
+    $("#floatKnob").innerHTML = [["spill", "Where it spills", nSp], ["near", "+ near spill", (fl[String(st.fb)] || []).length], ["none", "None", 0]]
+      .map(([v, l, n]) => '<button class="nb" data-f="' + v + '">' + l + (v !== "none" ? '<span class="knobNum">' + n + " float" + (n === 1 ? "" : "s") + "</span>" : "") + "</button>").join("");
+    $("#fbKnob").innerHTML = MON().settings.float_freeboard_mm.map(x => '<button class="nb" data-x="' + x + '">' + x + " mm below the lid</button>").join("");
+    on("#floatKnob", b => { st.floats = b.dataset.f; repaint(); });
+    on("#fbKnob", b => { st.fb = +b.dataset.x; repaint(); });
     $("#region").onchange = () => { st.region = +$("#region").value; st.pick = null; repaint(); };
     $("#stepRange").oninput = () => { st.step = +$("#stepRange").value; repaint(); };
     $("#kRange").oninput = () => { st.k = +$("#kRange").value; repaint(); };
@@ -516,6 +636,9 @@ window.Sim4UI = (function () {
     $$("#ruleKnob button").forEach(b => { b.hidden = st.fam === "one" && !!ruleOf(b.dataset.r).isNew; });
     $("#radBox").hidden = st.method !== "locate" || st.fam === "one";
     $$("#radKnob button").forEach(b => b.classList.toggle("on", +b.dataset.r === st.radius));
+    $$("#floatKnob button").forEach(b => b.classList.toggle("on", b.dataset.f === st.floats));
+    $$("#fbKnob button").forEach(b => b.classList.toggle("on", +b.dataset.x === st.fb));
+    $$("#floatKnob .knobNum").forEach((e, j) => { if (j === 1) e.textContent = (MON().floats[String(st.fb)] || []).length + " floats"; });
     const methText = st.fam !== "one" && isBeforeMethod()
       ? (st.method === "locate"
         ? "Before + locate (new in Sim 4): as Before surcharge, and an overload counts only if the pattern of chosen sensors that respond also differs from every other overload in the same case whose first-surcharge manholes are more than " + st.radius + " m away along the pipes, so the alarm says where."
@@ -572,7 +695,7 @@ window.Sim4UI = (function () {
         row2("Newly surcharged", row.sur.length ? '<b class="bad">' + row.sur.length + "</b>" : "none") +
         row2("Newly overflowing", row.spill.length ? '<b class="bad">' + row.spill.length + "</b> spill from the lid" : "none") +
         row2("The " + chosen.length + " chosen sensors", caught.length ? '<b class="good">' + caught.length + "</b> (" +
-          caught.map(i => "S" + (chosen.indexOf(i) + 1)).join(", ") + ") " + (caught.length === 1 ? "sees" : "see") + " it" : '<b class="bad">none</b> of them sees this growth') +
+          caught.map(i => "L" + (chosen.indexOf(i) + 1)).join(", ") + ") " + (caught.length === 1 ? "sees" : "see") + " it" : '<b class="bad">none</b> of them sees this growth') +
         (row.run ? row2("Run", (row.run.converged ? "settled at " : "<b class='bad'>not settled</b> at ") + Math.round(row.run.minutes) + " min") : "");
       $("#tipList").innerHTML = seen.length
         ? "<h4>Manholes that see this growth</h4><ul>" + seen.slice(0, 40).map(i => { const mm = (row.rise.find(x => x[0] === i) || [0, 0])[1]; return "<li>" + esc(label(i)) + ' <span class="quiet">+' + Math.round(mm) + " mm</span></li>"; }).join("") + "</ul>" +
@@ -596,7 +719,7 @@ window.Sim4UI = (function () {
         row2("Manholes that see it", tipped.length ? '<b class="bad">' + tipped.length + "</b>" : "none at this size") +
         (Rr.spill ? row2("Newly overflowing", spillNewOne().length ? '<b class="bad">' + spillNewOne().length + "</b> spill from the lid" : "none") : "") +
         row2("The " + chosen.length + " chosen sensors", caught.length ? '<b class="good">' + caught.length + "</b> (" +
-          caught.map(i => "S" + (chosen.indexOf(i) + 1)).join(", ") + ") " + (caught.length === 1 ? "sees" : "see") + " it" : '<b class="bad">none</b> of them sees this growth') +
+          caught.map(i => "L" + (chosen.indexOf(i) + 1)).join(", ") + ") " + (caught.length === 1 ? "sees" : "see") + " it" : '<b class="bad">none</b> of them sees this growth') +
         row2("Runs", c.settled === false ? '<span class="badge fixed">480 min</span>fixed length, not settled' : '<span class="badge settled">settled</span>' + (c.unconverged ? c.unconverged + " of the case's runs hit the ceiling" : "every run settled"));
       $("#tipList").innerHTML = "<h4>Manholes that see this growth</h4>" + (tipped.length
         ? "<ul>" + tipped.map(i => "<li>" + esc(label(i)) + "</li>").join("") + "</ul>"
@@ -636,9 +759,9 @@ window.Sim4UI = (function () {
       const fd = ((S().rules[st.rule] || {}).firstSeen || {})[reg.id] || {};
       const first = fd[curTag()];
       {
-        const S_ = caught.map(i => "S" + (chosen.indexOf(i) + 1));
+        const S_ = caught.map(i => "L" + (chosen.indexOf(i) + 1));
         const short = "<b>" + esc(reg.id) + "</b>, +" + Math.round(row.dw) + " homes, " + wx + ": " +
-          (caught.length ? "<b>sensor" + (S_.length === 1 ? " " : "s ") + S_.join(", ") + (S_.length === 1 ? " sees" : " see") + " it</b>" : seen.length ? "<b>no chosen sensor sees it</b>, " + seen.length + " other manhole" + (seen.length === 1 ? " does" : "s do") : "<b>nothing moves enough to see</b>") + "." +
+          (caught.length ? "<b>level sensor" + (S_.length === 1 ? " " : "s ") + S_.join(", ") + (S_.length === 1 ? " sees" : " see") + " it</b>" : seen.length ? "<b>no chosen sensor sees it</b>, " + seen.length + " other manhole" + (seen.length === 1 ? " does" : "s do") : "<b>nothing moves enough to see</b>") + "." +
           (first ? " A sensor first sees this area at <b>" + Math.round(first[1] * 100) + "%</b> of its growth." : "");
         const long = (top && top[1] >= 0.5 ? "Largest rise " + top[1].toFixed(1) + " mm at " + label(top[0]) + ". " : "No manhole rises as much as half a millimetre. ") +
           seen.length + " manhole" + (seen.length === 1 ? "" : "s") + " rise 10 mm or more (the level-sensor rule). " +
@@ -651,7 +774,7 @@ window.Sim4UI = (function () {
         Math.round(ladder()[st.step] * 100) + "% of its 2041 share) in <b>" + esc(c.label) + "</b> weather. " +
         (top && top[1] >= 0.5 ? "Largest rise <b>" + top[1].toFixed(1) + " mm</b> at " + label(top[0]) + "; " : "No manhole rises as much as half a millimetre; ") +
         (seen.length ? "<b>" + seen.length + "</b> manhole" + (seen.length === 1 ? "" : "s") + " see it under the " + esc(ruleOf(st.rule).label.toLowerCase()) + " rule" : "nothing passes the rule") + ". " +
-        (st.showSensors ? (caught.length ? "Sensor" + (caught.length === 1 ? " " : "s ") + caught.map(i => "S" + (chosen.indexOf(i) + 1)).join(", ") + (caught.length === 1 ? " sees" : " see") + " it." : "<b>None of the chosen sensors sees it.</b>") : "") +
+        (st.showSensors ? (caught.length ? "Sensor" + (caught.length === 1 ? " " : "s ") + caught.map(i => "L" + (chosen.indexOf(i) + 1)).join(", ") + (caught.length === 1 ? " sees" : " see") + " it." : "<b>None of the chosen sensors sees it.</b>") : "") +
         (first ? " In this weather a sensor first sees this area at <b>" + Math.round(first[1] * 100) + "%</b> build-out (" + label(first[0]) + ")." : " In this weather no sensor sees this area at any build-out.");
       return;
     }
@@ -660,7 +783,7 @@ window.Sim4UI = (function () {
       const cl = cell(), row = rowFor(cl, st.site), tipped = row ? row.tip : [], chosen = placement().chosen, caught = chosen.filter(i => tipped.includes(i));
       el.innerHTML = '<span class="tag">Greenfield</span><b>' + R().growthLevels[st.add] + " dwellings</b> joining at <b>" + esc(label(st.site)) + "</b> in " + wx + ": " +
         (tipped.length ? "<b>" + tipped.length + "</b> manhole" + (tipped.length === 1 ? "" : "s") + " see it" : "no manhole passes the rule") + ". " +
-        (st.showSensors ? (caught.length ? "Sensor" + (caught.length === 1 ? " " : "s ") + caught.map(i => "S" + (chosen.indexOf(i) + 1)).join(", ") + " see" + (caught.length === 1 ? "s" : "") + " it." : "<b>None of the chosen sensors sees it.</b>") : "");
+        (st.showSensors ? (caught.length ? "Sensor" + (caught.length === 1 ? " " : "s ") + caught.map(i => "L" + (chosen.indexOf(i) + 1)).join(", ") + " see" + (caught.length === 1 ? "s" : "") + " it." : "<b>None of the chosen sensors sees it.</b>") : "");
       return;
     }
     el.innerHTML = '<span class="tag">No growth</span>The suburb as the model has it in ' + wx + ". Amber manholes are already over the " + ALARM_MM + " mm alarm" +
@@ -690,7 +813,7 @@ window.Sim4UI = (function () {
       $("#rightSensors").hidden = !!show;
       if (!show) { box.innerHTML = ""; return; }
       renderManhole(box, show);
-      box.insertAdjacentHTML("afterbegin", '<button id="rbBack">&#9664; Back to the sensors</button>');
+      box.insertAdjacentHTML("afterbegin", '<button id="rbBack">&#9664; Back to the monitoring plan</button>');
       $("#rbBack").onclick = () => { st.pick = null; if (st.fam === "one") st.site = null; repaint(); };
       return;
     }
@@ -782,7 +905,8 @@ window.Sim4UI = (function () {
     const chosen = placement().chosen, k = chosen.indexOf(i);
     const rank = 1 + h[st.obj].filter(x => x > h[st.obj][i]).length;
     const ri = regionOf[i];
-    box.innerHTML = '<h4>This manhole <i class="info-i left" data-tip="' + esc("Water and headroom are for " + curCase().label + ". Click empty ground, or Back, to leave it.") + '">i</i></h4>' +
+    const mp = st.showSensors ? monitoringPoints().find(q => q.i === i) : null;
+    box.innerHTML = (mp ? monSpec(mp) : "") + '<h4>This manhole <i class="info-i left" data-tip="' + esc("Water and headroom are for " + curCase().label + ". Click empty ground, or Back, to leave it.") + '">i</i></h4>' +
       row2("Asset", "MH " + n.mh + (n.yr ? ", built " + n.yr : ", year not recorded")) +
       (ri >= 0 ? row2("Area", esc(S().regions[ri].id + ", " + shortName(S().regions[ri]))) : "") +
       (water ? row2("Water before growth", water) : "") + (head ? row2("Headroom", head) : "") +
@@ -792,8 +916,8 @@ window.Sim4UI = (function () {
       row2("Drains through it", up.chambers + " manholes, " + (up.metres / 1000).toFixed(2) + " km of pipe") +
       (st.fam !== "one" && B().results[st.rule] && B().results[st.rule].exact ? row2("Warns before surcharge",
         NEWB + " of <b>" + Before.targets().filter(p => Before.warnSet(p, st.rule).has(i)).length + "</b> of " + Before.targets().length + " overloads, on its own (" + esc(ruleOf(st.rule).label.toLowerCase()) + ")") : "") +
-      row2("As a sensor", "alone it sees " + pct(h.mean[i]) + " of " + (st.fam === "one" ? "greenfield" : "infill") + " growth on average, " + pct(h.worst[i]) + " in the worst case; rank " + rank + " of " + names().length +
-        (k >= 0 ? ", <b>chosen as S" + (k + 1) + "</b>" : "")) +
+      row2("As a level sensor", "alone it sees " + pct(h.mean[i]) + " of " + (st.fam === "one" ? "greenfield" : "infill") + " growth on average, " + pct(h.worst[i]) + " in the worst case; rank " + rank + " of " + names().length +
+        (k >= 0 ? ", <b>chosen as L" + (k + 1) + "</b>" : "")) +
       "";
   }
 
@@ -805,13 +929,13 @@ window.Sim4UI = (function () {
     const rr = isIn ? (S().rules[st.rule] || {}) : null;
     const row = st.fam === "infill" ? curRow() : null, seen = isIn ? new Set(seers(row, st.rule)) : null;
     const oneRow = !isIn && st.fam === "one" && st.site != null ? rowFor(cell(), st.site) : null;
-    const type = st.rule === "alarm" ? "float switch at the alarm level" : "level sensor";
     const nT = Before.targets().length;
     const lead = isIn && pl.before ? (pl.outcomes ? '<p class="newtxt">' + NEWB.replace("newb", "newb\" style=\"margin:0 6px 0 0") + "<b>" + k + "</b> sensor" + (k === 1 ? "" : "s") + " warn of <b>" + pl.outcomes.cnt.before + "</b> of the <b>" + nT +
       "</b> overloading build-outs before any manhole surcharges" + (pl.worst != null ? "; in the worst-covered case, <b>" + pct(pl.worst) + "</b> of that case's warnable ones" + (pl.located ? " are also located within " + st.radius + " m" : "") : "") + ".</p>"
       : '<p class="quiet">No overload can be warned of under this rule.</p>') : "<p><b>" + k + "</b> sensor" + (k === 1 ? "" : "s") + (pl.worst != null ? " catch <b>" + pct(pl.worst) + "</b> of detectable " + (isIn ? "infill" : "greenfield") +
       " growth in the worst case" + (pl.average != null ? " and <b>" + pct(pl.average) + "</b> on average" : "") : "") +
       (pl.riskWorst != null ? ", and <b>" + pct(pl.riskWorst) + "</b> of the risk-weighted total" : "") + ".</p>";
+    const mpts = monitoringPoints();
     const cards = chosen.map((i, j) => {
       const nm = nameOf(i), ri = regionOf[i];
       let watch = "";
@@ -840,11 +964,20 @@ window.Sim4UI = (function () {
         warnTxt = '<p class="warnline">' + NEWB.replace("newb", "newb\" style=\"margin:0 5px 0 0") + (ws.length ? "Warns of " + ws.map(o => "<b>" + esc(Before.areaId(o.p.r)) + "</b> at " + pc(o.f) + " (surcharges at " + pc(o.p.s) + ")").join(", ")
           : "On its own it warns of no overload in " + esc(curCase().label) + "; it covers the other cases") + ".</p>";
       }
-      return '<div class="why' + (miss ? " miss" : "") + (pl.before ? " isNewCard" : "") + '"><div class="hd"><span class="pin">S' + (j + 1) + "</span>" + esc(label(i)) +
+      const mp = mpts.find(q => q.i === i), lv = mp.items.find(it => it.kind === "level");
+      const monTxt = '<p class="monline"><span class="rd">Monitor</span>' + esc(readingName(lv.reading)) + ": " + esc(lv.trigger) + '</p><p class="monline"><span class="rd">Sensor</span><b>' + esc(sensorName(lv.sensor)) + "</b>" +
+        ' <span class="quiet">(or ' + esc(lv.alts.map(sensorName).join(", ")) + ")</span></p>" +
+        mp.items.filter(it => it.kind === "float").map(it => '<p class="monline">' + pinHtml(it) + " also a <b>" + esc(sensorName(it.sensor)) + "</b>: " + esc(it.trigger) + "</p>").join("");
+      return '<div class="why mon' + (miss ? " miss" : "") + (pl.before ? " isNewCard" : "") + '" data-mh="' + esc(nm) + '" data-vt="' + esc(monSummary(mp)) + '"><div class="hd">' + mp.items.map(pinHtml).join("") + esc(label(i)) +
         (ri >= 0 ? ' <span class="quiet">' + esc(S().regions[ri].id) + "</span>" : "") +
         '<span class="cov">' + (isIn && st.method === "greedy" && rr.greedy && rr.greedy.curve[j] ? "worst " + pct(rr.greedy.curve[j].worst) : "") + "</span></div>" +
-        "<p>" + watch + "Watches <b>" + upc.chambers + "</b> manholes and " + (reach ? reach.here : "?") + " homes draining through it. A " + type + ". " + sees + "</p>" + warnTxt + "</div>";
+        monTxt + "<p>" + watch + "Watches <b>" + upc.chambers + "</b> manholes and " + (reach ? reach.here : "?") + " homes draining through it. " + sees + "</p>" + warnTxt + "</div>";
     }).join("");
+    const fcards = mpts.filter(p => !chosen.includes(p.i)).map(p => monCard(p)).join("");
+    const nF = mpts.reduce((a, p) => a + p.items.filter(it => it.kind === "float").length, 0);
+    const planHead = "<h4 class='newtxt'>Monitoring plan: " + mpts.length + " location" + (mpts.length === 1 ? "" : "s") + NEWB + "</h4><p class='quiet' style='margin:0 0 6px'>" +
+      k + " level sensor" + (k === 1 ? "" : "s") + " (L) for early warning of overcapacity" + (nF ? ", " + nF + " float switch" + (nF === 1 ? "" : "es") + " (F) for early warning of a spill" : "") + ". Hover a card for a summary, click it for the full specification.</p>";
+    const floatHead = nF ? "<h4 class='newtxt'>Float switches: where a spill can occur" + NEWB + "</h4>" : "";
     let extra = "";
     if (isIn && st.view === "expert" && pl.compare && pl.compare.plain_set) {
       const c = pl.compare, hi = ' class="hi"';
@@ -859,16 +992,18 @@ window.Sim4UI = (function () {
         S().cases.map(c => rr.loo[c.tag] ? "<tr><td>" + esc(c.label) + "</td><td" + (rr.loo[c.tag].score < 0.5 ? ' class="hi"' : "") + ">" + pct(rr.loo[c.tag].score) + "</td></tr>" : "").join("") +
         "</table>";
     }
-    $("#sensorList").innerHTML = lead + cards + extra;
+    $("#sensorList").innerHTML = planHead + lead + cards + floatHead + fcards + extra;
+    wireMonCards($("#sensorList"));
     renderBeforeBox(pl);
     if (st.view === "simple") {
       const tip = "Detectable growth: the scenarios (every area at every build-out, or every estate size at every manhole) that at least one manhole anywhere would see. " +
         "The worst case is the lowest share over all " + famCases().length + " weather and leakage cases; the set is chosen to make that worst case as high as possible. " +
         "Each card names the areas this sensor is the first to notice, and how many manholes and homes drain past it.";
-      $("#rightSensors").innerHTML = "<h4 style='margin-top:0'>Where to put " + k + " sensor" + (k === 1 ? "" : "s") + ' <i class="info-i left" data-tip="' + esc(tip) + '">i</i></h4>' +
+      $("#rightSensors").innerHTML = planHead.replace("<h4 class='newtxt'>", "<h4 class='newtxt' style='margin-top:0'>") +
         (isIn && pl.before && pl.outcomes ? "<p class='newtxt' style='margin:0 0 8px'>Together they warn of <b>" + pl.outcomes.cnt.before + "</b> of the " + nT + " build-outs that overload a manhole, <b>before</b> it surcharges. <button class='linkish' id='rsDash'>See how</button></p>"
           : pl.worst != null ? "<p style='margin:0 0 8px;color:var(--dim)'>Together they notice <b>" + pct(pl.worst) + "</b> of detectable " + (isIn ? "infill" : "greenfield") + " growth in the worst case.</p>" : "") +
-        cards + "<p class='quiet'>Click a pin or any manhole for its details.</p>";
+        cards + floatHead + fcards + "<p class='quiet'>Click a card, a pin or any manhole for its details. <i class=\"info-i left\" data-tip=\"" + esc(tip) + "\">i</i></p>";
+      wireMonCards($("#rightSensors"));
       const rd = $("#rsDash"); if (rd) rd.onclick = () => showDash();
     }
   }
@@ -989,7 +1124,7 @@ window.Sim4UI = (function () {
   }
 
   /* ------------------------------------------------ the Before surcharge dashboard */
-  // New in Sim 4. Eight pictures of the re-scoring, with their own selectors, all drawn from
+  // New in Sim 4. Ten pictures of the re-scoring, with their own selectors, all drawn from
   // before.js and Sim 3's runs (before_views.js).
   const ds = {};
   function showDash() {
@@ -1038,7 +1173,11 @@ window.Sim4UI = (function () {
         Before.signatures(ds.rule, shown.chosen, ds.caseIdx, ds.radius), "") +
       card(7, "Which trigger can warn", "For every trigger: what a sensor at every manhole could warn of, and what its own best " + ds.k + " sensors do.",
         Before.ruleCompare(ds.k, ds.scheme), "") +
-      card(8, "Does the weighting change the answer?", "The exact set chosen with every overload counted once, against one chosen with each counted by the homes its area has today.",
+      card(8, "Spill floats: how close each comes to the lid", "One row per float location (" + st.fb + " mm trip distance, every location the model offers): freeboard (lid minus water) in " + esc(Before.caseLabel(ds.caseIdx)) + " (the case chosen above), before growth and at each build-out, taking whichever area's growth brings the water closest.",
+        Before.floatGrid(MON().floats[String(st.fb)], st.fb, ds.caseIdx), "Floats go in the " + MON().spillManholes.length + " manholes that spill in some case; the near-spill ones are optional (expert view, Floats).", true) +
+      card(9, "What can be monitored, and with what", "The catalogue in config.js. Readings marked 'not placed yet' are described but not placed by the model; adding a placement for them is the next step.",
+        Before.catalogueTable(CAT()), "", true) +
+      card(10, "Does the weighting change the answer?", "The exact set chosen with every overload counted once, against one chosen with each counted by the homes its area has today.",
         Before.weighting(ds.rule, ds.k), "") +
       "</div></div>";
     $("#modal").hidden = false;
@@ -1060,7 +1199,10 @@ window.Sim4UI = (function () {
     { t: "Telling overloads apart", el: () => st.view === "expert" ? "#methKnob" : "#btn-before", p: () => "<b>Before + locate</b> also asks that the pattern of sensors that respond differs between overloads that are far apart (0, 300 or 1,000 m along the pipes), so the alarm points to where the problem is." },
     { t: "Two new triggers: 70% and 80% full", el: () => st.view === "expert" ? "#ruleKnob" : "#viewKnob", p: () => "A level sensor's natural trigger is how full the pipe is. <b>70% full</b> and <b>80% full</b> are computed from Sim 3's stored depths and the pipe sizes, " +
       "checked against Sim 3's own surcharge flags. " + (st.view === "expert" ? "They are in the rule buttons." : "Switch to <b>Expert</b> to use them.") },
-    { t: "Every picture in one place", el: "#btn-before", p: () => "The <b>Before surcharge</b> button opens a dashboard: the build-out ladder, where Sim 3's score came from, the curves, outcomes per set, warning margins, the locating patterns, the triggers and the weighting." },
+    { t: "Monitoring points: where, what, which sensor", el: () => st.view === "expert" ? "#sensorList" : "#rightSensors", p: () => "Each location says <b>what to monitor</b> and <b>which sensor</b>. " +
+      "<b>L</b> pins are level sensors, for early warning of overcapacity. <b>F</b> pins (yellow) are float switches hung " + st.fb + " mm below the lid, for early warning of a spill, in the " + MON().spillManholes.length +
+      " manholes the model says can spill. Hover a pin or a card for a summary; click for the full specification: reading, trigger, recommended sensor, alternatives and mounting." },
+    { t: "Every picture in one place", el: "#btn-before", p: () => "The <b>Before surcharge</b> button opens a dashboard: the build-out ladder, where Sim 3's score came from, the curves, outcomes per set, warning margins, the locating patterns, the triggers, the weighting, the spill floats and the catalogue of readings and sensors." },
     { t: "Where to read more", el: "#tab-ref", p: () => "The new assumptions (B01 to B08) head the <b>Assumptions</b> register. The site's <b>Changelog</b> lists every change. Everything new carries this violet accent." },
   ];
   let tourAt = -1;
@@ -1151,6 +1293,8 @@ window.Sim4UI = (function () {
     if (hp.get("rule") && ruleOf(hp.get("rule"))) st.rule = hp.get("rule");
     if (hp.get("k")) st.k = Math.max(1, Math.min(10, +hp.get("k") || st.k));
     if (["greedy", "risk", "exact", "before", "locate"].includes(hp.get("method"))) st.method = hp.get("method");
+    if (["spill", "near", "none"].includes(hp.get("floats"))) st.floats = hp.get("floats");
+    if (hp.get("fb") != null && B().monitoring.settings.float_freeboard_mm.includes(+hp.get("fb"))) st.fb = +hp.get("fb");
     if (hp.get("radius") != null && B().settings.radii_m.includes(+hp.get("radius"))) st.radius = +hp.get("radius");
     if (hp.get("site") != null && names()[+hp.get("site")]) st.site = +hp.get("site");
     if (st.fam === "one" && ["exact", "before", "locate"].includes(st.method)) st.method = "greedy";
@@ -1168,6 +1312,7 @@ window.Sim4UI = (function () {
       repaint();
     }, nd => {
       const name = nd && !(st.fam === "one" && st.site != null && nd.name === nameOf(st.site)) ? nd.name : null;
+      showMonHover(name);
       if (name === st.hover) return;
       st.hover = name;
       renderHomes(sensorSet());
@@ -1196,6 +1341,8 @@ window.Sim4UI = (function () {
     $("#tab-ref").onclick = () => showDoc("ref");
     $("#tab-qa").onclick = () => showDoc("qa");
     $("#btn-new").onclick = () => showTour(0);
+    $("#stage").addEventListener("pointermove", e => { mouseXY = [e.clientX, e.clientY]; });
+    $("#stage").addEventListener("pointerleave", () => { $("#monHover").hidden = true; });
     $("#btn-before").onclick = () => showDash();
     $("#bannerTour").onclick = () => showTour(0);
     $("#bannerDash").onclick = () => showDash();
@@ -1259,5 +1406,5 @@ window.Sim4UI = (function () {
       window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); e.preventDefault();
     };
   }
-  return { init, state: st, repaint, showDash, showTour };
+  return { init, state: st, repaint, showDash, showTour, monitoringPoints, showMonHover };
 })();

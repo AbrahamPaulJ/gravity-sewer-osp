@@ -81,6 +81,29 @@ def settings(cfg):
             "max_sensors": int(cfg["simulation"]["max_sensors"])}
 
 
+def monitoring_settings(cfg, ladder):
+    """simulation.monitoring, checked: float trip distances, the near-spill build-out and the
+    catalogue of readings and sensors."""
+    mo = cfg["simulation"].get("monitoring")
+    if mo is None:
+        raise ValueError("config.js has no simulation.monitoring")
+    fb, cap = mo["float_freeboard_mm"], mo["near_spill_max_buildout"]
+    if not fb or any(not isinstance(x, (int, float)) or x <= 0 for x in fb):
+        raise ValueError(f"monitoring.float_freeboard_mm must be distances above 0 mm, not {fb!r}")
+    if cap not in ladder:
+        raise ValueError(f"monitoring.near_spill_max_buildout must be one of the build-out steps {ladder}, not {cap!r}")
+    cat = {part: {k: osp_config.plain(v) for k, v in osp_config.plain(mo["catalogue"][part]).items()}
+           for part in ("readings", "sensors")}
+    for rid, r in cat["readings"].items():
+        missing = [x for x in r["sensors"] if x not in cat["sensors"]]
+        if missing:
+            raise ValueError(f"monitoring.catalogue.readings.{rid} names sensors not in the catalogue: {missing}")
+    cl = mo["noncontact_clearance_mm"]
+    if not isinstance(cl, (int, float)) or not 100 <= cl <= 2000:
+        raise ValueError(f"monitoring.noncontact_clearance_mm must be 100 to 2000 mm, not {cl!r}")
+    return {"float_freeboard_mm": list(fb), "near_spill_max_buildout": cap, "noncontact_clearance_mm": cl, "catalogue": cat}
+
+
 # ── geometry ────────────────────────────────────────────────────────────────────────────
 
 def manhole_geometry(geo, chambers):
@@ -436,6 +459,7 @@ def build():
                          for e in res["exact"][st["weights"]]]
     ceiling = {rule: diag(rule, range(n))["counts"] for rule in rules}
 
+    mo = monitoring_settings(cfg, ladder)
     payload = {
         "about": "Simulation 4: Sim 3's published infill runs re-scored on warning before surcharge. Built by tools/sim4_before.py from simulation3/data; no SWMM run.",
         "provenance": {"regionsSha256": hashlib.sha256(reg_text.encode("utf-8")).hexdigest(),
@@ -454,8 +478,69 @@ def build():
         "ceiling": ceiling,
         "oldObjectiveCheck": old_check,
         "register": register(st),
+        "monitoring": monitoring(reg, mh, tags, ladder, mo),
     }
     return payload
+
+
+def monitoring(reg, mh, tags, ladder, mo):
+    """Float locations (spill, early) and the facts the sensor recommendation rests on.
+
+    Freeboard is the lid (rim) minus the water. At each build-out step the worst over the
+    eight areas is taken, since any area's growth could be the one that arrives; step index 0
+    is before growth. A spill manhole spills in some published run; a near-spill one comes
+    within the trip distance of the lid by near_spill_max_buildout."""
+    n = len(mh)
+    steps = len(ladder)
+    fb = {t: [[None] * (steps + 1) for _ in range(n)] for t in tags}
+    spill_at = {t: {} for t in tags}
+    over_crown = set()
+    for t in tags:
+        base = reg["base"][t]
+        for i in range(n):
+            d = base["depthMm"].get(str(i), 0)
+            fb[t][i][0] = mh[i]["rim"] - d
+            if mh[i]["crown"] is not None and d >= mh[i]["crown"]:
+                over_crown.add(i)
+        for i in base["spilled"]:
+            spill_at[t][i] = 0
+        for x in reg["rows"][t]:
+            rise = dict((i, v) for i, v in x["rise"])
+            k = x["s"] + 1
+            for i in range(n):
+                d = base["depthMm"].get(str(i), 0) + rise.get(i, 0)
+                f = mh[i]["rim"] - d
+                if fb[t][i][k] is None or f < fb[t][i][k]:
+                    fb[t][i][k] = f
+                if mh[i]["crown"] is not None and d >= mh[i]["crown"]:
+                    over_crown.add(i)
+            for i in x["spill"]:
+                spill_at[t][i] = min(spill_at[t].get(i, 99), k)
+    spill_mh = sorted({i for t in tags for i in spill_at[t]})
+    capk = ladder.index(mo["near_spill_max_buildout"]) + 1
+    floats = {}
+    for X in mo["float_freeboard_mm"]:
+        near = sorted({i for t in tags for i in range(n) if i not in spill_mh
+                       and min(v for v in fb[t][i][:capk + 1] if v is not None) < X})
+        def first_trip(t, i):
+            return next((k for k, v in enumerate(fb[t][i]) if v is not None and v < X), None)
+        locs = []
+        for i in spill_mh + near:
+            locs.append({
+                "i": i, "kind": "spill" if i in spill_mh else "near",
+                "minFb": round(min(min(v for v in fb[t][i] if v is not None) for t in tags)),
+                "trip": [first_trip(t, i) for t in tags],
+                "spill": [spill_at[t].get(i) for t in tags],
+                "fb": [[None if v is None else round(v) for v in fb[t][i]] for t in tags],
+            })
+        # spill manholes first, earliest spill first; then near-spill by least freeboard
+        locs.sort(key=lambda L: (L["kind"] != "spill",
+                                 min([v for v in L["spill"] if v is not None] or [99]), L["minFb"]))
+        floats[str(X)] = locs
+    min_fb = [round(min(min(v for v in fb[t][i] if v is not None) for t in tags)) for i in range(n)]
+    return {"settings": {k: mo[k] for k in ("float_freeboard_mm", "near_spill_max_buildout", "noncontact_clearance_mm")},
+            "catalogue": mo["catalogue"], "overCrown": sorted(over_crown), "minFreeboard": min_fb,
+            "spillManholes": spill_mh, "floats": floats}
 
 
 def register(st):
@@ -469,6 +554,9 @@ def register(st):
         ["B05", "Located", f"Detected, and the pattern of chosen sensors differs from every target in the same case whose first-surcharge manholes lie more than {r} m away along the pipes.", "default_radius_m in config.js; the bottleneck pipe is not recorded, so the first-surcharge manholes stand in"],
         ["B06", "Fullness rules", "f70 / f80: water newly reaches 70% / 80% of the lowest outlet pipe's bore above its invert, from Sim 3's stored depths and the published geometry. The geometry reproduces Sim 3's own surcharge flags in all 8 cases.", "fullness in config.js"],
         ["B07", "Weights", f"{st['weights']}: the published recommendation's weighting; the other (equal or by homes today) is published beside it.", "weights in config.js"],
+        ["B09", "Float locations", "A float switch goes in every manhole that spills in any published run (any case, before growth or at any build-out); optionally also where the water comes within the trip distance of the lid by 100% build-out.", "simulation.monitoring in config.js; docs/sim4_monitoring_points.md"],
+        ["B10", "Float trip level", "The float hangs a set distance below the lid (300 mm by default, 500 mm also published) so it trips before the water reaches the lid.", "float_freeboard_mm in config.js"],
+        ["B11", "Which level sensor", "A radar (or ultrasonic) level sensor under the lid where the water stays at least the non-contact clearance (500 mm) below the lid in every case and build-out, surcharged or not; a submersible pressure sensor where it comes closer, since a non-contact sensor cannot read water at its face.", "noncontact_clearance_mm in config.js; general practice; docs/sim4_monitoring_points.md"],
         ["B08", "Coarse ladder", "Seven steps only: a path that goes from no response anywhere to surcharge in one step cannot be warned by any sensor. Finer steps need new solves.", "Limitation"],
     ]
 
@@ -494,6 +582,11 @@ def headline(p):
         c = p["newSets"][rule][k - 1]["counts"]
         lines.append(f"{rule}: warnable {res['warnable']}, k={k} worst {e['worst']:.3f} avg {e['average']:.3f}  "
                      f"before {c['before']} same {c['same']} after {c['after']} never {c['never']}  ceiling {p['ceiling'][rule]}")
+    mon = p["monitoring"]
+    lines.append(f"spill manholes: {len(mon['spillManholes'])}; float locations " +
+                 ", ".join(f"{X} mm: {len(v)}" for X, v in mon["floats"].items()) +
+                 f"; manholes reaching the crown: {len(mon['overCrown'])}; needing a pressure sensor (water within "
+                 f"{mon['settings']['noncontact_clearance_mm']} mm of the lid): {sum(v < mon['settings']['noncontact_clearance_mm'] for v in mon['minFreeboard'])}")
     for rule in ["r10", "r25"]:
         e = p["published"][rule]["exact"][k - 1]
         lines.append(f"published exact {rule} k={k}: {e['counts']}, credited {e['credited']}, already surcharged {e['creditedSurcharged']}")

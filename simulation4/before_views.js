@@ -320,6 +320,36 @@ window.Before = (function () {
       '<p class="bvNote">The two weightings share ' + shared.length + " of " + k + " sensors. Equal counts every overload once; by homes counts an area's overload by the homes it has today, which is how Sim 3 spreads infill.</p>";
   }
 
-  return { COL, OUTCOME, RULE_LABEL, NEW_RULES, responders, targets, warnSet, firstStep, evaluate, outcomes, credited, sets, kFull, pathRows,
+  // V9. Spill floats: freeboard in one case, before growth and at each build-out (the worst of
+  // the eight areas' build-outs at each step).
+  function floatGrid(locs, X, ci) {
+    const L = B().ladder, cw = 46, rh = 19, lab = 150, T = 18, W = lab + cw * (L.length + 1) + 8, H = T + rh * locs.length + 6;
+    let g = svgOpen(W, H, "Least freeboard at each float location by build-out");
+    ["now"].concat(L.map(f => Math.round(f * 100) + "%")).forEach((t, k) => { g += txt(lab + cw * k + cw / 2, 12, t, { anchor: "middle", fs: 9.5, fill: "#6f81a3" }); });
+    locs.forEach((f, y) => {
+      const Y = T + rh * y;
+      g += txt(lab - 8, Y + rh / 2 + 3.5, "F" + (y + 1) + " " + mhId(f.i) + (f.kind === "spill" ? " \u00B7 spills" : " \u00B7 near"), { anchor: "end", fs: 10, fill: f.kind === "spill" ? "#e7edf7" : "#a9b8d4" });
+      for (let k = 0; k <= L.length; k++) {
+        const v = f.fb[ci][k];
+        const fill = v <= 0 ? COL.after : v < X ? COL.same : v < 2 * X ? "#3a4a66" : "#16233a";
+        const tip = mhId(f.i) + ", " + (k ? Math.round(L[k - 1] * 100) + "% build-out" : "before growth") + ": " + (v <= 0 ? "water at the lid (spills)" : v + " mm below the lid") + " in " + caseLabel(ci);
+        g += '<rect x="' + (lab + cw * k + 1) + '" y="' + (Y + 1) + '" width="' + (cw - 2) + '" height="' + (rh - 2) + '" rx="3" fill="' + fill + '" data-vt="' + esc(tip) + '"/>';
+        g += txt(lab + cw * k + cw / 2, Y + rh / 2 + 3.5, v <= 0 ? "spill" : v, { anchor: "middle", fs: 9, fill: v < X ? "#ffffff" : "#a9b8d4" });
+      }
+    });
+    return legend([[COL.after, "water at the lid: spills"], [COL.same, "within " + X + " mm: the float has tripped"], ["#3a4a66", "within " + 2 * X + " mm"], ["#16233a", "more room"]]) + g + "</svg>";
+  }
+
+  // V10. The catalogue of readings and sensors.
+  function catalogueTable(cat) {
+    const r = cat.readings, s = cat.sensors;
+    return '<table class="sm cat"><tr><th>Reading</th><th>For</th><th>How</th><th>Sensors</th><th>On the map</th></tr>' +
+      Object.keys(r).map(k => "<tr><td><b>" + esc(r[k].name) + "</b></td><td>" + esc(r[k].purpose) + "</td><td>" + esc(r[k].how) + "</td><td>" + r[k].sensors.map(x => esc(s[x].name)).join(", ") + "</td><td>" +
+        (r[k].status === "placed" ? '<span style="color:#7ee2bf">placed</span>' : '<span style="color:#a9b8d4">not placed yet</span>') + "</td></tr>").join("") + "</table>" +
+      '<table class="sm cat" style="margin-top:10px"><tr><th>Sensor</th><th>Good at</th><th>Limits</th><th>Mounting</th></tr>' +
+      Object.keys(s).map(k => "<tr><td><b>" + esc(s[k].name) + "</b></td><td>" + esc(s[k].good) + "</td><td>" + esc(s[k].limits) + "</td><td>" + esc(s[k].mount) + "</td></tr>").join("") + "</table>";
+  }
+
+  return { floatGrid, catalogueTable, COL, OUTCOME, RULE_LABEL, NEW_RULES, responders, targets, warnSet, firstStep, evaluate, outcomes, credited, sets, kFull, pathRows,
     ladderGrid, creditBars, curves, outcomeBars, marginStrip, signatures, ruleCompare, weighting, caseLabel, areaId, stepPct };
 })();

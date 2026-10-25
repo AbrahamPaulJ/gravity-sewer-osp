@@ -116,4 +116,28 @@ Every rule is stated on the page, and the card names the rule that applied to th
 
 ## 7. Changes during implementation
 
-(Filled in as the work proceeds.)
+1. **Which level sensor: clearance below the lid, not "reaches the crown".** As first written, the
+   rule recommended a pressure sensor wherever the water reaches the outlet pipe's crown. That is
+   147 manholes, including all five chosen level points, since each surcharges in some extreme
+   case. But a non-contact sensor under the lid keeps reading a surcharged manhole as long as the
+   water stays clear of its face. The rule is now: radar (or ultrasonic) where the water stays at
+   least `noncontact_clearance_mm` (500 mm) below the lid in every case and build-out; a
+   submersible pressure sensor where it comes closer. That is 47 manholes. With 5 sensors, 4 of the
+   level points get radar and 1 gets pressure. The card says whether the radar must read a
+   surcharged shaft.
+2. **The 150 mm alarm rule** recommends a float switch at 150 mm above the floor, as Sim 3 did, with
+   a level sensor as the alternative.
+3. **Sim 4 has its own copy of the map renderer** (`simulation4/growth_3d.js`). The one change:
+   `paint()` takes typed marks, so level and float pins differ in colour, shape and label. Sim 3's
+   renderer is unchanged.
+4. **The spill-float grid shows one case at a time** (the dashboard's Case selector), taking the
+   area whose growth brings the water closest to the lid. Taking the worst over all cases hid the
+   difference between Design wet (room to spare) and the wettest cases (spilling before growth).
+5. **Labels.** "S1, S2" became L1, L2 everywhere on the page, including the summary and the cards.
+   The simple view's step 4 is now "Monitoring" and counts the floats beside the level sensors.
+
+**As built:**
+- 7 spill manholes.
+- Float locations: 21 at 300 mm and 43 at 500 mm.
+- 47 manholes need a pressure sensor at 500 mm clearance.
+- The suite recomputes all of these from Sim 3's rows and the geometry: 100 checks pass.
