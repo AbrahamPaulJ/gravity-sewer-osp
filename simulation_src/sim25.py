@@ -2,8 +2,9 @@
 """
 sim25.py - Sim 2.5: growth and sensor placement on the council network, EPA SWMM.
 
-The canonical list of every assumption and constant below is
-simulation/Assumptions_Register.xlsx; the row IDs in comments (L4, P02, X6 ...) point there.
+The row IDs in comments (L4, P03, X6 ...) point to the assumptions register on the Simulation
+2.5 page (its Assumptions tab), renumbered and split into sections on 25 Oct 2026. The working
+repository's simulation/Assumptions_Register.xlsx used the earlier numbering.
 Sources: docs/15_sim25_research.md. Method position: docs/16_method_A6_DRAFT.md.
 
 WHAT IT MODELS
@@ -12,7 +13,7 @@ Two models built from the same council network, used together ("nesting", X4):
 
     whole    every council pipe draining to node 606, where the council data ends, plus the
              three pump-station catchments (L7) and any pipe that leaves the domain (own
-             outfall). Outfall at 606 is FREE or a FIXED water level (X6, P31).
+             outfall). Outfall at 606 is FREE or a FIXED water level (X6, P09).
     segment  the study catchment draining to node 583 (71 manholes, the only growth sites and
              sensor candidates, X2), with its outlet pipe discharging at the water level the
              whole model settled to there.
@@ -46,18 +47,18 @@ DOMAIN_END = 606            # X1: node where the council data ends
 CFG = osp_config.load()
 _SIM, _LOADS = CFG["simulation"], CFG["loads"]
 
-SEGMENT_OUTLET = _SIM["segment_outlet_node"]                 # P22 / X2: manhole A
+SEGMENT_OUTLET = _SIM["segment_outlet_node"]                 # P21 / X2: manhole A
 
 PEOPLE_PER_CONNECTION = _LOADS["people_per_connection"]       # P01: people / connections (ABS 2021)
 PEOPLE_PER_NEW_DWELLING = _LOADS["people_per_new_dwelling"]   # G4: ABS 2021 average household size
-LITRES_PER_PERSON_DAY = _LOADS["litres_per_person_day"]       # P01b
-PF_NOMINAL = _LOADS["peak_factor"]                            # P02
-# R9: the overnight trough of the daily cycle, x average sewage flow. The peak end is the peak
+LITRES_PER_PERSON_DAY = _LOADS["litres_per_person_day"]       # P02
+PF_NOMINAL = _LOADS["peak_factor"]                            # P03
+# R3: the overnight trough of the daily cycle, x average sewage flow. The peak end is the peak
 # factor itself, so the existing runs ARE the peak of the day.
 TROUGH_FACTOR = _LOADS["trough_factor"]
 
 # The cases are config.js's simulation.case_sets[case_set] and nowhere else.
-# P04: I&I rate, L/s per 100 m. 0.11 meets the design envelope implied by the utility's own
+# P05: I&I rate, L/s per 100 m. 0.11 meets the design envelope implied by the utility's own
 # DN225 rating (docs/15 s2.3); the others are multiples beyond design.
 CASES_FILE = osp_config.PATH
 
@@ -104,12 +105,12 @@ STUDY_AREAS = {"segment", "whole"}
 CASE_CONFIG = None     # set below, once Case exists to validate against
 WEATHER = []
 
-# P26: sensitivity only; nominal is uniform. Upper bound of each era (construction year), weight.
+# P08: sensitivity only; nominal is uniform. Upper bound of each era (construction year), weight.
 AGE_BANDS = [tuple(b) for b in CFG["pipes"]["infiltration_weight_by_age"]["bands"]]
 
 DETECT_DEPTH_M = _SIM["alarm_depth_mm"] / 1000.0             # G6: the operator's low alarm, depth above invert (Do 2023)
-GROWTH_DWELLINGS = list(_SIM["growth_dwellings"])            # P05
-STRESS_DWELLINGS = _SIM["stress_dwellings"]                  # P05 stress case
+GROWTH_DWELLINGS = list(_SIM["growth_dwellings"])            # P10
+STRESS_DWELLINGS = _SIM["stress_dwellings"]                  # P10 stress case
 RM_SNAP_M = 12.0                    # rising main end to network node (measured: <= 11.4 m)
 
 
@@ -120,18 +121,18 @@ def replace_node(n, name, kind, max_depth):
 
 
 def harmon(pop):
-    """P02 high case. pop in people."""
+    """P03 high case. pop in people."""
     return 1.0 + 14.0 / (4.0 + math.sqrt(max(pop, 1.0) / 1000.0))
 
 
 @dataclass(frozen=True)
 class Case:
-    ii: float = 0.11            # P04
-    pf: str = "flat"            # P02: flat | harmon
-    age: str = "uniform"        # L5 / P26: uniform | weighted
-    bfac: float = 1.0           # P25
-    stage: float | None = None  # P31: m above the 606 invert; None = free outfall
-    hour: str = "peak"          # R9: peak | trough of the daily sewage cycle
+    ii: float = 0.11            # P05
+    pf: str = "flat"            # P03: flat | harmon
+    age: str = "uniform"        # L5 / P08: uniform | weighted
+    bfac: float = 1.0           # P07
+    stage: float | None = None  # P09: m above the 606 invert; None = free outfall
+    hour: str = "peak"          # R3: peak | trough of the daily sewage cycle
 
     def tag(self):
         st = "free" if self.stage is None else f"{self.stage:.3f}"
@@ -167,7 +168,7 @@ def boundary_entries(net):
     """L4 and X8: every point where water from outside the council data enters it.
 
     Returns a list of dicts: node (network node id where it enters), kind, length_m of outside
-    (or disconnected council) pipe behind it, connections behind it (estimated from P24 for
+    (or disconnected council) pipe behind it, connections behind it (estimated from P06 for
     statewide pipes, counted for council pipes), and the id that identifies it.
     """
     if "entries" in _NET:
@@ -181,7 +182,7 @@ def boundary_entries(net):
     rep = json.load(open(os.path.join(HERE, "results", "overlap", "overlap_report.json"),
                          encoding="utf-8"))
 
-    # Connection density by size class, measured on council pipes (P24).
+    # Connection density by size class, measured on council pipes (P06).
     classes = (250, 450)
     L, D = [0.0] * 3, [0] * 3
     for p in net.pipes:

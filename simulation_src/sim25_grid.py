@@ -48,7 +48,7 @@ WHOLE_RISE_FLOOR_MM = 1.0
 MINUTES = 480            # R2: settled within 0.2 mm by 480 min at every weather level tested
 NEST_MAX_II = 0.11       # X4: nesting validated up to design wet only
 CORRIDOR_BUFFER_M = 25.0
-CORRIDOR_SIZES = list(sim25.CFG["simulation"]["corridor_dwellings"])   # P05; config.js
+CORRIDOR_SIZES = list(sim25.CFG["simulation"]["corridor_dwellings"])   # P10; config.js
 
 
 def cases(which):
