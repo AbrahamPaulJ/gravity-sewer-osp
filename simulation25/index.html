@@ -25,6 +25,20 @@ html,body{margin:0;height:100%}
 body{background:var(--bg); color:var(--ink);
   font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;
   display:grid; grid-template-columns:var(--side) 6px 1fr var(--rside); height:100vh; overflow:hidden}
+/* The top bar and the two side panels fold away, as in Simulation 3: a tab on each of the map's
+   edges toggles one of these classes, and the map takes the space. */
+body.lbHidden{grid-template-columns:1fr var(--rside)}
+body.lbHidden #side,body.lbHidden #grip{display:none}
+body.rbHidden{grid-template-columns:var(--side) 6px 1fr}
+body.lbHidden.rbHidden{grid-template-columns:1fr}
+body.rbHidden #mhSide{display:none}
+body.topHidden main>nav{display:none}
+.tab{position:absolute; z-index:8; font:inherit; font-size:10px; line-height:1; padding:0; cursor:pointer;
+  border:1px solid var(--line); background:#111c2fee; color:var(--dim)}
+.tab:hover{color:var(--accent); border-color:var(--accent)}
+#topTab{top:0; left:50%; transform:translateX(-50%); width:56px; height:15px; border-top:0; border-radius:0 0 8px 8px}
+#rTab{right:0; top:50%; transform:translateY(-50%); width:15px; height:56px; border-right:0; border-radius:8px 0 0 8px}
+#lTab{left:0; top:50%; transform:translateY(-50%); width:15px; height:56px; border-left:0; border-radius:0 8px 8px 0}
 aside{border-right:1px solid var(--line); background:var(--panel); padding:15px; overflow-y:auto}
 /* The right panel: the selected manhole as an asset. A grid column, not an overlay, so the map
    is sized to the space it really has and the network is never framed under the panel. */
@@ -370,6 +384,8 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   aside{border-right:0; border-bottom:1px solid var(--line); max-height:46vh}
   body{grid-template-rows:auto 6px 1fr auto}
   #mhSide{border-left:0; border-top:1px solid var(--line); max-height:40vh}
+  /* Stacked: a folded panel just drops out; the page stays one column. */
+  body.lbHidden,body.rbHidden{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -499,6 +515,9 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   <div id="stageWrap">
     <div id="stage"></div>
     <div id="homeKey"></div>
+    <button class="tab" id="topTab" title="Fold the top bar away">&#9650;</button>
+    <button class="tab" id="rTab" title="Fold the right panel away">&#9654;</button>
+    <button class="tab" id="lTab" title="Fold the left panel away">&#9664;</button>
   </div>
 
   <!-- The legend: one line by default, the full key on demand. Items marked data-ctx show
@@ -582,14 +601,14 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=101"></script>
-<script src="data/growth.js?v=101"></script>
-<script src="data/index.js?v=101"></script>
-<script src="growth_3d.js?v=101"></script>
-<script src="osp_core.js?v=101"></script>
-<script src="placement.js?v=101"></script>
-<script src="growth_est.js?v=101"></script>
-<script src="growth_ui.js?v=101"></script>
+<script src="data/catchment.js?v=102"></script>
+<script src="data/growth.js?v=102"></script>
+<script src="data/index.js?v=102"></script>
+<script src="growth_3d.js?v=102"></script>
+<script src="osp_core.js?v=102"></script>
+<script src="placement.js?v=102"></script>
+<script src="growth_est.js?v=102"></script>
+<script src="growth_ui.js?v=102"></script>
 <script type="module">
   GrowthUI.init();
 </script>

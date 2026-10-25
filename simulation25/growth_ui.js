@@ -865,6 +865,21 @@ window.GrowthUI = (function () {
     document.addEventListener("keydown", e => { if (e.key === "Escape") set(false); });
   }
 
+  /* The fold tabs on the map's edges, as in Simulation 3: the top bar, the left panel and the
+     right panel each fold away and come back; the map is resized to the space it gains. */
+  const fold = { top: true, lb: true, rb: true };
+  function setFold(which, on) {
+    fold[which] = on;
+    document.body.classList.toggle({ rb: "rbHidden", lb: "lbHidden", top: "topHidden" }[which], !on);
+    $("#rTab").innerHTML = fold.rb ? "&#9654;" : "&#9664;";
+    $("#lTab").innerHTML = fold.lb ? "&#9664;" : "&#9654;";
+    $("#topTab").innerHTML = fold.top ? "&#9650;" : "&#9660;";
+    $("#rTab").title = fold.rb ? "Fold the right panel away" : "Bring the right panel back";
+    $("#lTab").title = fold.lb ? "Fold the left panel away" : "Bring the left panel back";
+    $("#topTab").title = fold.top ? "Fold the top bar away" : "Bring the top bar back";
+    Growth3D.resize($("#stage"));
+  }
+
   function renderBaseNote(c) {
     // Only facts about the case: how many manholes are over the alarm (alarm rule) or spill
     // before any growth. What a graded rule means is in the rule's (i) note, not repeated here.
@@ -1341,6 +1356,9 @@ window.GrowthUI = (function () {
       select(null);
     });
     $("#btn-info").onclick = showModal;
+    $("#topTab").onclick = () => setFold("top", !fold.top);
+    $("#lTab").onclick = () => setFold("lb", !fold.lb);
+    $("#rTab").onclick = () => setFold("rb", !fold.rb);
     $("#tab-ref").onclick = () => setTab($("#pane-ref").hidden ? "ref" : "map");
     $("#refClose").onclick = () => setTab("map");
     $("#tab-qa").onclick = () => setTab($("#pane-qa").hidden ? "qa" : "map");
