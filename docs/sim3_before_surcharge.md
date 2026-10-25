@@ -314,5 +314,5 @@ On the map, when the new method is selected:
 - Re-solving Sim 3's own objective reaches every published exact score under `r10`, `r25`, `r50` and
   `alarm`. The page's scoring and the tool's agree on all 400 published sets (suite).
 
-**Next:** level sensors with two more roles, capacity trend and spill guard, planned with measured
-viability in `docs/sim4_level_sensor_roles.md`.
+**Next:** monitoring points (where, what to monitor, which sensor), with level sensors for
+overcapacity and float switches for spills: `docs/sim4_monitoring_points.md`.

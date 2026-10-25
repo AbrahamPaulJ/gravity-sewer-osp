@@ -279,9 +279,9 @@ of sensors that respond tells far-apart overloads apart, and two new triggers fi
 reaches 70% or 80% of the outlet pipe's bore. No SWMM run: `tools/sim4_before.py` re-scores the
 published runs (`--check` to verify, `--publish` after changing `simulation.before_surcharge` in
 `config.js`). It needs the SciPy in the project's venv. The method, definitions and limits are in
-[`docs/sim3_before_surcharge.md`](docs/sim3_before_surcharge.md). The next step, level sensors that
-also track headroom at the bottleneck and guard the manholes that could spill, is planned in
-[`docs/sim4_level_sensor_roles.md`](docs/sim4_level_sensor_roles.md).
+[`docs/sim3_before_surcharge.md`](docs/sim3_before_surcharge.md). Each monitoring point says where, what to monitor and which sensor: level sensors for early
+warning of overcapacity, float switches for early warning of a spill
+([`docs/sim4_monitoring_points.md`](docs/sim4_monitoring_points.md)).
 
 **Pumps, now and next.** Every published result uses SWMM's ideal pumps, which pass on whatever
 reaches a wet well at once. Since 14 Oct 2026 a growth scenario may instead run the two modelled
