@@ -67,7 +67,7 @@
     "manning_n_fallback": 0.013,
     "min_slope": 0.0001,
     "infiltration_weight_by_age": {
-      "_note": "P26 / L5: in the age-weighted I&I case, a pipe's infiltration is multiplied by the weight of the first band whose upper construction year it falls under, then all weights are rescaled so total I&I is unchanged. Older pipes leak more. [upper year, weight].",
+      "_note": "P08 / L5: in the age-weighted I&I case, a pipe's infiltration is multiplied by the weight of the first band whose upper construction year it falls under, then all weights are rescaled so total I&I is unchanged. Older pipes leak more. [upper year, weight].",
       "bands": [[1929, 1.5], [1959, 1.2], [1989, 0.8], [9999, 0.5]]
     },
     "blockage_likelihood": {
@@ -88,7 +88,7 @@
     "litres_per_person_day": 200.0,
     "peak_factor": 2.0,
     "trough_factor": 0.2,
-    "_sources": "P01 2.81 = 8,023 people / 2,851 connections (ABS 2021); G4 2.3 = ABS 2021 household size; P01b 200 L/person/day (Barwon Water, WSAA supplement s3.2.2); P02 peak 2.0; R9 trough 0.2, the midpoint of 0.10-0.30 x ADF (UW CEE 481)."
+    "_sources": "P01 2.81 = 8,023 people / 2,851 connections (ABS 2021); G4 2.3 = ABS 2021 household size; P02 200 L/person/day (Barwon Water, WSAA supplement s3.2.2); P03 peak 2.0; the daily-cycle trough 0.2 (legacy register R9), the midpoint of 0.10-0.30 x ADF (UW CEE 481)."
   },
 
   "simulation": {
@@ -101,7 +101,7 @@
     "growth_dwellings": [10, 30, 80, 150],
     "stress_dwellings": 700,
     "corridor_dwellings": [80, 150, 390, 485],
-    "_dwellings": "P05: growth sizes added at one manhole, and the stress case; corridor sizes, of which 390 and 485 are the PlanSA 2021-41 medium and high projections.",
+    "_dwellings": "P10: growth sizes added at one manhole, and the stress case; corridor sizes, of which 390 and 485 are the PlanSA 2021-41 medium and high projections.",
     "alarm_depth_mm": 150,
     "_alarm_depth_mm": "G6: the operator's low alarm, depth above the pipe floor. Stored with every SWMM run, so changing it needs a re-run.",
     "detection_rises_mm": [10, 25, 50],
@@ -144,6 +144,6 @@
         }
       }
     },
-    "_case_sets": "weather: the nominal sweep, one case each; ii is P04, infiltration in L/s per 100 m of pipe. sensitivity: at_ii names the weather levels that get the variants; each variant overrides fields of a case and adds its label. Allowed fields in a variant's set: pf \"flat\" | \"harmon\" (peaking); age \"uniform\" | \"weighted\" (I&I by pipe age); bfac a multiplier on outside inflow, such as 0.5 or 1.5; stage metres above the outfall invert, or null for a free outfall; hour \"peak\" | \"trough\" of the daily cycle. at_ii may only name ii values listed in weather."
+    "_case_sets": "weather: the nominal sweep, one case each; ii is P05, infiltration in L/s per 100 m of pipe. sensitivity: at_ii names the weather levels that get the variants; each variant overrides fields of a case and adds its label. Allowed fields in a variant's set: pf \"flat\" | \"harmon\" (peaking); age \"uniform\" | \"weighted\" (I&I by pipe age); bfac a multiplier on outside inflow, such as 0.5 or 1.5; stage metres above the outfall invert, or null for a free outfall; hour \"peak\" | \"trough\" of the daily cycle. at_ii may only name ii values listed in weather."
   }
 };

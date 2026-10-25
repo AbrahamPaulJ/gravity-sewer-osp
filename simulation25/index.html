@@ -25,6 +25,20 @@ html,body{margin:0;height:100%}
 body{background:var(--bg); color:var(--ink);
   font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;
   display:grid; grid-template-columns:var(--side) 6px 1fr var(--rside); height:100vh; overflow:hidden}
+/* The top bar and the two side panels fold away, as in Simulation 3: a tab on each of the map's
+   edges toggles one of these classes, and the map takes the space. */
+body.lbHidden{grid-template-columns:1fr var(--rside)}
+body.lbHidden #side,body.lbHidden #grip{display:none}
+body.rbHidden{grid-template-columns:var(--side) 6px 1fr}
+body.lbHidden.rbHidden{grid-template-columns:1fr}
+body.rbHidden #mhSide{display:none}
+body.topHidden main>nav{display:none}
+.tab{position:absolute; z-index:8; font:inherit; font-size:10px; line-height:1; padding:0; cursor:pointer;
+  border:1px solid var(--line); background:#111c2fee; color:var(--dim)}
+.tab:hover{color:var(--accent); border-color:var(--accent)}
+#topTab{top:0; left:50%; transform:translateX(-50%); width:56px; height:15px; border-top:0; border-radius:0 0 8px 8px}
+#rTab{right:0; top:50%; transform:translateY(-50%); width:15px; height:56px; border-right:0; border-radius:8px 0 0 8px}
+#lTab{left:0; top:50%; transform:translateY(-50%); width:15px; height:56px; border-left:0; border-radius:0 8px 8px 0}
 aside{border-right:1px solid var(--line); background:var(--panel); padding:15px; overflow-y:auto}
 /* The right panel: the selected manhole as an asset. A grid column, not an overlay, so the map
    is sized to the space it really has and the network is never framed under the panel. */
@@ -281,8 +295,51 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 #pane-ref strong{color:var(--ink)}
 #pane-ref hr{border:0; border-top:1px solid var(--line); margin:18px 0}
 #pane-ref li{color:var(--dim); font-size:13px}
+/* The Findings tab reads like the Assumptions tab: the same headings and tables. */
+#pane-qa h1{font-size:19px; margin:18px 0 6px}
+#pane-qa h2{font-size:15px; margin:22px 0 8px; color:var(--accent);
+  border-bottom:1px solid var(--line); padding-bottom:5px}
+#pane-qa h3,#pane-qa h4{font-size:13.5px; margin:16px 0 6px}
+#pane-qa p{margin:8px 0; color:var(--dim); font-size:13px; max-width:none}
+#pane-qa table{border-collapse:collapse; margin:12px 0; font-size:12.5px; width:100%}
+#pane-qa th,#pane-qa td{border:1px solid var(--line); padding:6px 9px; text-align:left;
+  vertical-align:top; color:var(--dim)}
+#pane-qa th{background:var(--panel-2); color:var(--ink)}
+#pane-qa code{background:var(--panel-2); border:1px solid var(--line); border-radius:4px;
+  padding:1px 5px; font-size:12px}
+#pane-qa strong{color:var(--ink)}
+#pane-qa li{color:var(--dim); font-size:13px; max-width:none}
 #pane-ref .lead{background:var(--panel); border:1px solid var(--line); border-left:3px solid
   var(--accent); border-radius:8px; padding:13px 16px; margin:0 0 14px; max-width:78ch}
+/* The register's legend, which is also its filter (growth_ui.js wireRegister). */
+#pane-ref .regKey{background:var(--panel); border:1px solid var(--line); border-radius:8px;
+  padding:10px 14px 12px; margin:0 0 12px}
+#pane-ref .regKey p{margin:2px 0 8px}
+#pane-ref .regRow h4{margin:10px 0 6px; font-size:11px; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--faint)}
+#pane-ref .regGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:6px}
+#pane-ref .rf{font:inherit; text-align:left; cursor:pointer; padding:6px 9px; border-radius:6px;
+  background:var(--panel-2); border:1px solid var(--line); color:var(--dim)}
+#pane-ref .rf:hover{border-color:var(--accent)}
+#pane-ref .rf[aria-pressed="true"]{border-color:var(--accent); background:#0f2a40; color:var(--ink);
+  box-shadow:inset 3px 0 0 var(--accent)}
+#pane-ref .rf .rfTop{display:flex; gap:6px; align-items:baseline; font-size:12.5px; color:var(--ink)}
+#pane-ref .rf .rfTop b{color:var(--accent)}
+#pane-ref .rf .rfN{margin-left:auto; font-size:11px; color:var(--faint)}
+#pane-ref .rf .rfDesc{display:block; font-size:11px; line-height:1.35; margin-top:2px}
+#pane-ref .regBar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px}
+#pane-ref .regBar input{font:inherit; font-size:12.5px; padding:5px 9px; min-width:220px; flex:1;
+  max-width:360px; background:var(--panel-2); color:var(--ink); border:1px solid var(--line); border-radius:6px}
+#pane-ref .regBar span{font-size:12px; color:var(--faint)}
+#pane-ref .regBar button{font:inherit; font-size:12px; padding:4px 10px; cursor:pointer;
+  background:none; color:var(--accent); border:1px solid var(--accent); border-radius:6px}
+#pane-ref tr[hidden],#pane-ref table[hidden]{display:none}
+/* The register's sections (h3) and sub-sections (h4), so the two levels read apart. */
+#pane-ref .regBody h3{font-size:15px; margin:26px 0 2px; color:var(--accent);
+  border-bottom:1px solid var(--line); padding-bottom:5px}
+#pane-ref .regBody h3+p{margin:4px 0 6px}
+#pane-ref .regBody h4{font-size:12px; margin:14px 0 2px; color:var(--ink); font-weight:600}
+#pane-ref .regBody h3[hidden],#pane-ref .regBody h4[hidden],#pane-ref .regBody p[hidden]{display:none}
 #modal{position:fixed; inset:0; background:rgba(4,8,15,.72); display:flex;
   align-items:center; justify-content:center; padding:24px; z-index:50}
 #modal[hidden]{display:none}
@@ -327,6 +384,8 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   aside{border-right:0; border-bottom:1px solid var(--line); max-height:46vh}
   body{grid-template-rows:auto 6px 1fr auto}
   #mhSide{border-left:0; border-top:1px solid var(--line); max-height:40vh}
+  /* Stacked: a folded panel just drops out; the page stays one column. */
+  body.lbHidden,body.rbHidden{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -456,6 +515,9 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
   <div id="stageWrap">
     <div id="stage"></div>
     <div id="homeKey"></div>
+    <button class="tab" id="topTab" title="Fold the top bar away">&#9650;</button>
+    <button class="tab" id="rTab" title="Fold the right panel away">&#9654;</button>
+    <button class="tab" id="lTab" title="Fold the left panel away">&#9664;</button>
   </div>
 
   <!-- The legend: one line by default, the full key on demand. Items marked data-ctx show
@@ -539,14 +601,14 @@ table.ass td.id{font-weight:600; white-space:nowrap; width:1%}
 
 <!-- ?v= matches the landing page's iframe key. Bump both together on every publish,
      otherwise a new page can run with scripts the browser cached from the old one. -->
-<script src="data/catchment.js?v=93"></script>
-<script src="data/growth.js?v=93"></script>
-<script src="data/index.js?v=93"></script>
-<script src="growth_3d.js?v=93"></script>
-<script src="osp_core.js?v=93"></script>
-<script src="placement.js?v=93"></script>
-<script src="growth_est.js?v=93"></script>
-<script src="growth_ui.js?v=93"></script>
+<script src="data/catchment.js?v=102"></script>
+<script src="data/growth.js?v=102"></script>
+<script src="data/index.js?v=102"></script>
+<script src="growth_3d.js?v=102"></script>
+<script src="osp_core.js?v=102"></script>
+<script src="placement.js?v=102"></script>
+<script src="growth_est.js?v=102"></script>
+<script src="growth_ui.js?v=102"></script>
 <script type="module">
   GrowthUI.init();
 </script>

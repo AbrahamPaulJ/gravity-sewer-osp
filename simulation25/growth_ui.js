@@ -865,6 +865,21 @@ window.GrowthUI = (function () {
     document.addEventListener("keydown", e => { if (e.key === "Escape") set(false); });
   }
 
+  /* The fold tabs on the map's edges, as in Simulation 3: the top bar, the left panel and the
+     right panel each fold away and come back; the map is resized to the space it gains. */
+  const fold = { top: true, lb: true, rb: true };
+  function setFold(which, on) {
+    fold[which] = on;
+    document.body.classList.toggle({ rb: "rbHidden", lb: "lbHidden", top: "topHidden" }[which], !on);
+    $("#rTab").innerHTML = fold.rb ? "&#9654;" : "&#9664;";
+    $("#lTab").innerHTML = fold.lb ? "&#9664;" : "&#9654;";
+    $("#topTab").innerHTML = fold.top ? "&#9650;" : "&#9660;";
+    $("#rTab").title = fold.rb ? "Fold the right panel away" : "Bring the right panel back";
+    $("#lTab").title = fold.lb ? "Fold the left panel away" : "Bring the left panel back";
+    $("#topTab").title = fold.top ? "Fold the top bar away" : "Bring the top bar back";
+    Growth3D.resize($("#stage"));
+  }
+
   function renderBaseNote(c) {
     // Only facts about the case: how many manholes are over the alarm (alarm rule) or spill
     // before any growth. What a graded rule means is in the rule's (i) note, not repeated here.
@@ -1074,8 +1089,132 @@ window.GrowthUI = (function () {
       "rests on, with its value, how firm it is and its source. " + nCases() + " cases vary " +
       "the ones no data pins yet. Sources cited as docs/ or papers/ are in the project's " +
       "working repository, not this one.</p></div>" +
-      markdown(GROWTH_INDEX.docs.assumptions);
+      '<div class="regBody">' + markdown(GROWTH_INDEX.docs.assumptions) + "</div>";
+    wireRegister($("#ref .regBody"));
     $("#ref").dataset.done = "1";
+  }
+
+  /* The register's legend, which is also its filter. An assumption's ID starts with the
+     letters of its group; Status says how the value is known, Risk how much the results
+     depend on it. Pick any legend entries to narrow the table (entries in one row are
+     either-or, the rows together both-and), or search the text. */
+  const REG_GROUPS = [
+    ["D", "Data", "the council data, and how it is read"],
+    ["N", "Network", "how pipe ends and points become joined nodes and manholes"],
+    ["X", "Extent", "where the model starts and stops: domain, study area, boundaries"],
+    ["L", "Loads and pumps", "what flows in (sewage, I&I, outside inflows) and the pump stations"],
+    ["P", "Parameters", "the numbers the other rows use"],
+    ["H", "Hydraulics", "how SWMM represents the physics"],
+    ["SW", "SWMM options", "the settings in the SWMM input file"],
+    ["R", "Run settings", "how a run is done and judged"],
+    ["G", "Growth and placement", "what a scenario is, when a sensor sees it, how sensors are chosen"],
+    ["C", "Configuration", "where the settings live"]];
+  const REG_STATUS = [
+    ["M", "Measured", "read directly from the data or a run"],
+    ["D", "Derived", "worked out from the data, or from a cited standard or method"],
+    ["A", "Assumed", "our choice, with weak or no evidence"]];
+  const REG_RISK = [
+    ["Low", "Low", "the results barely move if it is wrong"],
+    ["Medium", "Medium", "some results shift; the main findings hold"],
+    ["High", "High", "could change which manholes are chosen, or the headline numbers"]];
+
+  function wireRegister(root) {
+    // The register may be one table or several, under section (h3) and sub-section (h4)
+    // headings; a heading, and the description under it, hides when none of its rows show.
+    const tables = [...root.querySelectorAll("table")];
+    if (!tables.length) return;
+    const rows = [];
+    for (const table of tables) {
+      const head = [...table.querySelectorAll("thead th")].map(th => th.textContent.trim().toLowerCase());
+      const iId = head.indexOf("id"), iSt = head.indexOf("status"), iRk = head.indexOf("risk");
+      if (iId < 0 || iSt < 0 || iRk < 0) return;
+      for (const tr of table.querySelectorAll("tbody tr")) {
+        const td = tr.children, id = td[iId].textContent.trim();
+        rows.push({ tr, table, g: (id.match(/^[A-Z]+/) || ["?"])[0], s: td[iSt].textContent.trim(),
+                    r: td[iRk].textContent.trim(), text: tr.textContent.toLowerCase(),
+                    stCell: td[iSt], rkCell: td[iRk] });
+      }
+    }
+    // Sections, in document order: each heading owns the description and tables after it,
+    // up to the next heading of its level or higher.
+    const blocks = [];
+    let sec = null, sub = null;
+    for (const el of root.children) {
+      if (el.tagName === "H3") { sec = { els: [el], tables: [] }; sub = null; blocks.push(sec); }
+      else if (el.tagName === "H4") { sub = { els: [el], tables: [] }; blocks.push(sub); }
+      else if (el.tagName === "TABLE") { if (sec) sec.tables.push(el); if (sub) sub.tables.push(el); }
+      else if (sub) sub.els.push(el);
+      else if (sec) sec.els.push(el);
+    }
+    // A group the register uses but the legend does not name still gets an entry.
+    const groups = REG_GROUPS.filter(([c]) => rows.some(x => x.g === c));
+    [...new Set(rows.map(x => x.g))].filter(c => !REG_GROUPS.some(([k]) => k === c))
+      .forEach(c => groups.push([c, "Other", "rows with this prefix"]));
+    const name = { s: {}, r: {} };
+    REG_STATUS.forEach(([c, n, d]) => { name.s[c] = n + ": " + d; });
+    REG_RISK.forEach(([c, n, d]) => { name.r[c] = n + " risk: " + d; });
+    rows.forEach(x => { x.stCell.title = name.s[x.s] || ""; x.rkCell.title = name.r[x.r] || ""; });
+    const entry = (k, [code, label, desc]) => {
+      const n = rows.filter(x => x[k] === code).length;
+      return n ? '<button class="rf" data-k="' + k + '" data-v="' + esc(code) + '" aria-pressed="false">' +
+        "<span class=rfTop><b>" + esc(code) + "</b> " + (label !== code ? esc(label) : "") +
+        '<span class="rfN">' + n + "</span></span><span class=rfDesc>" + esc(desc) + "</span></button>" : "";
+    };
+    const keyRow = (title, k, list) => '<div class="regRow"><h4>' + title + '</h4><div class="regGrid">' +
+      list.map(e => entry(k, e)).join("") + "</div></div>";
+    const box = document.createElement("div");
+    box.className = "regKey";
+    box.innerHTML = "<p><strong>How to read the register.</strong> The letters at the start of " +
+      "an ID name its group. Status says how the value is known; risk says how much the results " +
+      "depend on it. Click any entry to show only those rows; click again to undo.</p>" +
+      keyRow("Group (the ID's letters)", "g", groups) +
+      keyRow("Status", "s", REG_STATUS) +
+      keyRow("Risk", "r", REG_RISK) +
+      '<div class="regBar"><input type="search" id="regQ" placeholder="Search the register…" ' +
+      'aria-label="Search the register"> <span id="regCount"></span> ' +
+      '<button id="regClear" hidden>Clear filters</button></div>';
+    root.insertBefore(box, root.firstChild);
+    const none = document.createElement("p");
+    none.className = "quiet"; none.hidden = true;
+    none.textContent = "No assumption matches these filters.";
+    root.appendChild(none);
+
+    const on = { g: new Set(), s: new Set(), r: new Set() };
+    let q = "";
+    const apply = () => {
+      let shown = 0;
+      const seen = new Set();
+      rows.forEach(x => {
+        const ok = ["g", "s", "r"].every(k => !on[k].size || on[k].has(x[k])) &&
+                   (!q || x.text.includes(q));
+        x.tr.hidden = !ok;
+        if (ok) { shown++; seen.add(x.table); }
+      });
+      tables.forEach(t => { t.hidden = !seen.has(t); });
+      blocks.forEach(b => {
+        const vis = b.tables.some(t => seen.has(t));
+        b.els.forEach(el => { el.hidden = !vis; });
+      });
+      none.hidden = !!shown;
+      $("#regCount").textContent = "Showing " + shown + " of " + rows.length + " assumptions";
+      $("#regClear").hidden = !(q || on.g.size || on.s.size || on.r.size);
+    };
+    box.addEventListener("click", e => {
+      const b = e.target.closest(".rf");
+      if (!b) return;
+      const set = on[b.dataset.k], v = b.dataset.v;
+      if (set.has(v)) set.delete(v); else set.add(v);
+      b.setAttribute("aria-pressed", String(set.has(v)));
+      apply();
+    });
+    $("#regQ").addEventListener("input", e => { q = e.target.value.trim().toLowerCase(); apply(); });
+    $("#regClear").onclick = () => {
+      Object.values(on).forEach(s => s.clear());
+      q = ""; $("#regQ").value = "";
+      box.querySelectorAll(".rf").forEach(b => b.setAttribute("aria-pressed", "false"));
+      apply();
+    };
+    apply();
   }
 
   /* Enough markdown for the register: headings, tables, code, bold, rules, lists. */
@@ -1217,6 +1356,9 @@ window.GrowthUI = (function () {
       select(null);
     });
     $("#btn-info").onclick = showModal;
+    $("#topTab").onclick = () => setFold("top", !fold.top);
+    $("#lTab").onclick = () => setFold("lb", !fold.lb);
+    $("#rTab").onclick = () => setFold("rb", !fold.rb);
     $("#tab-ref").onclick = () => setTab($("#pane-ref").hidden ? "ref" : "map");
     $("#refClose").onclick = () => setTab("map");
     $("#tab-qa").onclick = () => setTab($("#pane-qa").hidden ? "qa" : "map");

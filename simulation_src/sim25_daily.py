@@ -3,7 +3,7 @@
 sim25_daily.py - the two ends of the day, and what they are (and are not) good for.
 
 The day is represented by its two extremes as steady states: PEAK (sewage x peak factor, the
-grid's condition) and TROUGH (sewage x 0.2, register R9). Sewage changes over hours, slower
+grid's condition) and TROUGH (sewage x 0.2, the legacy register's R9). Sewage changes over hours, slower
 than water crosses this network, so each extreme settles quasi-steadily. I&I is constant.
 
 WHAT THIS CANNOT DO: set the true detection threshold. Growth is detected by comparing the

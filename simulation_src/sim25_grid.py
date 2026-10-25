@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sim25_grid.py - the Sim 2.5 growth grid and placement robustness (register G3 to G14).
+sim25_grid.py - the Sim 2.5 growth grid and placement robustness (register G3 to G11; the corridor, G14, is in the legacy register).
 
 For each CASE (weather level x peak factor x I&I distribution x boundary factor, G10), every
 study manhole x every growth size, then placement by greedy set cover per detection rule (G6:
@@ -48,7 +48,7 @@ WHOLE_RISE_FLOOR_MM = 1.0
 MINUTES = 480            # R2: settled within 0.2 mm by 480 min at every weather level tested
 NEST_MAX_II = 0.11       # X4: nesting validated up to design wet only
 CORRIDOR_BUFFER_M = 25.0
-CORRIDOR_SIZES = list(sim25.CFG["simulation"]["corridor_dwellings"])   # P05; config.js
+CORRIDOR_SIZES = list(sim25.CFG["simulation"]["corridor_dwellings"])   # P10; config.js
 
 
 def cases(which):
