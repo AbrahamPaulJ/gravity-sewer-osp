@@ -44,6 +44,39 @@ python sim25_daily.py                                # the daily-cycle check
 python test_simulation.py                            # the test suite
 ```
 
+### Growth scenario families: infill and combined (G15)
+
+The grid adds growth at one manhole at a time. `scenarios.py` adds growth in patterns, as
+families of scenarios set in `config.js` (`simulation.growth_scenarios`), and runs each under
+every case on the whole domain, with the grid's settling time and detection rules:
+
+- **infill**: a share of the published connected properties (2,565 in the whole area) is
+  redeveloped, each lot becoming `dwellings_per_lot` dwellings. The new load sits where the
+  lot's load already sits. Which lots redevelop is drawn `draws` times per share, seeded.
+- **combined**: infill at one share plus one block of new dwellings at one candidate manhole.
+  Draw r's infill is exactly infill draw r, so the difference between the families is the
+  block alone.
+
+```
+python scenarios.py --plan                           # families, scenario counts, run time
+python scenarios.py --describe                       # dwellings and sites per scenario, no SWMM
+python scenarios.py --run --cases all --workers 6 --resume    # 655 runs; see below for time
+python scenarios.py --score                          # transfer matrix -> evaluation.json
+```
+
+Results go to `results/sim25/grid_whole/scenarios/<case>/summary.json`, rows shaped like the
+grid's. `--score` treats the grid's own runs as the family `single`, chooses nested 1-to-10
+sensor sets on each family with the builder's greedy (best worst case, or best average), and
+scores each set on every family: the **transfer matrix**, in `scenarios/evaluation.json`. Its
+diagonal is in-sample; the rest says how a placement chosen for one kind of growth does on
+another. It also reports how far each case's scenario baseline sits from the grid's, since a
+model change between the two runs would make the comparison unfair.
+
+Run time: `--plan` assumes the whole-area grid's 35 s a run. The first scenario case (Dry,
+131 runs) took 1,710 s on 11 workers under WSL with the repository on a Windows drive, about
+144 s a run, so allow about 2.5 h for five cases there. The second case was stopped when the
+machine ran short of memory with 11 workers; use fewer.
+
 ### Growth scenarios on the page, and the local SWMM runner
 
 The page's **Growth → Your scenario** builds a scenario of several manholes, each with its own

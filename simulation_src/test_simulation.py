@@ -178,6 +178,40 @@ def main():
     except ValueError:
         check("an unknown pump station is refused", True)
 
+    print("growth scenarios (G15)")
+    import scenarios
+    lot_nodes = scenarios.lots(whole)
+    per_lot_lps = sim25.PEOPLE_PER_CONNECTION * sim25.LITRES_PER_PERSON_DAY / 86400.0 * whole.sew
+    check("one lot per property the baseline loads",
+          abs(len(lot_nodes) * per_lot_lps - whole.sewage_lps) < 1e-6, (len(lot_nodes), whole.sewage_lps))
+    g = scenarios.infill_draw(lot_nodes, 0.1, 3, 0, 7)
+    check("infill adds dwellings_per_lot - 1 at round(share x lots) lots",
+          sum(g.values()) == 2 * int(np.floor(0.1 * len(lot_nodes) + 0.5)), sum(g.values()))
+    allg = scenarios.infill_draw(lot_nodes, 1.0, 2, 0, 7)
+    check("infill at share 1 is uniform growth, one dwelling per lot where the lot sits",
+          allg == {n: lot_nodes.count(n) for n in set(lot_nodes)})
+    a, b = scenarios.generate(whole), scenarios.generate(whole)
+    check("scenarios are reproducible from the seed",
+          [(s.tag, s.growth_nodes) for s in a] == [(s.tag, s.growth_nodes) for s in b])
+    com = [s for s in a if s.family == "combined"]
+    ok = bool(com)
+    for s in com:
+        p = s.params
+        rest = dict(s.growth_nodes)
+        nid = whole.chambers[next(c for c in whole.candidates
+                                  if whole.nodes[c].manhole_id == p["block_site"])]
+        rest[nid] -= p["block"]
+        rest = {k: v for k, v in rest.items() if v}
+        ok &= rest == scenarios.infill_draw(lot_nodes, p["share"], p["dwellings_per_lot"],
+                                            p["draw"], scenarios.SPEC["seed"])
+    check("a combined draw is the same draw's infill plus its block", ok)
+    try:
+        scenarios.generate(whole, {"seed": 1, "infill": {"shares": [1.5], "dwellings_per_lot": 2,
+                                                         "draws": 1}})
+        check("a share above 1 is refused", False)
+    except ValueError:
+        check("a share above 1 is refused", True)
+
     shutil.rmtree(tmp, ignore_errors=True)
     print(f"\n{PASSES} passed, {len(FAILS)} failed")
     if FAILS:

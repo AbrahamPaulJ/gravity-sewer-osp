@@ -118,6 +118,12 @@
     "_republish_only": "detection_rises_mm and max_sensors are applied to the stored runs by the builder.",
     "max_sensors": 10,
     "scenario_default_dwellings": 50,
+    "growth_scenarios": {
+      "seed": 2026,
+      "infill": { "shares": [0.05, 0.1, 0.2], "dwellings_per_lot": 2, "draws": 30 },
+      "combined": { "infill_share": 0.05, "dwellings_per_lot": 2, "block_dwellings": [150, 300], "draws": 20 }
+    },
+    "_growth_scenarios": "G15, run by simulation_src/scenarios.py, results in <grid folder>/scenarios. infill: a share of the published connected properties is redeveloped, each lot becoming dwellings_per_lot dwellings (adding dwellings_per_lot - 1), drawn draws times per share. combined: infill at infill_share plus one block of block_dwellings new dwellings at one candidate manhole, drawn draws times per block size; draw r's infill is infill draw r at the same share. seed fixes every draw. Shares and lot size are declared, not from planning data: 0.05 of 2,565 lots is 128 new dwellings, about a third of the 390 PlanSA 2021-41 medium projection. Changing any of it needs a scenarios re-run.",
 
     "case_set": "five",
     "_case_set": "Allowed: the name of any set under case_sets (as committed, \"five\" | \"all_twelve\"). Which of case_sets below is run and published. Each case is one combination of what cannot be measured yet, and costs 1,641 whole-domain SWMM runs (about 87 min on 9 workers) in the whole area.",
