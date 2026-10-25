@@ -48,6 +48,28 @@ td:first-child{white-space:nowrap}
 <p class="sub">Every change to the site, newest first. Entries marked <span class="newb" style="margin:0">new</span> are the latest
 and carry the same violet accent on the pages they change.</p>
 
+<div class="entry new" id="corridors">
+  <div class="date">25 October 2026, later still</div>
+  <h2>Simulation 4: filling corridors, the new default placement <span class="newb">new</span></h2>
+  <p>Level sensors are now placed on the <b>filling corridors</b>: chains of manholes whose outlet pipe goes past 80% full as
+  growth is added, in any wet run, not only the runs that surcharge. These are the paths along which the network runs out of
+  room. Among them the sensors are still chosen to warn before the first manhole surcharges. The previous method stays on the
+  page as "Before surcharge, any manhole".</p>
+  <table>
+    <thead><tr><th>Change</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><span class="kind n">method</span>Filling corridors</td><td>The default: sensors only on corridor manholes, chosen exactly to warn before surcharge. Its sets are nearly nested, so adding a sensor keeps the earlier ones.</td></tr>
+      <tr><td><span class="kind n">map</span>Corridors button</td><td>Tints the corridor manholes violet and labels the busier ones C1, C2, ...; each level-sensor card names the corridor it sits on.</td></tr>
+      <tr><td><span class="kind n">evidence</span>How robust is it?</td><td>A new dashboard card scores both methods on a weather case and on a growth area they were not chosen on, corridors rebuilt each time: the nearest test of growth that was not simulated. With 5 sensors and a case held out, 23 of 25 held-out overloads warned against 21; with an area held out, 17 each.</td></tr>
+      <tr><td><span class="kind n">table</span>The corridors</td><td>A dashboard card lists every corridor: its manholes, areas, how many build-outs fill it, from what build-out, and the sensors on it.</td></tr>
+      <tr><td><span class="kind n">register</span>B12, B13</td><td>The filling-corridor rule and the held-out tests.</td></tr>
+    </tbody>
+  </table>
+  <p>Five ways of finding the paths to overcapacity were tested before choosing this one. Two did not work: a static
+  capacity screen from pre-growth depths, and pipe ratings. Both are written up in <code>docs/sim4_filling_corridors.md</code>.
+  No model was re-run.</p>
+</div>
+
 <div class="entry new" id="monitoring">
   <div class="date">25 October 2026, later</div>
   <h2>Simulation 4: monitoring points (where, what to monitor, which sensor) <span class="newb">new</span></h2>
@@ -154,7 +176,7 @@ and carry the same violet accent on the pages they change.</p>
 </div>
 </div>
 
-<script src="simulation4/data/before.js?v=2"></script>
+<script src="simulation4/data/before.js?v=3"></script>
 <script>
 // The Sim 4 headline figures, read from the published scoring rather than typed.
 (function (b) {

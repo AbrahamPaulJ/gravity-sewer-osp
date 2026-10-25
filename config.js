@@ -124,6 +124,8 @@
       "_default_radius_m": "Allowed: one of radii_m. The radius the page opens on.",
       "fullness": [0.7, 0.8],
       "_fullness": "Allowed: fractions above 0 and below 1. Rules f70, f80: water newly reaches this share of the manhole's lowest outlet pipe's bore, above that pipe's invert.",
+      "corridor_fill": 0.8,
+      "_corridor_fill": "Allowed: a fraction above 0 and below 1. Filling corridors (Sim 4's default method): a manhole whose outlet pipe goes from under this share of its bore to this share or more as growth is added, in any wet run, is on a corridor where capacity is being used up; level sensors are placed only on corridors. 0.8 tested best out of sample (docs/sim4_filling_corridors.md).",
       "weights": "equal",
       "_weights": "Allowed: \"equal\" | \"homes\". equal: every overloading build-out counts once. homes: by the homes its area has today, which is how Sim 3 spreads infill. The other is always published as a sensitivity."
     },

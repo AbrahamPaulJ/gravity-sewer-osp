@@ -76,9 +76,12 @@ def settings(cfg):
         raise ValueError(f"before_surcharge.fullness must be fractions between 0 and 1, not {full!r}")
     if w not in ("equal", "homes"):
         raise ValueError(f"before_surcharge.weights must be \"equal\" or \"homes\", not {w!r}")
+    th = b.get("corridor_fill")
+    if not isinstance(th, (int, float)) or not 0 < th < 1:
+        raise ValueError(f"before_surcharge.corridor_fill must be a fraction between 0 and 1, not {th!r}")
     return {"margin_steps": m, "radii_m": list(radii), "default_radius_m": r0,
             "fullness": list(full), "weights": w,
-            "max_sensors": int(cfg["simulation"]["max_sensors"])}
+            "max_sensors": int(cfg["simulation"]["max_sensors"]), "corridor_fill": th}
 
 
 def monitoring_settings(cfg, ladder):
@@ -161,6 +164,76 @@ def pipe_distances(geo, mh):
 
 # ── rules ───────────────────────────────────────────────────────────────────────────────
 
+def manhole_down(geo, chambers):
+    """The next manholes downstream of each manhole, through pipe ends that have none."""
+    ix = {nd["name"]: j for j, nd in enumerate(geo["nodes"])}
+    cidx = {ix[c]: i for i, c in enumerate(chambers)}
+    outs = defaultdict(list)
+    for li, u in enumerate(geo["up"]):
+        outs[u].append(li)
+    down = []
+    for c in chambers:
+        res, stack, seen = set(), [ix[c]], set()
+        while stack:
+            u = stack.pop()
+            for li in outs[u]:
+                d = geo["down"][li]
+                if d in seen:
+                    continue
+                seen.add(d)
+                if d in cidx:
+                    res.add(cidx[d])
+                else:
+                    stack.append(d)
+        down.append(sorted(res))
+    return down
+
+
+def fill_events(reg, mh, tags, cases, areas, theta):
+    """Filling events: manhole i's outlet pipe goes from below theta of its bore before growth to
+    theta or more in a growth run. {i: [(case, area, step), ...]}, the first step per build-out.
+    Uses every run of the given cases and areas, not only those that surcharge."""
+    ev = defaultdict(list)
+    for ci in cases:
+        t = tags[ci]
+        base = reg["base"][t]["depthMm"]
+        done = set()
+        for x in sorted(reg["rows"][t], key=lambda x: (x["r"], x["s"])):
+            if x["r"] not in areas:
+                continue
+            for i, v in x["rise"]:
+                g = mh[i]
+                if g["bore"] is None or (x["r"], i) in done:
+                    continue
+                f0 = (base.get(str(i), 0) - g["off"]) / g["bore"]
+                if f0 < theta <= f0 + v / g["bore"]:
+                    ev[i].append((ci, x["r"], x["s"]))
+                    done.add((x["r"], i))
+    return ev
+
+
+def corridors_of(ev, down):
+    """Filling manholes joined along the flow into corridors, most-filled first."""
+    members = set(ev)
+    parent = {i: i for i in members}
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+    for i in members:
+        for d in down[i]:
+            if d in members:
+                parent[find(i)] = find(d)
+    comp = defaultdict(list)
+    for i in members:
+        comp[find(i)].append(i)
+    out = [{"members": sorted(c), "builds": len({(ci, ri) for i in c for ci, ri, _ in ev[i]})} for c in comp.values()]
+    out.sort(key=lambda c: (-c["builds"], c["members"][0]))
+    return out
+
+
 def needs(reg, mh, tag, rule, full):
     """The rise (mm) at which each manhole responds under a rule in one case, or None where it
     cannot respond: already past the level before growth, or no outlet pipe. The fullness rules
@@ -195,14 +268,17 @@ def responders(row, need):
 
 # ── the optimisation ────────────────────────────────────────────────────────────────────
 
-def solve(n, groups, k, pairs=None):
+def solve(n, groups, k, pairs=None, allowed=None):
     """Exact placement of k sensors among n manholes.
 
     groups: per case, a list of (weight, D) for its targets, D the manholes that warn of it.
     pairs:  for locating, per case, the (a, b) positions of targets that must be told apart; a
             target then counts only if detected and separated from every one of them.
+    allowed: if given, only these manholes may hold a sensor (k is capped at their number).
     Maximises the worst case's weighted share, plus EPS times the average over cases. Returns
     the chosen manholes, sorted."""
+    if allowed is not None:
+        k = min(k, len(allowed))
     tg = [(c, w, D) for c, g in enumerate(groups) for w, D in g]
     start = np.cumsum([0] + [len(g) for g in groups])
     loc = pairs is not None
@@ -242,8 +318,12 @@ def solve(n, groups, k, pairs=None):
             A[r, j] = v
     integ = np.zeros(Z + 1)
     integ[:n] = 1
+    ub = np.ones(Z + 1)
+    if allowed is not None:
+        ub[:n] = 0
+        ub[sorted(allowed)] = 1
     res = milp(c_obj, constraints=[LinearConstraint(A.tocsr(), lo, hi)], integrality=integ,
-               bounds=Bounds(0, 1), options={"disp": False, "mip_rel_gap": 0})
+               bounds=Bounds(np.zeros(Z + 1), ub), options={"disp": False, "mip_rel_gap": 0})
     if not res.success:
         raise RuntimeError(f"HiGHS did not solve (k={k}): {res.message}")
     return sorted(int(i) for i in np.flatnonzero(res.x[:n] > 0.5))
@@ -320,6 +400,13 @@ def build():
             paths.append({"c": ci, "r": ri, "s": s_star, "F": F, "rows": rr})
     targets = [p for p in paths if p["s"] is not None]
     homes = {ri: a["dwellings"] for ri, a in enumerate(areas)}
+    # Filling corridors from every wet run (Dry has no overloads and barely moves).
+    down = manhole_down(geo, chambers)
+    wet = [ci for ci, c in enumerate(reg["cases"]) if c["ii"] > 0]
+    all_areas = set(range(len(areas)))
+    theta = st["corridor_fill"]
+    ev_all = fill_events(reg, mh, tags, wet, all_areas, theta)
+    corr_all = corridors_of(ev_all, down)
 
     def weight(p, scheme):
         return 1.0 if scheme == "equal" else float(homes[p["r"]])
@@ -397,6 +484,51 @@ def build():
                     S = solve(n, gr, k)
                     loo[tags[hold]].append({"k": k, "chosen": S, "score": round(evaluate(S, gh)[0], 4)})
         res["loo"] = loo
+
+        # Filling corridors: the same choice, with sensors only on manholes that fill past theta.
+        w0 = st["weights"]
+        res["corridor"] = []
+        for k in range(1, st["max_sensors"] + 1):
+            S = solve(n, g[w0], k, allowed=set(ev_all))
+            wv, av, per = evaluate(S, g[w0])
+            res["corridor"].append({"k": k, "chosen": S, "worst": round(wv, 4), "average": round(av, 4),
+                                    "perCase": [round(v, 4) for v in per]})
+
+        # Held-out tests for both methods. Candidates (corridors) and choices come from the
+        # training split only; the score is how many held-out warnable overloads are warned.
+        def grp(lists):
+            return [[(weight(p, w0), D[id(p)]) for p in lst] for lst in lists if lst]
+
+        def warned(S, ts):
+            S = set(S)
+            return sum(bool(D[id(p)] & S) for p in ts)
+        K = st["max_sensors"]
+        hold = {"case": {"warnable": 0, "before": [0] * K, "corridor": [0] * K, "rounds": 0},
+                "area": {"warnable": 0, "before": [0] * K, "corridor": [0] * K, "rounds": 0}}
+        if len(cases_used) > 1:
+            for hc in cases_used:
+                ts = tlist[hc]
+                train = grp([tlist[c] for c in cases_used if c != hc])
+                cand = set(fill_events(reg, mh, tags, [c for c in wet if c != hc], all_areas, theta))
+                hold["case"]["warnable"] += len(ts)
+                hold["case"]["rounds"] += 1
+                for k in range(1, K + 1):
+                    hold["case"]["before"][k - 1] += warned(loo[tags[hc]][k - 1]["chosen"], ts)
+                    hold["case"]["corridor"][k - 1] += warned(solve(n, train, k, allowed=cand), ts)
+        for ha in sorted(all_areas):
+            ts = [p for c in cases_used for p in tlist[c] if p["r"] == ha]
+            if not ts:
+                continue
+            train = grp([[p for p in tlist[c] if p["r"] != ha] for c in cases_used])
+            if not train:
+                continue
+            cand = set(fill_events(reg, mh, tags, wet, all_areas - {ha}, theta))
+            hold["area"]["warnable"] += len(ts)
+            hold["area"]["rounds"] += 1
+            for k in range(1, K + 1):
+                hold["area"]["before"][k - 1] += warned(solve(n, train, k), ts)
+                hold["area"]["corridor"][k - 1] += warned(solve(n, train, k, allowed=cand), ts)
+        res["holdout"] = hold
         out_rules[rule] = res
 
     # Sim 3's own objective, re-solved here: must reach the published exact scores.
@@ -458,6 +590,8 @@ def build():
             new[rule] = [dict(k=e["k"], chosen=e["chosen"], **diag(rule, e["chosen"]))
                          for e in res["exact"][st["weights"]]]
     ceiling = {rule: diag(rule, range(n))["counts"] for rule in rules}
+    corridor_sets = {rule: [dict(k=e["k"], chosen=e["chosen"], **diag(rule, e["chosen"])) for e in res["corridor"]]
+                     for rule, res in out_rules.items() if "corridor" in res}
 
     mo = monitoring_settings(cfg, ladder)
     payload = {
@@ -477,6 +611,9 @@ def build():
         "newSets": new,
         "ceiling": ceiling,
         "oldObjectiveCheck": old_check,
+        "corridors": {"theta": theta, "cases": wet,
+                      "events": {str(i): [list(e) for e in v] for i, v in sorted(ev_all.items())},
+                      "list": corr_all, "sets": corridor_sets},
         "register": register(st),
         "monitoring": monitoring(reg, mh, tags, ladder, mo),
     }
@@ -557,6 +694,8 @@ def register(st):
         ["B09", "Float locations", "A float switch goes in every manhole that spills in any published run (any case, before growth or at any build-out); optionally also where the water comes within the trip distance of the lid by 100% build-out.", "simulation.monitoring in config.js; docs/sim4_monitoring_points.md"],
         ["B10", "Float trip level", "The float hangs a set distance below the lid (300 mm by default, 500 mm also published) so it trips before the water reaches the lid.", "float_freeboard_mm in config.js"],
         ["B11", "Which level sensor", "A radar (or ultrasonic) level sensor under the lid where the water stays at least the non-contact clearance (500 mm) below the lid in every case and build-out, surcharged or not; a submersible pressure sensor where it comes closer, since a non-contact sensor cannot read water at its face.", "noncontact_clearance_mm in config.js; general practice; docs/sim4_monitoring_points.md"],
+        ["B12", "Filling corridor", "A manhole whose outlet pipe goes from under " + str(round(st["corridor_fill"] * 100)) + "% to " + str(round(st["corridor_fill"] * 100)) + "% or more of its bore when growth is added, in any wet run (not only runs that surcharge); such manholes joined along the flow form a corridor. Sim 4's default method places level sensors only on corridors, then chooses among them to warn before surcharge.", "corridor_fill in config.js; docs/sim4_filling_corridors.md"],
+        ["B13", "Held-out tests", "Each method is also scored on a weather case, and on a growth area, that it was not chosen on (corridors rebuilt without them), as the nearest test of growth the model did not simulate.", "docs/sim4_filling_corridors.md"],
         ["B08", "Coarse ladder", "Seven steps only: a path that goes from no response anywhere to surcharge in one step cannot be warned by any sensor. Finer steps need new solves.", "Limitation"],
     ]
 
@@ -582,6 +721,14 @@ def headline(p):
         c = p["newSets"][rule][k - 1]["counts"]
         lines.append(f"{rule}: warnable {res['warnable']}, k={k} worst {e['worst']:.3f} avg {e['average']:.3f}  "
                      f"before {c['before']} same {c['same']} after {c['after']} never {c['never']}  ceiling {p['ceiling'][rule]}")
+    c = p["corridors"]
+    lines.append(f"filling corridors (theta {c['theta']}): {len(c['events'])} manholes in {len(c['list'])} corridors")
+    h = p["results"]["r10"]["holdout"]
+    cs = c["sets"]["r10"][k - 1]
+    lines.append(f"r10 corridor k={k}: {cs['chosen']} counts {cs['counts']}")
+    for mode in ("case", "area"):
+        hm = h[mode]
+        lines.append(f"  held out by {mode} ({hm['rounds']} rounds, {hm['warnable']} warnable): before {hm['before'][k - 1]}, corridor {hm['corridor'][k - 1]}")
     mon = p["monitoring"]
     lines.append(f"spill manholes: {len(mon['spillManholes'])}; float locations " +
                  ", ".join(f"{X} mm: {len(v)}" for X, v in mon["floats"].items()) +

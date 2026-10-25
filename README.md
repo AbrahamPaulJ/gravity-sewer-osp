@@ -279,7 +279,12 @@ of sensors that respond tells far-apart overloads apart, and two new triggers fi
 reaches 70% or 80% of the outlet pipe's bore. No SWMM run: `tools/sim4_before.py` re-scores the
 published runs (`--check` to verify, `--publish` after changing `simulation.before_surcharge` in
 `config.js`). It needs the SciPy in the project's venv. The method, definitions and limits are in
-[`docs/sim3_before_surcharge.md`](docs/sim3_before_surcharge.md). Each monitoring point says where, what to monitor and which sensor: level sensors for early
+[`docs/sim3_before_surcharge.md`](docs/sim3_before_surcharge.md). Level sensors are placed on **filling corridors**: chains of manholes whose
+pipe fills past 80% as growth is added, in any run. Among them the sensors are chosen to warn
+before surcharge. Tested on weather cases and growth areas they were not chosen on, they hold up
+at least as well as choosing anywhere
+([`docs/sim4_filling_corridors.md`](docs/sim4_filling_corridors.md)).
+Each monitoring point says where, what to monitor and which sensor: level sensors for early
 warning of overcapacity, float switches for early warning of a spill
 ([`docs/sim4_monitoring_points.md`](docs/sim4_monitoring_points.md)).
 

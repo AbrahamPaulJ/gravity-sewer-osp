@@ -331,6 +331,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .knob button.nb.on{background:var(--new); border-color:var(--new); color:#1a0d2b}
 .knob button.nb.on .newb{background:#1a0d2b; color:var(--new)}
 nav button.newbtn{border-color:var(--new); color:var(--new-ink); background:var(--new-bg); font-weight:600}
+nav button.newbtn.on{background:var(--new); color:#1a0d2b}
 nav button.newbtn:hover{background:var(--new); color:#1a0d2b}
 nav a.navlink{font-size:12.5px; color:var(--dim); text-decoration:none; padding:0 6px}
 nav a.navlink:hover{color:var(--new-ink)}
@@ -483,7 +484,8 @@ table.cat td,table.cat th{text-align:left!important; vertical-align:top}
   <div id="sensorBox">
     <h4>Sensors, chosen once across all <span id="nCases">8</span> cases <i class="info-i" id="sensInfo" data-tip="">i</i></h4>
     <div class="knob x" id="methKnob">
-      <button data-m="before" class="nb" title="New in Sim 4: the best set of this size for warning of every overload one build-out step before the first manhole surcharges, solved exactly">Before surcharge<span class="newb">new</span></button>
+      <button data-m="corridor" class="nb" title="New in Sim 4, the default: level sensors only on the filling corridors (manholes whose pipe fills past 80% under growth), chosen to warn before surcharge">Filling corridors<span class="newb">new</span></button>
+      <button data-m="before" class="nb" title="New in Sim 4: the best set of this size, anywhere, for warning of every overload one build-out step before the first manhole surcharges, solved exactly">Before surcharge, any manhole<span class="newb">new</span></button>
       <button data-m="locate" class="nb" title="New in Sim 4: as Before surcharge, and the pattern of sensors that respond must tell apart overloads that are far apart">Before + locate<span class="newb">new</span></button>
       <button data-m="exact" title="Sim 3's set: the best set of this size for its own score, solved exactly (integer program)">Sim 3 exact</button>
       <button data-m="greedy" title="One sensor at a time, each the best addition to the ones before">Greedy, one at a time</button>
@@ -519,6 +521,7 @@ table.cat td,table.cat th{text-align:left!important; vertical-align:top}
       <button id="toggleConn" class="x" title="Draw every connection pipe at its bore">Connections</button>
       <button id="toggleIds" class="x" title="Label every manhole with its number">Manhole ids</button>
       <button id="toggleLegend" title="Show what the colours mean">Legend</button>
+      <button id="toggleCorr" class="newbtn" title="Tint the filling corridors: chains of manholes whose pipe fills past 80% full as growth is added">Corridors</button>
       <button id="toggleAreas" title="See how the suburb is divided into areas, each in its own colour; click again to come back">Areas</button>
     </div>
     <span class="navsep"></span>
@@ -550,6 +553,7 @@ table.cat td,table.cat th{text-align:left!important; vertical-align:top}
     <div class="grp s" id="simpleKey"><b>Map</b>
       <span><span class="k" style="background:#2ef56b"></span>level sensor L1, L2 ...: early warning of overcapacity<span class="newb">new</span></span>
       <span><span class="k" style="background:#ffd60a"></span>float switch F1, F2 ...: early warning of a spill<span class="newb">new</span></span>
+      <span><span class="kl" style="background:#c084fc"></span>filling corridor C1, C2 ... (Corridors button)<span class="newb">new</span></span>
       <span><span class="k" style="background:#ff2d55"></span>sees this growth</span>
       <span><span class="k" style="background:#ffa500"></span>over the alarm before any growth</span>
       <span><span class="kl" style="background:#00d4ff"></span>the selected area's pipes</span>
@@ -609,16 +613,16 @@ table.cat td,table.cat th{text-align:left!important; vertical-align:top}
 
 <!-- Sim 3's published data and map, shared rather than copied: Sim 4 re-scores them and runs no
      model of its own, so it must sit beside simulation3/ (as it does on the site). -->
-<script src="../simulation3/data/catchment.js?v=2"></script>
-<script src="../simulation3/data/growth.js?v=2"></script>
-<script src="../simulation3/data/regions.js?v=2"></script>
-<script src="../simulation3/data/index.js?v=2"></script>
-<script src="data/before.js?v=2"></script>
-<script src="growth_3d.js?v=2"></script>
-<script src="../simulation3/osp_core.js?v=2"></script>
-<script src="../simulation3/placement.js?v=2"></script>
-<script src="before_views.js?v=2"></script>
-<script src="sim4_ui.js?v=2"></script>
+<script src="../simulation3/data/catchment.js?v=3"></script>
+<script src="../simulation3/data/growth.js?v=3"></script>
+<script src="../simulation3/data/regions.js?v=3"></script>
+<script src="../simulation3/data/index.js?v=3"></script>
+<script src="data/before.js?v=3"></script>
+<script src="growth_3d.js?v=3"></script>
+<script src="../simulation3/osp_core.js?v=3"></script>
+<script src="../simulation3/placement.js?v=3"></script>
+<script src="before_views.js?v=3"></script>
+<script src="sim4_ui.js?v=3"></script>
 <script type="module">
   Sim4UI.init();
 </script>

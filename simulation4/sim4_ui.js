@@ -13,7 +13,10 @@
        sensors (L pins) for early warning of overcapacity and float switches (F pins) for early
        warning of a spill, from the catalogue in config.js; hover for a summary, click for the
        full specification (docs/sim4_monitoring_points.md);
-     - the "Before surcharge" dashboard (ten pictures), the "What's new" tour, and the new
+     - filling corridors (B12), the default placement: level sensors only on manholes whose pipe
+       fills past 80% under growth, then chosen to warn before surcharge; a Corridors toggle and
+       held-out tests (docs/sim4_filling_corridors.md);
+     - the "Before surcharge" dashboard (twelve pictures), the "What's new" tour, and the new
        assumption rows (B01-B11) at the head of the register.
    Everything else is Sim 3's behaviour, unchanged. */
 "use strict";
@@ -63,7 +66,8 @@ window.Sim4UI = (function () {
     region: 0, step: 4,                 // infill: region index, ladder index (100%)
     site: null, add: 3,                 // greenfield: chamber index, growth size index
     caseTag: null,                      // the uncertainty case, by tag (shared by the families)
-    rule: "r10", k: 5, method: "before", obj: "worst",
+    rule: "r10", k: 5, method: "corridor", obj: "worst",
+    showCorr: false,                                       // the filling corridors tinted on the map
     radius: window.SIM4_BEFORE.settings.default_radius_m,   // locating radius, metres
     scheme: window.SIM4_BEFORE.settings.weights,            // "equal" | "homes"
     floats: "spill",                                        // float switches: "spill" | "near" | "none"
@@ -109,7 +113,7 @@ window.Sim4UI = (function () {
   const curRow = () => infillRow(curTag(), st.region, st.step);
   const thr = () => ruleOf(st.rule).thr;
   const pc = s => Math.round(ladder()[s] * 100) + "%";
-  const isBeforeMethod = () => st.method === "before" || st.method === "locate" || !!ruleOf(st.rule).isNew;
+  const isBeforeMethod = () => st.method === "corridor" || st.method === "before" || st.method === "locate" || !!ruleOf(st.rule).isNew;
   // Which chambers see a region row under a rule: the alarm list, or the rises past the threshold.
   function seers(row, rule, tag) {
     if (!row) return [];
@@ -139,9 +143,9 @@ window.Sim4UI = (function () {
       // New in Sim 4: the exact set for warning before surcharge (or for warning and locating).
       const res = B().results[st.rule];
       if (!res || !res.exact) return { chosen: [], worst: null, average: null, curve: [], before: true, outcomes: null };
-      const loc = st.method === "locate";
-      const e = loc ? res.locate[String(st.radius)].sets[st.k - 1] : res.exact[st.scheme][st.k - 1];
-      return { chosen: e.chosen.slice(), worst: e.worst, average: e.average, before: true, located: loc, outcomes: Before.outcomes(e.chosen, st.rule) };
+      const loc = st.method === "locate", cor = st.method === "corridor" && res.corridor;
+      const e = loc ? res.locate[String(st.radius)].sets[st.k - 1] : cor ? res.corridor[st.k - 1] : res.exact[st.scheme][st.k - 1];
+      return { chosen: e.chosen.slice(), worst: e.worst, average: e.average, before: true, located: loc, corridor: !!cor, outcomes: Before.outcomes(e.chosen, st.rule) };
     }
     const rr = S().rules[st.rule];
     if (!rr) return { chosen: [], worst: null, average: null, curve: [] };
@@ -263,7 +267,7 @@ window.Sim4UI = (function () {
       Growth3D.setRegionLabels(S().regions.map((r, ri) => ({ names: r.manholes.map(nameOf), text: r.id, col: regionCol(ri) })));
       Growth3D.setSpills([], []);
     } else {
-      Growth3D.setRegionTints(null);
+      Growth3D.setRegionTints(st.showCorr ? corrTints() : null);
       const marks = st.showSensors ? monitoringPoints().flatMap(p => p.items.map(it => ({ name: nameOf(p.i), label: it.label, kind: it.kind === "float" ? "float" : "level",
         title: it.label + ": " + readingName(it.reading) + ", " + sensorName(it.sensor) }))) : [];
       Growth3D.paint(named, site, sensors, heatValues(), marks);
@@ -272,8 +276,8 @@ window.Sim4UI = (function () {
         const lbls = [{ names: region().manholes.map(nameOf), text: region().id, col: "#00d4ff" }];
         const p = curPath();
         if (p && p.s != null) lbls.push({ names: p.F.map(nameOf), text: "\u2715 first surcharge at " + pc(p.s), col: "#c084fc" });
-        Growth3D.setRegionLabels(lbls);
-      } else { Growth3D.setPulse([]); Growth3D.setRegionLabels([]); }
+        Growth3D.setRegionLabels(lbls.concat(st.showCorr ? corrLabels() : []));
+      } else { Growth3D.setPulse([]); Growth3D.setRegionLabels(st.showCorr ? corrLabels() : []); }
       Growth3D.setSpills(spillsBefore, spillsNew);
     }
     Growth3D.setPumpRates([]);
@@ -299,6 +303,17 @@ window.Sim4UI = (function () {
   // recommended sensor. Level sensors (early warning of overcapacity) go where the placement
   // puts them; float switches (early warning of a spill) where the model says a manhole can
   // spill. The readings and sensors come from the catalogue in config.js.
+  // The filling corridors (B12): paths where growth fills pipes past the corridor level.
+  const CORR = () => B().corridors;
+  const corrOf = i => CORR().list.findIndex(c => c.members.includes(i));
+  function corrTints() {
+    const t = {};
+    CORR().list.forEach(c => c.members.forEach(i => { t[nameOf(i)] = "#c084fc"; }));
+    return t;
+  }
+  function corrLabels() {
+    return CORR().list.filter(c => c.builds >= 3).map(c => ({ names: c.members.map(nameOf), text: "C" + (CORR().list.indexOf(c) + 1), col: "#c084fc" }));
+  }
   const MON = () => B().monitoring;
   const CAT = () => MON().catalogue;
   const stepTxt = k => k === 0 ? "before any growth" : "at " + Math.round(ladder()[k - 1] * 100) + "% build-out";
@@ -321,7 +336,16 @@ window.Sim4UI = (function () {
     if (ruleOf(st.rule).isNew) { const f = B().settings.fullness[st.rule === "f70" ? 0 : 1]; return "alert when the water reaches " + Math.round(f * 100) + "% of the outlet pipe's bore: " + Math.round(g.off + f * g.bore) + " mm above the floor here"; }
     return "alert when wet-weather peaks rise " + ruleOf(st.rule).thr + " mm or more over this manhole's own level before growth";
   }
+  function corrNote(i) {
+    const cj = corrOf(i), ev = CORR().events[String(i)];
+    return cj >= 0 ? "On filling corridor C" + (cj + 1) + ": its pipe fills past " + Math.round(CORR().theta * 100) + "% full in " + ev.length + " build-out" + (ev.length === 1 ? "" : "s") + " (from " +
+      Math.round(B().ladder[Math.min(...ev.map(e => e[2]))] * 100) + "%)." : "";
+  }
   function levelEvidence(i) {
+    const c = corrNote(i);
+    return levelEvidence0(i) + (c ? " " + c : "");
+  }
+  function levelEvidence0(i) {
     if (st.fam === "one" || !B().results[st.rule] || !B().results[st.rule].exact) return "";
     const ws = Before.targets().filter(p => p.c === caseIdxB(curTag())).map(p => ({ p, f: Before.firstStep(p, st.rule, new Set([i])) }))
       .filter(o => o.f != null && o.f <= o.p.s - B().settings.margin_steps);
@@ -631,7 +655,7 @@ window.Sim4UI = (function () {
     const newRule = !!ruleOf(st.rule).isNew;
     $$("#methKnob button").forEach(b => {
       if (b.dataset.m === "exact" || b.dataset.m === "greedy") b.hidden = newRule;
-      if (b.dataset.m === "before" || b.dataset.m === "locate") b.hidden = st.fam === "one";
+      if (b.dataset.m === "corridor" || b.dataset.m === "before" || b.dataset.m === "locate") b.hidden = st.fam === "one";
     });
     $$("#ruleKnob button").forEach(b => { b.hidden = st.fam === "one" && !!ruleOf(b.dataset.r).isNew; });
     $("#radBox").hidden = st.method !== "locate" || st.fam === "one";
@@ -640,7 +664,10 @@ window.Sim4UI = (function () {
     $$("#fbKnob button").forEach(b => b.classList.toggle("on", +b.dataset.x === st.fb));
     $$("#floatKnob .knobNum").forEach((e, j) => { if (j === 1) e.textContent = (MON().floats[String(st.fb)] || []).length + " floats"; });
     const methText = st.fam !== "one" && isBeforeMethod()
-      ? (st.method === "locate"
+      ? (st.method === "corridor"
+        ? "Filling corridors (new in Sim 4, the default): level sensors only on manholes whose outlet pipe goes from under " + Math.round(B().corridors.theta * 100) + "% to " + Math.round(B().corridors.theta * 100) +
+          "% full or more as growth is added, in any wet run (the paths where capacity is being used up), then the best set of this size among them for warning before the first manhole surcharges, solved exactly. Held-out tests in the dashboard."
+        : st.method === "locate"
         ? "Before + locate (new in Sim 4): as Before surcharge, and an overload counts only if the pattern of chosen sensors that respond also differs from every other overload in the same case whose first-surcharge manholes are more than " + st.radius + " m away along the pipes, so the alarm says where."
         : "Before surcharge (new in Sim 4): the best set of this size for warning of the build-outs that do overload, at least " + B().settings.margin_steps + " build-out step(s) before the first manhole newly surcharges; worst case over the cases that have overloads, solved exactly (HiGHS). Sim 3's own score also credited runs where a manhole had already surcharged; this one does not.")
       : st.fam !== "one"
@@ -660,7 +687,7 @@ window.Sim4UI = (function () {
     document.body.classList.toggle("expert", v === "expert");
     if (v === "simple") {
       st.rule = "r10"; st.showHeat = false; $("#toggleHeat").classList.remove("primary");
-      if (st.method === "risk" || st.method === "exact" || st.method === "greedy") st.method = "before";
+      if (st.method === "risk" || st.method === "exact" || st.method === "greedy") st.method = "corridor";
       if (wxOf() !== "dry" && wxOf() !== "wet") setWeather("wet"); else if (!/^(Dry|Design wet)$/.test(curCase().label)) setWeather(wxOf());
     }
     repaint();
@@ -668,9 +695,9 @@ window.Sim4UI = (function () {
   }
   function setFamily(f) {
     st.fam = f; st.pick = null; st.hover = null;
-    if (f === "one" && ["exact", "before", "locate"].includes(st.method)) st.method = "greedy";
+    if (f === "one" && ["exact", "corridor", "before", "locate"].includes(st.method)) st.method = "greedy";
     if (f === "one" && ruleOf(st.rule).isNew) st.rule = "r10";
-    if (f !== "one" && st.method === "greedy" && !st.pickedGreedy) st.method = "before";
+    if (f !== "one" && st.method === "greedy" && !st.pickedGreedy) st.method = "corridor";
     buildCaseKnobs();
     repaint();           // the camera stays where the reader left it
   }
@@ -967,7 +994,8 @@ window.Sim4UI = (function () {
       const mp = mpts.find(q => q.i === i), lv = mp.items.find(it => it.kind === "level");
       const monTxt = '<p class="monline"><span class="rd">Monitor</span>' + esc(readingName(lv.reading)) + ": " + esc(lv.trigger) + '</p><p class="monline"><span class="rd">Sensor</span><b>' + esc(sensorName(lv.sensor)) + "</b>" +
         ' <span class="quiet">(or ' + esc(lv.alts.map(sensorName).join(", ")) + ")</span></p>" +
-        mp.items.filter(it => it.kind === "float").map(it => '<p class="monline">' + pinHtml(it) + " also a <b>" + esc(sensorName(it.sensor)) + "</b>: " + esc(it.trigger) + "</p>").join("");
+        mp.items.filter(it => it.kind === "float").map(it => '<p class="monline">' + pinHtml(it) + " also a <b>" + esc(sensorName(it.sensor)) + "</b>: " + esc(it.trigger) + "</p>").join("") +
+        (corrNote(i) ? '<p class="warnline">' + NEWB.replace("newb", "newb\" style=\"margin:0 5px 0 0") + esc(corrNote(i)) + "</p>" : "");
       return '<div class="why mon' + (miss ? " miss" : "") + (pl.before ? " isNewCard" : "") + '" data-mh="' + esc(nm) + '" data-vt="' + esc(monSummary(mp)) + '"><div class="hd">' + mp.items.map(pinHtml).join("") + esc(label(i)) +
         (ri >= 0 ? ' <span class="quiet">' + esc(S().regions[ri].id) + "</span>" : "") +
         '<span class="cov">' + (isIn && st.method === "greedy" && rr.greedy && rr.greedy.curve[j] ? "worst " + pct(rr.greedy.curve[j].worst) : "") + "</span></div>" +
@@ -1129,13 +1157,13 @@ window.Sim4UI = (function () {
   const ds = {};
   function showDash() {
     const rules = B().rules.filter(r => B().results[r].exact);
-    if (!ds.rule) Object.assign(ds, { rule: rules.includes(st.rule) ? st.rule : "r10", k: st.k, radius: st.radius, scheme: st.scheme, set: "new", caseIdx: Math.max(0, caseIdxB(curTag())) });
+    if (!ds.rule) Object.assign(ds, { rule: rules.includes(st.rule) ? st.rule : "r10", k: st.k, radius: st.radius, scheme: st.scheme, set: "corr", caseIdx: Math.max(0, caseIdxB(curTag())) });
     const box = $("#modalBox");
     box.classList.add("wide", "dash");
     const top = box.scrollTop;
     const opts = (list, cur) => list.map(([v, l]) => '<option value="' + esc(v) + '"' + (String(v) === String(cur) ? " selected" : "") + ">" + esc(l) + "</option>").join("");
     const setsNow = Before.sets(ds.rule, ds.k, ds.scheme);
-    if (!setsNow.find(x => x.id === ds.set)) ds.set = "new";
+    if (!setsNow.find(x => x.id === ds.set)) ds.set = setsNow[0].id;
     const shown = setsNow.find(x => x.id === ds.set), nT = Before.targets().length;
     const casesWith = B().cases.map((_, ci) => ci);
     const ocNew = Before.outcomes(setsNow[0].chosen, ds.rule).cnt, s3 = setsNow.find(x => x.id === "s3exact");
@@ -1159,6 +1187,10 @@ window.Sim4UI = (function () {
       (ocS3 ? '<div class="tile"><b>' + ocS3.before + "</b>by Sim 3's exact " + ds.k + "; " + pct(cr.late / Math.max(1, cr.all)) + " of the runs its score credits had already surcharged</div>" : "") +
       '<div class="tile isNew"><b>' + (kf ? kf : "over " + B().settings.max_sensors) + "</b>sensors warn of every warnable overload in every case</div></div>" +
       '<div class="cards">' +
+      card("A", "How robust is it? Scored on what it was not chosen on", "Each method chooses its sensors without one weather case (left) or without one growth area (right), corridors included, and is scored on the overloads of the case or area left out; summed over every round. The nearest test of growth the model did not simulate.",
+        Before.robustness(ds.rule), "", true) +
+      card("B", "Filling corridors: where growth is using up capacity", "Manholes whose outlet pipe goes from under " + Math.round(CORR().theta * 100) + "% to " + Math.round(CORR().theta * 100) + "% full or more as growth is added, in any wet run, joined along the flow. Level sensors of the default method may go only on these.",
+        Before.corridorTable(ds.rule, ds.k), "", true) +
       card(1, "The build-out ladder", "One grid per case: areas down, build-out across. Green means a sensor of the set chosen above responds; red means a manhole has newly surcharged. A useful set puts green to the left of red in every row that turns red.",
         Before.ladderGrid(ds.rule, shown.chosen), "Set shown: " + esc(shown.name) + ".", true) +
       card(2, "Where Sim 3's score came from", "Sim 3 scores a set by the share of runs in which one of its sensors responds. Splitting those runs by whether a manhole had already surcharged shows how much of the score came after the fact.",
@@ -1193,7 +1225,9 @@ window.Sim4UI = (function () {
       "It uses Sim 3's own runs; no model was re-run. Of " + B().paths.length + " area build-outs (8 areas x 8 cases), <b>" + Before.targets().length + "</b> overload a manhole by 300%. Those are what the sensors must warn of." },
     { t: "'Before' is counted in build-out, not time", el: "#inWords", p: () => "Growth takes years, so the summary on the map now says at which build-out a chosen sensor first responds, and at which the first manhole surcharges. " +
       "Look for the violet <b>New</b> line. On the map, a violet label marks where the shown area surcharges first." },
-    { t: "A new placement method, now the default", el: () => st.view === "expert" ? "#methKnob" : "#kBig", p: () => "<b>Before surcharge</b> picks the sensors that warn of the most overloads a step ahead, solved exactly. " +
+    { t: "Filling corridors: where pipes run out of room", el: "#toggleCorr", p: () => "The default method first finds the <b>filling corridors</b>: chains of manholes whose pipe goes past " + Math.round(CORR().theta * 100) + "% full as growth is added, in any run, not only the ones that surcharge. " +
+      "Level sensors go only there, so they watch the paths where capacity is being used up. Tested on weather cases and areas it was not chosen on, it holds up at least as well as choosing anywhere (dashboard). The <b>Corridors</b> button shows them." },
+    { t: "Warning before surcharge", el: () => st.view === "expert" ? "#methKnob" : "#kBig", p: () => "Among the corridors, the sensors are chosen to warn of the most overloads a step ahead, solved exactly. " +
       "Sim 3's score also counted runs where a manhole had already surcharged: with 5 sensors, " + (e => pct(e.creditedSurcharged / e.credited))(B().published.r10.exact[4]) +
       " of the runs it credited its exact set with. Sim 3's sets are still there to compare (expert view, <b>Sim 3 exact</b>)." },
     { t: "Telling overloads apart", el: () => st.view === "expert" ? "#methKnob" : "#btn-before", p: () => "<b>Before + locate</b> also asks that the pattern of sensors that respond differs between overloads that are far apart (0, 300 or 1,000 m along the pipes), so the alarm points to where the problem is." },
@@ -1292,12 +1326,13 @@ window.Sim4UI = (function () {
     if (hp.get("case")) st.caseTag = hp.get("case");
     if (hp.get("rule") && ruleOf(hp.get("rule"))) st.rule = hp.get("rule");
     if (hp.get("k")) st.k = Math.max(1, Math.min(10, +hp.get("k") || st.k));
-    if (["greedy", "risk", "exact", "before", "locate"].includes(hp.get("method"))) st.method = hp.get("method");
+    if (["greedy", "risk", "exact", "corridor", "before", "locate"].includes(hp.get("method"))) st.method = hp.get("method");
+    if (hp.get("corr") === "1") st.showCorr = true;
     if (["spill", "near", "none"].includes(hp.get("floats"))) st.floats = hp.get("floats");
     if (hp.get("fb") != null && B().monitoring.settings.float_freeboard_mm.includes(+hp.get("fb"))) st.fb = +hp.get("fb");
     if (hp.get("radius") != null && B().settings.radii_m.includes(+hp.get("radius"))) st.radius = +hp.get("radius");
     if (hp.get("site") != null && names()[+hp.get("site")]) st.site = +hp.get("site");
-    if (st.fam === "one" && ["exact", "before", "locate"].includes(st.method)) st.method = "greedy";
+    if (st.fam === "one" && ["exact", "corridor", "before", "locate"].includes(st.method)) st.method = "greedy";
     if (st.view === "simple") st.rule = "r10";
     if (hp.get("areas") === "1") st.areasView = true;
     document.body.classList.toggle("simple", st.view === "simple");
@@ -1341,6 +1376,8 @@ window.Sim4UI = (function () {
     $("#tab-ref").onclick = () => showDoc("ref");
     $("#tab-qa").onclick = () => showDoc("qa");
     $("#btn-new").onclick = () => showTour(0);
+    $("#toggleCorr").classList.toggle("on", st.showCorr);
+    $("#toggleCorr").onclick = () => { st.showCorr = !st.showCorr; $("#toggleCorr").classList.toggle("on", st.showCorr); repaint(); };
     $("#stage").addEventListener("pointermove", e => { mouseXY = [e.clientX, e.clientY]; });
     $("#stage").addEventListener("pointerleave", () => { $("#monHover").hidden = true; });
     $("#btn-before").onclick = () => showDash();

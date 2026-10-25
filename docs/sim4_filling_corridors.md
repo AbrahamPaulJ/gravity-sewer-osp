@@ -131,4 +131,46 @@ evidence, not asserted.
 
 ## 7. Changes during implementation
 
-(Filled in as the work proceeds.)
+1. **The exact solver changes the held-out picture.** Section 2's tests chose sensors one at a time
+   (greedy). The tool solves exactly (HiGHS), for both methods and every k, and rebuilds the
+   corridors for each held-out round. Its numbers are the published ones. Warnings before
+   surcharge, of the held-out warnable overloads, rule rise 10 mm:
+
+   | Sensors (k) | 1 | 2 | 3 | 4 | **5** | 6 | 7 | 8 | 9 | 10 |
+   |---|---|---|---|---|---|---|---|---|---|---|
+   | Case held out (25): filling corridors | 18 | 20 | 21 | 21 | **23** | 23 | 23 | 23 | 24 | 24 |
+   | Case held out (25): any manhole | 17 | 18 | 22 | 22 | **21** | 20 | 20 | 20 | 23 | 23 |
+   | Area held out (25): filling corridors | 18 | 18 | 19 | 17 | **17** | 17 | 18 | 19 | 17 | 19 |
+   | Area held out (25): any manhole | 17 | 17 | 18 | 18 | **17** | 18 | 19 | 21 | 23 | 23 |
+
+   - **With a case held out,** filling corridors match or beat choosing anywhere from 5 sensors up
+     (92% against 84% at 5).
+   - **With an area held out,** they tie at 5 and are a little better at 1–3, but worse from 8 up.
+     There, choosing anywhere can add manholes that happen to rise for the held-out area.
+   - **Under rise 25 mm,** corridors do clearly better with an area held out: 9–10 of 19 against 6.
+   - **Mixed result.** The gain is modest and mixed, on small numbers: one overload is 4 points.
+   - **A further finding:** the greedy choice generalised better than the exact one when an area
+     was held out (19 of 25 for any manhole, against 17 exact). The exact optimum fits the training
+     events more tightly. That argues for nested or greedy placement, recorded as a next step.
+2. **Why it is the default anyway:**
+   - it is at least as robust where it matters most, the case hold-out;
+   - in-sample it reaches the same ceiling (25 of 25 at 5 sensors);
+   - **its sets are nearly nested.** From 1 to 5 sensors: [172], [172, 202], [105, 172, 202],
+     [91, 161, 172, 202], [91, 93, 161, 172, 202]. Adding a sensor mostly keeps the earlier ones,
+     which suits a staged rollout. The unrestricted sets jump around;
+   - every level sensor sits on a path where a pipe is filling, so an alert names a corridor and
+     its pipes. The unrestricted method can pick a manhole that only correlates with an overload
+     elsewhere.
+3. **Corridors as built:** 46 manholes fill past 80% in some wet run, in 29 corridors. Most are
+   short; the largest takes 12 build-outs. They lie mostly in the upstream north-east, where the
+   pipes are fuller and flatter, so the sensors still sit there. The method makes that a stated
+   reason ("pipes fill here") rather than a side-effect.
+4. **Area hold-out rounds:** 6, not 8. R3 and R6 have no overload that a 10 mm rise can warn of a
+   step ahead, so there is nothing to score.
+5. **The "Before surcharge" method stays,** relabelled "Before surcharge, any manhole", with
+   "Before + locate" and Sim 3's sets, so the comparison is on the page.
+
+**Next:**
+- nested (greedy) placement on the corridors;
+- the ensemble and growth-pattern runs in the simulation programme, which would give enough
+  held-out events to tell the methods apart with confidence.

@@ -106,7 +106,8 @@ window.Before = (function () {
   // The sets the page can show for a rule and k.
   function sets(rule, k, scheme) {
     const res = B().results[rule], pub = B().published[rule] || null, out = [];
-    if (res.exact) out.push({ id: "new", name: "Sim 4 exact (before surcharge)", isNew: true, chosen: res.exact[scheme][k - 1].chosen });
+    if (res.corridor) out.push({ id: "corr", name: "Sim 4 filling corridors (default)", isNew: true, chosen: res.corridor[k - 1].chosen });
+    if (res.exact) out.push({ id: "new", name: "Sim 4 before surcharge, any manhole", isNew: true, chosen: res.exact[scheme][k - 1].chosen });
     if (res.locate) out.push({ id: "loc", name: "Sim 4 exact (before + located, " + B().settings.default_radius_m + " m)", isNew: true, chosen: res.locate[String(B().settings.default_radius_m)].sets[k - 1].chosen });
     if (pub) {
       out.push({ id: "s3exact", name: "Sim 3 exact", chosen: pub.exact[k - 1].chosen });
@@ -192,8 +193,8 @@ window.Before = (function () {
     if (!res.exact) return '<p class="bvNote">No target can be warned under this rule.</p>';
     const kmax = res.exact[scheme].length, pub = B().published[rule];
     const series = [
-      { name: "Sim 4 exact, worst case", col: "#c084fc", v: res.exact[scheme].map(e => e.worst) },
-      { name: "Sim 4 exact, average", col: "#9085e9", v: res.exact[scheme].map(e => e.average), thin: true },
+      { name: "Sim 4 filling corridors, worst case", col: "#c084fc", v: (res.corridor || []).map(e => e.worst) },
+      { name: "Sim 4 any manhole, worst case", col: "#9085e9", v: res.exact[scheme].map(e => e.worst), thin: true },
       { name: "Sim 4 located within " + radius + " m, worst", col: "#c084fc", v: res.locate[String(radius)].sets.map(e => e.worst), dash: true },
     ];
     if (pub) series.push({ name: "Sim 3 exact set, worst (scored the new way)", col: "#3987e5", v: pub.exact.map(e => evaluate(e.chosen, rule, scheme).worst) });
@@ -350,6 +351,45 @@ window.Before = (function () {
       Object.keys(s).map(k => "<tr><td><b>" + esc(s[k].name) + "</b></td><td>" + esc(s[k].good) + "</td><td>" + esc(s[k].limits) + "</td><td>" + esc(s[k].mount) + "</td></tr>").join("") + "</table>";
   }
 
-  return { floatGrid, catalogueTable, COL, OUTCOME, RULE_LABEL, NEW_RULES, responders, targets, warnSet, firstStep, evaluate, outcomes, credited, sets, kFull, pathRows,
+  // A. How robust: held-out warning share against k, both methods, case and area hold-outs.
+  function robustness(rule) {
+    const h = B().results[rule].holdout;
+    if (!h) return "";
+    const one = (mode, title) => {
+      const hm = h[mode], K = hm.before.length, W = 260, H = 160, L = 34, R = 8, T = 18, Bt = 24;
+      if (!hm.warnable) return '<div class="bvFig"><figcaption>' + title + "</figcaption><p class='bvNote'>No held-out overload under this rule.</p></div>";
+      const x = i => L + (W - L - R) * i / (K - 1), y = f => T + (H - T - Bt) * (1 - f);
+      let g = svgOpen(W, H, title);
+      [0, 0.5, 1].forEach(f => { g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(f) + '" y2="' + y(f) + '" stroke="#22314d"/>' + txt(L - 4, y(f) + 3.5, pct(f), { anchor: "end", fs: 9, fill: "#6f81a3" }); });
+      [["corridor", "#c084fc", "Filling corridors"], ["before", "#d95926", "Any manhole"]].forEach(([key, col, nm]) => {
+        const vals = hm[key].map(c => c / hm.warnable);
+        g += '<path d="' + vals.map((f, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(f).toFixed(1)).join(" ") + '" fill="none" stroke="' + col + '" stroke-width="2"/>';
+        vals.forEach((f, i) => { g += '<circle cx="' + x(i) + '" cy="' + y(f) + '" r="3" fill="' + col + '" stroke="#0f1a2b" stroke-width="1.5" data-vt="' + esc(nm + ", " + (i + 1) + " sensors: " + hm[key][i] + " of " + hm.warnable + " held-out overloads warned (" + pct(f) + ")") + '"/>'; });
+      });
+      for (let i = 0; i < K; i++) g += txt(x(i), H - Bt + 13, i + 1, { anchor: "middle", fs: 9, fill: "#6f81a3" });
+      g += txt((L + W) / 2, H - 2, "sensors", { anchor: "middle", fs: 9.5, fill: "#6f81a3" });
+      return '<figure class="bvFig"><figcaption>' + title + " (" + hm.rounds + " rounds, " + hm.warnable + " overloads)</figcaption>" + g + "</svg></figure>";
+    };
+    return legend([["#c084fc", "Filling corridors (default)"], ["#d95926", "Before surcharge, any manhole"]]) +
+      '<div class="bvGrids">' + one("case", "A weather case held out") + one("area", "A growth area held out") + "</div>" +
+      '<p class="bvNote">Share of the held-out overloads (those some manhole could warn of) that the sensors warn of before surcharge. Small numbers: one overload is ' + pct(1 / Math.max(1, h.case.warnable)) + " of the total.</p>";
+  }
+
+  // B. The filling corridors, and which sensors of the default method sit on each.
+  function corridorTable(rule, k) {
+    const C = B().corridors, res = B().results[rule], chosen = res.corridor ? res.corridor[k - 1].chosen : [];
+    const area = i => { const r = S().regions.findIndex(a => a.manholes.includes(i)); return r >= 0 ? S().regions[r].id : "-"; };
+    const rows = C.list.map((c, j) => {
+      const areas = [...new Set(c.members.map(area))].join(" ");
+      const on = chosen.map((i, n) => c.members.includes(i) ? "L" + (n + 1) : null).filter(Boolean);
+      const first = Math.min(...c.members.flatMap(i => C.events[String(i)].map(e => e[2])));
+      return "<tr" + (on.length ? ' style="background:#1d1430"' : "") + "><td><b>C" + (j + 1) + "</b></td><td>" + c.members.length + " (" + c.members.slice(0, 4).map(i => esc(String(window.GROWTH_RUNS.manholeIds[i]))).join(", ") + (c.members.length > 4 ? ", ..." : "") + ")</td><td>" +
+        esc(areas) + "</td><td>" + c.builds + "</td><td>" + Math.round(B().ladder[first] * 100) + "%</td><td>" + (on.length ? '<b style="color:#e3c8ff">' + on.join(" ") + "</b>" : "") + "</td></tr>";
+    });
+    return '<table class="sm cat"><tr><th>Corridor</th><th>Manholes</th><th>Areas</th><th>Build-outs that fill it</th><th>Fills from</th><th>Sensors (' + k + ")</th></tr>" + rows.join("") + "</table>" +
+      '<p class="bvNote">' + C.list.length + " corridors, " + Object.keys(C.events).length + " manholes. A build-out is one area's growth under one case; 'fills from' is the smallest build-out at which any of its pipes passes " + Math.round(C.theta * 100) + "% full.</p>";
+  }
+
+  return { robustness, corridorTable, floatGrid, catalogueTable, COL, OUTCOME, RULE_LABEL, NEW_RULES, responders, targets, warnSet, firstStep, evaluate, outcomes, credited, sets, kFull, pathRows,
     ladderGrid, creditBars, curves, outcomeBars, marginStrip, signatures, ruleCompare, weighting, caseLabel, areaId, stepPct };
 })();

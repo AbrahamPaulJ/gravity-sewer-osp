@@ -492,6 +492,45 @@ console.log("Simulation 4 (before surcharge)");
       Object.keys(cat.readings).filter(k => cat.readings[k].status === "placed").sort(), ["high_level", "level"]);
   }
 
+  /* Filling corridors (Sim 4's default method): the filling events recomputed here from Sim 3's
+     rows and the geometry, every corridor set inside them, and the held-out tests present. */
+  {
+    const reg = window.SIM3_REGIONS, C = Bd.corridors, geo = Bd.geometry, th = C.theta;
+    const fills = (cases, areaOk) => {
+      const ev = {};
+      for (const ci of cases) {
+        const t = Bd.cases[ci], base = reg.base[t].depthMm, done = new Set();
+        for (const x of reg.rows[t].slice().sort((a, b) => a.r - b.r || a.s - b.s)) {
+          if (!areaOk(x.r)) continue;
+          for (const [i, v] of x.rise) {
+            const g = geo[i];
+            if (g.bore == null || done.has(x.r + ":" + i)) continue;
+            const f0 = ((base[String(i)] || 0) - g.off) / g.bore;
+            if (f0 < th && th <= f0 + v / g.bore) { (ev[i] = ev[i] || []).push([ci, x.r, x.s]); done.add(x.r + ":" + i); }
+          }
+        }
+      }
+      return ev;
+    };
+    const ev = fills(C.cases, () => true);
+    check("filling events recomputed: same manholes and build-outs as the tool",
+      JSON.stringify(Object.keys(ev).sort((a, b) => a - b).map(i => [+i, ev[i].length])), JSON.stringify(Object.keys(C.events).map(i => [+i, C.events[i].length])));
+    check("every corridor member fills, and every filling manhole is in exactly one corridor",
+      C.list.flatMap(c => c.members).sort((a, b) => a - b).join(), Object.keys(C.events).map(Number).sort((a, b) => a - b).join());
+    check("every corridor set puts its sensors on corridors only",
+      Object.values(Bd.results).flatMap(r => (r.corridor || []).flatMap(e => e.chosen)).filter(i => !C.events[String(i)]).length, 0);
+    check("the page scores the corridor sets as the tool does",
+      Object.entries(Bd.corridors.sets).flatMap(([r, lst]) => lst.filter(e => JSON.stringify(V.outcomes(e.chosen, r).cnt) !== JSON.stringify(e.counts))).length, 0);
+    const h = Bd.results.r10.holdout;
+    check("held-out tests for both methods, by case and by area (rise 10 mm)",
+      [h.case.rounds > 1, h.area.rounds > 1, h.case.corridor.length, h.area.before.length], [true, true, Bd.settings.max_sensors, Bd.settings.max_sensors]);
+    // an area hold-out round must not see that area's runs: R1's own runs fill some manholes
+    const r1 = Bd.paths.find(p => Bd.cases[p.c] && p.r === 0).r;
+    const without = fills(C.cases, r => r !== r1);
+    check("leaving an area out removes its filling events (no leakage)",
+      Object.keys(ev).length > Object.keys(without).length, true);
+  }
+
   /* A hand-made locating example with a known answer. Three areas in one case, each
      surcharging at its second step; at the first, A moves manholes 0 and 1, B moves 1, C
      moves 2. A and B are far apart and must be told apart; C need not be. */
