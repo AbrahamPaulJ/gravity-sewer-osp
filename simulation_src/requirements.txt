@@ -2,4 +2,6 @@ pyswmm==2.1.0
 swmm-toolkit==0.17.0
 numpy==2.3.3
 scipy==1.17.1
+PuLP==3.3.2
+highspy==1.15.1
 pyvista

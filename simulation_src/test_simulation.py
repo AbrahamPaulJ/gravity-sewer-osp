@@ -139,6 +139,51 @@ def main():
           diff < 0.001, diff)
     check("whole-domain continuity error under 1%", abs(res.err) < 1, res.err)
 
+    # Sim 3 regions (sim3_regions.py): disjoint, covering the domain, growth spread over
+    # connection points summing to the step's dwellings.
+    import sim3_regions
+    net3, probe3, pipes3 = sim3_regions._domain()
+    regs = sim3_regions.regions(net3, probe3, pipes3)
+    allp = [i for r in regs for i in r["pipes"]]
+    check("regions: disjoint and together exactly the domain's pipes",
+          len(allp) == len(set(allp)) == len(pipes3), (len(allp), len(set(allp)), len(pipes3)))
+    r1 = next(r for r in regs if r["id"] == "R1")
+    check("regions: R1 is the 71-manhole segment above MH4450193",
+          r1["n_manholes"] == 71 and 4450193 in r1["manholes"], r1["n_manholes"])
+    g = sim3_regions.growth_nodes(r1, 0.5, net3)
+    check("regions: a 50% step spreads exactly half the nominal growth over the region's loaded nodes",
+          abs(sum(g.values()) - 0.5 * r1["nominal_dwellings"]) < 1e-6 and len(g) > 20
+          and all(net3.nodes[n].manhole_id in r1["manholes"] or not net3.nodes[n].is_chamber for n in g),
+          (round(sum(g.values()), 2), len(g)))
+    gm = sim25.Sim25Model(case, whole=True, growth_nodes=g)
+    check("regions: SWMM is given the spread growth as flow (0.0106 L/s a dwelling)",
+          abs(gm.growth_lps - sum(g.values()) * 2.3 * 200 / 86400 * 2.0) < 1e-6, gm.growth_lps)
+
+    # The convergence gate (R2, corrected 21 Oct 2026). Design wet settles well inside the
+    # ceiling and matches the fixed 480-minute run; a short ceiling at 0.25 must be reported
+    # as unconverged rather than passing as settled.
+    import time as _time
+    t0 = _time.time()
+    resg, stg, _ = sim25.solve(sim25.Sim25Model(case, whole=True), sim25.MAX_MINUTES,
+                               os.path.join(tmp, "s25gate"), settle=sim25.SETTLE)
+    gate_s = _time.time() - t0
+    g = resg.settle or {}
+    check("gate: design wet converges before the ceiling",
+          g.get("converged") is True and g["minutes"] < sim25.MAX_MINUTES
+          and g["minutes"] >= sim25.SETTLE["min_minutes"], g)
+    worst = max(abs(stg[c]["depth"] - stw[c]["depth"]) * 1000 for c in whole.chambers)
+    check("gate: settled depths match the fixed 480-minute run within 0.5 mm at every chamber",
+          worst < 0.5, f"{worst:.2f} mm, gate run {g.get('minutes')} min in {gate_s:.0f} s")
+    check("gate: provenance carries minutes, drift, tolerance and window",
+          all(k in g for k in ("minutes", "max_drift_mm", "tol_mm", "window_min", "settled_at_min")), sorted(g))
+    short = dict(sim25.SETTLE, min_minutes=30, window_min=20)
+    resu, _, _ = sim25.solve(sim25.Sim25Model(sim25.Case(ii=0.25), whole=True), 60,
+                             os.path.join(tmp, "s25unsettled"), settle=short)
+    u = resu.settle or {}
+    check("gate: beyond design at a 60-minute ceiling is reported unconverged, naming chambers",
+          u.get("converged") is False and u.get("unsettled_count", 0) > 0 and u["minutes"] == 60,
+          {k: u.get(k) for k in ("converged", "minutes", "max_drift_mm", "unsettled_count")})
+
     # Pump stations at a set rate (config.js pumps, scenarios only). The grid's ideal pumps
     # must be untouched, and a rated model must write tanks, curves and switch levels.
     ideal_inp, rated_inp = os.path.join(tmp, "ideal.inp"), os.path.join(tmp, "rated.inp")

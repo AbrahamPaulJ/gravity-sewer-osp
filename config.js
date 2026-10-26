@@ -109,9 +109,54 @@
     "max_sensors": 10,
     "scenario_default_dwellings": 50,
 
-    "case_set": "five",
-    "_case_set": "Allowed: the name of any set under case_sets (as committed, \"five\" | \"all_twelve\"). Which of case_sets below is run and published. Each case is one combination of what cannot be measured yet, and costs 1,641 whole-domain SWMM runs (about 87 min on 9 workers) in the whole area.",
+    "run": {
+      "_note": "Run length, register R2 as corrected on 21 Oct 2026. A SWMM run ends when every chamber's depth has moved less than settle_tol_mm over the last settle_window_min simulated minutes, checked every check_every_min after min_minutes, otherwise at max_minutes with converged false recorded in the results. The fixed 480 minutes it replaces was settled at infiltration 0.11 (0.0 mm change to 1440 min) but not at 0.25 (MH4428836 149.8 to 164.3 mm; 32 of 71 segment manholes moved more than 5 mm) nor fully at 0.40 (38 of 328 chambers, up to 14.5 mm). Scenarios with pumps at set rates never settle and keep pumps.rated_minutes instead. Every run records the minutes it took, whether it settled, the largest drift and SWMM's continuity error. Window and tolerance were calibrated on 21 Oct 2026 against full 1440-minute trajectories at 0.11, 0.25 and 0.40: a 30-minute window at 0.5 mm opened at 410 minutes in Severe with 24 mm of slow creep still to come; 120 minutes at 0.25 mm opens at 370, 1040 and 740 minutes and leaves at most 0.1 mm at any chamber.",
+      "max_minutes": 1800,
+      "min_minutes": 240,
+      "settle_tol_mm": 0.25,
+      "settle_window_min": 120,
+      "check_every_min": 10,
+      "sample_s": 60
+    },
+
+    "regions": {
+      "_note": "Sim 3 family A, infill (simulation_src/sim3_regions.py). Growth is spread over a region's existing connection points, each pipe's connections taking their share of the region's new dwellings, loaded where that pipe is already loaded, on a build-out ladder. A region is every pipe draining to its exit pipe, less any pipe a region listed earlier already claimed (two east branches share 32 pipes through relief pipes). 'remainder' is every domain pipe no listed region claimed; 'corridor' is the Walkerville Terrace family (nodes within 25 m of the terrace, weighted by pipe length). Regions were chosen 21 Oct 2026 as the trunk's largest tributaries; the network operator may name a different corner, which is one line here.",
+      "anchor_dwellings": 485,
+      "_anchor": "PlanSA Local Area Population Projections 2021 to 2041, Walkerville LGA high case, +1,116 people at 2.3 per household (docs/15 s1); the medium case is 390. A region's nominal (100%) growth is the anchor times its share of the council's 2,851 connections (P01); the corridor's nominal is the anchor itself, as the state's named growth driver.",
+      "council_connections": 2851,
+      "ladder": [0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0],
+      "_ladder": "Build-out fractions of the nominal growth. 1.0 is the whole 20-year projection landing in the region; 3.0 is a stress step. Dwellings arrive over 3 to 5 years (28 Sep 2026), so the ladder reads as time as well as size.",
+      "rise_floor_mm": 0.5,
+      "list": [
+        { "id": "R1", "name": "Upper main line, north-east: the 71 manholes above MH4450193", "exit_pipe": 4433721 },
+        { "id": "R2", "name": "East branch joining the trunk at pipe 4433482", "exit_pipe": 4433482 },
+        { "id": "R3", "name": "South-west branch near the outlet, pipe 4476332", "exit_pipe": 4476332 },
+        { "id": "R4", "name": "East branch joining the trunk at pipe 4433517", "exit_pipe": 4433517 },
+        { "id": "R5", "name": "Central branch at pipe 4433419", "exit_pipe": 4433419 },
+        { "id": "R6", "name": "South-west branch at pipe 4433080", "exit_pipe": 4433080 },
+        { "id": "R7", "name": "Rest of the suburb: trunk-side manholes and small branches", "exit_pipe": "remainder" },
+        { "id": "R8", "name": "Walkerville Terrace corridor", "exit_pipe": "corridor" }
+      ]
+    },
+
+    "case_set": "eight",
+    "_case_set": "Allowed: the name of any set under case_sets (as committed, \"eight\" | \"five\" | \"all_twelve\"). eight (Sim 3, 21 Oct 2026) restores Beyond design 0.25, the band where the Walkerville Terrace corridor reaches the upper main line and where the fixed 480-minute runs were furthest from settled; every run now ends on the convergence gate (simulation.run). Which of case_sets below is run and published. Each case is one combination of what cannot be measured yet, and costs 1,641 whole-domain SWMM runs (about 87 min on 9 workers) in the whole area.",
     "case_sets": {
+      "eight": {
+        "weather": [
+          { "ii": 0.0, "label": "Dry", "note": "Sewage only, no infiltration: a genuinely dry day." },
+          { "ii": 0.11, "label": "Design wet", "note": "Infiltration at the level that just meets the utility's own design rating for these pipes." },
+          { "ii": 0.25, "label": "Beyond design", "note": "1.7 times the design envelope: a wet day on a leaky network." },
+          { "ii": 0.4, "label": "Severe", "note": "2.4 times the design envelope: a heavy wet period." }
+        ],
+        "sensitivity": {
+          "at_ii": [0.11, 0.25],
+          "variants": [
+            { "label": "age-weighted I&I", "set": { "age": "weighted" } },
+            { "label": "outside inflow x1.5", "set": { "bfac": 1.5 } }
+          ]
+        }
+      },
       "five": {
         "weather": [
           { "ii": 0.0, "label": "Dry", "note": "Sewage only, no infiltration: a genuinely dry day." },

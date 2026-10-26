@@ -1,0 +1,83 @@
+study area whole: 328 candidate manholes; anchor 485 dwellings over 2851 connections
+id   manholes dwellings length m 100% growth  name
+R1         71       644     7821       109.6  Upper main line, north-east: the 71 manholes above MH4450193
+R2         40       324     4669        55.1  East branch joining the trunk at pipe 4433482
+R3         37       233     4665        39.6  South-west branch near the outlet, pipe 4476332
+R4         19       100     1766          17  East branch joining the trunk at pipe 4433517
+R5         19       147     2510          25  Central branch at pipe 4433419
+R6         14       113     1660        19.2  South-west branch at pipe 4433080
+R8         25       175     3006         485  Walkerville Terrace corridor
+R7        105       829    11331         141  Rest of the suburb: trunk-side manholes and small branches
+8 cases x 57 whole-domain runs = 456, about 89 min on 6 workers (70 s a run, gated); ladder [0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0]
+  ii0.00_flat_uniform_b1_sfree: 56 runs in 1063 s; settled in 252.0 to 1800 min, 1 unconverged; baseline alarm 21, surcharged 0
+    R1 (109.6 dwellings at 100%): 0.1: 1 mm, 0 new alarm, 0.25: 2 mm, 0 new alarm, 0.5: 3 mm, 0 new alarm, 0.75: 5 mm, 0 new alarm, 1: 7 mm, 0 new alarm, 1.5: 11 mm, 0 new alarm, 3: 22 mm, 0 new alarm
+    R2 (55.1 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 1 mm, 0 new alarm, 0.5: 2 mm, 0 new alarm, 0.75: 3 mm, 0 new alarm, 1: 4 mm, 0 new alarm, 1.5: 5 mm, 0 new alarm, 3: 11 mm, 0 new alarm
+    R3 (39.6 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 1 mm, 0 new alarm, 0.5: 2 mm, 0 new alarm, 0.75: 3 mm, 0 new alarm, 1: 3 mm, 0 new alarm, 1.5: 5 mm, 0 new alarm, 3: 9 mm, 0 new alarm
+    R4 (17 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 0 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 1 mm, 0 new alarm, 1: 1 mm, 0 new alarm, 1.5: 2 mm, 0 new alarm, 3: 4 mm, 0 new alarm
+    R5 (25 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 0 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 1 mm, 0 new alarm, 1: 2 mm, 0 new alarm, 1.5: 2 mm, 0 new alarm, 3: 5 mm, 0 new alarm
+    R6 (19.2 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 1 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 2 mm, 0 new alarm, 1: 2 mm, 0 new alarm, 1.5: 3 mm, 0 new alarm, 3: 6 mm, 0 new alarm
+    R8 (485 dwellings at 100%): 0.1: 1 mm, 0 new alarm, 0.25: 3 mm, 0 new alarm, 0.5: 6 mm, 0 new alarm, 0.75: 8 mm, 0 new alarm, 1: 11 mm, 0 new alarm, 1.5: 17 mm, 0 new alarm, 3: 33 mm, 1 new alarm
+    R7 (141 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 1 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 2 mm, 0 new alarm, 1: 3 mm, 0 new alarm, 1.5: 4 mm, 0 new alarm, 3: 8 mm, 0 new alarm
+  ii0.11_flat_uniform_b1_sfree: 56 runs in 1443 s; settled in 352.0 to 432.0 min, 0 unconverged; baseline alarm 34, surcharged 7
+    R1 (109.6 dwellings at 100%): 0.1: 7 mm, 0 new alarm, 0.25: 17 mm, 0 new alarm, 0.5: 35 mm, 0 new alarm, 0.75: 54 mm, 1 new alarm, 1: 73 mm, 2 new alarm, 1.5: 112 mm, 2 new alarm, 3: 229 mm, 4 new alarm
+    R2 (55.1 dwellings at 100%): 0.1: 5 mm, 0 new alarm, 0.25: 13 mm, 0 new alarm, 0.5: 25 mm, 0 new alarm, 0.75: 38 mm, 0 new alarm, 1: 50 mm, 0 new alarm, 1.5: 74 mm, 1 new alarm, 3: 146 mm, 1 new alarm
+    R3 (39.6 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 1 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 2 mm, 0 new alarm, 1: 2 mm, 0 new alarm, 1.5: 3 mm, 0 new alarm, 3: 6 mm, 0 new alarm
+    R4 (17 dwellings at 100%): 0.1: 1 mm, 0 new alarm, 0.25: 3 mm, 0 new alarm, 0.5: 5 mm, 0 new alarm, 0.75: 8 mm, 0 new alarm, 1: 11 mm, 0 new alarm, 1.5: 16 mm, 0 new alarm, 3: 33 mm, 0 new alarm
+    R5 (25 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 0 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 1 mm, 0 new alarm, 1: 1 mm, 0 new alarm, 1.5: 2 mm, 0 new alarm, 3: 4 mm, 0 new alarm
+    R6 (19.2 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 0 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 1 mm, 0 new alarm, 1: 1 mm, 0 new alarm, 1.5: 2 mm, 0 new alarm, 3: 4 mm, 0 new alarm
+    R8 (485 dwellings at 100%): 0.1: 4 mm, 0 new alarm, 0.25: 10 mm, 0 new alarm, 0.5: 20 mm, 0 new alarm, 0.75: 30 mm, 0 new alarm, 1: 40 mm, 0 new alarm, 1.5: 60 mm, 1 new alarm, 3: 125 mm, 1 new alarm
+    R7 (141 dwellings at 100%): 0.1: 1 mm, 0 new alarm, 0.25: 2 mm, 0 new alarm, 0.5: 4 mm, 0 new alarm, 0.75: 7 mm, 0 new alarm, 1: 9 mm, 0 new alarm, 1.5: 13 mm, 0 new alarm, 3: 27 mm, 0 new alarm
+  ii0.25_flat_uniform_b1_sfree: 56 runs in 3168 s; settled in 782.0 to 1112.0 min, 0 unconverged; baseline alarm 122, surcharged 107
+    R1 (109.6 dwellings at 100%): 0.1: 12 mm, 0 new alarm, 0.25: 31 mm, 0 new alarm, 0.5: 61 mm, 1 new alarm, 0.75: 92 mm, 1 new alarm, 1: 124 mm, 2 new alarm, 1.5: 187 mm, 2 new alarm, 3: 383 mm, 3 new alarm
+    R2 (55.1 dwellings at 100%): 0.1: 8 mm, 0 new alarm, 0.25: 20 mm, 0 new alarm, 0.5: 40 mm, 0 new alarm, 0.75: 60 mm, 0 new alarm, 1: 80 mm, 1 new alarm, 1.5: 121 mm, 1 new alarm, 3: 245 mm, 3 new alarm
+    R3 (39.6 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 0 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 1 mm, 0 new alarm, 1: 2 mm, 0 new alarm, 1.5: 3 mm, 0 new alarm, 3: 5 mm, 0 new alarm
+    R4 (17 dwellings at 100%): 0.1: 1 mm, 0 new alarm, 0.25: 4 mm, 0 new alarm, 0.5: 7 mm, 0 new alarm, 0.75: 11 mm, 0 new alarm, 1: 14 mm, 0 new alarm, 1.5: 21 mm, 0 new alarm, 3: 43 mm, 0 new alarm
+    R5 (25 dwellings at 100%): 0.1: 4 mm, 0 new alarm, 0.25: 11 mm, 0 new alarm, 0.5: 22 mm, 0 new alarm, 0.75: 33 mm, 0 new alarm, 1: 43 mm, 0 new alarm, 1.5: 65 mm, 0 new alarm, 3: 131 mm, 0 new alarm
+    R6 (19.2 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 1 mm, 0 new alarm, 0.5: 2 mm, 0 new alarm, 0.75: 3 mm, 0 new alarm, 1: 4 mm, 0 new alarm, 1.5: 6 mm, 0 new alarm, 3: 12 mm, 0 new alarm
+    R8 (485 dwellings at 100%): 0.1: 10 mm, 0 new alarm, 0.25: 25 mm, 0 new alarm, 0.5: 51 mm, 0 new alarm, 0.75: 77 mm, 2 new alarm, 1: 99 mm, 3 new alarm, 1.5: 110 mm, 4 new alarm, 3: 241 mm, 6 new alarm
+    R7 (141 dwellings at 100%): 0.1: 2 mm, 0 new alarm, 0.25: 5 mm, 0 new alarm, 0.5: 11 mm, 0 new alarm, 0.75: 16 mm, 0 new alarm, 1: 22 mm, 0 new alarm, 1.5: 33 mm, 0 new alarm, 3: 66 mm, 1 new alarm
+  ii0.40_flat_uniform_b1_sfree: 56 runs in 1614 s; settled in 582.0 to 1342.0 min, 0 unconverged; baseline alarm 147, surcharged 141
+    R1 (109.6 dwellings at 100%): 0.1: 12 mm, 0 new alarm, 0.25: 31 mm, 0 new alarm, 0.5: 62 mm, 0 new alarm, 0.75: 92 mm, 0 new alarm, 1: 121 mm, 1 new alarm, 1.5: 179 mm, 1 new alarm, 3: 356 mm, 2 new alarm
+    R2 (55.1 dwellings at 100%): 0.1: 7 mm, 0 new alarm, 0.25: 18 mm, 0 new alarm, 0.5: 36 mm, 0 new alarm, 0.75: 55 mm, 0 new alarm, 1: 73 mm, 0 new alarm, 1.5: 110 mm, 0 new alarm, 3: 191 mm, 0 new alarm
+    R3 (39.6 dwellings at 100%): 0.1: 1 mm, 0 new alarm, 0.25: 2 mm, 0 new alarm, 0.5: 4 mm, 0 new alarm, 0.75: 6 mm, 0 new alarm, 1: 8 mm, 0 new alarm, 1.5: 12 mm, 0 new alarm, 3: 24 mm, 0 new alarm
+    R4 (17 dwellings at 100%): 0.1: 1 mm, 0 new alarm, 0.25: 2 mm, 0 new alarm, 0.5: 5 mm, 0 new alarm, 0.75: 7 mm, 0 new alarm, 1: 9 mm, 0 new alarm, 1.5: 14 mm, 0 new alarm, 3: 27 mm, 0 new alarm
+    R5 (25 dwellings at 100%): 0.1: 7 mm, 0 new alarm, 0.25: 18 mm, 0 new alarm, 0.5: 37 mm, 0 new alarm, 0.75: 55 mm, 0 new alarm, 1: 74 mm, 0 new alarm, 1.5: 111 mm, 0 new alarm, 3: 222 mm, 1 new alarm
+    R6 (19.2 dwellings at 100%): 0.1: 1 mm, 0 new alarm, 0.25: 2 mm, 0 new alarm, 0.5: 4 mm, 0 new alarm, 0.75: 6 mm, 0 new alarm, 1: 8 mm, 0 new alarm, 1.5: 12 mm, 0 new alarm, 3: 23 mm, 0 new alarm
+    R8 (485 dwellings at 100%): 0.1: 7 mm, 0 new alarm, 0.25: 18 mm, 0 new alarm, 0.5: 37 mm, 0 new alarm, 0.75: 55 mm, 0 new alarm, 1: 74 mm, 0 new alarm, 1.5: 110 mm, 1 new alarm, 3: 218 mm, 2 new alarm
+    R7 (141 dwellings at 100%): 0.1: 2 mm, 0 new alarm, 0.25: 5 mm, 0 new alarm, 0.5: 10 mm, 0 new alarm, 0.75: 15 mm, 0 new alarm, 1: 20 mm, 0 new alarm, 1.5: 30 mm, 0 new alarm, 3: 61 mm, 0 new alarm
+  ii0.11_flat_weighted_b1_sfree: 56 runs in 727 s; settled in 292.0 to 432.0 min, 0 unconverged; baseline alarm 34, surcharged 7
+    R1 (109.6 dwellings at 100%): 0.1: 5 mm, 0 new alarm, 0.25: 13 mm, 0 new alarm, 0.5: 27 mm, 0 new alarm, 0.75: 40 mm, 0 new alarm, 1: 53 mm, 0 new alarm, 1.5: 81 mm, 0 new alarm, 3: 164 mm, 2 new alarm
+    R2 (55.1 dwellings at 100%): 0.1: 3 mm, 0 new alarm, 0.25: 7 mm, 0 new alarm, 0.5: 13 mm, 0 new alarm, 0.75: 20 mm, 0 new alarm, 1: 27 mm, 0 new alarm, 1.5: 41 mm, 0 new alarm, 3: 94 mm, 1 new alarm
+    R3 (39.6 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 1 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 2 mm, 0 new alarm, 1: 2 mm, 0 new alarm, 1.5: 3 mm, 0 new alarm, 3: 6 mm, 0 new alarm
+    R4 (17 dwellings at 100%): 0.1: 1 mm, 0 new alarm, 0.25: 2 mm, 0 new alarm, 0.5: 4 mm, 0 new alarm, 0.75: 6 mm, 0 new alarm, 1: 8 mm, 0 new alarm, 1.5: 12 mm, 0 new alarm, 3: 25 mm, 0 new alarm
+    R5 (25 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 0 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 1 mm, 0 new alarm, 1: 1 mm, 0 new alarm, 1.5: 2 mm, 0 new alarm, 3: 4 mm, 0 new alarm
+    R6 (19.2 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 0 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 1 mm, 0 new alarm, 1: 1 mm, 0 new alarm, 1.5: 2 mm, 0 new alarm, 3: 4 mm, 0 new alarm
+    R8 (485 dwellings at 100%): 0.1: 3 mm, 0 new alarm, 0.25: 9 mm, 0 new alarm, 0.5: 18 mm, 0 new alarm, 0.75: 26 mm, 0 new alarm, 1: 35 mm, 0 new alarm, 1.5: 54 mm, 0 new alarm, 3: 111 mm, 0 new alarm
+    R7 (141 dwellings at 100%): 0.1: 1 mm, 0 new alarm, 0.25: 2 mm, 0 new alarm, 0.5: 4 mm, 0 new alarm, 0.75: 6 mm, 0 new alarm, 1: 8 mm, 0 new alarm, 1.5: 12 mm, 0 new alarm, 3: 24 mm, 0 new alarm
+  ii0.11_flat_uniform_b1.5_sfree: 56 runs in 3233 s; settled in 1172.0 to 1752.0 min, 0 unconverged; baseline alarm 53, surcharged 29
+    R1 (109.6 dwellings at 100%): 0.1: 20 mm, 0 new alarm, 0.25: 49 mm, 0 new alarm, 0.5: 95 mm, 2 new alarm, 0.75: 139 mm, 2 new alarm, 1: 182 mm, 3 new alarm, 1.5: 269 mm, 5 new alarm, 3: 548 mm, 11 new alarm
+    R2 (55.1 dwellings at 100%): 0.1: 6 mm, 0 new alarm, 0.25: 14 mm, 0 new alarm, 0.5: 29 mm, 0 new alarm, 0.75: 43 mm, 0 new alarm, 1: 58 mm, 0 new alarm, 1.5: 88 mm, 2 new alarm, 3: 179 mm, 4 new alarm
+    R3 (39.6 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 1 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 2 mm, 0 new alarm, 1: 2 mm, 0 new alarm, 1.5: 3 mm, 0 new alarm, 3: 6 mm, 0 new alarm
+    R4 (17 dwellings at 100%): 0.1: 2 mm, 0 new alarm, 0.25: 4 mm, 0 new alarm, 0.5: 8 mm, 0 new alarm, 0.75: 12 mm, 0 new alarm, 1: 16 mm, 0 new alarm, 1.5: 24 mm, 0 new alarm, 3: 48 mm, 0 new alarm
+    R5 (25 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 1 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 2 mm, 0 new alarm, 1: 3 mm, 0 new alarm, 1.5: 4 mm, 0 new alarm, 3: 8 mm, 0 new alarm
+    R6 (19.2 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 0 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 1 mm, 0 new alarm, 1: 1 mm, 0 new alarm, 1.5: 2 mm, 0 new alarm, 3: 4 mm, 0 new alarm
+    R8 (485 dwellings at 100%): 0.1: 5 mm, 0 new alarm, 0.25: 12 mm, 0 new alarm, 0.5: 25 mm, 0 new alarm, 0.75: 59 mm, 0 new alarm, 1: 65 mm, 2 new alarm, 1.5: 97 mm, 6 new alarm, 3: 257 mm, 9 new alarm
+    R7 (141 dwellings at 100%): 0.1: 1 mm, 0 new alarm, 0.25: 3 mm, 0 new alarm, 0.5: 6 mm, 0 new alarm, 0.75: 9 mm, 0 new alarm, 1: 12 mm, 0 new alarm, 1.5: 17 mm, 0 new alarm, 3: 35 mm, 0 new alarm
+  ii0.25_flat_weighted_b1_sfree: 56 runs in 2820 s; settled in 812.0 to 1372.0 min, 0 unconverged; baseline alarm 119, surcharged 104
+    R1 (109.6 dwellings at 100%): 0.1: 11 mm, 0 new alarm, 0.25: 27 mm, 0 new alarm, 0.5: 55 mm, 0 new alarm, 0.75: 83 mm, 0 new alarm, 1: 112 mm, 0 new alarm, 1.5: 170 mm, 1 new alarm, 3: 351 mm, 3 new alarm
+    R2 (55.1 dwellings at 100%): 0.1: 8 mm, 0 new alarm, 0.25: 20 mm, 0 new alarm, 0.5: 40 mm, 0 new alarm, 0.75: 60 mm, 0 new alarm, 1: 80 mm, 0 new alarm, 1.5: 121 mm, 1 new alarm, 3: 245 mm, 2 new alarm
+    R3 (39.6 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 0 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 1 mm, 0 new alarm, 1: 2 mm, 0 new alarm, 1.5: 3 mm, 0 new alarm, 3: 5 mm, 0 new alarm
+    R4 (17 dwellings at 100%): 0.1: 1 mm, 0 new alarm, 0.25: 3 mm, 0 new alarm, 0.5: 7 mm, 0 new alarm, 0.75: 10 mm, 0 new alarm, 1: 13 mm, 0 new alarm, 1.5: 20 mm, 0 new alarm, 3: 40 mm, 1 new alarm
+    R5 (25 dwellings at 100%): 0.1: 4 mm, 0 new alarm, 0.25: 11 mm, 0 new alarm, 0.5: 22 mm, 0 new alarm, 0.75: 33 mm, 0 new alarm, 1: 44 mm, 0 new alarm, 1.5: 66 mm, 0 new alarm, 3: 134 mm, 0 new alarm
+    R6 (19.2 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 1 mm, 0 new alarm, 0.5: 2 mm, 0 new alarm, 0.75: 3 mm, 0 new alarm, 1: 4 mm, 0 new alarm, 1.5: 6 mm, 0 new alarm, 3: 12 mm, 0 new alarm
+    R8 (485 dwellings at 100%): 0.1: 10 mm, 0 new alarm, 0.25: 24 mm, 0 new alarm, 0.5: 49 mm, 0 new alarm, 0.75: 74 mm, 2 new alarm, 1: 97 mm, 2 new alarm, 1.5: 182 mm, 4 new alarm, 3: 327 mm, 6 new alarm
+    R7 (141 dwellings at 100%): 0.1: 2 mm, 0 new alarm, 0.25: 5 mm, 0 new alarm, 0.5: 11 mm, 0 new alarm, 0.75: 16 mm, 0 new alarm, 1: 21 mm, 0 new alarm, 1.5: 32 mm, 0 new alarm, 3: 62 mm, 1 new alarm
+  ii0.25_flat_uniform_b1.5_sfree: 56 runs in 2650 s; settled in 672.0 to 922.0 min, 0 unconverged; baseline alarm 136, surcharged 121
+    R1 (109.6 dwellings at 100%): 0.1: 13 mm, 0 new alarm, 0.25: 33 mm, 0 new alarm, 0.5: 66 mm, 0 new alarm, 0.75: 99 mm, 0 new alarm, 1: 126 mm, 0 new alarm, 1.5: 176 mm, 0 new alarm, 3: 329 mm, 0 new alarm
+    R2 (55.1 dwellings at 100%): 0.1: 5 mm, 0 new alarm, 0.25: 13 mm, 0 new alarm, 0.5: 26 mm, 0 new alarm, 0.75: 39 mm, 0 new alarm, 1: 52 mm, 0 new alarm, 1.5: 79 mm, 0 new alarm, 3: 161 mm, 0 new alarm
+    R3 (39.6 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 1 mm, 0 new alarm, 0.5: 1 mm, 0 new alarm, 0.75: 2 mm, 0 new alarm, 1: 2 mm, 0 new alarm, 1.5: 3 mm, 0 new alarm, 3: 7 mm, 0 new alarm
+    R4 (17 dwellings at 100%): 0.1: 1 mm, 0 new alarm, 0.25: 2 mm, 0 new alarm, 0.5: 5 mm, 0 new alarm, 0.75: 7 mm, 0 new alarm, 1: 9 mm, 0 new alarm, 1.5: 14 mm, 0 new alarm, 3: 29 mm, 0 new alarm
+    R5 (25 dwellings at 100%): 0.1: 4 mm, 0 new alarm, 0.25: 11 mm, 0 new alarm, 0.5: 42 mm, 0 new alarm, 0.75: 62 mm, 1 new alarm, 1: 80 mm, 1 new alarm, 1.5: 117 mm, 1 new alarm, 3: 227 mm, 1 new alarm
+    R6 (19.2 dwellings at 100%): 0.1: 0 mm, 0 new alarm, 0.25: 1 mm, 0 new alarm, 0.5: 2 mm, 0 new alarm, 0.75: 3 mm, 0 new alarm, 1: 4 mm, 0 new alarm, 1.5: 6 mm, 0 new alarm, 3: 12 mm, 1 new alarm
+    R8 (485 dwellings at 100%): 0.1: 3 mm, 0 new alarm, 0.25: 9 mm, 0 new alarm, 0.5: 18 mm, 1 new alarm, 0.75: 28 mm, 1 new alarm, 1: 40 mm, 1 new alarm, 1.5: 135 mm, 3 new alarm, 3: 297 mm, 4 new alarm
+    R7 (141 dwellings at 100%): 0.1: 1 mm, 0 new alarm, 0.25: 3 mm, 0 new alarm, 0.5: 6 mm, 0 new alarm, 0.75: 9 mm, 0 new alarm, 1: 12 mm, 0 new alarm, 1.5: 19 mm, 0 new alarm, 3: 38 mm, 1 new alarm

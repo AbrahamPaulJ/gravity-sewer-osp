@@ -1,0 +1,10 @@
+study area: whole, 328 growth sites; results in simulation_src\results\sim25\grid_whole
+1 cases (0 nested); 0 segment runs (~3.5 s each) + 1661 whole runs (~28.6 s each) on 5 workers: about 158 min
+    ii0.40_flat_uniform_b1_sfree whole
+  ii0.40_flat_uniform_b1_sfree: already done, kept
+  corridor ii0.40_flat_uniform_b1_sfree +80: outlet rises 0.1 mm, max study rise 12.3 mm, newly alarm [], surcharge [4501866]
+  corridor ii0.40_flat_uniform_b1_sfree +150: outlet rises 0.2 mm, max study rise 23.1 mm, newly alarm [], surcharge [4501866]
+  corridor ii0.40_flat_uniform_b1_sfree +390: outlet rises 0.7 mm, max study rise 59.8 mm, newly alarm [], surcharge [4501851, 4501866]
+  corridor ii0.40_flat_uniform_b1_sfree +485: outlet rises 0.8 mm, max study rise 74.3 mm, newly alarm [], surcharge [4501851, 4501866]
+alarm: MH4452946 1/1, MH4428268 1/1, MH4451287 1/1, MH1623826 1/1, MH4449436 1/1, MH4453770 1/1
+surcharge: MH4501866 1/1, MH4428268 1/1, MH4449436 1/1

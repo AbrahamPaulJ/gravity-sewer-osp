@@ -1,0 +1,19 @@
+study area: whole, 328 growth sites; results in simulation_src\results\sim25\grid_whole
+1 cases (0 nested); 0 segment runs (~3.5 s each) + 1661 whole runs (~28.6 s each) on 6 workers: about 132 min
+    ii0.40_flat_uniform_b1_sfree whole
+  ii0.40_flat_uniform_b1_sfree: 1182 of 1641 runs already checkpointed, kept
+  ii0.40_flat_uniform_b1_sfree: runs settled in 572.0 to 1800 min (baseline 752.0), 59 unconverged, drift up to 25.011 mm
+  ii0.40_flat_uniform_b1_sfree: 1640 growth runs, baseline alarm 147 surcharged 141; sensors alarm [4452946, 4428268, 4451287, 1623826, 4449436, 4453770] surcharge [4501866, 4428268, 4449436] (3540 s)
+Traceback (most recent call last):
+  File "simulation_src\sim25_grid.py", line 357, in <module>
+    main()
+  File "simulation_src\sim25_grid.py", line 346, in main
+    corridor = [] if args.no_corridor else [
+                                           ^
+  File "simulation_src\sim25_grid.py", line 347, in <listcomp>
+    run_corridor(Case(ii=ii), pool) for ii, _ in sim25.WEATHER]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "simulation_src\sim25_grid.py", line 273, in run_corridor
+    for n, (head, glps, err, st) in zip(CORRIDOR_SIZES, res[1:]):
+           ^^^^^^^^^^^^^^^^^^^^^
+ValueError: too many values to unpack (expected 4)

@@ -24,6 +24,7 @@ SCENARIOS (how load changes in time; every node's inflow = its base load x shape
     growth     an extra constant L/s at one chamber, on top of any of the above
 """
 import json, math, os
+from collections import deque
 from dataclasses import dataclass, field, asdict
 
 import numpy as np
@@ -428,6 +429,10 @@ def run(nh, sc, out_dir):
         sn = [N[c] for c in ch]
         sl = [Lk[lk.name] for lk in nh.links]
         so = N["OUT"]
+        # Pump flows (Sim 3): what each station pumps, the SCADA indicator of growth behind it.
+        pump_names = [p[0] for p in getattr(nh, "pumps", [])]
+        spump = [Lk[p] for p in pump_names]
+        pflow = []
         # Extra nodes whose water level is recorded even though they are not chambers: the
         # nesting handoff in Sim 2.5 needs the level where the study segment's outlet pipe
         # ends, which is usually a plain pipe junction. Empty for every older model.
@@ -437,8 +442,42 @@ def run(nh, sc, out_dir):
         # Seconds before which nothing is recorded. A steady run only reads its final
         # window, and reading every link every step is most of the cost on a big domain.
         skip = getattr(sc, "record_from_s", 0)
+        # Convergence gate (Sim 3, register R2 corrected 21 Oct 2026). sc.settle is None, or
+        # {tol_mm, window_min, min_minutes, check_every_min, sample_s, record_last_min}. Every
+        # chamber's depth is sampled every sample_s; once min_minutes have passed and no
+        # chamber has moved more than tol_mm over the last window_min, the run records its
+        # final window and stops. END_TIME is then only a ceiling, and a run that reaches it
+        # unconverged says so in settle_info rather than passing as settled. Without a gate
+        # the run goes to END_TIME exactly as before.
+        gate = getattr(sc, "settle", None)
+        settle_info, stop_at, recent, k = None, None, deque(), 0
+        if gate:
+            win_s = gate["window_min"] * 60
+            sample_s = gate.get("sample_s", 60)
+            every = max(1, int(round(sample_s / REPORT_S)))
+            check = max(1, int(round(gate.get("check_every_min", 10) * 60 / sample_s)))
+
+        def drift_now():
+            arr = np.array([r[1] for r in recent])
+            return (arr.max(axis=0) - arr.min(axis=0)) * 1000.0
+
         for _ in sim:
             now = (sim.current_time - sim.start_time).total_seconds()
+            if gate and stop_at is None:
+                k += 1
+                if k % every == 0:
+                    recent.append((now, [x.depth for x in sn]))
+                    while recent and recent[0][0] < now - win_s - 1e-6:
+                        recent.popleft()
+                    spans = len(recent) > 1 and recent[0][0] <= now - win_s + sample_s + 1e-6
+                    if spans and now >= gate["min_minutes"] * 60 and (k // every) % check == 0:
+                        d = drift_now()
+                        if float(d.max()) < gate["tol_mm"]:
+                            stop_at = now + gate["record_last_min"] * 60
+                            skip = min(skip, now)
+                            settle_info = {"converged": True, "settled_at_min": round(now / 60, 1),
+                                           "max_drift_mm": round(float(d.max()), 3),
+                                           "worst_chamber": ch[int(np.argmax(d))]}
             if now < skip:
                 continue
             t.append(now)
@@ -450,11 +489,30 @@ def run(nh, sc, out_dir):
             lflow.append([x.flow for x in sl])
             ldep.append([x.depth for x in sl])
             outq.append(so.total_inflow)
+            pflow.append([x.flow for x in spump])
+            if stop_at is not None and now >= stop_at - 1e-6:
+                break
+    if gate:
+        if settle_info is None:
+            have = len(recent) > 1
+            d = drift_now() if have else np.full(len(ch), float("nan"))
+            over = sorted(((float(x), c) for x, c in zip(d, ch) if x >= gate["tol_mm"]), reverse=True)
+            settle_info = {"converged": False, "settled_at_min": None,
+                           "max_drift_mm": round(float(np.nanmax(d)), 3) if have else None,
+                           "worst_chamber": ch[int(np.nanargmax(d))] if have else None,
+                           "unsettled": [(c, round(x, 2)) for x, c in over[:20]],
+                           "unsettled_count": len(over)}
+        settle_info.update({"minutes": round(now / 60, 1) if settle_info["converged"] else sc.minutes,
+                            "ceiling_min": sc.minutes,
+                            "tol_mm": gate["tol_mm"], "window_min": gate["window_min"]})
     series = dict(t=np.array(t), depth=np.array(dep), head=np.array(head),
                   flood=np.array(flood), inflow=np.array(inflow),
                   lflow=np.array(lflow), ldepth=np.array(ldep), outflow=np.array(outq),
-                  watch=watch, watch_head=np.array(whead))
-    return Result(nh, sc, series, loads, routing_error(inp), out_dir)
+                  watch=watch, watch_head=np.array(whead),
+                  pumps=pump_names, pump_flow=np.array(pflow))
+    res = Result(nh, sc, series, loads, routing_error(inp), out_dir)
+    res.settle = settle_info          # None when no gate was asked for
+    return res
 
 
 # ------------------------------------------------------------------ results

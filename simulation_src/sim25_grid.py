@@ -45,7 +45,11 @@ OUT = os.path.join(sim25.OUT_DIR, "grid" if sim25.STUDY_AREA == "segment" else "
 # never reaches; the smallest published detection rule is 10 mm, so dropping rises below 1 mm
 # loses nothing the page or the placement can use. The segment keeps every value, unchanged.
 WHOLE_RISE_FLOOR_MM = 1.0
-MINUTES = 480            # R2: settled within 0.2 mm by 480 min at every weather level tested
+# R2, corrected 21 Oct 2026: every run ends on the convergence gate (sim25.SETTLE) and
+# MAX_MINUTES is only the ceiling. 480 fixed minutes settled at 0.11 but not at 0.25 or 0.40;
+# see docs/18_sim3_plan_DRAFT.md section 2. Each run's length and drift are recorded.
+MAX_MINUTES = sim25.MAX_MINUTES
+SETTLE = sim25.SETTLE
 NEST_MAX_II = 0.11       # X4: nesting validated up to design wet only
 CORRIDOR_BUFFER_M = 25.0
 CORRIDOR_SIZES = list(sim25.CFG["simulation"]["corridor_dwellings"])   # P10; config.js
@@ -72,16 +76,46 @@ def detected(st, base, c, rule):
 
 
 # ---------------------------------------------------------------------- workers
+def _pin_worker(mask, omp_threads):
+    """Runs once in every pool process. Two Windows facts found on 23 Oct 2026 while the 0.25
+    grid crawled at 65 runs an hour on 5 and then 9 workers alike: (1) SWMM's engine is
+    OpenMP-parallel and each worker spawned a thread per logical core, so nine workers
+    fought over the same cores; (2) Windows 11 parked every background worker on the four
+    efficiency cores of this hybrid CPU (cores 8 to 11 at 100%, the eight performance-core
+    threads idle, 50 runnable threads queued). Pinning the workers to cores 0 to 7 pushed
+    them straight to 100% each. mask is the affinity bitmask (0 leaves it alone); OMP
+    threads per worker default to 1."""
+    if omp_threads:
+        os.environ["OMP_NUM_THREADS"] = str(omp_threads)
+    if mask and os.name == "nt":
+        import ctypes
+        k32 = ctypes.windll.kernel32
+        k32.SetProcessAffinityMask(k32.GetCurrentProcess(), ctypes.c_size_t(mask))
+
+
 def _segment_task(args):
     case, head, exits, mh, add, run_dir = args
     m = Sim25Model(case, whole=False, outlet_head=head, exit_heads=exits,
                    growth={mh: add} if mh else None)
     try:
-        _, st, _ = solve(m, MINUTES, run_dir)
+        res, st, _ = solve(m, MAX_MINUTES, run_dir, settle=SETTLE)
     finally:
         shutil.rmtree(run_dir, ignore_errors=True)
     return mh, add, {c: {k: st[c][k] for k in ("depth", "alarm", "surcharged", "spilled")}
-                     for c in m.study_chambers}
+                     for c in m.study_chambers}, provenance(res)
+
+
+def provenance(res):
+    """What a run did, kept with its result: how long it ran, whether it settled, the
+    largest drift in the final window, and SWMM's continuity error. Sim 2.5 recorded none
+    of this (the public README says so)."""
+    p = dict(res.settle or {"converged": None, "minutes": res.sc.minutes})
+    p["continuity_err_pct"] = res.err
+    pf = res.s.get("pump_flow")
+    if pf is not None and len(pf) and len(res.s.get("pumps", [])):
+        # What each station pumped over the final window, L/s: the SCADA indicator (Sim 3).
+        p["pumps"] = {n: round(float(v), 4) for n, v in zip(res.s["pumps"], pf.mean(axis=0))}
+    return p
 
 
 def _whole_task(args):
@@ -92,17 +126,34 @@ def _whole_task(args):
     pump_rates = rest[0] if rest else None
     m = Sim25Model(case, whole=True, growth=growth, growth_nodes=growth_nodes,
                    pump_rates=pump_rates)
-    minutes, window = MINUTES, 10
+    minutes, window, settle = MAX_MINUTES, 10, SETTLE
     if pump_rates is not None:
+        # A stop-start pump never settles: a fixed longer run, peak over whole cycles.
         ps = sim25.pump_settings()
-        minutes, window = ps["minutes"], ps["window"]
+        minutes, window, settle = ps["minutes"], ps["window"], None
     try:
-        res, st, head = solve(m, minutes, run_dir, window)
+        res, st, head = solve(m, minutes, run_dir, window, settle)
     finally:
         shutil.rmtree(run_dir, ignore_errors=True)
     return head, m.growth_lps, res.err, {
         c: {k: st[c][k] for k in ("depth", "alarm", "surcharged", "spilled")}
-        for c in m.candidates}
+        for c in m.candidates}, provenance(res)
+
+
+def _whole_task_ckpt(args):
+    """_whole_task with a checkpoint beside the run folder (<run_dir>.json, the task's return
+    value), so a grid stopped mid-case resumes at the run it reached instead of at the case.
+    The PC's memory reaper stopped the Severe grid twice on 21 Oct and each stop lost every
+    finished run of the case, because results lived only in the pool's memory until the
+    case's summary.json was written. run_case deletes the checkpoints once that is written."""
+    ck = args[3] + ".json"
+    if os.path.exists(ck):
+        with open(ck, encoding="utf-8") as f:
+            return tuple(json.load(f))
+    out = _whole_task(args)
+    with open(ck, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(out, f, default=lambda o: o.item() if hasattr(o, "item") else float(o))
+    return out
 
 
 def corridor_nodes():
@@ -146,7 +197,7 @@ def run_case(case, pool, sites_limit, sizes):
     if nested:
         # The baseline whole run hands its levels to the segment runs.
         head_run = Sim25Model(case, whole=True)
-        _, _, h0 = solve(head_run, MINUTES, os.path.join(base_dir, "w0"))
+        _, _, h0 = solve(head_run, MAX_MINUTES, os.path.join(base_dir, "w0"), settle=SETTLE)
         exits = head_run.exit_heads
         shutil.rmtree(os.path.join(base_dir, "w0"), ignore_errors=True)
         tasks = [(case, h0, exits, None, 0, os.path.join(base_dir, "s0"))]
@@ -158,14 +209,20 @@ def run_case(case, pool, sites_limit, sizes):
         tasks = [(case, None, None, os.path.join(base_dir, "w0"))]
         tasks += [(case, None, {mh: add}, os.path.join(base_dir, f"w_{mh}_{add}"))
                   for mh in sites for add in sizes]
-        raw = list(pool.map(_whole_task, tasks, chunksize=2))
-        results = [(None, 0, raw[0][3])] + [(mh, add, r[3]) for (_, _, g, _), r
-                                            in zip(tasks[1:], raw[1:])
-                                            for mh, add in g.items()]
-    _, _, base = results[0]
+        n_ck = sum(1 for t in tasks if os.path.exists(t[3] + ".json"))
+        if n_ck:
+            print(f"  {tag}: {n_ck} of {len(tasks)} runs already checkpointed, kept", flush=True)
+        raw = list(pool.map(_whole_task_ckpt, tasks, chunksize=2))
+        results = [(None, 0, raw[0][3], raw[0][4])] + [(mh, add, r[3], r[4]) for (_, _, g, _), r
+                                                       in zip(tasks[1:], raw[1:])
+                                                       for mh, add in g.items()]
+    _, _, base, base_prov = results[0]
     rows = []
-    for mh, add, st in results[1:]:
+    for mh, add, st, prov in results[1:]:
         rows.append({"site": mh, "dwellings": add,
+                     # How this run went: minutes to settle, converged or not, drift, error.
+                     "run": {k: prov.get(k) for k in ("minutes", "converged", "max_drift_mm",
+                                                      "continuity_err_pct")},
                      "alarm": sorted(mh_of[c] for c in seg if detected(st, base, c, "alarm")),
                      "surcharge": sorted(mh_of[c] for c in seg if detected(st, base, c, "surcharge")),
                      "spilled": sorted(mh_of[c] for c in seg if st[c]["spilled"]),
@@ -181,7 +238,15 @@ def run_case(case, pool, sites_limit, sizes):
         placement[rule] = {"chosen": [c["chamber"] for c in cover["chosen"]],
                            "scenarios": cover["scenarios"],
                            "undetectable": len(cover["uncoverable"])}
-    summary = {"case": asdict(case), "tag": tag, "minutes": MINUTES,
+    runs = [r["run"] for r in rows]
+    summary = {"case": asdict(case), "tag": tag,
+               # minutes: the baseline's own run length (it used to be the fixed 480).
+               "minutes": base_prov.get("minutes"),
+               "run_length": {"ceiling_min": MAX_MINUTES, "settle": SETTLE, "baseline": base_prov,
+                              "growth_runs": {"min_minutes": min(r["minutes"] for r in runs),
+                                              "max_minutes": max(r["minutes"] for r in runs),
+                                              "unconverged": sum(1 for r in runs if r["converged"] is False),
+                                              "max_drift_mm": max((r["max_drift_mm"] or 0) for r in runs)}},
                "method": "nested" if nested else "whole", "outlet_head": h0,
                "baseline_depth_m": {str(mh_of[c]): round(base[c]["depth"], 4) for c in seg},
                "baseline": {"alarm": sorted(mh_of[c] for c in seg if base[c]["alarm"]),
@@ -192,6 +257,14 @@ def run_case(case, pool, sites_limit, sizes):
                "rows": rows, "placement": placement, "wall_s": round(time.time() - t0)}
     with open(os.path.join(base_dir, "summary.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(summary, f, indent=1)
+    if not nested:
+        for t in tasks:
+            if os.path.exists(t[3] + ".json"):
+                os.remove(t[3] + ".json")
+    gr = summary["run_length"]["growth_runs"]
+    print(f"  {tag}: runs settled in {gr['min_minutes']} to {gr['max_minutes']} min"
+          f" (baseline {base_prov.get('minutes')}), {gr['unconverged']} unconverged,"
+          f" drift up to {gr['max_drift_mm']} mm")
     print(f"  {tag}: {len(rows)} growth runs, baseline alarm {len(summary['baseline']['alarm'])}"
           f" surcharged {len(summary['baseline']['surcharged'])}; sensors alarm "
           f"{placement['alarm']['chosen']} surcharge {placement['surcharge']['chosen']}"
@@ -199,29 +272,45 @@ def run_case(case, pool, sites_limit, sizes):
     return summary
 
 
-def run_corridor(case, pool):
+def run_corridor(case, pool, resume=False):
     tag = case.tag()
     d = os.path.join(OUT, "corridor", tag)
+    done = os.path.join(d, "summary.json")
+    if resume and os.path.exists(done):
+        with open(done, encoding="utf-8") as f:
+            out = json.load(f)
+        # Only a gated summary counts as done; the 480-minute ones staged from the teammate's
+        # pull requests have no "run_length" and are re-run (22 Oct 2026).
+        if "run_length" in out:
+            print(f"  corridor {tag}: already done, kept", flush=True)
+            return out
     os.makedirs(d, exist_ok=True)
     share = corridor_nodes()
     tasks = [(case, None, None, os.path.join(d, "base"))]
     for n in CORRIDOR_SIZES:
         tasks.append((case, {k: v * n for k, v in share.items()}, None,
                       os.path.join(d, f"g{n}")))
-    res = list(pool.map(_whole_task, tasks))
+    res = list(pool.map(_whole_task_ckpt, tasks))
     base = res[0][3]
     whole_area = sim25.STUDY_AREA == "whole"
     probe = Sim25Model(case, whole=whole_area, outlet_head=None if whole_area else 0.0)
     mh_of = {c: probe.nodes[c].manhole_id for c in probe.candidates}
     rows = []
-    for n, (head, glps, err, st) in zip(CORRIDOR_SIZES, res[1:]):
+    # _whole_task returns five values since the convergence gate (the fifth is the run's
+    # provenance); unpacking four here crashed the grid after the Severe case on 22 Oct 2026.
+    for n, (head, glps, err, st, prov) in zip(CORRIDOR_SIZES, res[1:]):
         rows.append({"dwellings": n, "added_lps": glps, "outlet_head_rise_m": head - res[0][0],
                      "alarm": sorted(mh_of[c] for c in st if detected(st, base, c, "alarm")),
                      "surcharge": sorted(mh_of[c] for c in st if detected(st, base, c, "surcharge")),
-                     "max_depth_rise_m": max(st[c]["depth"] - base[c]["depth"] for c in st)})
-    out = {"case": asdict(case), "corridor_nodes": len(share), "rows": rows}
-    with open(os.path.join(d, "summary.json"), "w", encoding="utf-8", newline="\n") as f:
+                     "max_depth_rise_m": max(st[c]["depth"] - base[c]["depth"] for c in st),
+                     "run": prov})
+    out = {"case": asdict(case), "corridor_nodes": len(share),
+           "run_length": {"ceiling_min": MAX_MINUTES, "baseline": res[0][4]}, "rows": rows}
+    with open(done, "w", encoding="utf-8", newline="\n") as f:
         json.dump(out, f, indent=1)
+    for t in tasks:
+        if os.path.exists(t[3] + ".json"):
+            os.remove(t[3] + ".json")
     for r in rows:
         print(f"  corridor {tag} +{r['dwellings']}: outlet rises {r['outlet_head_rise_m']*1000:.1f} mm,"
               f" max study rise {r['max_depth_rise_m']*1000:.1f} mm, newly alarm {r['alarm']},"
@@ -244,14 +333,28 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cases", default="nominal", choices=["nominal", "all"])
     ap.add_argument("--sites", type=int, default=0)
+    ap.add_argument("--sizes", help="comma-separated growth sizes instead of config.js's (Sim 3: 80,150,700 for the 0.25 cases)")
+    ap.add_argument("--only", help="run only cases whose tag contains this text, e.g. ii0.40")
     ap.add_argument("--plan", action="store_true")
     ap.add_argument("--no-corridor", action="store_true")
     ap.add_argument("--resume", action="store_true",
-                    help="skip cases whose summary.json already exists (e.g. after a stopped run)")
+                    help="skip cases whose summary.json already exists, and within a whole-area "
+                         "case the runs whose checkpoint exists (e.g. after a stopped run)")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
+    ap.add_argument("--affinity", default=os.environ.get("SIM25_AFFINITY", "0xFF"),
+                    help="CPU affinity bitmask for the workers, hex or decimal; 0 leaves Windows to "
+                         "choose (it parks them on the efficiency cores). Default 0xFF: cores 0 to 7, "
+                         "the performance cores of this 13th-gen i5")
+    ap.add_argument("--omp-threads", type=int, default=1,
+                    help="OpenMP threads per SWMM engine, 1 so workers do not fight for cores")
     args = ap.parse_args()
+    affinity = int(args.affinity, 0)
     cs = cases(args.cases)
-    sizes = sim25.GROWTH_DWELLINGS + [sim25.STRESS_DWELLINGS]
+    if args.only:
+        cs = [c for c in cs if args.only in c.tag()]
+        if not cs:
+            ap.error(f"--only {args.only} matches no case")
+    sizes = [int(x) for x in args.sizes.split(",")] if args.sizes else sim25.GROWTH_DWELLINGS + [sim25.STRESS_DWELLINGS]
     whole_area = sim25.STUDY_AREA == "whole"
     n_sites = args.sites or (328 if whole_area else 71)
     per_case = 1 + n_sites * len(sizes)
@@ -270,7 +373,9 @@ def main():
     if args.plan:
         return
     os.makedirs(OUT, exist_ok=True)
-    with ProcessPoolExecutor(args.workers) as pool:
+    _pin_worker(affinity, args.omp_threads)
+    with ProcessPoolExecutor(args.workers, initializer=_pin_worker,
+                             initargs=(affinity, args.omp_threads)) as pool:
         summaries = []
         for c in cs:
             done = os.path.join(OUT, c.tag(), "summary.json")
@@ -280,8 +385,10 @@ def main():
                 print(f"  {c.tag()}: already done, kept", flush=True)
                 continue
             summaries.append(run_case(c, pool, args.sites, sizes))
+        # The corridor family follows --only and --resume like the cases do (22 Oct 2026).
         corridor = [] if args.no_corridor else [
-            run_corridor(Case(ii=ii), pool) for ii, _ in sim25.WEATHER]
+            run_corridor(Case(ii=ii), pool, args.resume) for ii, _ in sim25.WEATHER
+            if not args.only or args.only in Case(ii=ii).tag()]
     rob = robustness(summaries)
     with open(os.path.join(OUT, "robustness.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump({"cases": [s["tag"] for s in summaries], "robustness": rob}, f, indent=1)

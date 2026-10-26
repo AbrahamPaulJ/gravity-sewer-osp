@@ -82,7 +82,7 @@ def scenario(tag, sites, by_mh, pumps=None):
         run = jobs["run"].result()
         if "base" in jobs:
             _baseline[key] = jobs["base"].result()[3]
-    base, (head, growth_lps, err, st) = _baseline[key], run
+    base, (head, growth_lps, err, st, *_prov) = _baseline[key], run
     manholes = {}
     for mh, name in by_mh.items():
         b, s = base[name], st[name]

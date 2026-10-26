@@ -1,0 +1,5 @@
+rise10 risk-weighted: exact worst 1:0.27, 2:0.43, 3:0.63, 4:0.75, 5:0.85, 6:0.90, 7:0.93, 8:0.94, 9:0.96, 10:0.97
+rise25 risk-weighted: exact worst 1:0.06, 2:0.23, 3:0.50, 4:0.71, 5:0.81, 6:0.85, 7:0.91, 8:0.92, 9:0.95, 10:0.96
+alarm risk-weighted: exact worst 1:0.00, 2:0.00, 3:0.00, 4:0.00, 5:0.10, 6:0.40, 7:0.46, 8:0.75, 9:0.75, 10:0.85
+risk option: 147 s
+risk option added to simulation_src\results\sim3\regions\analysis.json

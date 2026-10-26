@@ -8,48 +8,126 @@
   "hour": "peak"
  },
  "corridor_nodes": 68,
+ "run_length": {
+  "ceiling_min": 1800,
+  "baseline": {
+   "converged": true,
+   "settled_at_min": 740.0,
+   "max_drift_mm": 0.21,
+   "worst_chamber": "MH4453133",
+   "minutes": 752.0,
+   "ceiling_min": 1800,
+   "tol_mm": 0.25,
+   "window_min": 120,
+   "continuity_err_pct": 0.362,
+   "pumps": {
+    "P4433449": 35.7848,
+    "P1495438": 2.4596
+   }
+  }
+ },
  "rows": [
   {
    "dwellings": 80,
-   "added_lps": 0.8518518518518514,
-   "outlet_head_rise_m": 0.000132756965911085,
+   "added_lps": 0.8518518518518517,
+   "outlet_head_rise_m": 0.00013219977332568078,
    "alarm": [],
    "surcharge": [
     4501866
    ],
-   "max_depth_rise_m": 0.02633726638344147
+   "max_depth_rise_m": 0.01233488806521077,
+   "run": {
+    "converged": true,
+    "settled_at_min": 570.0,
+    "max_drift_mm": 0.22,
+    "worst_chamber": "MH4428268",
+    "minutes": 582.0,
+    "ceiling_min": 1800,
+    "tol_mm": 0.25,
+    "window_min": 120,
+    "continuity_err_pct": 0.468,
+    "pumps": {
+     "P4433449": 35.8483,
+     "P1495438": 2.4596
+    }
+   }
   },
   {
    "dwellings": 150,
-   "added_lps": 1.5972222222222217,
-   "outlet_head_rise_m": 0.00024923067569915247,
+   "added_lps": 1.5972222222222223,
+   "outlet_head_rise_m": 0.0002486887776527169,
    "alarm": [],
    "surcharge": [
     4501866
    ],
-   "max_depth_rise_m": 0.0367382581458261
+   "max_depth_rise_m": 0.023097002131041044,
+   "run": {
+    "converged": true,
+    "settled_at_min": 570.0,
+    "max_drift_mm": 0.222,
+    "worst_chamber": "MH4428268",
+    "minutes": 582.0,
+    "ceiling_min": 1800,
+    "tol_mm": 0.25,
+    "window_min": 120,
+    "continuity_err_pct": 0.469,
+    "pumps": {
+     "P4433449": 35.9036,
+     "P1495438": 2.4596
+    }
+   }
   },
   {
    "dwellings": 390,
-   "added_lps": 4.152777777777778,
-   "outlet_head_rise_m": 0.0006507432373936695,
+   "added_lps": 4.152777777777779,
+   "outlet_head_rise_m": 0.0006502557399485909,
    "alarm": [],
    "surcharge": [
     4501851,
     4501866
    ],
-   "max_depth_rise_m": 0.07287359577428676
+   "max_depth_rise_m": 0.05984955684323212,
+   "run": {
+    "converged": true,
+    "settled_at_min": 570.0,
+    "max_drift_mm": 0.23,
+    "worst_chamber": "MH4428268",
+    "minutes": 582.0,
+    "ceiling_min": 1800,
+    "tol_mm": 0.25,
+    "window_min": 120,
+    "continuity_err_pct": 0.47,
+    "pumps": {
+     "P4433449": 36.0917,
+     "P1495438": 2.4596
+    }
+   }
   },
   {
    "dwellings": 485,
-   "added_lps": 5.164351851851852,
-   "outlet_head_rise_m": 0.0008106032907164717,
+   "added_lps": 5.164351851851853,
+   "outlet_head_rise_m": 0.0008101379282763332,
    "alarm": [],
    "surcharge": [
     4501851,
     4501866
    ],
-   "max_depth_rise_m": 0.08735147889450634
+   "max_depth_rise_m": 0.07433996416564359,
+   "run": {
+    "converged": true,
+    "settled_at_min": 570.0,
+    "max_drift_mm": 0.233,
+    "worst_chamber": "MH4428268",
+    "minutes": 582.0,
+    "ceiling_min": 1800,
+    "tol_mm": 0.25,
+    "window_min": 120,
+    "continuity_err_pct": 0.471,
+    "pumps": {
+     "P4433449": 36.1654,
+     "P1495438": 2.4596
+    }
+   }
   }
  ]
 }

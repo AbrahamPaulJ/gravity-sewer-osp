@@ -8,22 +8,12 @@ they were run on and every run's output, so each result can be reproduced or che
 | Simulation 1, warning time | `model.py`, `experiments.py` | `python experiments.py` |
 | Simulation 2, growth (superseded) | `catchment.py`, `growth_grid.py` | `python growth_grid.py` |
 | Simulation 2.5, growth and sensor placement | `sim25.py`, `sim25_grid.py` | see below |
+| Simulation 3, area growth on settled runs | `sim3_regions.py`, `sim3_analysis.py`, `sim25_grid.py` | see below |
 
 ## Setup
 
 Python 3.11. `pip install -r requirements.txt` (pyvista only for the desktop viewer
 `view3d.py`).
-
-## Settings: `../config.js`
-
-Every setting the project runs with is in one file, `config.js` at the repository root: which
-pages the site shows, the pipe attributes (roughness by material, infiltration weight by
-age, the sandbox's blockage-likelihood weights), the loads (people per house, litres per
-person, peaking), pump stations at a set rate in scenarios (`pumps`), and Simulation 2.5's study area, growth
-sizes, alarm depth, detection rises, sensor limit and cases. The browser loads it as a script; Python reads it through
-`osp_config.py`. Its object is plain JSON, so keep double quotes and no comments or trailing
-commas inside it; explanations go in `"_"` keys. The comment at the top of the file says what
-each section takes effect on: a reload, a republish, or a SWMM re-run first.
 
 ## Inputs
 
@@ -43,166 +33,44 @@ python sim25_daily.py                                # the daily-cycle check
 python test_simulation.py                            # the test suite
 ```
 
-### Growth scenarios on the page, and the local SWMM runner
-
-The page's **Growth → Your scenario** builds a scenario of several manholes, each with its own
-number of new dwellings: click a manhole on the map and press **+ Add the selected manhole**, or
-pick one from **+ Add by number** (all 328, in manhole-number order). In **At one manhole** mode,
-the growth size **None** selects a manhole without placing any growth, to look at the network as
-it is. The page is static and cannot run SWMM, so the answer comes from one of two places, and
-the page always says which:
-
-- **SWMM**, when the site is served by the local runner:
-
-  ```
-  ~/.venvs/sewer/bin/python simulation_src/sim25_serve.py     # http://localhost:8001
-  ```
-
-  It serves the repository like `python3 -m http.server`, and adds the endpoint the page's
-  **Run in SWMM** button calls. A page served from another local port asks it at
-  `http://127.0.0.1:8001`; the API answers `localhost` and `127.0.0.1` origins only. It solves a scenario with `sim25_grid._whole_task`, the
-  function the grid ran, so the answer is consistent with every published result: a single
-  manhole at +150 in Design wet reproduces the grid's own run (the same 45 manholes rising,
-  within 0.05 mm; all 328 baselines identical). About 25 s per scenario per case. Listens on
-  127.0.0.1 only.
-- **An estimate** (`simulation25/growth_est.js`) everywhere else, including the public site:
-  exact steady flows plus a backwater pass. `node tools/check_growth_estimate.js` measures it
-  against the 8,200 grid runs. As published: close to SWMM in dry weather; in the wet cases it
-  finds almost every manhole SWMM shows rising past 25 mm but up to 4 in 10 it flags do not;
-  unreliable in Severe, where 141 manholes start surcharged. Rerun that check after changing
-  the estimate, the grid or the cases, and update the note in `growth_ui.js` if the figures
-  move.
-
-The estimate needs the per-case loads a whole-area build publishes, so the scenario switch
-appears only on a `study_area: "whole"` page.
-
-The estimate is trusted for the depth rise only. For the 150 mm alarm it finds 44% to 71% of
-the manholes SWMM puts newly over it in the wet cases, and 61% to 71% of its own flags are
-wrong (19% found, 84% wrong in Severe), so the page shows "newly over the alarm", "newly
-surcharged" and every result under the alarm rule from SWMM only.
-
-### Pump stations at a set rate (scenarios only)
-
-The published grid and every placement use SWMM **IDEAL** pumps (assumption L7): whatever
-reaches a wet well is passed at once to the rising main's discharge node, with no rate, storage
-or cycling. Three stations are found from the rising-main layer; two discharge into the domain
-and are modelled (wet wells N183 and N997, rising mains 4433449 and 1495438, 55 homes between
-them), the third discharges outside it.
-
-A scenario on the page can switch **Pump stations at set rates** on and change any station's
-rate (also from the station's card on the map). The runner then solves it with each wet well a
-SWMM tank and each pump a constant rate switched by start and stop levels, all from `config.js`
-`pumps`:
-
-| Setting | Default | Meaning |
-|---|---|---|
-| `rising_main_velocity_m_s` | 1.0 | a station's default rate is this velocity in its rising main's bore: 17.67 L/s (DN150), 7.85 L/s (DN100) |
-| `default_rate_lps` | null | one rate for every station instead |
-| `stations` | {} | a fixed default for a named station, by rising main id |
-| `wet_well_area_m2` | 2.5 | the wet well's plan area |
-| `start_level_m`, `stop_level_m` | 1.0, 0.3 | the pump starts and stops at these depths above the wet-well floor |
-| `inlet_above_start_m` | 0.3 | the incoming sewer enters this far above the start level, so a filling well never backs up its pipes |
-| `curve` | head | `head`: each pump follows a centrifugal curve through its rate at its rated head (lift plus rising-main friction), so it delivers less as the level it pumps against rises; `flat`: the rate whatever the head |
-| `shutoff_head_ratio` | 1.3 | the shut-off head as a multiple of the rated head |
-| `rising_main_hazen_c` | 120 | Hazen-Williams C for rising-main friction (46.5 m DN150 from N183, 228.1 m DN100 from N997) |
-| `rated_minutes`, `rated_window_min` | 600, 240 | a rated run never settles, so it runs longer and every depth is the peak over the window |
-
-Rated scenarios also raise each overflow pipe's inlet to the crown of its manhole's main outlet
-(`simulation.overflow_inlet`, L13). At its published level overflow 4433446 takes 70% of what
-leaves MH4451967, where N183 pumps to, and sends it back to the N183 wet well, so the station
-pumped in a loop. The grid keeps the published levels until it is re-run.
-
-The baseline it is compared with is the same rated network at default rates with no growth, so
-a rise is always between two runs of one model. The page's instant estimate cannot model a
-filling wet well, so with pumps at set rates only SWMM answers. The runner reads these settings
-when it starts: restart it after editing `config.js`, and republish so the page shows new
-defaults.
-
-Measured at Design wet with the defaults and the head curve (15 Oct 2026): the manholes the
-stations pump to peak at 78 and 154 mm against 29 and 21 mm with ideal pumps; 80 new dwellings
-behind N997 raise its discharge manhole by 8.6 mm with an ideal pump and 0.1 mm with a rated one,
-which pumps more often instead; doubling its rate raises the discharge manhole by 46.0 mm; cutting
-it to 0.3 L/s, below its inflow, backs the sewer up 1.83 m. N183 averaged 16.3 L/s while running
-(as low as 12.9) as its discharge manhole filled. In Severe the trunk surcharges that manhole by
-1.37 m, its overflow relieves back to the wet well, and the pump runs continuously at about 24 L/s
-against about 0.9 m of head.
-
-**Not done yet (option B).** Re-run the whole grid with rated pumps so the heatmap and placements
-include them, judging detection on the peak across a pump cycle rather than the settled depth.
-About 8.5 hours, and worth it only with the operator's real pump rates, wet-well sizes and
-levels; its SCADA run-hours could then check the model.
-
-### What the sensor score measures, and what it does not
-
-Every placement method on the page is scored on one thing: the share of growth scenarios in
-which a chosen sensor's depth newly passes the selected rule. That is **detectability of a
-development**. It is not **watching the choke points**: trunk manholes already over the alarm
-before any growth carry the most load, yet one development raises them only a few millimetres,
-so they score near zero. Methods that rank by layout (largest catchment, two up two down) pick
-exactly those manholes, which is why they score 0% here. A second objective that rewards
-manholes at or near capacity in the baseline would answer the client's "am I monitoring the
-trunk main or only that location?" (TODO). Two further cautions when quoting the comparison:
-the SWMM greedy is chosen and scored on the same runs (in-sample), and "Random" keeps the best
-of 20 sets on this same score, so a typical random set does far worse (at 3 sensors, 25 mm:
-about 2% worst case and 9% average, against 7% and 25% for the best of 20).
-
-### Choosing the cases
-
-The cases — "what cannot be measured yet" on the page — are defined in `config.js` under
-`simulation.case_sets`, and nowhere else. `simulation.case_set` names the set that is run and
-published; two are kept: `five` (as published) and `all_twelve` (the earlier 12-case set).
-`sim25.py`, `sim25_grid.py`, `sim25_serve.py` and `../tools/build_sim25_web.py` all read it, so
-adding or removing a case, or switching sets, is an edit to that one file:
-
-- `weather` is the nominal sweep, one case per infiltration level, each with the label and
-  note the page shows. The corridor runs use these levels too.
-- `sensitivity.at_ii` names which weather levels get the variants; each variant overrides one
-  field of `Case` (`pf`, `age`, `bfac`, `stage`, `hour`) and carries the words added to its label.
-
-The count is the main lever on run time: a case is 355 SWMM runs in the segment and 1,641 in
-the whole area.
-
-`simulation.study_area` sets where growth is tested and sensors may go:
-
-- `"segment"` (the default if absent): the 71 manholes above node 583, a corner of the council
-  area. Results in `results/sim25/grid/`. Low-infiltration cases are nested, so a case takes
-  4 to 20 minutes.
-- `"whole"`: all 328 published manholes in the model domain. Results in
-  `results/sim25/grid_whole/`, so the two never overwrite each other. Growth can land
-  anywhere, which the nested shortcut cannot hold, so every run is whole-domain: 1,641 runs
-  and about 87 minutes a case on 9 workers. Depth rises below 1 mm are not stored, since the
-  smallest published rule is 10 mm. Measured on the first whole-area grid (1 Oct 2026): 0.8 to
-  2 MB a case, wetter cases larger since more manholes rise, against roughly 13 MB had every manhole in every run been kept, almost all
-  of it zeros. That grid of 5 cases took 8 h 22 m, about 35 s a run rather than 28.6.
-
-The map follows the setting: a whole-area build draws the whole domain as the study area,
-and the "Whole Walkerville" button is hidden because there is nothing left for it to add.
-
-The settings are checked when `sim25` is imported, so a misspelt field, a `case_set` that is
-not in `case_sets`, an `at_ii` that is not a weather level, or two cases sharing an
-infiltration level fails immediately with a message saying which, rather than partway
-through a two-hour grid.
-
-**Editing it does not change the Simulation 2.5 page by itself.** The page reads generated
-data (it must stand alone, so it cannot read `../config.js`; the builder publishes the values
-it needs with that data), so after an edit, publish it from the repository root:
-
-```
-python tools/build_sim25_web.py --publish
-```
-
-That checks the settings, rebuilds, copies the data into `simulation25/` and bumps the cache
-keys, then lists the cases now on the page. It publishes nothing if the settings are invalid.
-If they name a case that has never been solved, it stops and says which; run those first
-with `python sim25_grid.py --cases all --resume`, which skips every case already solved.
-`detection_rises_mm`, `max_sensors` and `scenario_default_dwellings` need only the republish;
-the alarm depth, loads, roughness, age weights and growth sizes change what SWMM is given, so
-they need the affected cases re-run first (move or delete their results so `--resume` does not
-skip them).
-
 Outputs land in `results/sim25/`: one folder per case with `summary.json`, plus `graded.json`,
 `robustness.json`, the corridor runs and the SWMM `.inp`, `.rpt` and `.out` files. The published
 page reads these through its own data files in `../simulation25/data/`.
+
+## Simulation 3
+
+Every setting is read from `../config.js` (`simulation.run`, `simulation.regions`, and the
+`eight` case set). Every SWMM run ends on a convergence gate instead of a fixed length: it stops
+when no chamber's depth moves more than `settle_tol_mm` over the last `settle_window_min`
+simulated minutes, and records its length, drift and whether it settled.
+
+Infill (growth spread over an area's existing connection points, 8 areas x 7 build-out steps,
+plus a baseline, in each of 8 cases: 456 runs):
+
+```
+python sim3_regions.py --plan                          # areas, run counts, nothing run
+python sim3_regions.py --describe                      # write results/sim3/regions/regions.json
+python sim3_regions.py --cases all --workers 6         # the whole sweep
+python sim3_regions.py --cases all --resume --workers 6   # continue after a stop
+python sim3_analysis.py                                # placement, first detection, time rule,
+                                                       # choke points, pump indicator
+python sim3_analysis.py --risk-only                    # the optional risk-weighted placement
+```
+
+Outputs land in `results/sim3/regions/`: one folder per case with `summary.json`, plus
+`analysis.json` and `report.md`. The exact placement needs PuLP with the HiGHS solver
+(`highspy`); without HiGHS it falls back to PuLP's bundled CBC.
+
+Greenfield (new dwellings at one manhole, the Sim 2.5 grid re-run on the gate):
+
+```
+python sim25_grid.py --cases all --only ii0.40 --workers 6                    # Severe
+python sim25_grid.py --cases all --only ii0.25 --sizes 80,150,700 --workers 6 # Beyond design
+```
+
+Outputs land in `results/sim25/grid_whole/`, one folder per case. On the development machine
+a whole-area run takes about 20 s; the infill sweep took a few hours on 6 workers, Severe
+greenfield about 4 hours. Use `--resume` after an interruption.
 
 ## Rebuild the Sim 2.5 browser page
 
@@ -230,46 +98,3 @@ an exact reproduction of the published run.
 
 Uncalibrated: every number is conditional on the assumptions listed in the page's Assumptions
 tab. Generated from the project's working copy; do not hand-edit this folder.
-
-## Manning's n comes from each pipe's material
-
-`model.MANNING_BY_MATERIAL`, read from `config.js` (`pipes.manning_n_by_material`), keys roughness to the publisher's MATERIAL field: 0.013 for
-vitrified clay and reinforced concrete, 0.010 for uPVC, and 0.013 as the fallback where the
-code is missing or unrecognised. Conventional design values from Chow (1959) Table 5-6, the
-table the SWMM reference reproduces and from which SWMM takes its own concrete default.
-
-On this catchment that is 907 clay, 94 uPVC and 1 reinforced concrete, so **94 of 1,002
-reaches move from 0.013 to 0.010** and carry slightly more flow than before. Of the 890 links
-the whole domain actually routes, 83 are uPVC; of the 161 in the segment, 9 are. The layer
-also publishes a ROUGHNESS field, which would settle this from data rather than a table; it is
-populated on no record here.
-
-Reaching those counts takes both material fields. MATERIAL is the coded value and reads UNKN
-on 456 of the 1,002 mains; MATERIALUN is the free text, and on every one of those 456 it reads
-VC. The layer is not saying the material is unknown, only that the code is, so `network._material`
-falls back to MATERIALUN and those 456 reaches are clay rather than fallback. It makes no
-difference to the roughness here, since clay and the fallback are both 0.013, but it is what
-the published network in `../data/osp_data.js` does, and it keeps the two in step if the table
-ever changes.
-
-**Simulation 2.5 has been re-run; Simulations 1 and 2 have not.** Under `results/sim25/` the
-12-case grid, the corridor runs, `robustness.json`, `graded.json`, `graded_report.txt` and
-`daily.json` were all regenerated with per-material n. Everything else under `results/` —
-`ladder_*`, `growth_*`, `catchment/`, `warning_along/`, `runs/`, `compare/` — still holds the
-uniform-n answers, and so do the packed page files in `../simulation25/data/`.
-
-```
-python sim25_grid.py --cases all --workers 9    # 2 h 18 m measured, not the 94 min it predicts
-python sim25_graded.py > results/sim25/graded_report.txt
-python sim25_daily.py                           # about 2.5 min
-```
-
-The grid's own estimate assumes 20 s per whole-domain run. That holds at low I&I; at 0.25 and
-0.40 the network surcharges and a run takes about 30 s, so the four high-I&I cases take 18-20
-minutes each rather than the predicted 13.
-
-To tell which roughness an output came from: Simulation 1 records it, in the `manning_used`
-and `manning_by_material` keys of the meta that `model.Result.save` writes. Simulation 2.5
-does not — `sim25.py` writes its own `summary.json` and never calls that writer, so its
-outputs carry no provenance at all, not even the pyswmm version or the routing error. Date
-the files against this section until that is fixed.

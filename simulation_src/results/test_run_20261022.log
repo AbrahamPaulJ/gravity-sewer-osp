@@ -1,0 +1,52 @@
+network
+  ok    upstream of A counted as a pipe set (157 pipes)
+  ok    external length at A equals the pipe set length
+  ok    B is the top of its line
+  ok    all four study chambers are real manholes
+loads
+  ok    catchment and along carry the same total load
+  ok    equal = 4 x unit
+  ok    segments of B-J add up to the pipe length
+mass balance, constant along 0.3 for 120 min
+  ok    outfall flow equals total inflow at steady state
+  ok    continuity error under 2%
+  ok    flow accumulates at J: J-D carries A-J + B-J + J's own load
+shaft storage (the SLOT regression)
+  ok    surcharged shaft at B stores water as a 1050 mm chamber (0.8 to 1.1 m2)
+  ok    ramp continuity error under 2%
+growth
+  ok    growth at an already loaded chamber adds exactly the growth
+  ok    growth inflow reaches SWMM
+monotone response
+  ok    steady depth at A rises with load
+scenario shapes
+  ok    event starts at 1, peaks, returns to 1
+  ok    step holds 1 until warm-up then the peak
+Sim 2.5
+  ok    overflow pipes are off by default (older models unchanged)
+  ok    overflow pipes oriented as the statewide record says
+  ok    rising main pieces chained: stations 997 -> 452, 183 -> 948, 825 -> 881
+  ok    whole domain pumps only the two stations draining into it
+  ok    71 study manholes
+  ok    three sized outside inflows enter the study segment
+  ok    nesting: segment reproduces the whole domain's study depths at design wet (< 1 mm)
+  ok    whole-domain continuity error under 1%
+  ok    regions: disjoint and together exactly the domain's pipes
+  ok    regions: R1 is the 71-manhole segment above MH4450193
+  ok    regions: a 50% step spreads exactly half the nominal growth over the region's loaded nodes
+  ok    regions: SWMM is given the spread growth as flow (0.0106 L/s a dwelling)
+  ok    gate: design wet converges before the ceiling
+  ok    gate: settled depths match the fixed 480-minute run within 0.5 mm at every chamber
+  ok    gate: provenance carries minutes, drift, tolerance and window
+  ok    gate: beyond design at a 60-minute ceiling is reported unconverged, naming chambers
+  ok    ideal pumps unchanged: no curves, every pump '* ON 0 0'
+  ok    default pump rates from the rising main bore: 17.67 L/s in DN150, 7.85 in DN100
+  ok    rated: a named station takes its rate, on a head curve through its rated point
+  ok    rated: the curve delivers less against more head
+  ok    rated: the other station keeps its default rate at its rated point
+  ok    overflow inlets: published in the grid model, raised in a rated one
+  ok    rated: pumps start OFF and switch at the configured levels
+  ok    rated: the wet well is a tank whose floor sits below the incoming pipe
+  ok    an unknown pump station is refused
+
+42 passed, 0 failed

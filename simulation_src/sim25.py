@@ -113,6 +113,20 @@ AGE_BANDS = [tuple(b) for b in CFG["pipes"]["infiltration_weight_by_age"]["bands
 DETECT_DEPTH_M = _SIM["alarm_depth_mm"] / 1000.0             # G6: the operator's low alarm, depth above invert (Do 2023)
 GROWTH_DWELLINGS = list(_SIM["growth_dwellings"])            # P10
 STRESS_DWELLINGS = _SIM["stress_dwellings"]                  # P10 stress case
+
+# R2, corrected 21 Oct 2026: a run ends on a convergence gate, not at a fixed length. The
+# fixed 480 minutes was settled at 0.11 (0.0 mm to 1440 min) but not at 0.25 (MH4428836
+# 149.8 to 164.3 mm, 32 of 71 segment manholes moving more than 5 mm) nor fully at 0.40
+# (38 of 328 chambers, up to 14.5 mm). config.js simulation.run; defaults here. Calibrated
+# 21 Oct against full 1440-minute trajectories: 120 min at 0.25 mm leaves at most 0.1 mm of
+# creep at any chamber; a 30-minute window at 0.5 mm let Severe pass with 24 mm still to come.
+_RUN = _SIM.get("run") or {}
+MAX_MINUTES = int(_RUN.get("max_minutes", 1800))
+SETTLE = {"tol_mm": float(_RUN.get("settle_tol_mm", 0.25)),
+          "window_min": int(_RUN.get("settle_window_min", 120)),
+          "min_minutes": int(_RUN.get("min_minutes", 240)),
+          "check_every_min": int(_RUN.get("check_every_min", 10)),
+          "sample_s": int(_RUN.get("sample_s", 60))}
 RM_SNAP_M = 12.0                    # rising main end to network node (measured: <= 11.4 m)
 
 
@@ -702,9 +716,11 @@ def settled(m, res, window_min=10):
 class _Steady:
     kind, peak, warmup, growth_site, growth_lps, unit = "constant", 1.0, 0, None, 0.0, 0.0
 
-    def __init__(self, minutes, record_last_min=12):
+    def __init__(self, minutes, record_last_min=12, settle=None):
         self.minutes = minutes
         self.record_from_s = max(0, (minutes - record_last_min) * 60)
+        # The convergence gate (model.run): minutes is then a ceiling.
+        self.settle = dict(settle, record_last_min=record_last_min) if settle else None
 
     def shape(self):
         return [(0, 1.0), (self.minutes, 1.0)]
@@ -713,12 +729,14 @@ class _Steady:
         return "Sim 2.5 steady"
 
 
-def solve(m, minutes, out_dir, window_min=10):
+def solve(m, minutes, out_dir, window_min=10, settle=None):
     """Returns (result, settled state, head at the segment outlet). After a whole run,
     m.exit_heads holds the settled level at each segment side exit, for nesting.
     window_min is how far back the peak depth is taken: 10 for the grid, which settles;
-    longer for rated pumps, which never do, so the peak must span a whole pump cycle."""
-    res = model.run(m, _Steady(minutes, record_last_min=window_min + 2), out_dir)
+    longer for rated pumps, which never do, so the peak must span a whole pump cycle.
+    settle (SETTLE, or None): with it, minutes is a ceiling and the run ends once every
+    chamber has stopped moving (R2); result.settle records when, or that it did not."""
+    res = model.run(m, _Steady(minutes, record_last_min=window_min + 2, settle=settle), out_dir)
     st = settled(m, res, window_min)
     head = None
     m.exit_heads = {}
@@ -767,7 +785,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--describe", action="store_true")
     ap.add_argument("--whole", action="store_true")
-    ap.add_argument("--minutes", type=int, default=1440)
+    ap.add_argument("--minutes", type=int, default=MAX_MINUTES, help="ceiling; the run ends when settled")
+    ap.add_argument("--fixed", action="store_true", help="run exactly --minutes, no convergence gate")
     ap.add_argument("--ii", type=float, default=0.11)
     args = ap.parse_args()
     if args.describe:
@@ -775,8 +794,10 @@ def main():
         return
     if args.whole:
         m = Sim25Model(Case(ii=args.ii), whole=True)
-        res, st, head = solve(m, args.minutes, os.path.join(OUT_DIR, "single"))
+        res, st, head = solve(m, args.minutes, os.path.join(OUT_DIR, "single"),
+                              settle=None if args.fixed else SETTLE)
         seg = set(m.study_chambers)
+        print("run:", res.settle or f"fixed {args.minutes} min")
         print(f"err {res.err:.2f}%  study: surcharged "
               f"{sum(st[c]['surcharged'] for c in seg)}, alarm "
               f"{sum(st[c]['alarm'] for c in seg)} of {len(seg)}; segment outlet head {head}")
