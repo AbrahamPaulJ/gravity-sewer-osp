@@ -133,6 +133,21 @@ window.Growth3D = (function () {
          nowhere else could be reached. */
       controls.screenSpacePanning = false;
       controls.zoomToCursor = true;
+      // Live presentation sync: followers see the presenter's 3D view, eased over 200 ms.
+      let camTween = 0;
+      const syncCamera = () => window.LiveSync.register("camera3d",
+        () => [...camera.position.toArray(), ...controls.target.toArray()].map((v) => Math.round(v * 10) / 10),
+        (v) => {
+          const from = [...camera.position.toArray(), ...controls.target.toArray()], t0 = performance.now(), id = ++camTween;
+          const step = (now) => {
+            if (id !== camTween) return;
+            const k = Math.min(1, (now - t0) / 200), p = from.map((f, i) => f + (v[i] - f) * k);
+            camera.position.fromArray(p, 0); controls.target.fromArray(p, 3); controls.update();
+            if (k < 1) requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+        });
+      if (window.LiveSync) syncCamera(); else window.addEventListener("load", () => window.LiveSync && syncCamera(), { once: true });
       renderer.domElement.addEventListener("pointerdown", onDown);
       renderer.domElement.addEventListener("pointerup", onUp);
       renderer.domElement.addEventListener("pointermove", onMove);
