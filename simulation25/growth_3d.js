@@ -1413,7 +1413,27 @@ window.Growth3D = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { build, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, setSpills, setPumpRates, mapState, showRuler, showDatum, setHomesRaised,
+  /* Live presentation sync (Capstone Live): followers see the presenter's 3D view, eased over
+     200 ms. The page calls this once its first view is framed, so a viewer who joins late is
+     not then reset to the default view. */
+  let camTween = 0;
+  function liveCamera() {
+    window.LiveSync?.register("camera3d",
+      () => [...camera.position.toArray(), ...controls.target.toArray()].map((v) => Math.round(v * 10) / 10),
+      (v) => {
+        if (!built || !Array.isArray(v) || v.length !== 6) return;
+        const from = [...camera.position.toArray(), ...controls.target.toArray()], t0 = performance.now(), id = ++camTween;
+        const step = (now) => {
+          if (id !== camTween) return;
+          const k = Math.max(0, Math.min(1, (now - t0) / 200)), p = from.map((f, i) => f + (v[i] - f) * k);
+          camera.position.fromArray(p, 0); controls.target.fromArray(p, 3); controls.update();
+          if (k < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      });
+  }
+
+  return { build, liveCamera, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, setSpills, setPumpRates, mapState, showRuler, showDatum, setHomesRaised,
            frame, resize, heatHex,
            ZEXAG };
 })();

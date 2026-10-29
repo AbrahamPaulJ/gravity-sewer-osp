@@ -1309,6 +1309,30 @@ window.GrowthUI = (function () {
   const md = t => esc(t).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
                         .replace(/`([^`]+)`/g, "<code>$1</code>");
 
+  /* Live presentation sync (Capstone Live). Its script mirrors buttons, sliders and selects by
+     itself; this carries what it cannot see (a manhole picked on the map, the Pump stations
+     toggle, whose "Highlight" title it reads as a private action, a popup closed with Esc) and
+     gives a viewer who joins late the presenter's whole view. The scenario builder is not
+     carried: its runs come from a local SWMM runner each viewer may not have. */
+  const LIVE = ["site", "ii", "add", "rule", "k", "obj", "algo"];
+  const LIVE_TOGGLES = { showSensors: "#toggleSensors", showHeat: "#toggleHeat", showPumps: "#togglePumps", showConn: "#toggleConn" };
+  const tabOpen = () => !$("#pane-ref").hidden ? "ref" : !$("#pane-qa").hidden ? "qa" : "map";
+  function liveGet() {
+    const v = { top: fold.top, lb: fold.lb, rb: fold.rb, tab: tabOpen(), about: !$("#modal").hidden };
+    LIVE.concat(Object.keys(LIVE_TOGGLES)).forEach(k => { v[k] = st[k]; });
+    return v;
+  }
+  function liveSet(v) {
+    if (!v || typeof v !== "object") return;
+    ["top", "lb", "rb"].forEach(w => { if (typeof v[w] === "boolean" && v[w] !== fold[w]) setFold(w, v[w]); });
+    for (const k in LIVE_TOGGLES) if (typeof v[k] === "boolean" && v[k] !== !!st[k]) $(LIVE_TOGGLES[k]).click();
+    let dirty = false;
+    LIVE.forEach(k => { if (k in v && v[k] !== st[k]) { st[k] = v[k]; dirty = true; } });
+    if (dirty) { $("#algo").value = st.algo; repaint(); }
+    if (v.tab && v.tab !== tabOpen()) setTab(v.tab);
+    if (typeof v.about === "boolean" && v.about === $("#modal").hidden) { if (v.about) showModal(); else $("#modal").hidden = true; }
+  }
+
   /* ---------------------------------------------------------------- init */
   function init() {
     geom().nodes.forEach(n => { byName[n.name] = n; });
@@ -1354,6 +1378,9 @@ window.GrowthUI = (function () {
       // and the panels say what to do. A click selects a manhole; a growth size places it.
       st.add = NO_GROWTH;
       select(null);
+      // The page state first, then the camera, so a follower's view lands on the state it shows.
+      const live = () => { window.LiveSync?.register("sim25", liveGet, liveSet); Growth3D.liveCamera(); };
+      if (window.LiveSync) live(); else window.addEventListener("load", () => window.LiveSync && live(), { once: true });
     });
     $("#btn-info").onclick = showModal;
     $("#topTab").onclick = () => setFold("top", !fold.top);

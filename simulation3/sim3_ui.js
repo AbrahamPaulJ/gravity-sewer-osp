@@ -1043,7 +1043,7 @@ window.Sim3UI = (function () {
   }
   function fillDD(sel) {
     const list = sel.nextElementSibling.querySelector(".ddList");
-    list.innerHTML = Array.from(sel.options).map(o => '<div data-v="' + esc(o.value) + '"' + (o.value === sel.value ? ' class="on"' : "") + ">" + esc(o.title || o.text) + "</div>").join("");
+    list.innerHTML = Array.from(sel.options).map(o => '<div data-live-click data-v="' + esc(o.value) + '"' + (o.value === sel.value ? ' class="on"' : "") + ">" + esc(o.title || o.text) + "</div>").join("");
     const on = list.querySelector(".on"); if (on) on.scrollIntoView({ block: "center" });
   }
   function syncDD(sel) {
@@ -1067,6 +1067,32 @@ window.Sim3UI = (function () {
     $("#toggleLegend").classList.toggle("primary", st.legend && !av);
     $("#toggleAreas").classList.toggle("primary", av);
     Growth3D.resize($("#stage"));
+  }
+  /* Live presentation sync (Capstone Live). Its script mirrors buttons, sliders and selects by
+     itself; this carries what it cannot see (a manhole picked on the map, a dropdown option,
+     the Pumps toggle, whose "Highlight" title it reads as a private action, a popup closed
+     with Esc) and gives a viewer who joins late the presenter's whole view. */
+  const LIVE = ["region", "step", "site", "add", "caseTag", "rule", "k", "method", "obj", "pickedGreedy", "pick"];
+  const LIVE_TOGGLES = { showSensors: "#toggleSensors", showHeat: "#toggleHeat", showPumps: "#togglePumps",
+                         showConn: "#toggleConn", legend: "#toggleLegend", areasView: "#toggleAreas" };
+  const docOpen = () => $("#modal").hidden ? null : $("#modalBox .docbody > .lead") ? "ref" : $("#modalBox").classList.contains("wide") ? "qa" : "about";
+  function liveGet() {
+    const v = { view: st.view, fam: st.fam, rb: st.rb, lb: st.lb, top: st.top, words: st.words, doc: docOpen() };
+    LIVE.concat(Object.keys(LIVE_TOGGLES)).forEach(k => { v[k] = st[k]; });
+    return v;
+  }
+  function liveSet(v) {
+    if (!v || typeof v !== "object") return;
+    if (v.view && v.view !== st.view) setView(v.view);
+    if (v.fam && v.fam !== st.fam) setFamily(v.fam);
+    ["rb", "lb", "top"].forEach(w => { if (typeof v[w] === "boolean" && v[w] !== st[w]) setFold(w, v[w]); });
+    if (typeof v.words === "boolean" && v.words !== st.words) setWords(v.words);
+    for (const k in LIVE_TOGGLES) if (typeof v[k] === "boolean" && v[k] !== st[k]) $(LIVE_TOGGLES[k]).click();
+    let dirty = false;
+    LIVE.forEach(k => { if (k in v && v[k] !== st[k]) { st[k] = v[k]; dirty = true; } });
+    if (dirty) repaint();
+    const d = v.doc || null;
+    if (d !== docOpen()) { if (!d) $("#modal").hidden = true; else if (d === "about") showModal(); else showDoc(d); }
   }
   function init() {
     names().forEach((c, i) => { idxOfName[c] = i; });
@@ -1120,6 +1146,9 @@ window.Sim3UI = (function () {
         ". Drag to turn the map, right-drag to move it, scroll to zoom where the pointer is.";
       repaint();
       Growth3D.frame(null);            // the whole network, orbiting about its centre
+      // The page state first, then the camera, so a follower's view lands on the state it shows.
+      const live = () => { window.LiveSync?.register("sim3", liveGet, liveSet); Growth3D.liveCamera(); };
+      if (window.LiveSync) live(); else window.addEventListener("load", () => window.LiveSync && live(), { once: true });
     });
     $("#btn-info").onclick = showModal;
     $("#tab-ref").onclick = () => showDoc("ref");
