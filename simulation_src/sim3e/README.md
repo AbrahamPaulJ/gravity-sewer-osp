@@ -14,3 +14,5 @@ read and never changed.
 ```
 
 The page is `simulation3e/index.html`; every assumption and check is on `simulation3e/about.html`.
+
+The build also runs a fair re-test (added at merge, 2 Nov 2026): sensors chosen again for each held-out growth source from the other sources only, and the whole-suburb runs left out of the learning when an area is held out. It adds about two minutes. Its results are `fair_test` in `analysis.json`; the page's budget table quotes them.

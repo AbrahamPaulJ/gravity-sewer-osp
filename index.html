@@ -69,6 +69,7 @@ footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);
     <button data-tab="sim1">Simulation 1</button>
     <button data-tab="sim2">Simulation 2 (superseded)</button>
     <button data-tab="sim3">Simulation 3 (latest)</button>
+    <button data-tab="sim3e">Simulation 3-e (headroom)</button>
     <button data-tab="sim25">Simulation 2.5</button>
     <button data-tab="sim25legacy">Simulation 2.5 (legacy)</button>
   </nav>
@@ -107,6 +108,16 @@ This is a working tool for exploring that, running on a real network rather than
     level sensor sees it at a quarter of the build-out. The recommended set is the exact optimum,
     with greedy beside it; a simple view explains each pin, an expert view shows every case and
     check.</p>
+  </a>
+  <a class="card big" href="#sim3e" data-tab="sim3e">
+    <span class="tag">Interactive, beside Simulation 3</span>
+    <h3>Simulation 3-e: how much room is left, and where to measure it</h3>
+    <p>Sewers are built with spare room, so this version asks how full each pipe runs and when the
+    room runs out. A few level sensors estimate the fullness of every critical pipe as the 2021-41
+    growth arrives across the whole suburb, with a budget for a mix of level sensors and float
+    switches at editable, assumed prices. Built by a team member from Simulation 3's runs plus 56
+    whole-suburb runs. In a fair re-test, five level sensors estimate about four in five critical
+    manholes to within a tenth of the pipe's depth in the worst weather case.</p>
   </a>
   <a class="card big" href="#sim25" data-tab="sim25">
     <span class="tag">Interactive</span>
@@ -229,6 +240,7 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 <div class="pane" id="pane-sim1" hidden><iframe data-src="simulation_legacy/index.html?v=32" title="Simulation 1: warning time"></iframe></div>
 <div class="pane" id="pane-sim2" hidden><iframe data-src="simulation/index.html?v=32" title="Simulation 2: growth and sensor placement"></iframe></div>
 <div class="pane" id="pane-sim3" hidden><iframe data-src="simulation3/index.html?v=12" title="Simulation 3: growth and sensor placement"></iframe></div>
+<div class="pane" id="pane-sim3e" hidden><iframe data-src="simulation3e/index.html?v=3" title="Simulation 3-e: headroom from a few sensors"></iframe></div>
 <div class="pane" id="pane-sim25" hidden><iframe data-src="simulation25/index.html?v=103" title="Simulation 2.5: growth and sensor placement"></iframe></div>
 <div class="pane" id="pane-sim25legacy" hidden><iframe data-src="simulation25_legacy/index.html?v=3" title="Simulation 2.5 (legacy): as published 25 Sep 2026"></iframe></div>
 
@@ -237,7 +249,7 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 <!-- config.js holds the project's settings; its "pages" section decides which pages this site offers. It carries its own cache key for
      the same reason the iframes do: it is a script, and a browser will reuse the copy
      it has. Bump it when the config changes. -->
-<script src="config.js?v=35"></script>
+<script src="config.js?v=36"></script>
 <script>
 // Drop the pages config.js turns off (keys starting "_" are notes), before anything is wired up. Removing the button
 // is what makes a deep link to a hidden page fall back to the overview: showTab looks

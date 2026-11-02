@@ -57,7 +57,10 @@ RIDGE = 1e-3        # ridge strength, relative to the number of training states
 MAX_K = 10
 RANDOM_SETS, SEED = 20, 31
 YEAR0, YEARS_PER_STEP = 2021, 20      # step 1.0 of the ladder = the 2021-41 projection
-PRICES = {"level": 25000, "float": 1500}   # AUD; the industry partner's figures, 26 Oct 2026
+NESTED_K = MAX_K    # sensors re-chosen per held-out source in the fair re-test
+# AUD, assumed and editable on the page. Earlier versions used a float price of $1,500;
+# $1,000 is now the default. Neither figure is a quote.
+PRICES = {"level": 25000, "float": 1000}
 
 
 def dia_by_manhole():
@@ -224,6 +227,91 @@ def main():
     for k, v in comparisons.items():
         print(f"  {k:20s} {v['worst_rmse']:.3f}  {100 * v['worst_good']:.0f}%")
 
+    # ------------------------------------------------------------------ fair re-test (added at merge, 2 Nov 2026)
+    # Two corrections to the held-out score above, which is kept as it was.
+    #  1. Leak. The whole-suburb runs carry every area's growth at once, so when one area is held
+    #     out its growth is still learned through them. Here an area's fold also leaves the
+    #     whole-suburb states out of the learning (the suburb's own fold learns from the areas).
+    #  2. Selection. The greedy above chooses each sensor by the same held-out score it then
+    #     reports. Here the sensors are chosen again for every held-out growth source, using only
+    #     the other sources (nested), and are tested only on the source they never saw.
+    # Fixed sets (Sim 3's, random) are scored on the leak-free folds with no re-choosing.
+    def leakfree_folds(groups_in, rows):
+        out = []
+        for g in groups_in:
+            drop = [g] if g == "suburb" else [g, "suburb"]
+            out.append((rows[~np.isin(kind[rows], drop)], rows[kind[rows] == g]))
+        return out
+
+    def fold_predict(S, folds):
+        P = np.zeros((len(X), len(crit)))
+        for tr, te in folds:
+            P[te] = predict(fit(X[tr][:, S], Y[tr]), X[te][:, S]) if S else Y[tr].mean(0)
+        return P
+
+    def per_case(P, te_all):
+        rm, good = [], []
+        for c in range(ncase):
+            te = te_all[case_of[te_all] == c]
+            E = P[te] - Y[te]
+            rm.append(float(np.sqrt((E ** 2).mean())))
+            good.append(float((np.abs(E) <= GOOD_ERR).mean()))
+        return rm, good
+
+    def summary(rm, good):
+        return {"worst_rmse": round(max(rm), 4), "mean_rmse": round(float(np.mean(rm)), 4),
+                "worst_good": round(min(good), 4), "mean_good": round(float(np.mean(good)), 4)}
+
+    all_rows = np.arange(len(X))
+    outer = leakfree_folds(groups, all_rows)
+    te_all = np.concatenate([te for _, te in outer])
+    P_nest = [np.zeros((len(X), len(crit))) for _ in range(NESTED_K + 1)]
+    for g, (tr, te) in zip(groups, outer):
+        P_nest[0][te] = Y[tr].mean(0)
+    nested_sets = {}
+    for g, (tr, te) in zip(groups, outer):
+        inner = leakfree_folds([h for h in groups if h != g and (g == "suburb" or h != "suburb")], tr)
+        inner_te = np.concatenate([t for _, t in inner])
+        S = []
+        for k in range(NESTED_K):
+            best, best_v = None, None
+            for m in range(n):
+                if m in S:
+                    continue
+                rm, _ = per_case(fold_predict(S + [m], inner), inner_te)
+                v = (max(rm), float(np.mean(rm)))
+                if best_v is None or v < best_v:
+                    best, best_v = m, v
+            S.append(best)
+            P_nest[k + 1][te] = predict(fit(X[tr][:, S], Y[tr]), X[te][:, S])
+        nested_sets[g] = [mids[m] for m in S]
+        print(f"  nested, {g} held out: chose {['MH%d' % x for x in nested_sets[g][:K]]}", flush=True)
+    fair_curve = [{"k": k, **summary(*per_case(P_nest[k], te_all))} for k in range(NESTED_K + 1)]
+    fixed = lambda S: summary(*per_case(fold_predict(S, outer), te_all))
+    rand_fair = [fixed(sorted(np.random.default_rng(SEED + 1 + i).choice(n, K, replace=False).tolist()))
+                 for i in range(RANDOM_SETS)]
+    rand_fair.sort(key=lambda v: v["worst_good"])
+    picked = {}
+    for s_ in nested_sets.values():
+        for m in s_[:K]:
+            picked[m] = picked.get(m, 0) + 1
+    fair = {
+        "note": "Leak-free folds (an area held out also drops the whole-suburb runs from learning) and, "
+                "for Sim 3-e, sensors re-chosen for each held-out growth source from the others only.",
+        "nested_curve": fair_curve,
+        "at5": {"sim3e_nested": fair_curve[K],
+                "sim3e_as_published_set": fixed(order[:K]),
+                "sim3_exact_growth": fixed([idx[m] for m in exact5]),
+                "sim3_greedy_growth": fixed([idx[m] for m in greedy5]),
+                "random_median_of_20": rand_fair[len(rand_fair) // 2]},
+        "nested_sets": nested_sets,
+        "times_chosen_at5": dict(sorted(picked.items(), key=lambda kv: -kv[1])),
+        "folds": len(groups),
+    }
+    print("fair re-test at 5 sensors (worst share within 0.1, worst RMSE):")
+    for k_, v in fair["at5"].items():
+        print(f"  {k_:24s} {100 * v['worst_good']:.0f}%  {v['worst_rmse']:.3f}")
+
     # ------------------------------------------------------------------ out-of-family test (Sim 2.5)
     oof = {}
     full = {S_name: fit(X[:, S], Y) for S_name, S in [("sim3e", order[:K]),
@@ -317,7 +405,7 @@ def main():
         "states": len(X), "critical": crit.tolist(),
         "order": order, "curve": curve, "comparisons": comparisons, "out_of_family": oof, "weather_check": weather,
         "steps": steps, "years": years, "dd": dd_by_step, "timeline": timeline,
-        "floats": floats, "why": why, "estimators": estimators,
+        "floats": floats, "why": why, "estimators": estimators, "fair_test": fair,
         "sim3_exact5": exact5,
         "check": sub["check"],
     }

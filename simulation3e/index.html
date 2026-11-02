@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sim 3-e Headroom</title>
 <link rel="stylesheet" href="sim3e.css?v=2">
+<!-- live presentation sync -->
+<script>(function(){var l=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),s=document.createElement("script");s.src=(l?"http://localhost:8787":"https://capstone-live.sidcode3535.workers.dev")+"/present.js";s.defer=true;document.head.appendChild(s)})();</script>
 </head>
 <body>
 <header class="top">
@@ -33,10 +35,10 @@
       <label>Budget (AUD) <input type="number" id="budget" value="100000" step="5000" min="0"></label>
       <div class="two">
         <label>Level sensor <input type="number" id="pLevel" value="25000" step="500" min="1"></label>
-        <label>Float switch <input type="number" id="pFloat" value="1500" step="100" min="1"></label>
+        <label>Float switch <input type="number" id="pFloat" value="1000" step="100" min="1"></label>
       </div>
       <table class="opts" id="opts"></table>
-      <p class="hint">Level sensors measure depth and anchor the estimate. Float switches are cheap alarms set at 70% full on the pipes that get there soonest. Click a row to choose a mix.</p>
+      <p class="hint">Prices are assumed, not quotes: edit them to your own. Level sensors measure depth and anchor the estimate. Float switches are cheap alarms set at 70% full on the pipes that get there soonest; they do not add to "Estimated well". Click a row to choose a mix.</p>
     </section>
     <section>
       <h2><span class="n">4</span> Map shows</h2>
@@ -69,14 +71,14 @@
   </div>
   <div class="half">
     <h2>How well a few sensors estimate the rest</h2>
-    <p class="hint">Share of critical-manhole estimates within 0.10 of the modelled fullness, on growth the estimate never learned from (each area, the corridor and the whole suburb held out in turn), in the weather case where it does worst.</p>
+    <p class="hint">Share of critical-manhole estimates within 0.10 of the modelled fullness, on growth the estimate never learned from (each area, the corridor and the whole suburb held out in turn), in the weather case where it does worst. Bars: as first published. Dots: the fair re-test, where the sensors are also chosen without the growth they are tested on.</p>
     <canvas id="curve" height="220"></canvas>
     <table class="cmp" id="cmp"></table>
   </div>
 </section>
 
 <script src="../simulation3/data/catchment.js"></script>
-<script src="data/sim3e.js?v=2"></script>
-<script src="sim3e.js?v=2"></script>
+<script src="data/sim3e.js?v=3"></script>
+<script src="sim3e.js?v=3"></script>
 </body>
 </html>

@@ -17,6 +17,9 @@
   const $ = (id) => document.getElementById(id);
   const n = D.manholes.length;
   const crit = D.critical, critSet = new Set(crit);
+  // The fair re-test (sensors re-chosen without the growth they are tested on) is what the budget
+  // table quotes; the published curve stays on the chart as bars beside it.
+  const FAIR = D.fair_test.nested_curve;
   const st = { c: D.cases.indexOf("ii0.11_flat_uniform_b1_sfree"), year: 2041, view: "model", nL: 0, nF: 0 };
 
   // ---- fullness at a year: linear between the saved ladder steps
@@ -131,7 +134,7 @@
     const rows = [];
     for (let nL = 0; nL <= Math.min(10, Math.floor(B / PL)); nL++) {
       const nF = Math.min(Math.floor((B - nL * PL) / PF), D.floats.length);
-      rows.push({ nL, nF, cost: nL * PL + nF * PF, acc: D.curve[nL].worst_good });
+      rows.push({ nL, nF, cost: nL * PL + nF * PF, acc: FAIR[nL].worst_good });
     }
     let rec = rows[0];
     rows.forEach((o) => { if (o.acc > rec.acc + 0.01 || (Math.abs(o.acc - rec.acc) <= 0.01 && o.nF > rec.nF)) rec = o; });
@@ -140,7 +143,7 @@
   function renderOptions(keep) {
     const { rows, rec } = options();
     if (!keep || !rows.some((o) => o.nL === st.nL && o.nF === st.nF)) { st.nL = rec.nL; st.nF = rec.nF; }
-    $("opts").innerHTML = `<tr><th>Mix</th><th class="r">Cost</th><th class="r">Estimated well</th></tr>` +
+    $("opts").innerHTML = `<tr><th>Mix</th><th class="r">Cost</th><th class="r" title="Fair re-test, worst weather case: what this way of choosing level sensors scores on growth it never saw, when the sensors too are chosen without that growth">Estimated well</th></tr>` +
       rows.map((o) => `<tr data-l="${o.nL}" data-f="${o.nF}" class="${o === rec ? "rec " : ""}${o.nL === st.nL && o.nF === st.nF ? "sel" : ""}">
         <td>${o.nL} level + ${o.nF} float</td><td class="r">$${o.cost.toLocaleString()}</td><td class="r">${Math.round(100 * o.acc)}%</td></tr>`).join("");
     $("opts").querySelectorAll("tr[data-l]").forEach((tr) => tr.onclick = () => {
@@ -194,12 +197,20 @@
       const x = L + 4 + i * bw, h = p.worst_good * (H - B - 10);
       g.fillStyle = i === st.nL ? "#38bdf8" : "#2e6f99"; g.fillRect(x, H - B - h, bw - 6, h);
       g.fillStyle = "#a9b8d4"; g.fillText(String(p.k), x + bw / 2 - 6, H - 10);
+      const f = FAIR[i];
+      if (f) {
+        g.fillStyle = "#fbbf24"; g.beginPath();
+        g.arc(x + (bw - 6) / 2, H - B - f.worst_good * (H - B - 10), 4, 0, 2 * Math.PI); g.fill();
+      }
     });
     g.fillStyle = "#6f81a3"; g.fillText("level sensors", L, 12);
-    const C = D.comparisons, nm = { sim3e: "Sim 3-e (placed for estimation)", sim3_exact_growth: "Sim 3 exact (placed to notice growth)",
-      sim3_greedy_growth: "Sim 3 greedy (placed to notice growth)", deepest_flow: "Five deepest-flow manholes", random_best_of_20: "Best of 20 random sets", no_sensors: "No sensors" };
-    $("cmp").innerHTML = `<tr><th>Five level sensors</th><th class="r">Estimated well (worst case)</th><th class="r">Typical error</th></tr>` +
-      Object.keys(nm).map((k) => `<tr><td>${nm[k]}</td><td class="r">${Math.round(100 * C[k].worst_good)}%</td><td class="r">${C[k].mean_rmse.toFixed(3)} d/D</td></tr>`).join("");
+    g.fillStyle = "#fbbf24"; g.fillText("● fair re-test", L + 90, 12);
+    const C = D.comparisons, F = D.fair_test.at5, pc = (v) => v ? Math.round(100 * v.worst_good) + "%" : "n/a";
+    const nm = [["sim3e", "sim3e_nested", "Sim 3-e (placed for estimation)"], ["sim3_exact_growth", "sim3_exact_growth", "Sim 3 exact (placed to notice growth)"],
+      ["sim3_greedy_growth", "sim3_greedy_growth", "Sim 3 greedy (placed to notice growth)"], ["deepest_flow", null, "Five deepest-flow manholes"],
+      ["random_best_of_20", null, "Best of 20 random sets"], [null, "random_median_of_20", "A typical random set (median of 20)"], ["no_sensors", null, "No sensors"]];
+    $("cmp").innerHTML = `<tr><th>Five level sensors</th><th class="r">Estimated well, as first published</th><th class="r">Fair re-test</th></tr>` +
+      nm.map(([a, b, label]) => `<tr><td>${label}</td><td class="r">${pc(a && C[a])}</td><td class="r">${pc(b && F[b])}</td></tr>`).join("");
   }
 
   function update() {

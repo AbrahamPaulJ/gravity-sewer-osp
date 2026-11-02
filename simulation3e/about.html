@@ -6,6 +6,8 @@
 <title>Sim 3-e Assumptions</title>
 <link rel="stylesheet" href="sim3e.css">
 <style>.wrap{max-width:960px;margin:0 auto;padding:20px}.wrap h2{margin-top:28px;border-top:1px solid var(--line);padding-top:14px;font-size:18px}.wrap p,.wrap li{color:var(--dim)}.box{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px}</style>
+<!-- live presentation sync -->
+<script>(function(){var l=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),s=document.createElement("script");s.src=(l?"http://localhost:8787":"https://capstone-live.sidcode3535.workers.dev")+"/present.js";s.defer=true;document.head.appendChild(s)})();</script>
 </head>
 <body>
 <div class="wrap">
@@ -42,6 +44,7 @@
 <ul>
 <li><b>Solver:</b> one published Sim 3 run (area R1 at 100%, design wet) was solved again before the new runs: largest difference 0.32 mm over 76 manholes, inside the run's settling tolerance.</li>
 <li><b>Held-out growth:</b> with five level sensors, 91% of critical-manhole estimates are within 0.10 of the modelled fullness in the worst case, against 75% to 88% for Sim 3's growth sensors and 80% for the best of 20 random sets.</li>
+<li><b>Fair re-test (added when merged, 2 Nov 2026):</b> the 91% above is scored on the same held-out folds the sensors were chosen on, so it is optimistic. Choosing the sensors again for each held-out growth source, from the other sources only, five level sensors estimate <b>78%</b> of critical-manhole values within 0.10 in the worst weather case (89% on average). On the same folds Sim 3's greedy growth sensors score 88%, Sim 3's exact five 75%, and a typical random set 65%. So placing for estimation beats chance clearly, but is not yet shown to beat Sim 3's own greedy sensors. One manhole, MH4447880, is chosen in 9 of the 10 re-tests. A second correction, leaving the whole-suburb runs out of the learning when an area is held out (they contain that area's growth), changed the published set's score by less than one point.</li>
 <li><b>Different runs:</b> learned on Sim 3's runs and tested on Sim 2.5's 8,200 single-manhole runs, the typical error is 0.03 to 0.11 d/D.</li>
 <li><b>Held-out weather:</b> holding out a whole weather case inside the learned range, five sensors estimate 81% to 95% of values within 0.10, except the "more outside inflow" design-wet case at 46%. The estimate is weakest when flow from outside the council area differs from what it learned.</li>
 <li><b>Settling:</b> 3 of the 56 whole-suburb runs reached the 1,800-minute ceiling before every level stopped moving (Sim 3 had 1).</li>
@@ -55,7 +58,7 @@
 <tr><td>Good estimate</td><td>within 0.10 d/D</td><td>assumed</td></tr>
 <tr><td>Growth timing</td><td>485 homes by 2041, evenly, same rate after</td><td>PlanSA 2021-41 projection; even arrival assumed</td></tr>
 <tr><td>Growth location</td><td>in proportion to the homes already on each pipe</td><td>Sim 3's rule</td></tr>
-<tr><td>Prices</td><td>level $25,000, float $1,500</td><td>the industry partner's figures; editable on the page</td></tr>
+<tr><td>Prices</td><td>level $25,000, float $1,000 (an earlier version used $1,500)</td><td>assumed, not quotes; editable on the page</td></tr>
 <tr><td>Readings</td><td>one settled peak depth per run</td><td>real sensors give a daily series with noise; not modelled</td></tr>
 <tr><td>Float switches</td><td>used as alarms only, not in the estimate</td><td>simplification</td></tr>
 </table>
