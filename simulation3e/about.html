@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sim 3-e Assumptions</title>
+<link rel="stylesheet" href="sim3e.css">
+<style>.wrap{max-width:960px;margin:0 auto;padding:20px}.wrap h2{margin-top:28px;border-top:1px solid var(--line);padding-top:14px;font-size:18px}.wrap p,.wrap li{color:var(--dim)}.box{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px}</style>
+</head>
+<body>
+<div class="wrap">
+<p><a href="index.html">Back to Sim 3-e</a></p>
+<h1>Sim 3-e: assumptions, checks and what changed</h1>
+<p>Sim 3-e is a new version beside Sim 3, not a replacement. Sim 3's model, cases, loads, solver and runs are used exactly as published; nothing in Sim 3 was edited.</p>
+<div class="box"><p>Built from public council data and not yet checked against measured sewer levels. Every number is a guide to where to look first, not a measurement.</p></div>
+
+<h2>1. Why a new question</h2>
+<p>At the 26 Oct 2026 review the industry partner pointed out that sewers are designed with spare room, so new homes may not cause overflows at all, and that the utility already knows where new homes connect. What it cannot see is how full each pipe runs and when the room will run out. Sim 3-e therefore places sensors to <b>estimate how full every critical pipe is</b> (headroom), instead of to notice growth. It also answers the other requests from that review: growth spread across the suburb, growth arriving over years, a budget with a float and level mix, and a reason for each sensor.</p>
+
+<h2>2. What changed from Sim 3</h2>
+<table>
+<tr><th>Area</th><th>Sim 3</th><th>Sim 3-e</th></tr>
+<tr><td>Question</td><td>Which manholes notice growth?</td><td>Which few sensors let us estimate how full every critical pipe is?</td></tr>
+<tr><td>Growth</td><td>One area at a time, 10% to 300% of its share</td><td>Also the whole suburb at once (56 new SWMM runs, same rule and cases)</td></tr>
+<tr><td>Time</td><td>Build-out steps</td><td>Years: the 2021-41 projection arriving evenly, so each step has a year</td></tr>
+<tr><td>Placement</td><td>Exact and greedy, growth noticed</td><td>Greedy, lowest estimation error at critical manholes</td></tr>
+<tr><td>Sensor type</td><td>One rule at a time</td><td>Budget with editable prices: level sensors estimate, float switches warn</td></tr>
+<tr><td>Explanation</td><td>Card per sensor</td><td>Card per sensor saying which areas it helps estimate, or when its pipe fills</td></tr>
+</table>
+
+<h2>3. How it works</h2>
+<ul>
+<li><b>States:</b> every saved settled run is one snapshot of fullness (depth divided by pipe diameter, d/D) at all 328 manholes: 456 Sim 3 runs and 56 whole-suburb runs, 512 in all.</li>
+<li><b>Critical manholes:</b> the 156 manholes that reach half full by 2041 in at least one case.</li>
+<li><b>Virtual sensors:</b> a linear map (ridge regression), learned from the states, turns the fullness read at the level-sensor manholes into an estimate at every critical manhole.</li>
+<li><b>Placement:</b> greedy. Each new level sensor goes where it most lowers the estimation error, judged on growth the map has not learned from (each area, the corridor and the whole suburb held out in turn) in the worst weather case.</li>
+<li><b>Timeline:</b> from the whole-suburb runs, the year each manhole first reaches 70% full and full, assuming the projection arrives evenly (2041 = 485 homes) and continues at that rate.</li>
+<li><b>Float switches:</b> placed on critical manholes still under 70% full today that reach it soonest in design wet weather, as an alarm set at 70%.</li>
+</ul>
+
+<h2>4. Checks</h2>
+<ul>
+<li><b>Solver:</b> one published Sim 3 run (area R1 at 100%, design wet) was solved again before the new runs: largest difference 0.32 mm over 76 manholes, inside the run's settling tolerance.</li>
+<li><b>Held-out growth:</b> with five level sensors, 91% of critical-manhole estimates are within 0.10 of the modelled fullness in the worst case, against 75% to 88% for Sim 3's growth sensors and 80% for the best of 20 random sets.</li>
+<li><b>Different runs:</b> learned on Sim 3's runs and tested on Sim 2.5's 8,200 single-manhole runs, the typical error is 0.03 to 0.11 d/D.</li>
+<li><b>Held-out weather:</b> holding out a whole weather case inside the learned range, five sensors estimate 81% to 95% of values within 0.10, except the "more outside inflow" design-wet case at 46%. The estimate is weakest when flow from outside the council area differs from what it learned.</li>
+<li><b>Settling:</b> 3 of the 56 whole-suburb runs reached the 1,800-minute ceiling before every level stopped moving (Sim 3 had 1).</li>
+</ul>
+
+<h2>5. Assumptions</h2>
+<table>
+<tr><th>Setting</th><th>Value</th><th>Status</th></tr>
+<tr><td>Critical manhole</td><td>reaches 0.5 d/D by 2041 in some case</td><td>assumed</td></tr>
+<tr><td>Warning level</td><td>0.7 d/D</td><td>Kimbrough (2019); replace with the utility's own rule</td></tr>
+<tr><td>Good estimate</td><td>within 0.10 d/D</td><td>assumed</td></tr>
+<tr><td>Growth timing</td><td>485 homes by 2041, evenly, same rate after</td><td>PlanSA 2021-41 projection; even arrival assumed</td></tr>
+<tr><td>Growth location</td><td>in proportion to the homes already on each pipe</td><td>Sim 3's rule</td></tr>
+<tr><td>Prices</td><td>level $25,000, float $1,500</td><td>the industry partner's figures; editable on the page</td></tr>
+<tr><td>Readings</td><td>one settled peak depth per run</td><td>real sensors give a daily series with noise; not modelled</td></tr>
+<tr><td>Float switches</td><td>used as alarms only, not in the estimate</td><td>simplification</td></tr>
+</table>
+
+<h2>6. Not done yet</h2>
+<ul>
+<li>Configurable loads (litres per person, peak factor): needs about 3 hours of new runs.</li>
+<li>Daily noise and sensor error: needs the utility's normal-day level records.</li>
+<li>Calibration: needs measured levels or flows.</li>
+</ul>
+</div>
+</body>
+</html>

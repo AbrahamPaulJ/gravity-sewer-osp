@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sim 3-e Headroom</title>
+<link rel="stylesheet" href="sim3e.css?v=2">
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Sim 3-e: how much room is left, and where to measure it</h1>
+    <p class="sub">A few sensors estimate how full every critical pipe runs, as the 2021-41 growth arrives. Uncalibrated: a guide to where to look first.</p>
+  </div>
+  <nav><a href="about.html">Assumptions and checks</a> <a href="../index.html">All simulations</a></nav>
+</header>
+
+<main class="grid">
+  <aside class="panel" id="left">
+    <section>
+      <h2><span class="n">1</span> Weather</h2>
+      <select id="case"></select>
+      <p class="hint" id="caseNote"></p>
+    </section>
+    <section>
+      <h2><span class="n">2</span> Year</h2>
+      <input type="range" id="year" min="2021" max="2081" step="1" value="2041">
+      <div class="yearline"><b id="yearVal">2041</b> <span id="homesVal"></span></div>
+      <p class="hint">Growth is the published 2021-41 projection (485 homes), arriving evenly and spread across the suburb in proportion to the homes already there. After 2041 the same rate continues.</p>
+    </section>
+    <section>
+      <h2><span class="n">3</span> Budget</h2>
+      <label>Budget (AUD) <input type="number" id="budget" value="100000" step="5000" min="0"></label>
+      <div class="two">
+        <label>Level sensor <input type="number" id="pLevel" value="25000" step="500" min="1"></label>
+        <label>Float switch <input type="number" id="pFloat" value="1500" step="100" min="1"></label>
+      </div>
+      <table class="opts" id="opts"></table>
+      <p class="hint">Level sensors measure depth and anchor the estimate. Float switches are cheap alarms set at 70% full on the pipes that get there soonest. Click a row to choose a mix.</p>
+    </section>
+    <section>
+      <h2><span class="n">4</span> Map shows</h2>
+      <div class="seg" id="view">
+        <button data-v="model" class="on">Modelled</button>
+        <button data-v="est">Estimated</button>
+        <button data-v="err">Error</button>
+      </div>
+      <p class="hint" id="viewNote"></p>
+    </section>
+  </aside>
+
+  <section class="mapwrap">
+    <canvas id="map"></canvas>
+    <div class="legend" id="legend"></div>
+    <div class="summary" id="summary"></div>
+  </section>
+
+  <aside class="panel" id="right">
+    <h2>Why each sensor is there</h2>
+    <div id="cards"></div>
+  </aside>
+</main>
+
+<section class="below">
+  <div class="half">
+    <h2>Pipes running out of room</h2>
+    <p class="hint">Critical manholes in the chosen weather, by the year they first reach 70% full if growth arrives as projected.</p>
+    <div class="tablewrap"><table id="headroom"></table></div>
+  </div>
+  <div class="half">
+    <h2>How well a few sensors estimate the rest</h2>
+    <p class="hint">Share of critical-manhole estimates within 0.10 of the modelled fullness, on growth the estimate never learned from (each area, the corridor and the whole suburb held out in turn), in the weather case where it does worst.</p>
+    <canvas id="curve" height="220"></canvas>
+    <table class="cmp" id="cmp"></table>
+  </div>
+</section>
+
+<script src="../simulation3/data/catchment.js"></script>
+<script src="data/sim3e.js?v=2"></script>
+<script src="sim3e.js?v=2"></script>
+</body>
+</html>
