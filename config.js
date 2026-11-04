@@ -26,7 +26,7 @@
     "sim1": false,
     "sim2": false,
     "sim3": true,
-    "sim3e": true,
+    "sim3e": false,
     "sim25": true,
     "sim25legacy": true
   },
