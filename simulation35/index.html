@@ -224,8 +224,6 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .legend{padding:10px 14px 4px; background:#0d1117; color:#8b949e; font-size:11.5px;
   display:flex; gap:7px 18px; flex-wrap:wrap; align-items:center}
 .legend[hidden]{display:none}
-#chipBar{padding:7px 14px 0; background:#0d1117; color:#8b949e; font-size:11.5px; display:flex; gap:6px; align-items:center; flex-wrap:wrap}
-#chipBar b{color:#c9d1d9; font-weight:600; margin-right:4px}
 #areasKeyList{display:inline-flex; gap:6px 16px; flex-wrap:wrap}
 #areasKeyList span{white-space:nowrap}
 .legend b{color:#c9d1d9; font-weight:600; margin-right:2px}
@@ -240,7 +238,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   background:repeating-linear-gradient(90deg,#e3b341 0 5px,transparent 5px 8px)}
 .legend .kdl{display:inline-block; width:18px; height:2px; vertical-align:3px; margin-right:6px;
   background:repeating-linear-gradient(90deg,#d2a8ff 0 5px,transparent 5px 8px)}
-/* One chip per area, in the area's map colour; click to select it. */
+/* One chip per region, in the region's map colour; click to select it. */
 .chip{display:inline-flex; align-items:center; padding:1px 9px; border-radius:99px; border:1px solid var(--line);
   cursor:pointer; color:var(--dim); font-size:11.5px; background:none; font-family:inherit}
 .chip:hover{border-color:var(--dim); color:var(--ink)}
@@ -251,7 +249,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .heatbar i{display:inline-block; width:120px; height:9px; border-radius:2px;
   background:linear-gradient(90deg,#104281,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb)}
 /* The one overlay on the map: the sentence (its long form behind the (i)) and, under it, the
-   homes line (the selected area's homes, or the hovered manhole's). Foot of the map, both views. */
+   homes line (the selected region's homes, or the hovered manhole's). Foot of the map, both views. */
 #inWords{position:absolute; left:12px; bottom:12px; z-index:3; max-width:min(760px, calc(100% - 24px));
   background:rgba(13,17,23,.9); border:1px solid #22314d; border-radius:8px; padding:9px 13px;
   color:#c9d1d9; font-size:13px; line-height:1.45}
@@ -349,6 +347,8 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   #mhSide{border-left:0; border-top:1px solid var(--line); max-height:40vh}
 }
 
+#btn-full{display:inline-flex; align-items:center; justify-content:center; padding-left:9px; padding-right:9px}
+#btn-full[hidden]{display:none}
 /* Sim 3.5's Results panel */
 .restabs{display:flex; gap:4px; flex-wrap:wrap; margin:8px 0 14px; border-bottom:1px solid var(--line)}
 .restabs button{background:none; border:0; border-bottom:2px solid transparent; color:var(--dim); padding:7px 11px; font:inherit; font-size:13px; cursor:pointer}
@@ -386,7 +386,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   <h1>Sim 3.5: growth and sensor placement</h1>
   <div id="strip" class="s">
     <div class="step">
-      <div class="t"><span class="n">1</span>Where do the new homes go <i class="info-i" data-tip="Infill: new homes spread through one area of the suburb in proportion to the homes already there (a block split in two, a backyard subdivision). Greenfield: a new estate joining the sewer at one manhole; click a manhole on the map to place it. Nowhere: the suburb as it is today.">i</i></div>
+      <div class="t"><span class="n">1</span>Where do the new homes go <i class="info-i" data-tip="Infill: new homes spread through one region of the suburb in proportion to the homes already there (a block split in two, a backyard subdivision). Greenfield: a new estate joining the sewer at one manhole; click a manhole on the map to place it. Nowhere: the suburb as it is today.">i</i></div>
       <div class="selwrap"><button class="arrow" data-for="whereSel" data-step="-1" title="Previous">&#9664;</button><select id="whereSel"></select><button class="arrow" data-for="whereSel" data-step="1" title="Next">&#9654;</button></div>
       <div class="quiet" id="whereHint"></div>
     </div>
@@ -412,14 +412,14 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 
   <label class="fld">What kind of growth <i class="info-i" id="famInfo" data-tip="">i</i></label>
   <div class="knob" id="famKnob">
-    <button data-f="infill" title="New homes spread through an area, in proportion to the homes already there">Infill: an area densifies</button>
+    <button data-f="infill" title="New homes spread through a region, in proportion to the homes already there">Infill: a region densifies</button>
     <button data-f="one" title="A new estate joining the sewer at one manhole">Greenfield: one point</button>
     <button data-f="none" title="The suburb as it is today, no growth placed">No growth: the suburb today</button>
   </div>
 
   <div id="infillBox">
-    <label class="fld" for="region">Which area</label>
-    <div class="selwrap"><button class="arrow" data-for="region" data-step="-1" title="Previous area">&#9664;</button><select id="region"></select><button class="arrow" data-for="region" data-step="1" title="Next area">&#9654;</button></div>
+    <label class="fld" for="region">Which region</label>
+    <div class="selwrap"><button class="arrow" data-for="region" data-step="-1" title="Previous region">&#9664;</button><select id="region"></select><button class="arrow" data-for="region" data-step="1" title="Next region">&#9654;</button></div>
     <label class="fld" for="stepRange"><span>How much growth: <span id="stepLbl"></span></span><i class="info-i" id="stepInfo" data-tip="">i</i></label>
     <input type="range" id="stepRange" min="0" max="6" step="1">
   </div>
@@ -474,7 +474,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
       <button id="toggleConn" class="x" title="Draw every connection pipe at its bore">Connections</button>
       <button id="toggleIds" class="x" title="Label every manhole with its number">Manhole ids</button>
       <button id="toggleLegend" title="Show what the colours mean">Legend</button>
-      <button id="toggleAreas" title="See how the suburb is divided into areas, each in its own colour; click again to come back">Areas</button>
+      <button id="toggleAreas" title="See how the suburb is divided into regions, each in its own colour; click again to come back">Regions</button>
     </div>
     <span class="navsep"></span>
     <div class="navgrp">
@@ -482,6 +482,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
       <button id="tab-ref">Assumptions</button>
       <button id="tab-qa">Findings</button>
       <button id="btn-info" class="info" title="What this model is and the numbers behind it">About</button>
+      <button id="btn-full" title="Full screen" aria-label="Full screen"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg></button>
     </div>
     <div class="knob" id="viewKnob">
       <button data-v="simple" title="The map, the recommended sensors and one sentence">Simple</button>
@@ -497,14 +498,13 @@ nav button.info:hover{background:var(--accent); color:#06131f}
     <div id="inWords"><button id="wordsTab" title="Fold the summary away">&#9662;</button><span id="wordsMini">Summary</span><div id="wordsText"></div><div id="homesLine"></div></div>
   </div>
 
-  <div id="chipBar"><b>Select area</b><span id="areaChips"></span></div>
   <div class="legend" id="legend" hidden>
-    <div class="grp" id="areasKey" hidden><b>Areas</b><span id="areasKeyList"></span></div>
+    <div class="grp" id="areasKey" hidden><b>Regions</b><span id="areasKeyList"></span></div>
     <div class="grp s" id="simpleKey"><b>Map</b>
       <span><span class="k" style="background:#2ef56b"></span>recommended sensor, numbered as in the list</span>
       <span><span class="k" style="background:#ff2d55"></span>sees this growth</span>
       <span><span class="k" style="background:#ffa500"></span>over the alarm before any growth</span>
-      <span><span class="kl" style="background:#00d4ff"></span>the selected area's pipes</span>
+      <span><span class="kl" style="background:#00d4ff"></span>the selected region's pipes</span>
     </div>
     <div class="grp lg-results" id="heatKey" hidden><b>Heatmap</b>
       <span>manholes ranked by the share of detectable growth each sees on its own, <span id="heatWhich"></span>:</span>
@@ -523,7 +523,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
       <span><span class="kr" style="border-color:#bc8cff"></span>overflowing before growth</span>
       <span><span class="kr" style="border-color:#ff3df5"></span>overflows because of the growth</span>
       <span><span class="k" style="background:#2ef56b"></span>proposed sensor: green pin, numbered S1, S2, ... as in the sensor list</span>
-      <span><span class="kl" style="background:#00d4ff"></span>the selected area's pipes</span>
+      <span><span class="kl" style="background:#00d4ff"></span>the selected region's pipes</span>
     </div>
     <div class="grp lg-network" id="pumpKey" hidden><b>Pumped</b>
       <span><span class="ksq" style="background:#e3b341"></span>pump station</span>
@@ -562,8 +562,8 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 <script src="../simulation3/growth_3d.js?v=9"></script>
 <script src="../simulation3/osp_core.js?v=9"></script>
 <script src="../simulation3/placement.js?v=9"></script>
-<script src="data/sim35.js?v=1"></script>
-<script src="sim35_ui.js?v=1"></script>
+<script src="data/sim35.js?v=2"></script>
+<script src="sim35_ui.js?v=2"></script>
 <script type="module">
   Sim35UI.init();
 </script>
