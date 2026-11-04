@@ -1,0 +1,82 @@
+Limit 0.7. How close to the limit is the manhole that crosses first, before any growth?
+                                                    R1              R2              R3              R4              R5              R6              R8              R7
+Dry                                        0.663  11mm               -               -               -               -               -     0.663  11mm               -
+Design wet                                 0.580  36mm     0.653   7mm               -     0.653   7mm               -               -     0.664  13mm               -
+Beyond design                              0.427  41mm     0.607  14mm               -               -               -               -               -     0.448  36mm
+Severe                                     0.373  49mm               -               -               -     0.680   3mm               -     0.683   6mm               -
+Design wet + age-weighted I&I              0.693   1mm     0.460  36mm               -               -               -               -     0.648  19mm               -
+Design wet + outside inflow x1.5           0.458  54mm     0.560  21mm               -               -               -               -     0.180  78mm     0.653   7mm
+Beyond design + age-weighted I&I           0.067  95mm     0.153  82mm               -               -               -               -               -     0.643   8mm
+Beyond design + outside inflow x1.5        0.493  31mm               -               -               -               -               -               -               -
+
+Baseline error test, Design wet: every manhole's level shifted by an independent error, 400 draws.
+10th to 90th percentile of homes. Sigma 0.05 of bore is 7.5 mm on a 150 mm pipe.
+ sigma 0.02
+   area    share      first pipe      third pipe   pipes past at share
+   R1        110        23 to 66     160 to >329             1 to 2
+   R2         55         4 to 12     113 to >165             1 to 2
+   R3         40    >119 to >119    >119 to >119             0 to 0
+   R4         17         6 to 20      >51 to >51             0 to 1
+   R5         25      >75 to >75      >75 to >75             0 to 0
+   R6         19      >58 to >58      >58 to >58             0 to 0
+   R8        485     276 to 1022   1257 to >1455             0 to 1
+   R7        141     288 to >423    >423 to >423             0 to 0
+ sigma 0.05
+   area    share      first pipe      third pipe   pipes past at share
+   R1        110        12 to 78      95 to >329             1 to 3
+   R2         55         3 to 63      88 to >165             0 to 2
+   R3         40    >119 to >119    >119 to >119             0 to 0
+   R4         17         5 to 42      >51 to >51             0 to 1
+   R5         25       59 to >75      >75 to >75             0 to 0
+   R6         19      >58 to >58      >58 to >58             0 to 0
+   R8        485     144 to 1294   1028 to >1455             0 to 1
+   R7        141     110 to >423    >423 to >423             0 to 1
+
+Pipes newly past the limit at each area's 100% share, with no error added:
+                                          R1    R2    R3    R4    R5    R6    R8    R7
+ limit 0.5
+   Dry                                     1     0     0     0     0     0     0     0
+   Design wet                              0     0     0     0     0     0     0     0
+   Beyond design                           1     1     0     0     0     0     0     1
+   Severe                                  1     0     0     0     0     0     0     0
+   Design wet + age-weighted I&I           0     0     0     0     0     0     0     0
+   Design wet + outside inflow x1.5        1     0     0     0     0     0     0     0
+   Beyond design + age-weighted I&I        1     0     0     0     0     0     0     0
+   Beyond design + outside inflow x1.5     1     0     0     0     0     0     0     0
+ limit 0.6
+   Dry                                     0     0     0     0     0     0     0     0
+   Design wet                              1     1     0     1     0     0     5     1
+   Beyond design                           1     0     0     0     0     0     0     0
+   Severe                                  1     0     0     0     0     0     0     0
+   Design wet + age-weighted I&I           1     0     0     0     0     0     3     0
+   Design wet + outside inflow x1.5        1     2     0     0     0     0     2     0
+   Beyond design + age-weighted I&I        0     0     0     0     0     0     0     0
+   Beyond design + outside inflow x1.5     1     0     0     0     0     0     0     0
+ limit 0.7
+   Dry                                     0     0     0     0     0     0     0     0
+   Design wet                              1     1     0     1     0     0     0     0
+   Beyond design                           1     1     0     0     0     0     0     0
+   Severe                                  1     0     0     0     0     0     0     0
+   Design wet + age-weighted I&I           1     0     0     0     0     0     0     0
+   Design wet + outside inflow x1.5        2     1     0     0     0     0     0     1
+   Beyond design + age-weighted I&I        0     0     0     0     0     0     0     1
+   Beyond design + outside inflow x1.5     1     0     0     0     0     0     0     0
+
+Buffer already gone: share of each path past the limit before any growth (Design wet, Beyond design):
+   Design wet           limit 0.5: R1 34% R2 39% R3 7% R4 49% R5 44% R6 43% R8 77% R7 23%
+   Design wet           limit 0.6: R1 17% R2 20% R3 0% R4 23% R5 13% R6 3% R8 37% R7 12%
+   Design wet           limit 0.7: R1 12% R2 12% R3 0% R4 15% R5 5% R6 0% R8 27% R7 9%
+   Beyond design        limit 0.5: R1 64% R2 68% R3 14% R4 89% R5 59% R6 53% R8 97% R7 43%
+   Beyond design        limit 0.6: R1 62% R2 64% R3 9% R4 85% R5 51% R6 47% R8 90% R7 42%
+   Beyond design        limit 0.7: R1 61% R2 62% R3 7% R4 83% R5 46% R6 43% R8 87% R7 41%
+
+Is the rise per home steady? Largest rise on the path per 100 homes, at 25% and at 100% build-out (Design wet),
+and the same at 100% across the wet cases. Lower-left to upper-right steady means a usable rating:
+   R1:      63 mm per 100 homes at 25%,      67 at 100%; across wet cases at 100%: 49 to 166
+   R2:      91 mm per 100 homes at 25%,      90 at 100%; across wet cases at 100%: 49 to 146
+   R3:       5 mm per 100 homes at 25%,       5 at 100%; across wet cases at 100%: 4 to 21
+   R4:      63 mm per 100 homes at 25%,      63 at 100%; across wet cases at 100%: 49 to 93
+   R5:       0 mm per 100 homes at 25%,       5 at 100%; across wet cases at 100%: 5 to 321
+   R6:       0 mm per 100 homes at 25%,       8 at 100%; across wet cases at 100%: 7 to 41
+   R8:       8 mm per 100 homes at 25%,       8 at 100%; across wet cases at 100%: 7 to 20
+   R7:       6 mm per 100 homes at 25%,       6 at 100%; across wet cases at 100%: 6 to 15

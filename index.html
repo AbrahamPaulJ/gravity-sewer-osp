@@ -68,7 +68,8 @@ footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);
     <button data-tab="observability">Why observability is limited</button>
     <button data-tab="sim1">Simulation 1</button>
     <button data-tab="sim2">Simulation 2 (superseded)</button>
-    <button data-tab="sim3">Simulation 3 (latest)</button>
+    <button data-tab="sim35">Simulation 3.5 (latest)</button>
+    <button data-tab="sim3">Simulation 3</button>
     <button data-tab="sim3e">Simulation 3-e (headroom)</button>
     <button data-tab="sim25">Simulation 2.5</button>
     <button data-tab="sim25legacy">Simulation 2.5 (legacy)</button>
@@ -97,8 +98,16 @@ This is a working tool for exploring that, running on a real network rather than
     for your own JavaScript. Includes an assumptions register, the method and its sources, and a
     glossary.</p>
   </a>
-  <a class="card big" href="#sim3" data-tab="sim3">
+  <a class="card big" href="#sim35" data-tab="sim35">
     <span class="tag">Interactive, latest</span>
+    <h3>Simulation 3.5: warning before surcharge, room for new homes, and level or float</h3>
+    <p>Simulation 3's settled runs read again, plus one whole-suburb row. It chooses level sensors to warn before the first
+    manhole surcharges, and tests them on weather and areas they were not chosen on. It reports how much room each area has as a band
+    and a range, because the first pipe to run out swings with an uncalibrated model. And it compares level sensors with float
+    switches at assumed prices: floats did not hold up on weather they were not chosen on. Uncalibrated: a guide to where to look first.</p>
+  </a>
+  <a class="card big" href="#sim3" data-tab="sim3">
+    <span class="tag">Interactive</span>
     <h3>Simulation 3: infill or greenfield growth, and the few sensors that would see it</h3>
     <p>The growth model with the use case first: new homes spread through one of eight areas in
     proportion to the homes already there (infill), or a new estate joining at one manhole
@@ -238,6 +247,7 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 <div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html?v=32" title="Why observability is limited"></iframe></div>
 <div class="pane" id="pane-sim1" hidden><iframe data-src="simulation_legacy/index.html?v=32" title="Simulation 1: warning time"></iframe></div>
 <div class="pane" id="pane-sim2" hidden><iframe data-src="simulation/index.html?v=32" title="Simulation 2: growth and sensor placement"></iframe></div>
+<div class="pane" id="pane-sim35" hidden><iframe data-src="simulation35/index.html?v=1" title="Simulation 3.5: warning, room for new homes, level or float"></iframe></div>
 <div class="pane" id="pane-sim3" hidden><iframe data-src="simulation3/index.html?v=12" title="Simulation 3: growth and sensor placement"></iframe></div>
 <div class="pane" id="pane-sim3e" hidden><iframe data-src="simulation3e/index.html?v=3" title="Simulation 3-e: headroom from a few sensors"></iframe></div>
 <div class="pane" id="pane-sim25" hidden><iframe data-src="simulation25/index.html?v=103" title="Simulation 2.5: growth and sensor placement"></iframe></div>
@@ -248,7 +258,7 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 <!-- config.js holds the project's settings; its "pages" section decides which pages this site offers. It carries its own cache key for
      the same reason the iframes do: it is a script, and a browser will reuse the copy
      it has. Bump it when the config changes. -->
-<script src="config.js?v=37"></script>
+<script src="config.js?v=38"></script>
 <script>
 // Drop the pages config.js turns off (keys starting "_" are notes), before anything is wired up. Removing the button
 // is what makes a deep link to a hidden page fall back to the overview: showTab looks

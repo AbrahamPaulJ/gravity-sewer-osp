@@ -1,0 +1,4079 @@
+{
+ "limits": [
+  0.5,
+  0.6,
+  0.7
+ ],
+ "headline": 0.7,
+ "labels": {
+  "ii0.00_flat_uniform_b1_sfree": "Dry",
+  "ii0.11_flat_uniform_b1_sfree": "Design wet",
+  "ii0.25_flat_uniform_b1_sfree": "Beyond design",
+  "ii0.40_flat_uniform_b1_sfree": "Severe",
+  "ii0.11_flat_weighted_b1_sfree": "Design wet + age-weighted I&I",
+  "ii0.11_flat_uniform_b1.5_sfree": "Design wet + outside inflow x1.5",
+  "ii0.25_flat_weighted_b1_sfree": "Beyond design + age-weighted I&I",
+  "ii0.25_flat_uniform_b1.5_sfree": "Beyond design + outside inflow x1.5"
+ },
+ "baseline_error": 0.05,
+ "draws": 400,
+ "bands": {
+  "ii0.00_flat_uniform_b1_sfree": {
+   "R1": {
+    "share_100": 109.6,
+    "top_homes": 328.8,
+    "rise_mm_per_100_homes": 6.3,
+    "0.5": {
+     "band": "uncertain",
+     "p_runs_out": 0.762,
+     "homes_p10": 16,
+     "homes_p90": 175,
+     "already_over": 0.05
+    },
+    "0.6": {
+     "band": "uncertain",
+     "p_runs_out": 0.323,
+     "homes_p10": 26,
+     "homes_p90": null,
+     "already_over": 0.04
+    },
+    "0.7": {
+     "band": "uncertain",
+     "p_runs_out": 0.403,
+     "homes_p10": 24,
+     "homes_p90": 297,
+     "already_over": 0.0
+    }
+   },
+   "R2": {
+    "share_100": 55.1,
+    "top_homes": 165.3,
+    "rise_mm_per_100_homes": 6.4,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.158,
+     "homes_p10": 38,
+     "homes_p90": null,
+     "already_over": 0.066
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.175,
+     "homes_p10": 33,
+     "homes_p90": null,
+     "already_over": 0.053
+    },
+    "0.7": {
+     "band": "uncertain",
+     "p_runs_out": 0.22,
+     "homes_p10": 27,
+     "homes_p90": null,
+     "already_over": 0.0
+    }
+   },
+   "R3": {
+    "share_100": 39.6,
+    "top_homes": 118.8,
+    "rise_mm_per_100_homes": 8.4,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.003,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    }
+   },
+   "R4": {
+    "share_100": 17.0,
+    "top_homes": 51.0,
+    "rise_mm_per_100_homes": 7.8,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.03,
+     "homes_p10": 38,
+     "homes_p90": null,
+     "already_over": 0.094
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.068,
+     "homes_p10": 27,
+     "homes_p90": null,
+     "already_over": 0.075
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.062,
+     "homes_p10": 25,
+     "homes_p90": null,
+     "already_over": 0.0
+    }
+   },
+   "R5": {
+    "share_100": 25.0,
+    "top_homes": 75.0,
+    "rise_mm_per_100_homes": 6.3,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.037,
+     "homes_p10": 52,
+     "homes_p90": null,
+     "already_over": 0.026
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.003,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    }
+   },
+   "R6": {
+    "share_100": 19.2,
+    "top_homes": 57.6,
+    "rise_mm_per_100_homes": 10.9,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    }
+   },
+   "R8": {
+    "share_100": 485.0,
+    "top_homes": 1455.0,
+    "rise_mm_per_100_homes": 2.3,
+    "0.5": {
+     "band": "uncertain",
+     "p_runs_out": 0.492,
+     "homes_p10": 68,
+     "homes_p90": 1227,
+     "already_over": 0.167
+    },
+    "0.6": {
+     "band": "uncertain",
+     "p_runs_out": 0.292,
+     "homes_p10": 132,
+     "homes_p90": null,
+     "already_over": 0.133
+    },
+    "0.7": {
+     "band": "uncertain",
+     "p_runs_out": 0.347,
+     "homes_p10": 156,
+     "homes_p90": null,
+     "already_over": 0.0
+    }
+   },
+   "R7": {
+    "share_100": 141.0,
+    "top_homes": 423.0,
+    "rise_mm_per_100_homes": 1.9,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.115,
+     "homes_p10": 130,
+     "homes_p90": null,
+     "already_over": 0.039
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.068,
+     "homes_p10": 227,
+     "homes_p90": null,
+     "already_over": 0.031
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.062,
+     "homes_p10": 191,
+     "homes_p90": null,
+     "already_over": 0.0
+    }
+   }
+  },
+  "ii0.11_flat_uniform_b1_sfree": {
+   "R1": {
+    "share_100": 109.6,
+    "top_homes": 328.8,
+    "rise_mm_per_100_homes": 66.5,
+    "0.5": {
+     "band": "uncertain",
+     "p_runs_out": 0.352,
+     "homes_p10": 24,
+     "homes_p90": null,
+     "already_over": 0.337
+    },
+    "0.6": {
+     "band": "runs out",
+     "p_runs_out": 0.843,
+     "homes_p10": 8,
+     "homes_p90": 163,
+     "already_over": 0.168
+    },
+    "0.7": {
+     "band": "runs out",
+     "p_runs_out": 0.995,
+     "homes_p10": 13,
+     "homes_p90": 77,
+     "already_over": 0.119
+    }
+   },
+   "R2": {
+    "share_100": 55.1,
+    "top_homes": 165.3,
+    "rise_mm_per_100_homes": 90.3,
+    "0.5": {
+     "band": "uncertain",
+     "p_runs_out": 0.323,
+     "homes_p10": 19,
+     "homes_p90": null,
+     "already_over": 0.395
+    },
+    "0.6": {
+     "band": "uncertain",
+     "p_runs_out": 0.698,
+     "homes_p10": 4,
+     "homes_p90": null,
+     "already_over": 0.197
+    },
+    "0.7": {
+     "band": "runs out",
+     "p_runs_out": 0.902,
+     "homes_p10": 3,
+     "homes_p90": 54,
+     "already_over": 0.118
+    }
+   },
+   "R3": {
+    "share_100": 39.6,
+    "top_homes": 118.8,
+    "rise_mm_per_100_homes": 5.4,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.028,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.07
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.035,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.003,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    }
+   },
+   "R4": {
+    "share_100": 17.0,
+    "top_homes": 51.0,
+    "rise_mm_per_100_homes": 62.8,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.083,
+     "homes_p10": 19,
+     "homes_p90": null,
+     "already_over": 0.491
+    },
+    "0.6": {
+     "band": "uncertain",
+     "p_runs_out": 0.395,
+     "homes_p10": 4,
+     "homes_p90": null,
+     "already_over": 0.226
+    },
+    "0.7": {
+     "band": "uncertain",
+     "p_runs_out": 0.537,
+     "homes_p10": 4,
+     "homes_p90": 40,
+     "already_over": 0.151
+    }
+   },
+   "R5": {
+    "share_100": 25.0,
+    "top_homes": 75.0,
+    "rise_mm_per_100_homes": 5.2,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.12,
+     "homes_p10": 22,
+     "homes_p90": null,
+     "already_over": 0.436
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.07,
+     "homes_p10": 30,
+     "homes_p90": null,
+     "already_over": 0.128
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.035,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.051
+    }
+   },
+   "R6": {
+    "share_100": 19.2,
+    "top_homes": 57.6,
+    "rise_mm_per_100_homes": 7.7,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": 54,
+     "homes_p90": null,
+     "already_over": 0.433
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": 27,
+     "homes_p90": null,
+     "already_over": 0.033
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    }
+   },
+   "R8": {
+    "share_100": 485.0,
+    "top_homes": 1455.0,
+    "rise_mm_per_100_homes": 7.7,
+    "0.5": {
+     "band": "uncertain",
+     "p_runs_out": 0.472,
+     "homes_p10": 67,
+     "homes_p90": null,
+     "already_over": 0.767
+    },
+    "0.6": {
+     "band": "runs out",
+     "p_runs_out": 0.885,
+     "homes_p10": 28,
+     "homes_p90": 514,
+     "already_over": 0.367
+    },
+    "0.7": {
+     "band": "uncertain",
+     "p_runs_out": 0.417,
+     "homes_p10": 127,
+     "homes_p90": 1276,
+     "already_over": 0.267
+    }
+   },
+   "R7": {
+    "share_100": 141.0,
+    "top_homes": 423.0,
+    "rise_mm_per_100_homes": 5.9,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.19,
+     "homes_p10": 64,
+     "homes_p90": null,
+     "already_over": 0.228
+    },
+    "0.6": {
+     "band": "uncertain",
+     "p_runs_out": 0.505,
+     "homes_p10": 28,
+     "homes_p90": 379,
+     "already_over": 0.118
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.113,
+     "homes_p10": 115,
+     "homes_p90": null,
+     "already_over": 0.094
+    }
+   }
+  },
+  "ii0.25_flat_uniform_b1_sfree": {
+   "R1": {
+    "share_100": 109.6,
+    "top_homes": 328.8,
+    "rise_mm_per_100_homes": 112.8,
+    "0.5": {
+     "band": "runs out",
+     "p_runs_out": 0.925,
+     "homes_p10": 34,
+     "homes_p90": 61,
+     "already_over": 0.644
+    },
+    "0.6": {
+     "band": "runs out",
+     "p_runs_out": 1.0,
+     "homes_p10": 52,
+     "homes_p90": 68,
+     "already_over": 0.624
+    },
+    "0.7": {
+     "band": "runs out",
+     "p_runs_out": 1.0,
+     "homes_p10": 65,
+     "homes_p90": 80,
+     "already_over": 0.614
+    }
+   },
+   "R2": {
+    "share_100": 55.1,
+    "top_homes": 165.3,
+    "rise_mm_per_100_homes": 145.8,
+    "0.5": {
+     "band": "runs out",
+     "p_runs_out": 0.895,
+     "homes_p10": 38,
+     "homes_p90": 55,
+     "already_over": 0.684
+    },
+    "0.6": {
+     "band": "uncertain",
+     "p_runs_out": 0.585,
+     "homes_p10": 2,
+     "homes_p90": 65,
+     "already_over": 0.645
+    },
+    "0.7": {
+     "band": "runs out",
+     "p_runs_out": 0.973,
+     "homes_p10": 5,
+     "homes_p90": 21,
+     "already_over": 0.618
+    }
+   },
+   "R3": {
+    "share_100": 39.6,
+    "top_homes": 118.8,
+    "rise_mm_per_100_homes": 4.3,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.01,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.14
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.093
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.013,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.07
+    }
+   },
+   "R4": {
+    "share_100": 17.0,
+    "top_homes": 51.0,
+    "rise_mm_per_100_homes": 84.1,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.887
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.849
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.83
+    }
+   },
+   "R5": {
+    "share_100": 25.0,
+    "top_homes": 75.0,
+    "rise_mm_per_100_homes": 173.7,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.062,
+     "homes_p10": 42,
+     "homes_p90": null,
+     "already_over": 0.59
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.068,
+     "homes_p10": 38,
+     "homes_p90": null,
+     "already_over": 0.513
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.018,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.462
+    }
+   },
+   "R6": {
+    "share_100": 19.2,
+    "top_homes": 57.6,
+    "rise_mm_per_100_homes": 19.6,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.003,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.533
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.467
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.433
+    }
+   },
+   "R8": {
+    "share_100": 485.0,
+    "top_homes": 1455.0,
+    "rise_mm_per_100_homes": 20.3,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.113,
+     "homes_p10": 444,
+     "homes_p90": null,
+     "already_over": 0.967
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.14,
+     "homes_p10": 352,
+     "homes_p90": null,
+     "already_over": 0.9
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.115,
+     "homes_p10": 382,
+     "homes_p90": null,
+     "already_over": 0.867
+    }
+   },
+   "R7": {
+    "share_100": 141.0,
+    "top_homes": 423.0,
+    "rise_mm_per_100_homes": 15.3,
+    "0.5": {
+     "band": "runs out",
+     "p_runs_out": 0.805,
+     "homes_p10": 16,
+     "homes_p90": null,
+     "already_over": 0.433
+    },
+    "0.6": {
+     "band": "uncertain",
+     "p_runs_out": 0.388,
+     "homes_p10": 83,
+     "homes_p90": 226,
+     "already_over": 0.417
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.19,
+     "homes_p10": 35,
+     "homes_p90": 319,
+     "already_over": 0.409
+    }
+   }
+  },
+  "ii0.40_flat_uniform_b1_sfree": {
+   "R1": {
+    "share_100": 109.6,
+    "top_homes": 328.8,
+    "rise_mm_per_100_homes": 110.7,
+    "0.5": {
+     "band": "runs out",
+     "p_runs_out": 0.998,
+     "homes_p10": 9,
+     "homes_p90": 25,
+     "already_over": 0.743
+    },
+    "0.6": {
+     "band": "runs out",
+     "p_runs_out": 1.0,
+     "homes_p10": 21,
+     "homes_p90": 39,
+     "already_over": 0.733
+    },
+    "0.7": {
+     "band": "runs out",
+     "p_runs_out": 1.0,
+     "homes_p10": 35,
+     "homes_p90": 53,
+     "already_over": 0.713
+    }
+   },
+   "R2": {
+    "share_100": 55.1,
+    "top_homes": 165.3,
+    "rise_mm_per_100_homes": 132.5,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.737
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.724
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.684
+    }
+   },
+   "R3": {
+    "share_100": 39.6,
+    "top_homes": 118.8,
+    "rise_mm_per_100_homes": 21.2,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.007,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.186
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.163
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.116
+    }
+   },
+   "R4": {
+    "share_100": 17.0,
+    "top_homes": 51.0,
+    "rise_mm_per_100_homes": 53.3,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.925
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.906
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.868
+    }
+   },
+   "R5": {
+    "share_100": 25.0,
+    "top_homes": 75.0,
+    "rise_mm_per_100_homes": 295.7,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.003,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.692
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.05,
+     "homes_p10": 29,
+     "homes_p90": null,
+     "already_over": 0.59
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.05,
+     "homes_p10": 25,
+     "homes_p90": null,
+     "already_over": 0.487
+    }
+   },
+   "R6": {
+    "share_100": 19.2,
+    "top_homes": 57.6,
+    "rise_mm_per_100_homes": 40.5,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.6
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.567
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.5
+    }
+   },
+   "R8": {
+    "share_100": 485.0,
+    "top_homes": 1455.0,
+    "rise_mm_per_100_homes": 15.2,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.033,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.967
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.085,
+     "homes_p10": 522,
+     "homes_p90": null,
+     "already_over": 0.933
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.065,
+     "homes_p10": 854,
+     "homes_p90": null,
+     "already_over": 0.867
+    }
+   },
+   "R7": {
+    "share_100": 141.0,
+    "top_homes": 423.0,
+    "rise_mm_per_100_homes": 14.4,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.007,
+     "homes_p10": 307,
+     "homes_p90": null,
+     "already_over": 0.457
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.022,
+     "homes_p10": 394,
+     "homes_p90": null,
+     "already_over": 0.449
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.015,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.433
+    }
+   }
+  },
+  "ii0.11_flat_weighted_b1_sfree": {
+   "R1": {
+    "share_100": 109.6,
+    "top_homes": 328.8,
+    "rise_mm_per_100_homes": 48.8,
+    "0.5": {
+     "band": "uncertain",
+     "p_runs_out": 0.357,
+     "homes_p10": 34,
+     "homes_p90": null,
+     "already_over": 0.337
+    },
+    "0.6": {
+     "band": "uncertain",
+     "p_runs_out": 0.682,
+     "homes_p10": 18,
+     "homes_p90": 180,
+     "already_over": 0.158
+    },
+    "0.7": {
+     "band": "uncertain",
+     "p_runs_out": 0.647,
+     "homes_p10": 10,
+     "homes_p90": 212,
+     "already_over": 0.109
+    }
+   },
+   "R2": {
+    "share_100": 55.1,
+    "top_homes": 165.3,
+    "rise_mm_per_100_homes": 49.1,
+    "0.5": {
+     "band": "uncertain",
+     "p_runs_out": 0.383,
+     "homes_p10": 22,
+     "homes_p90": 142,
+     "already_over": 0.382
+    },
+    "0.6": {
+     "band": "uncertain",
+     "p_runs_out": 0.25,
+     "homes_p10": 26,
+     "homes_p90": 95,
+     "already_over": 0.184
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.092,
+     "homes_p10": 65,
+     "homes_p90": 114,
+     "already_over": 0.118
+    }
+   },
+   "R3": {
+    "share_100": 39.6,
+    "top_homes": 118.8,
+    "rise_mm_per_100_homes": 5.3,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.007,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.07
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.028,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.003,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    }
+   },
+   "R4": {
+    "share_100": 17.0,
+    "top_homes": 51.0,
+    "rise_mm_per_100_homes": 48.9,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.028,
+     "homes_p10": 27,
+     "homes_p90": null,
+     "already_over": 0.472
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.013,
+     "homes_p10": 24,
+     "homes_p90": null,
+     "already_over": 0.208
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.007,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.151
+    }
+   },
+   "R5": {
+    "share_100": 25.0,
+    "top_homes": 75.0,
+    "rise_mm_per_100_homes": 5.0,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.115,
+     "homes_p10": 23,
+     "homes_p90": null,
+     "already_over": 0.436
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.087,
+     "homes_p10": 26,
+     "homes_p90": null,
+     "already_over": 0.128
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.035,
+     "homes_p10": 65,
+     "homes_p90": null,
+     "already_over": 0.051
+    }
+   },
+   "R6": {
+    "share_100": 19.2,
+    "top_homes": 57.6,
+    "rise_mm_per_100_homes": 7.4,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.433
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": 27,
+     "homes_p90": null,
+     "already_over": 0.033
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    }
+   },
+   "R8": {
+    "share_100": 485.0,
+    "top_homes": 1455.0,
+    "rise_mm_per_100_homes": 7.3,
+    "0.5": {
+     "band": "uncertain",
+     "p_runs_out": 0.492,
+     "homes_p10": 73,
+     "homes_p90": null,
+     "already_over": 0.767
+    },
+    "0.6": {
+     "band": "runs out",
+     "p_runs_out": 0.85,
+     "homes_p10": 27,
+     "homes_p90": 569,
+     "already_over": 0.367
+    },
+    "0.7": {
+     "band": "uncertain",
+     "p_runs_out": 0.375,
+     "homes_p10": 147,
+     "homes_p90": 1280,
+     "already_over": 0.267
+    }
+   },
+   "R7": {
+    "share_100": 141.0,
+    "top_homes": 423.0,
+    "rise_mm_per_100_homes": 5.6,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.172,
+     "homes_p10": 63,
+     "homes_p90": null,
+     "already_over": 0.228
+    },
+    "0.6": {
+     "band": "uncertain",
+     "p_runs_out": 0.378,
+     "homes_p10": 44,
+     "homes_p90": null,
+     "already_over": 0.118
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.07,
+     "homes_p10": 190,
+     "homes_p90": null,
+     "already_over": 0.094
+    }
+   }
+  },
+  "ii0.11_flat_uniform_b1.5_sfree": {
+   "R1": {
+    "share_100": 109.6,
+    "top_homes": 328.8,
+    "rise_mm_per_100_homes": 166.5,
+    "0.5": {
+     "band": "runs out",
+     "p_runs_out": 0.828,
+     "homes_p10": 3,
+     "homes_p90": 174,
+     "already_over": 0.366
+    },
+    "0.6": {
+     "band": "runs out",
+     "p_runs_out": 0.998,
+     "homes_p10": 13,
+     "homes_p90": 33,
+     "already_over": 0.356
+    },
+    "0.7": {
+     "band": "runs out",
+     "p_runs_out": 1.0,
+     "homes_p10": 26,
+     "homes_p90": 47,
+     "already_over": 0.228
+    }
+   },
+   "R2": {
+    "share_100": 55.1,
+    "top_homes": 165.3,
+    "rise_mm_per_100_homes": 105.6,
+    "0.5": {
+     "band": "uncertain",
+     "p_runs_out": 0.255,
+     "homes_p10": 8,
+     "homes_p90": null,
+     "already_over": 0.5
+    },
+    "0.6": {
+     "band": "runs out",
+     "p_runs_out": 0.92,
+     "homes_p10": 2,
+     "homes_p90": 50,
+     "already_over": 0.421
+    },
+    "0.7": {
+     "band": "runs out",
+     "p_runs_out": 1.0,
+     "homes_p10": 10,
+     "homes_p90": 28,
+     "already_over": 0.276
+    }
+   },
+   "R3": {
+    "share_100": 39.6,
+    "top_homes": 118.8,
+    "rise_mm_per_100_homes": 5.4,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.003,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.07
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.058,
+     "homes_p10": 97,
+     "homes_p90": null,
+     "already_over": 0.047
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.005,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.0
+    }
+   },
+   "R4": {
+    "share_100": 17.0,
+    "top_homes": 51.0,
+    "rise_mm_per_100_homes": 92.7,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.075,
+     "homes_p10": 24,
+     "homes_p90": null,
+     "already_over": 0.604
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.128,
+     "homes_p10": 14,
+     "homes_p90": null,
+     "already_over": 0.528
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.022,
+     "homes_p10": 28,
+     "homes_p90": null,
+     "already_over": 0.321
+    }
+   },
+   "R5": {
+    "share_100": 25.0,
+    "top_homes": 75.0,
+    "rise_mm_per_100_homes": 10.3,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.145,
+     "homes_p10": 18,
+     "homes_p90": null,
+     "already_over": 0.487
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.09,
+     "homes_p10": 28,
+     "homes_p90": null,
+     "already_over": 0.41
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.06,
+     "homes_p10": 35,
+     "homes_p90": null,
+     "already_over": 0.128
+    }
+   },
+   "R6": {
+    "share_100": 19.2,
+    "top_homes": 57.6,
+    "rise_mm_per_100_homes": 7.7,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.433
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": 35,
+     "homes_p90": null,
+     "already_over": 0.4
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.01,
+     "homes_p10": 42,
+     "homes_p90": null,
+     "already_over": 0.033
+    }
+   },
+   "R8": {
+    "share_100": 485.0,
+    "top_homes": 1455.0,
+    "rise_mm_per_100_homes": 13.3,
+    "0.5": {
+     "band": "uncertain",
+     "p_runs_out": 0.61,
+     "homes_p10": 130,
+     "homes_p90": 547,
+     "already_over": 0.8
+    },
+    "0.6": {
+     "band": "runs out",
+     "p_runs_out": 0.865,
+     "homes_p10": 44,
+     "homes_p90": 517,
+     "already_over": 0.733
+    },
+    "0.7": {
+     "band": "uncertain",
+     "p_runs_out": 0.77,
+     "homes_p10": 46,
+     "homes_p90": 647,
+     "already_over": 0.367
+    }
+   },
+   "R7": {
+    "share_100": 141.0,
+    "top_homes": 423.0,
+    "rise_mm_per_100_homes": 7.8,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.172,
+     "homes_p10": 86,
+     "homes_p90": null,
+     "already_over": 0.283
+    },
+    "0.6": {
+     "band": "uncertain",
+     "p_runs_out": 0.463,
+     "homes_p10": 26,
+     "homes_p90": null,
+     "already_over": 0.26
+    },
+    "0.7": {
+     "band": "uncertain",
+     "p_runs_out": 0.618,
+     "homes_p10": 26,
+     "homes_p90": 292,
+     "already_over": 0.165
+    }
+   }
+  },
+  "ii0.25_flat_weighted_b1_sfree": {
+   "R1": {
+    "share_100": 109.6,
+    "top_homes": 328.8,
+    "rise_mm_per_100_homes": 101.9,
+    "0.5": {
+     "band": "runs out",
+     "p_runs_out": 0.968,
+     "homes_p10": 79,
+     "homes_p90": 103,
+     "already_over": 0.614
+    },
+    "0.6": {
+     "band": "uncertain",
+     "p_runs_out": 0.455,
+     "homes_p10": 98,
+     "homes_p90": 123,
+     "already_over": 0.594
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.007,
+     "homes_p10": 119,
+     "homes_p90": 143,
+     "already_over": 0.584
+    }
+   },
+   "R2": {
+    "share_100": 55.1,
+    "top_homes": 165.3,
+    "rise_mm_per_100_homes": 145.8,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.077,
+     "homes_p10": 57,
+     "homes_p90": 73,
+     "already_over": 0.671
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": 69,
+     "homes_p90": 87,
+     "already_over": 0.632
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.013,
+     "homes_p10": 81,
+     "homes_p90": 98,
+     "already_over": 0.618
+    }
+   },
+   "R3": {
+    "share_100": 39.6,
+    "top_homes": 118.8,
+    "rise_mm_per_100_homes": 4.2,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.018,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.14
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.093
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.007,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.07
+    }
+   },
+   "R4": {
+    "share_100": 17.0,
+    "top_homes": 51.0,
+    "rise_mm_per_100_homes": 77.6,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.887
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.849
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.007,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.83
+    }
+   },
+   "R5": {
+    "share_100": 25.0,
+    "top_homes": 75.0,
+    "rise_mm_per_100_homes": 176.9,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.045,
+     "homes_p10": 42,
+     "homes_p90": null,
+     "already_over": 0.59
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.065,
+     "homes_p10": 39,
+     "homes_p90": null,
+     "already_over": 0.513
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.04,
+     "homes_p10": 59,
+     "homes_p90": null,
+     "already_over": 0.462
+    }
+   },
+   "R6": {
+    "share_100": 19.2,
+    "top_homes": 57.6,
+    "rise_mm_per_100_homes": 20.0,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.01,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.533
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.467
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.433
+    }
+   },
+   "R8": {
+    "share_100": 485.0,
+    "top_homes": 1455.0,
+    "rise_mm_per_100_homes": 20.1,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.092,
+     "homes_p10": 602,
+     "homes_p90": null,
+     "already_over": 0.967
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.163,
+     "homes_p10": 287,
+     "homes_p90": null,
+     "already_over": 0.9
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.16,
+     "homes_p10": 282,
+     "homes_p90": null,
+     "already_over": 0.867
+    }
+   },
+   "R7": {
+    "share_100": 141.0,
+    "top_homes": 423.0,
+    "rise_mm_per_100_homes": 15.1,
+    "0.5": {
+     "band": "uncertain",
+     "p_runs_out": 0.273,
+     "homes_p10": 101,
+     "homes_p90": 242,
+     "already_over": 0.433
+    },
+    "0.6": {
+     "band": "uncertain",
+     "p_runs_out": 0.235,
+     "homes_p10": 31,
+     "homes_p90": 357,
+     "already_over": 0.417
+    },
+    "0.7": {
+     "band": "uncertain",
+     "p_runs_out": 0.785,
+     "homes_p10": 23,
+     "homes_p90": 347,
+     "already_over": 0.402
+    }
+   }
+  },
+  "ii0.25_flat_uniform_b1.5_sfree": {
+   "R1": {
+    "share_100": 109.6,
+    "top_homes": 328.8,
+    "rise_mm_per_100_homes": 114.7,
+    "0.5": {
+     "band": "uncertain",
+     "p_runs_out": 0.54,
+     "homes_p10": 5,
+     "homes_p90": null,
+     "already_over": 0.713
+    },
+    "0.6": {
+     "band": "runs out",
+     "p_runs_out": 0.985,
+     "homes_p10": 15,
+     "homes_p90": 50,
+     "already_over": 0.693
+    },
+    "0.7": {
+     "band": "runs out",
+     "p_runs_out": 0.995,
+     "homes_p10": 40,
+     "homes_p90": 76,
+     "already_over": 0.683
+    }
+   },
+   "R2": {
+    "share_100": 55.1,
+    "top_homes": 165.3,
+    "rise_mm_per_100_homes": 94.9,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": 127,
+     "homes_p90": null,
+     "already_over": 0.724
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.697
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.671
+    }
+   },
+   "R3": {
+    "share_100": 39.6,
+    "top_homes": 118.8,
+    "rise_mm_per_100_homes": 5.2,
+    "0.5": {
+     "band": "room left",
+     "p_runs_out": 0.01,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.14
+    },
+    "0.6": {
+     "band": "room left",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.093
+    },
+    "0.7": {
+     "band": "room left",
+     "p_runs_out": 0.005,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.07
+    }
+   },
+   "R4": {
+    "share_100": 17.0,
+    "top_homes": 51.0,
+    "rise_mm_per_100_homes": 55.8,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.906
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.868
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.0,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.849
+    }
+   },
+   "R5": {
+    "share_100": 25.0,
+    "top_homes": 75.0,
+    "rise_mm_per_100_homes": 321.4,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.015,
+     "homes_p10": 63,
+     "homes_p90": null,
+     "already_over": 0.692
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.077,
+     "homes_p10": 33,
+     "homes_p90": null,
+     "already_over": 0.538
+    },
+    "0.7": {
+     "band": "uncertain",
+     "p_runs_out": 0.438,
+     "homes_p10": 6,
+     "homes_p90": null,
+     "already_over": 0.487
+    }
+   },
+   "R6": {
+    "share_100": 19.2,
+    "top_homes": 57.6,
+    "rise_mm_per_100_homes": 20.7,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.003,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.567
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.115,
+     "homes_p10": 16,
+     "homes_p90": null,
+     "already_over": 0.5
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.062,
+     "homes_p10": 26,
+     "homes_p90": null,
+     "already_over": 0.433
+    }
+   },
+   "R8": {
+    "share_100": 485.0,
+    "top_homes": 1455.0,
+    "rise_mm_per_100_homes": 8.0,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.068,
+     "homes_p10": 1024,
+     "homes_p90": null,
+     "already_over": 0.967
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.145,
+     "homes_p10": 294,
+     "homes_p90": null,
+     "already_over": 0.9
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.07,
+     "homes_p10": 1084,
+     "homes_p90": null,
+     "already_over": 0.867
+    }
+   },
+   "R7": {
+    "share_100": 141.0,
+    "top_homes": 423.0,
+    "rise_mm_per_100_homes": 8.8,
+    "0.5": {
+     "band": "already over",
+     "p_runs_out": 0.135,
+     "homes_p10": 115,
+     "homes_p90": null,
+     "already_over": 0.441
+    },
+    "0.6": {
+     "band": "already over",
+     "p_runs_out": 0.033,
+     "homes_p10": 298,
+     "homes_p90": null,
+     "already_over": 0.425
+    },
+    "0.7": {
+     "band": "already over",
+     "p_runs_out": 0.025,
+     "homes_p10": null,
+     "homes_p90": null,
+     "already_over": 0.417
+    }
+   }
+  }
+ },
+ "first_pipe": {
+  "ii0.00_flat_uniform_b1_sfree": {
+   "R1": {
+    "path": 101,
+    "top_homes": 328.8,
+    "share_100": 109.6,
+    "0.5": {
+     "homes": 61.3,
+     "first": "MH4450378",
+     "already_over": 5,
+     "with_buffer": 96,
+     "worst_drop_step_err": 0.0
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 4,
+     "with_buffer": 97
+    },
+    "0.7": {
+     "homes": 185.6,
+     "first": "MH4452189",
+     "already_over": 0,
+     "with_buffer": 101,
+     "worst_drop_step_err": 0.003
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 101
+    }
+   },
+   "R2": {
+    "path": 76,
+    "top_homes": 165.3,
+    "share_100": 55.1,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 5,
+     "with_buffer": 71
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 4,
+     "with_buffer": 72
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 76
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 76
+    }
+   },
+   "R3": {
+    "path": 43,
+    "top_homes": 118.8,
+    "share_100": 39.6,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    }
+   },
+   "R4": {
+    "path": 53,
+    "top_homes": 51.0,
+    "share_100": 17.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 5,
+     "with_buffer": 48
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 4,
+     "with_buffer": 49
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 53
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 53
+    }
+   },
+   "R5": {
+    "path": 39,
+    "top_homes": 75.0,
+    "share_100": 25.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 1,
+     "with_buffer": 38
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 39
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 39
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 39
+    }
+   },
+   "R6": {
+    "path": 30,
+    "top_homes": 57.6,
+    "share_100": 19.2,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 30
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 30
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 30
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 30
+    }
+   },
+   "R8": {
+    "path": 30,
+    "top_homes": 1455.0,
+    "share_100": 485.0,
+    "0.5": {
+     "homes": 642.6,
+     "first": "MH4454376",
+     "already_over": 5,
+     "with_buffer": 25,
+     "worst_drop_step_err": 0.001
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 4,
+     "with_buffer": 26
+    },
+    "0.7": {
+     "homes": 899.6,
+     "first": "MH4452189",
+     "already_over": 0,
+     "with_buffer": 30,
+     "worst_drop_step_err": 0.006
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 30
+    }
+   },
+   "R7": {
+    "path": 127,
+    "top_homes": 423.0,
+    "share_100": 141.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 5,
+     "with_buffer": 122
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 4,
+     "with_buffer": 123
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 127
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 127
+    }
+   }
+  },
+  "ii0.11_flat_uniform_b1_sfree": {
+   "R1": {
+    "path": 101,
+    "top_homes": 328.8,
+    "share_100": 109.6,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 34,
+     "with_buffer": 67
+    },
+    "0.6": {
+     "homes": 9.7,
+     "first": "MH4450581",
+     "already_over": 17,
+     "with_buffer": 84,
+     "worst_drop_step_err": 0.017
+    },
+    "0.7": {
+     "homes": 56.2,
+     "first": "MH4450581",
+     "already_over": 12,
+     "with_buffer": 89,
+     "worst_drop_step_err": 0.01
+    },
+    "1.0": {
+     "homes": 184.0,
+     "first": "MH4450581",
+     "already_over": 5,
+     "with_buffer": 96,
+     "worst_drop_step_err": 0.002
+    }
+   },
+   "R2": {
+    "path": 76,
+    "top_homes": 165.3,
+    "share_100": 55.1,
+    "0.5": {
+     "homes": 124.7,
+     "first": "MH4450391",
+     "already_over": 30,
+     "with_buffer": 46,
+     "worst_drop_step_err": 0.001
+    },
+    "0.6": {
+     "homes": 11.6,
+     "first": "MH4450581",
+     "already_over": 15,
+     "with_buffer": 61,
+     "worst_drop_step_err": 0.006
+    },
+    "0.7": {
+     "homes": 7.7,
+     "first": "MH4450531",
+     "already_over": 9,
+     "with_buffer": 67,
+     "worst_drop_step_err": 0.001
+    },
+    "1.0": {
+     "homes": 57.7,
+     "first": "MH4450531",
+     "already_over": 5,
+     "with_buffer": 71,
+     "worst_drop_step_err": 0.003
+    }
+   },
+   "R3": {
+    "path": 43,
+    "top_homes": 118.8,
+    "share_100": 39.6,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 3,
+     "with_buffer": 40
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    }
+   },
+   "R4": {
+    "path": 53,
+    "top_homes": 51.0,
+    "share_100": 17.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 26,
+     "with_buffer": 27
+    },
+    "0.6": {
+     "homes": 9.6,
+     "first": "MH4450581",
+     "already_over": 12,
+     "with_buffer": 41,
+     "worst_drop_step_err": 0.002
+    },
+    "0.7": {
+     "homes": 12.7,
+     "first": "MH4450531",
+     "already_over": 8,
+     "with_buffer": 45,
+     "worst_drop_step_err": 0.003
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 5,
+     "with_buffer": 48
+    }
+   },
+   "R5": {
+    "path": 39,
+    "top_homes": 75.0,
+    "share_100": 25.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 17,
+     "with_buffer": 22
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 5,
+     "with_buffer": 34
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 2,
+     "with_buffer": 37
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 39
+    }
+   },
+   "R6": {
+    "path": 30,
+    "top_homes": 57.6,
+    "share_100": 19.2,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 13,
+     "with_buffer": 17
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 1,
+     "with_buffer": 29
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 30
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 30
+    }
+   },
+   "R8": {
+    "path": 30,
+    "top_homes": 1455.0,
+    "share_100": 485.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 23,
+     "with_buffer": 7
+    },
+    "0.6": {
+     "homes": 166.3,
+     "first": "MH1624138",
+     "already_over": 11,
+     "with_buffer": 19,
+     "worst_drop_step_err": 0.001
+    },
+    "0.7": {
+     "homes": 674.8,
+     "first": "MH4454116",
+     "already_over": 8,
+     "with_buffer": 22,
+     "worst_drop_step_err": 0.03
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 5,
+     "with_buffer": 25
+    }
+   },
+   "R7": {
+    "path": 127,
+    "top_homes": 423.0,
+    "share_100": 141.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 29,
+     "with_buffer": 98
+    },
+    "0.6": {
+     "homes": 101.7,
+     "first": "MH4450581",
+     "already_over": 15,
+     "with_buffer": 112,
+     "worst_drop_step_err": 0.002
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 12,
+     "with_buffer": 115
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 7,
+     "with_buffer": 120
+    }
+   }
+  },
+  "ii0.25_flat_uniform_b1_sfree": {
+   "R1": {
+    "path": 101,
+    "top_homes": 328.8,
+    "share_100": 109.6,
+    "0.5": {
+     "homes": 43.9,
+     "first": "MH4428636",
+     "already_over": 65,
+     "with_buffer": 36,
+     "worst_drop_step_err": 0.148
+    },
+    "0.6": {
+     "homes": 60.7,
+     "first": "MH4428636",
+     "already_over": 63,
+     "with_buffer": 38,
+     "worst_drop_step_err": 0.115
+    },
+    "0.7": {
+     "homes": 72.2,
+     "first": "MH4428636",
+     "already_over": 62,
+     "with_buffer": 39,
+     "worst_drop_step_err": 0.045
+    },
+    "1.0": {
+     "homes": 34.8,
+     "first": "MH4449977",
+     "already_over": 49,
+     "with_buffer": 52,
+     "worst_drop_step_err": 0.001
+    }
+   },
+   "R2": {
+    "path": 76,
+    "top_homes": 165.3,
+    "share_100": 55.1,
+    "0.5": {
+     "homes": 46.8,
+     "first": "MH4450207",
+     "already_over": 52,
+     "with_buffer": 24,
+     "worst_drop_step_err": 0.0
+    },
+    "0.6": {
+     "homes": 59.7,
+     "first": "MH4450207",
+     "already_over": 49,
+     "with_buffer": 27,
+     "worst_drop_step_err": 0.001
+    },
+    "0.7": {
+     "homes": 12.0,
+     "first": "MH4429527",
+     "already_over": 47,
+     "with_buffer": 29,
+     "worst_drop_step_err": 0.002
+    },
+    "1.0": {
+     "homes": 50.0,
+     "first": "MH4429527",
+     "already_over": 35,
+     "with_buffer": 41,
+     "worst_drop_step_err": 0.001
+    }
+   },
+   "R3": {
+    "path": 43,
+    "top_homes": 118.8,
+    "share_100": 39.6,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 6,
+     "with_buffer": 37
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 4,
+     "with_buffer": 39
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 3,
+     "with_buffer": 40
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    }
+   },
+   "R4": {
+    "path": 53,
+    "top_homes": 51.0,
+    "share_100": 17.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 47,
+     "with_buffer": 6
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 45,
+     "with_buffer": 8
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 44,
+     "with_buffer": 9
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 32,
+     "with_buffer": 21
+    }
+   },
+   "R5": {
+    "path": 39,
+    "top_homes": 75.0,
+    "share_100": 25.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 23,
+     "with_buffer": 16
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 20,
+     "with_buffer": 19
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 18,
+     "with_buffer": 21
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 6,
+     "with_buffer": 33
+    }
+   },
+   "R6": {
+    "path": 30,
+    "top_homes": 57.6,
+    "share_100": 19.2,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 16,
+     "with_buffer": 14
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 14,
+     "with_buffer": 16
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 13,
+     "with_buffer": 17
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 1,
+     "with_buffer": 29
+    }
+   },
+   "R8": {
+    "path": 30,
+    "top_homes": 1455.0,
+    "share_100": 485.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 29,
+     "with_buffer": 1
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 27,
+     "with_buffer": 3
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 26,
+     "with_buffer": 4
+    },
+    "1.0": {
+     "homes": 976.2,
+     "first": "MH1624138",
+     "already_over": 14,
+     "with_buffer": 16,
+     "worst_drop_step_err": 0.113
+    }
+   },
+   "R7": {
+    "path": 127,
+    "top_homes": 423.0,
+    "share_100": 141.0,
+    "0.5": {
+     "homes": 56.9,
+     "first": "MH4453788",
+     "already_over": 55,
+     "with_buffer": 72,
+     "worst_drop_step_err": 0.0
+    },
+    "0.6": {
+     "homes": 164.0,
+     "first": "MH4453788",
+     "already_over": 53,
+     "with_buffer": 74,
+     "worst_drop_step_err": 0.001
+    },
+    "0.7": {
+     "homes": 269.0,
+     "first": "MH4453788",
+     "already_over": 52,
+     "with_buffer": 75,
+     "worst_drop_step_err": 0.002
+    },
+    "1.0": {
+     "homes": 268.3,
+     "first": "MH4453850",
+     "already_over": 39,
+     "with_buffer": 88,
+     "worst_drop_step_err": 0.002
+    }
+   }
+  },
+  "ii0.40_flat_uniform_b1_sfree": {
+   "R1": {
+    "path": 101,
+    "top_homes": 328.8,
+    "share_100": 109.6,
+    "0.5": {
+     "homes": 17.0,
+     "first": "MH4428268",
+     "already_over": 75,
+     "with_buffer": 26,
+     "worst_drop_step_err": 0.003
+    },
+    "0.6": {
+     "homes": 30.3,
+     "first": "MH4428268",
+     "already_over": 74,
+     "with_buffer": 27,
+     "worst_drop_step_err": 0.001
+    },
+    "0.7": {
+     "homes": 43.6,
+     "first": "MH4428268",
+     "already_over": 72,
+     "with_buffer": 29,
+     "worst_drop_step_err": 0.004
+    },
+    "1.0": {
+     "homes": 84.3,
+     "first": "MH4428268",
+     "already_over": 71,
+     "with_buffer": 30,
+     "worst_drop_step_err": 0.003
+    }
+   },
+   "R2": {
+    "path": 76,
+    "top_homes": 165.3,
+    "share_100": 55.1,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 56,
+     "with_buffer": 20
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 55,
+     "with_buffer": 21
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 52,
+     "with_buffer": 24
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 51,
+     "with_buffer": 25
+    }
+   },
+   "R3": {
+    "path": 43,
+    "top_homes": 118.8,
+    "share_100": 39.6,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 8,
+     "with_buffer": 35
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 7,
+     "with_buffer": 36
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 5,
+     "with_buffer": 38
+    },
+    "1.0": {
+     "homes": 5.0,
+     "first": "MH4501866",
+     "already_over": 2,
+     "with_buffer": 41,
+     "worst_drop_step_err": 0.088
+    }
+   },
+   "R4": {
+    "path": 53,
+    "top_homes": 51.0,
+    "share_100": 17.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 49,
+     "with_buffer": 4
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 48,
+     "with_buffer": 5
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 46,
+     "with_buffer": 7
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 45,
+     "with_buffer": 8
+    }
+   },
+   "R5": {
+    "path": 39,
+    "top_homes": 75.0,
+    "share_100": 25.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 27,
+     "with_buffer": 12
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 23,
+     "with_buffer": 16
+    },
+    "0.7": {
+     "homes": 26.4,
+     "first": "MH4451287",
+     "already_over": 19,
+     "with_buffer": 20,
+     "worst_drop_step_err": 0.202
+    },
+    "1.0": {
+     "homes": 44.1,
+     "first": "MH4451287",
+     "already_over": 18,
+     "with_buffer": 21,
+     "worst_drop_step_err": 0.133
+    }
+   },
+   "R6": {
+    "path": 30,
+    "top_homes": 57.6,
+    "share_100": 19.2,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 18,
+     "with_buffer": 12
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 17,
+     "with_buffer": 13
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 15,
+     "with_buffer": 15
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 14,
+     "with_buffer": 16
+    }
+   },
+   "R8": {
+    "path": 30,
+    "top_homes": 1455.0,
+    "share_100": 485.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 29,
+     "with_buffer": 1
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 28,
+     "with_buffer": 2
+    },
+    "0.7": {
+     "homes": 1109.8,
+     "first": "MH1631514",
+     "already_over": 26,
+     "with_buffer": 4,
+     "worst_drop_step_err": 0.002
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 25,
+     "with_buffer": 5
+    }
+   },
+   "R7": {
+    "path": 127,
+    "top_homes": 423.0,
+    "share_100": 141.0,
+    "0.5": {
+     "homes": 422.0,
+     "first": "MH4452946",
+     "already_over": 58,
+     "with_buffer": 69,
+     "worst_drop_step_err": 0.0
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 57,
+     "with_buffer": 70
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 55,
+     "with_buffer": 72
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 54,
+     "with_buffer": 73
+    }
+   }
+  },
+  "ii0.11_flat_weighted_b1_sfree": {
+   "R1": {
+    "path": 101,
+    "top_homes": 328.8,
+    "share_100": 109.6,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 34,
+     "with_buffer": 67
+    },
+    "0.6": {
+     "homes": 27.4,
+     "first": "MH4449173",
+     "already_over": 16,
+     "with_buffer": 85,
+     "worst_drop_step_err": 0.197
+    },
+    "0.7": {
+     "homes": 26.9,
+     "first": "MH4449785",
+     "already_over": 11,
+     "with_buffer": 90,
+     "worst_drop_step_err": 0.012
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 5,
+     "with_buffer": 96
+    }
+   },
+   "R2": {
+    "path": 76,
+    "top_homes": 165.3,
+    "share_100": 55.1,
+    "0.5": {
+     "homes": 62.7,
+     "first": "MH4450531",
+     "already_over": 29,
+     "with_buffer": 47,
+     "worst_drop_step_err": 0.136
+    },
+    "0.6": {
+     "homes": 89.0,
+     "first": "MH4450531",
+     "already_over": 14,
+     "with_buffer": 62,
+     "worst_drop_step_err": 0.132
+    },
+    "0.7": {
+     "homes": 104.6,
+     "first": "MH4450531",
+     "already_over": 9,
+     "with_buffer": 67,
+     "worst_drop_step_err": 0.089
+    },
+    "1.0": {
+     "homes": 151.6,
+     "first": "MH4450531",
+     "already_over": 5,
+     "with_buffer": 71,
+     "worst_drop_step_err": 0.014
+    }
+   },
+   "R3": {
+    "path": 43,
+    "top_homes": 118.8,
+    "share_100": 39.6,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 3,
+     "with_buffer": 40
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    }
+   },
+   "R4": {
+    "path": 53,
+    "top_homes": 51.0,
+    "share_100": 17.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 25,
+     "with_buffer": 28
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 11,
+     "with_buffer": 42
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 8,
+     "with_buffer": 45
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 5,
+     "with_buffer": 48
+    }
+   },
+   "R5": {
+    "path": 39,
+    "top_homes": 75.0,
+    "share_100": 25.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 17,
+     "with_buffer": 22
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 5,
+     "with_buffer": 34
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 2,
+     "with_buffer": 37
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 39
+    }
+   },
+   "R6": {
+    "path": 30,
+    "top_homes": 57.6,
+    "share_100": 19.2,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 13,
+     "with_buffer": 17
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 1,
+     "with_buffer": 29
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 30
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 30
+    }
+   },
+   "R8": {
+    "path": 30,
+    "top_homes": 1455.0,
+    "share_100": 485.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 23,
+     "with_buffer": 7
+    },
+    "0.6": {
+     "homes": 276.4,
+     "first": "MH1624138",
+     "already_over": 11,
+     "with_buffer": 19,
+     "worst_drop_step_err": 0.001
+    },
+    "0.7": {
+     "homes": 970.3,
+     "first": "MH4454116",
+     "already_over": 8,
+     "with_buffer": 22,
+     "worst_drop_step_err": 0.018
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 5,
+     "with_buffer": 25
+    }
+   },
+   "R7": {
+    "path": 127,
+    "top_homes": 423.0,
+    "share_100": 141.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 29,
+     "with_buffer": 98
+    },
+    "0.6": {
+     "homes": 316.9,
+     "first": "MH1624138",
+     "already_over": 15,
+     "with_buffer": 112,
+     "worst_drop_step_err": 0.0
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 12,
+     "with_buffer": 115
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 7,
+     "with_buffer": 120
+    }
+   }
+  },
+  "ii0.11_flat_uniform_b1.5_sfree": {
+   "R1": {
+    "path": 101,
+    "top_homes": 328.8,
+    "share_100": 109.6,
+    "0.5": {
+     "homes": 7.1,
+     "first": "MH4448853",
+     "already_over": 37,
+     "with_buffer": 64,
+     "worst_drop_step_err": 0.034
+    },
+    "0.6": {
+     "homes": 23.2,
+     "first": "MH4448853",
+     "already_over": 36,
+     "with_buffer": 65,
+     "worst_drop_step_err": 0.013
+    },
+    "0.7": {
+     "homes": 39.6,
+     "first": "MH4448853",
+     "already_over": 23,
+     "with_buffer": 78,
+     "worst_drop_step_err": 0.152
+    },
+    "1.0": {
+     "homes": 12.4,
+     "first": "MH4448345",
+     "already_over": 17,
+     "with_buffer": 84,
+     "worst_drop_step_err": 0.002
+    }
+   },
+   "R2": {
+    "path": 76,
+    "top_homes": 165.3,
+    "share_100": 55.1,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 38,
+     "with_buffer": 38
+    },
+    "0.6": {
+     "homes": 5.8,
+     "first": "MH4450137",
+     "already_over": 32,
+     "with_buffer": 44,
+     "worst_drop_step_err": 0.001
+    },
+    "0.7": {
+     "homes": 20.2,
+     "first": "MH4450137",
+     "already_over": 21,
+     "with_buffer": 55,
+     "worst_drop_step_err": 0.003
+    },
+    "1.0": {
+     "homes": 56.8,
+     "first": "MH4449011",
+     "already_over": 15,
+     "with_buffer": 61,
+     "worst_drop_step_err": 0.003
+    }
+   },
+   "R3": {
+    "path": 43,
+    "top_homes": 118.8,
+    "share_100": 39.6,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 3,
+     "with_buffer": 40
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 2,
+     "with_buffer": 41
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    }
+   },
+   "R4": {
+    "path": 53,
+    "top_homes": 51.0,
+    "share_100": 17.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 32,
+     "with_buffer": 21
+    },
+    "0.6": {
+     "homes": 35.2,
+     "first": "MH4447691",
+     "already_over": 28,
+     "with_buffer": 25,
+     "worst_drop_step_err": 0.038
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 17,
+     "with_buffer": 36
+    },
+    "1.0": {
+     "homes": 40.5,
+     "first": "MH4449011",
+     "already_over": 12,
+     "with_buffer": 41,
+     "worst_drop_step_err": 0.001
+    }
+   },
+   "R5": {
+    "path": 39,
+    "top_homes": 75.0,
+    "share_100": 25.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 19,
+     "with_buffer": 20
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 16,
+     "with_buffer": 23
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 5,
+     "with_buffer": 34
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 1,
+     "with_buffer": 38
+    }
+   },
+   "R6": {
+    "path": 30,
+    "top_homes": 57.6,
+    "share_100": 19.2,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 13,
+     "with_buffer": 17
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 12,
+     "with_buffer": 18
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 1,
+     "with_buffer": 29
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 30
+    }
+   },
+   "R8": {
+    "path": 30,
+    "top_homes": 1455.0,
+    "share_100": 485.0,
+    "0.5": {
+     "homes": 502.9,
+     "first": "MH4451870",
+     "already_over": 24,
+     "with_buffer": 6,
+     "worst_drop_step_err": 0.045
+    },
+    "0.6": {
+     "homes": 360.0,
+     "first": "MH4453489",
+     "already_over": 22,
+     "with_buffer": 8,
+     "worst_drop_step_err": 0.111
+    },
+    "0.7": {
+     "homes": 700.6,
+     "first": "MH4451870",
+     "already_over": 11,
+     "with_buffer": 19,
+     "worst_drop_step_err": 0.108
+    },
+    "1.0": {
+     "homes": 247.5,
+     "first": "MH4454376",
+     "already_over": 7,
+     "with_buffer": 23,
+     "worst_drop_step_err": 0.26
+    }
+   },
+   "R7": {
+    "path": 127,
+    "top_homes": 423.0,
+    "share_100": 141.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 36,
+     "with_buffer": 91
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 33,
+     "with_buffer": 94
+    },
+    "0.7": {
+     "homes": 91.9,
+     "first": "MH4452809",
+     "already_over": 21,
+     "with_buffer": 106,
+     "worst_drop_step_err": 0.001
+    },
+    "1.0": {
+     "homes": 306.7,
+     "first": "MH4454376",
+     "already_over": 17,
+     "with_buffer": 110,
+     "worst_drop_step_err": 0.027
+    }
+   }
+  },
+  "ii0.25_flat_weighted_b1_sfree": {
+   "R1": {
+    "path": 101,
+    "top_homes": 328.8,
+    "share_100": 109.6,
+    "0.5": {
+     "homes": 92.1,
+     "first": "MH4429411",
+     "already_over": 62,
+     "with_buffer": 39,
+     "worst_drop_step_err": 0.001
+    },
+    "0.6": {
+     "homes": 111.5,
+     "first": "MH4429411",
+     "already_over": 60,
+     "with_buffer": 41,
+     "worst_drop_step_err": 0.003
+    },
+    "0.7": {
+     "homes": 130.6,
+     "first": "MH4429411",
+     "already_over": 59,
+     "with_buffer": 42,
+     "worst_drop_step_err": 0.005
+    },
+    "1.0": {
+     "homes": 186.9,
+     "first": "MH4429411",
+     "already_over": 47,
+     "with_buffer": 54,
+     "worst_drop_step_err": 0.008
+    }
+   },
+   "R2": {
+    "path": 76,
+    "top_homes": 165.3,
+    "share_100": 55.1,
+    "0.5": {
+     "homes": 65.0,
+     "first": "MH4429527",
+     "already_over": 51,
+     "with_buffer": 25,
+     "worst_drop_step_err": 0.002
+    },
+    "0.6": {
+     "homes": 77.8,
+     "first": "MH4429527",
+     "already_over": 48,
+     "with_buffer": 28,
+     "worst_drop_step_err": 0.004
+    },
+    "0.7": {
+     "homes": 90.6,
+     "first": "MH4429527",
+     "already_over": 47,
+     "with_buffer": 29,
+     "worst_drop_step_err": 0.004
+    },
+    "1.0": {
+     "homes": 128.5,
+     "first": "MH4429527",
+     "already_over": 35,
+     "with_buffer": 41,
+     "worst_drop_step_err": 0.001
+    }
+   },
+   "R3": {
+    "path": 43,
+    "top_homes": 118.8,
+    "share_100": 39.6,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 6,
+     "with_buffer": 37
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 4,
+     "with_buffer": 39
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 3,
+     "with_buffer": 40
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    }
+   },
+   "R4": {
+    "path": 53,
+    "top_homes": 51.0,
+    "share_100": 17.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 47,
+     "with_buffer": 6
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 45,
+     "with_buffer": 8
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 44,
+     "with_buffer": 9
+    },
+    "1.0": {
+     "homes": 37.0,
+     "first": "MH4429268",
+     "already_over": 31,
+     "with_buffer": 22,
+     "worst_drop_step_err": 0.0
+    }
+   },
+   "R5": {
+    "path": 39,
+    "top_homes": 75.0,
+    "share_100": 25.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 23,
+     "with_buffer": 16
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 20,
+     "with_buffer": 19
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 18,
+     "with_buffer": 21
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 6,
+     "with_buffer": 33
+    }
+   },
+   "R6": {
+    "path": 30,
+    "top_homes": 57.6,
+    "share_100": 19.2,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 16,
+     "with_buffer": 14
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 14,
+     "with_buffer": 16
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 13,
+     "with_buffer": 17
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 1,
+     "with_buffer": 29
+    }
+   },
+   "R8": {
+    "path": 30,
+    "top_homes": 1455.0,
+    "share_100": 485.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 29,
+     "with_buffer": 1
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 27,
+     "with_buffer": 3
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 26,
+     "with_buffer": 4
+    },
+    "1.0": {
+     "homes": 743.7,
+     "first": "MH4456553",
+     "already_over": 14,
+     "with_buffer": 16,
+     "worst_drop_step_err": 0.081
+    }
+   },
+   "R7": {
+    "path": 127,
+    "top_homes": 423.0,
+    "share_100": 141.0,
+    "0.5": {
+     "homes": 173.4,
+     "first": "MH4453788",
+     "already_over": 55,
+     "with_buffer": 72,
+     "worst_drop_step_err": 0.012
+    },
+    "0.6": {
+     "homes": 288.4,
+     "first": "MH4453788",
+     "already_over": 53,
+     "with_buffer": 74,
+     "worst_drop_step_err": 0.01
+    },
+    "0.7": {
+     "homes": 63.2,
+     "first": "MH4453850",
+     "already_over": 51,
+     "with_buffer": 76,
+     "worst_drop_step_err": 0.003
+    },
+    "1.0": {
+     "homes": 406.0,
+     "first": "MH4453850",
+     "already_over": 39,
+     "with_buffer": 88,
+     "worst_drop_step_err": 0.001
+    }
+   }
+  },
+  "ii0.25_flat_uniform_b1.5_sfree": {
+   "R1": {
+    "path": 101,
+    "top_homes": 328.8,
+    "share_100": 109.6,
+    "0.5": {
+     "homes": 1.8,
+     "first": "MH4428583",
+     "already_over": 72,
+     "with_buffer": 29,
+     "worst_drop_step_err": 0.005
+    },
+    "0.6": {
+     "homes": 29.0,
+     "first": "MH4428583",
+     "already_over": 70,
+     "with_buffer": 31,
+     "worst_drop_step_err": 0.0
+    },
+    "0.7": {
+     "homes": 56.1,
+     "first": "MH4428583",
+     "already_over": 69,
+     "with_buffer": 32,
+     "worst_drop_step_err": 0.013
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 57,
+     "with_buffer": 44
+    }
+   },
+   "R2": {
+    "path": 76,
+    "top_homes": 165.3,
+    "share_100": 55.1,
+    "0.5": {
+     "homes": 154.4,
+     "first": "MH4446824",
+     "already_over": 55,
+     "with_buffer": 21,
+     "worst_drop_step_err": 0.022
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 53,
+     "with_buffer": 23
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 51,
+     "with_buffer": 25
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 39,
+     "with_buffer": 37
+    }
+   },
+   "R3": {
+    "path": 43,
+    "top_homes": 118.8,
+    "share_100": 39.6,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 6,
+     "with_buffer": 37
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 4,
+     "with_buffer": 39
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 3,
+     "with_buffer": 40
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 0,
+     "with_buffer": 43
+    }
+   },
+   "R4": {
+    "path": 53,
+    "top_homes": 51.0,
+    "share_100": 17.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 48,
+     "with_buffer": 5
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 46,
+     "with_buffer": 7
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 45,
+     "with_buffer": 8
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 33,
+     "with_buffer": 20
+    }
+   },
+   "R5": {
+    "path": 39,
+    "top_homes": 75.0,
+    "share_100": 25.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 27,
+     "with_buffer": 12
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 21,
+     "with_buffer": 18
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 19,
+     "with_buffer": 20
+    },
+    "1.0": {
+     "homes": 12.9,
+     "first": "MH4451945",
+     "already_over": 6,
+     "with_buffer": 33,
+     "worst_drop_step_err": 0.156
+    }
+   },
+   "R6": {
+    "path": 30,
+    "top_homes": 57.6,
+    "share_100": 19.2,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 17,
+     "with_buffer": 13
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 15,
+     "with_buffer": 15
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 13,
+     "with_buffer": 17
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 1,
+     "with_buffer": 29
+    }
+   },
+   "R8": {
+    "path": 30,
+    "top_homes": 1455.0,
+    "share_100": 485.0,
+    "0.5": {
+     "homes": null,
+     "first": null,
+     "already_over": 29,
+     "with_buffer": 1
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 27,
+     "with_buffer": 3
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 26,
+     "with_buffer": 4
+    },
+    "1.0": {
+     "homes": 589.5,
+     "first": "MH6153571",
+     "already_over": 14,
+     "with_buffer": 16,
+     "worst_drop_step_err": 0.049
+    }
+   },
+   "R7": {
+    "path": 127,
+    "top_homes": 423.0,
+    "share_100": 141.0,
+    "0.5": {
+     "homes": 306.4,
+     "first": "MH4453512",
+     "already_over": 56,
+     "with_buffer": 71,
+     "worst_drop_step_err": 0.005
+    },
+    "0.6": {
+     "homes": null,
+     "first": null,
+     "already_over": 54,
+     "with_buffer": 73
+    },
+    "0.7": {
+     "homes": null,
+     "first": null,
+     "already_over": 53,
+     "with_buffer": 74
+    },
+    "1.0": {
+     "homes": null,
+     "first": null,
+     "already_over": 41,
+     "with_buffer": 86
+    }
+   }
+  }
+ },
+ "whole_suburb": {
+  "ii0.00_flat_uniform_b1_sfree": {
+   "0.5": {
+    "homes": 242.5,
+    "first": "MH4450378",
+    "already_over": 5,
+    "with_buffer": 323
+   },
+   "0.6": {
+    "homes": null,
+    "first": null,
+    "already_over": 4,
+    "with_buffer": 324
+   },
+   "0.7": {
+    "homes": 388.0,
+    "first": "MH4452189",
+    "already_over": 0,
+    "with_buffer": 328
+   },
+   "1.0": {
+    "homes": null,
+    "first": null,
+    "already_over": 0,
+    "with_buffer": 328
+   }
+  },
+  "ii0.11_flat_uniform_b1_sfree": {
+   "0.5": {
+    "homes": 312.3,
+    "first": "MH4451673",
+    "already_over": 41,
+    "with_buffer": 287
+   },
+   "0.6": {
+    "homes": 22.4,
+    "first": "MH4450581",
+    "already_over": 23,
+    "with_buffer": 305
+   },
+   "0.7": {
+    "homes": 23.4,
+    "first": "MH4450531",
+    "already_over": 15,
+    "with_buffer": 313
+   },
+   "1.0": {
+    "homes": 175.9,
+    "first": "MH4450531",
+    "already_over": 7,
+    "with_buffer": 321
+   }
+  },
+  "ii0.25_flat_uniform_b1_sfree": {
+   "0.5": {
+    "homes": 49.9,
+    "first": "MH4453788",
+    "already_over": 128,
+    "with_buffer": 200
+   },
+   "0.6": {
+    "homes": 146.5,
+    "first": "MH4453788",
+    "already_over": 124,
+    "with_buffer": 204
+   },
+   "0.7": {
+    "homes": 45.6,
+    "first": "MH4429527",
+    "already_over": 121,
+    "with_buffer": 207
+   },
+   "1.0": {
+    "homes": 99.7,
+    "first": "MH4449977",
+    "already_over": 107,
+    "with_buffer": 221
+   }
+  },
+  "ii0.40_flat_uniform_b1_sfree": {
+   "0.5": {
+    "homes": 60.7,
+    "first": "MH4428268",
+    "already_over": 153,
+    "with_buffer": 175
+   },
+   "0.6": {
+    "homes": 113.2,
+    "first": "MH4428268",
+    "already_over": 149,
+    "with_buffer": 179
+   },
+   "0.7": {
+    "homes": 165.9,
+    "first": "MH4428268",
+    "already_over": 144,
+    "with_buffer": 184
+   },
+   "1.0": {
+    "homes": 20.2,
+    "first": "MH4501866",
+    "already_over": 141,
+    "with_buffer": 187
+   }
+  },
+  "ii0.11_flat_weighted_b1_sfree": {
+   "0.5": {
+    "homes": 176.4,
+    "first": "MH4450531",
+    "already_over": 40,
+    "with_buffer": 288
+   },
+   "0.6": {
+    "homes": 165.3,
+    "first": "MH4449173",
+    "already_over": 21,
+    "with_buffer": 307
+   },
+   "0.7": {
+    "homes": 99.4,
+    "first": "MH4449785",
+    "already_over": 14,
+    "with_buffer": 314
+   },
+   "1.0": {
+    "homes": 468.4,
+    "first": "MH4450531",
+    "already_over": 7,
+    "with_buffer": 321
+   }
+  },
+  "ii0.11_flat_uniform_b1.5_sfree": {
+   "0.5": {
+    "homes": 20.1,
+    "first": "MH4448853",
+    "already_over": 61,
+    "with_buffer": 267
+   },
+   "0.6": {
+    "homes": 18.3,
+    "first": "MH4450137",
+    "already_over": 51,
+    "with_buffer": 277
+   },
+   "0.7": {
+    "homes": 27.8,
+    "first": "MH4452809",
+    "already_over": 37,
+    "with_buffer": 291
+   },
+   "1.0": {
+    "homes": 36.2,
+    "first": "MH4448345",
+    "already_over": 29,
+    "with_buffer": 299
+   }
+  },
+  "ii0.25_flat_weighted_b1_sfree": {
+   "0.5": {
+    "homes": 162.8,
+    "first": "MH4453788",
+    "already_over": 124,
+    "with_buffer": 204
+   },
+   "0.6": {
+    "homes": 264.9,
+    "first": "MH4453788",
+    "already_over": 120,
+    "with_buffer": 208
+   },
+   "0.7": {
+    "homes": 58.0,
+    "first": "MH4453850",
+    "already_over": 117,
+    "with_buffer": 211
+   },
+   "1.0": {
+    "homes": 131.8,
+    "first": "MH4429268",
+    "already_over": 104,
+    "with_buffer": 224
+   }
+  },
+  "ii0.25_flat_uniform_b1.5_sfree": {
+   "0.5": {
+    "homes": 6.5,
+    "first": "MH4428583",
+    "already_over": 144,
+    "with_buffer": 184
+   },
+   "0.6": {
+    "homes": 102.7,
+    "first": "MH4428583",
+    "already_over": 138,
+    "with_buffer": 190
+   },
+   "0.7": {
+    "homes": 199.3,
+    "first": "MH4428583",
+    "already_over": 134,
+    "with_buffer": 194
+   },
+   "1.0": {
+    "homes": 214.1,
+    "first": "MH4451945",
+    "already_over": 121,
+    "with_buffer": 207
+   }
+  }
+ },
+ "whole_suburb_bands": {
+  "ii0.00_flat_uniform_b1_sfree": {
+   "share_100": 485.0,
+   "top_homes": 1455.0,
+   "rise_mm_per_100_homes": 2.9,
+   "0.5": {
+    "band": "runs out",
+    "p_runs_out": 0.87,
+    "homes_p10": 28,
+    "homes_p90": 547,
+    "already_over": 0.015
+   },
+   "0.6": {
+    "band": "uncertain",
+    "p_runs_out": 0.512,
+    "homes_p10": 48,
+    "homes_p90": 1292,
+    "already_over": 0.012
+   },
+   "0.7": {
+    "band": "uncertain",
+    "p_runs_out": 0.767,
+    "homes_p10": 44,
+    "homes_p90": 619,
+    "already_over": 0.0
+   }
+  },
+  "ii0.11_flat_uniform_b1_sfree": {
+   "share_100": 485.0,
+   "top_homes": 1455.0,
+   "rise_mm_per_100_homes": 30.3,
+   "0.5": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 18,
+    "homes_p90": 326,
+    "already_over": 0.125
+   },
+   "0.6": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 7,
+    "homes_p90": 177,
+    "already_over": 0.07
+   },
+   "0.7": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 8,
+    "homes_p90": 92,
+    "already_over": 0.046
+   }
+  },
+  "ii0.25_flat_uniform_b1_sfree": {
+   "share_100": 485.0,
+   "top_homes": 1455.0,
+   "rise_mm_per_100_homes": 35.0,
+   "0.5": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 17,
+    "homes_p90": 148,
+    "already_over": 0.39
+   },
+   "0.6": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 6,
+    "homes_p90": 178,
+    "already_over": 0.378
+   },
+   "0.7": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 12,
+    "homes_p90": 85,
+    "already_over": 0.369
+   }
+  },
+  "ii0.40_flat_uniform_b1_sfree": {
+   "share_100": 485.0,
+   "top_homes": 1455.0,
+   "rise_mm_per_100_homes": 28.3,
+   "0.5": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 24,
+    "homes_p90": 96,
+    "already_over": 0.466
+   },
+   "0.6": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 76,
+    "homes_p90": 146,
+    "already_over": 0.454
+   },
+   "0.7": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 132,
+    "homes_p90": 200,
+    "already_over": 0.439
+   }
+  },
+  "ii0.11_flat_weighted_b1_sfree": {
+   "share_100": 485.0,
+   "top_homes": 1455.0,
+   "rise_mm_per_100_homes": 23.4,
+   "0.5": {
+    "band": "runs out",
+    "p_runs_out": 0.943,
+    "homes_p10": 34,
+    "homes_p90": 318,
+    "already_over": 0.122
+   },
+   "0.6": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 20,
+    "homes_p90": 276,
+    "already_over": 0.064
+   },
+   "0.7": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 21,
+    "homes_p90": 329,
+    "already_over": 0.043
+   }
+  },
+  "ii0.11_flat_uniform_b1.5_sfree": {
+   "share_100": 485.0,
+   "top_homes": 1455.0,
+   "rise_mm_per_100_homes": 58.2,
+   "0.5": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 3,
+    "homes_p90": 166,
+    "already_over": 0.186
+   },
+   "0.6": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 4,
+    "homes_p90": 51,
+    "already_over": 0.155
+   },
+   "0.7": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 9,
+    "homes_p90": 66,
+    "already_over": 0.113
+   }
+  },
+  "ii0.25_flat_weighted_b1_sfree": {
+   "share_100": 485.0,
+   "top_homes": 1455.0,
+   "rise_mm_per_100_homes": 31.8,
+   "0.5": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 73,
+    "homes_p90": 225,
+    "already_over": 0.378
+   },
+   "0.6": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 19,
+    "homes_p90": 308,
+    "already_over": 0.366
+   },
+   "0.7": {
+    "band": "runs out",
+    "p_runs_out": 1.0,
+    "homes_p10": 15,
+    "homes_p90": 328,
+    "already_over": 0.357
+   }
+  },
+  "ii0.25_flat_uniform_b1.5_sfree": {
+   "share_100": 485.0,
+   "top_homes": 1455.0,
+   "rise_mm_per_100_homes": 29.1,
+   "0.5": {
+    "band": "runs out",
+    "p_runs_out": 0.825,
+    "homes_p10": 11,
+    "homes_p90": 645,
+    "already_over": 0.439
+   },
+   "0.6": {
+    "band": "runs out",
+    "p_runs_out": 0.993,
+    "homes_p10": 31,
+    "homes_p90": 166,
+    "already_over": 0.421
+   },
+   "0.7": {
+    "band": "runs out",
+    "p_runs_out": 0.995,
+    "homes_p10": 52,
+    "homes_p90": 238,
+    "already_over": 0.409
+   }
+  }
+ }
+}
