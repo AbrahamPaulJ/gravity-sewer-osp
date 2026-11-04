@@ -15,6 +15,7 @@ body{margin:0;background:var(--bg);color:var(--ink);display:flex;flex-direction:
 header.top{padding:12px 22px;border-bottom:1px solid var(--line);background:var(--panel);
   display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 20px}
 header.top .brand{font-size:14.5px;font-weight:650;letter-spacing:-.1px}
+#liveSlot{flex:0 0 auto;margin-right:auto}
 .tabs{display:flex;gap:2px;flex-wrap:wrap}
 .tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--ink-faint);
   padding:8px 13px;font:inherit;font-size:13px;cursor:pointer;border-radius:6px 6px 0 0}
@@ -61,6 +62,7 @@ footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);
 
 <header class="top">
   <span class="brand">Optimal sensor placement in gravity sewers</span>
+  <span id="liveSlot" aria-hidden="true"></span>
   <nav class="tabs" id="tabs">
     <button data-tab="overview" class="on">Overview</button>
     <button data-tab="sandbox">Sandbox</button>
@@ -308,6 +310,40 @@ if (location.hash.length > 1 && showTab(location.hash.slice(1))) {
 }
 // A hash set from outside (the live presentation sync, the back button) switches the tab too.
 window.addEventListener('hashchange', function(){ showTab(location.hash.slice(1)); });
+</script>
+
+<script>
+// The Capstone Live bar floats over the page and steers around buttons it can see, but it cannot see inside a
+// simulation's frame, so it landed on the simulation's top row and hid Results. Reserve it a slot beside the title.
+// The slot takes the bar's size, so the tabs wrap to their own row when there is no room. present.js is unchanged.
+(function () {
+  var slot = document.getElementById('liveSlot');
+  if (!slot || !window.ResizeObserver) return;
+  function attach() {
+    var host = document.querySelector('live-sync-ui'), root = host && host.shadowRoot, bar = root && root.querySelector('.bar');
+    if (!bar) return false;
+    var css = document.createElement('style');
+    css.textContent = '.bar{top:var(--live-top,10px)!important;left:var(--live-left,50%)!important;transform:none!important;margin:0!important}';
+    root.append(css);
+    function place() {
+      slot.style.width = bar.offsetWidth + 'px';
+      slot.style.height = bar.offsetHeight + 'px';
+      var r = slot.getBoundingClientRect();
+      host.style.setProperty('--live-top', r.top + 'px');
+      host.style.setProperty('--live-left', r.left + 'px');
+    }
+    new ResizeObserver(place).observe(bar);
+    new ResizeObserver(place).observe(slot.parentNode);
+    window.addEventListener('resize', place);
+    place();
+    return true;
+  }
+  if (attach()) return;
+  var mo = new MutationObserver(function () { if (attach()) { mo.disconnect(); clearInterval(t); } });
+  mo.observe(document.documentElement, { childList: true });
+  var t = setInterval(function () { if (attach()) { mo.disconnect(); clearInterval(t); } }, 500);
+  setTimeout(function () { mo.disconnect(); clearInterval(t); }, 30000);
+})();
 </script>
 
 </body>
