@@ -1,0 +1,256 @@
+{
+ "variants": [
+  {
+   "quiet": true,
+   "margin": 25,
+   "rows": [
+    {
+     "name": "25 floats budget",
+     "level": 0,
+     "float": 22,
+     "worst": 0.15,
+     "average": 0.4707,
+     "tripped_median": 2.0,
+     "unseen_weather": 0.0983,
+     "unseen_region": 0.2892,
+     "per_case": {
+      "Design wet": 0.5,
+      "Beyond design": 0.5278,
+      "Severe": 0.4722,
+      "Design wet + age-weighted I&I": 0.15,
+      "Design wet + outside inflow x1.5": 0.6154,
+      "Beyond design + age-weighted I&I": 0.5294,
+      "Beyond design + outside inflow x1.5": 0.5
+     }
+    },
+    {
+     "name": "125 floats budget",
+     "level": 0,
+     "float": 35,
+     "worst": 0.15,
+     "average": 0.4707,
+     "tripped_median": 2.0,
+     "unseen_weather": 0.1023,
+     "unseen_region": 0.3284,
+     "per_case": {
+      "Design wet": 0.5,
+      "Beyond design": 0.5278,
+      "Severe": 0.4722,
+      "Design wet + age-weighted I&I": 0.15,
+      "Design wet + outside inflow x1.5": 0.6154,
+      "Beyond design + age-weighted I&I": 0.5294,
+      "Beyond design + outside inflow x1.5": 0.5
+     }
+    },
+    {
+     "name": "1 level sensor",
+     "level": 1,
+     "float": 0,
+     "worst": 0.25,
+     "average": 0.3827,
+     "tripped_median": null,
+     "unseen_weather": 0.3827,
+     "unseen_region": 0.3971,
+     "per_case": {
+      "Design wet": 0.2727,
+      "Beyond design": 0.6389,
+      "Severe": 0.2778,
+      "Design wet + age-weighted I&I": 0.25,
+      "Design wet + outside inflow x1.5": 0.3846,
+      "Beyond design + age-weighted I&I": 0.5882,
+      "Beyond design + outside inflow x1.5": 0.2667
+     }
+    },
+    {
+     "name": "5 level sensors",
+     "level": 5,
+     "float": 0,
+     "worst": 0.8611,
+     "average": 0.9074,
+     "tripped_median": null,
+     "unseen_weather": 0.7627,
+     "unseen_region": 0.6618,
+     "per_case": {
+      "Design wet": 0.9091,
+      "Beyond design": 0.8889,
+      "Severe": 0.8611,
+      "Design wet + age-weighted I&I": 1.0,
+      "Design wet + outside inflow x1.5": 0.8846,
+      "Beyond design + age-weighted I&I": 0.9412,
+      "Beyond design + outside inflow x1.5": 0.8667
+     }
+    }
+   ]
+  },
+  {
+   "quiet": false,
+   "margin": 25,
+   "rows": [
+    {
+     "name": "25 floats budget",
+     "level": 0,
+     "float": 23,
+     "worst": 0.15,
+     "average": 0.4707,
+     "tripped_median": 2.0,
+     "unseen_weather": 0.0309,
+     "unseen_region": 0.3088,
+     "per_case": {
+      "Design wet": 0.5,
+      "Beyond design": 0.5278,
+      "Severe": 0.4722,
+      "Design wet + age-weighted I&I": 0.15,
+      "Design wet + outside inflow x1.5": 0.6154,
+      "Beyond design + age-weighted I&I": 0.5294,
+      "Beyond design + outside inflow x1.5": 0.5
+     }
+    },
+    {
+     "name": "125 floats budget",
+     "level": 0,
+     "float": 42,
+     "worst": 0.15,
+     "average": 0.4707,
+     "tripped_median": 3.0,
+     "unseen_weather": 0.0633,
+     "unseen_region": 0.3137,
+     "per_case": {
+      "Design wet": 0.5,
+      "Beyond design": 0.5278,
+      "Severe": 0.4722,
+      "Design wet + age-weighted I&I": 0.15,
+      "Design wet + outside inflow x1.5": 0.6154,
+      "Beyond design + age-weighted I&I": 0.5294,
+      "Beyond design + outside inflow x1.5": 0.5
+     }
+    },
+    {
+     "name": "1 level sensor",
+     "level": 1,
+     "float": 0,
+     "worst": 0.25,
+     "average": 0.3827,
+     "tripped_median": null,
+     "unseen_weather": 0.3827,
+     "unseen_region": 0.3971,
+     "per_case": {
+      "Design wet": 0.2727,
+      "Beyond design": 0.6389,
+      "Severe": 0.2778,
+      "Design wet + age-weighted I&I": 0.25,
+      "Design wet + outside inflow x1.5": 0.3846,
+      "Beyond design + age-weighted I&I": 0.5882,
+      "Beyond design + outside inflow x1.5": 0.2667
+     }
+    },
+    {
+     "name": "5 level sensors",
+     "level": 5,
+     "float": 0,
+     "worst": 0.8611,
+     "average": 0.9074,
+     "tripped_median": null,
+     "unseen_weather": 0.7627,
+     "unseen_region": 0.6618,
+     "per_case": {
+      "Design wet": 0.9091,
+      "Beyond design": 0.8889,
+      "Severe": 0.8611,
+      "Design wet + age-weighted I&I": 1.0,
+      "Design wet + outside inflow x1.5": 0.8846,
+      "Beyond design + age-weighted I&I": 0.9412,
+      "Beyond design + outside inflow x1.5": 0.8667
+     }
+    }
+   ]
+  },
+  {
+   "quiet": false,
+   "margin": 10,
+   "rows": [
+    {
+     "name": "25 floats budget",
+     "level": 0,
+     "float": 23,
+     "worst": 0.25,
+     "average": 0.5859,
+     "tripped_median": 2.0,
+     "unseen_weather": 0.051,
+     "unseen_region": 0.4461,
+     "per_case": {
+      "Design wet": 0.4545,
+      "Beyond design": 0.7222,
+      "Severe": 0.6389,
+      "Design wet + age-weighted I&I": 0.25,
+      "Design wet + outside inflow x1.5": 0.6923,
+      "Beyond design + age-weighted I&I": 0.6765,
+      "Beyond design + outside inflow x1.5": 0.6667
+     }
+    },
+    {
+     "name": "125 floats budget",
+     "level": 0,
+     "float": 49,
+     "worst": 0.25,
+     "average": 0.5859,
+     "tripped_median": 4.0,
+     "unseen_weather": 0.1029,
+     "unseen_region": 0.5,
+     "per_case": {
+      "Design wet": 0.4545,
+      "Beyond design": 0.7222,
+      "Severe": 0.6389,
+      "Design wet + age-weighted I&I": 0.25,
+      "Design wet + outside inflow x1.5": 0.6923,
+      "Beyond design + age-weighted I&I": 0.6765,
+      "Beyond design + outside inflow x1.5": 0.6667
+     }
+    }
+   ]
+  },
+  {
+   "quiet": false,
+   "margin": 0,
+   "rows": [
+    {
+     "name": "25 floats budget",
+     "level": 0,
+     "float": 15,
+     "worst": 0.8235,
+     "average": 0.9224,
+     "tripped_median": 2.0,
+     "unseen_weather": 0.0571,
+     "unseen_region": 0.8284,
+     "per_case": {
+      "Design wet": 1.0,
+      "Beyond design": 0.8333,
+      "Severe": 0.8333,
+      "Design wet + age-weighted I&I": 1.0,
+      "Design wet + outside inflow x1.5": 1.0,
+      "Beyond design + age-weighted I&I": 0.8235,
+      "Beyond design + outside inflow x1.5": 0.9667
+     }
+    },
+    {
+     "name": "125 floats budget",
+     "level": 0,
+     "float": 72,
+     "worst": 0.8235,
+     "average": 0.9224,
+     "tripped_median": 3.5,
+     "unseen_weather": 0.3952,
+     "unseen_region": 0.8284,
+     "per_case": {
+      "Design wet": 1.0,
+      "Beyond design": 0.8333,
+      "Severe": 0.8333,
+      "Design wet + age-weighted I&I": 1.0,
+      "Design wet + outside inflow x1.5": 1.0,
+      "Beyond design + age-weighted I&I": 0.8235,
+      "Beyond design + outside inflow x1.5": 0.9667
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -125,12 +125,12 @@ window.Sim35UI = (function () {
   // Infill placement: the exact optimum per k, or greedy's nested order, worst case over cases.
   const WARN = rule => (window.SIM35.warn || {})[rule];
   const WARN_TIP = "A sensor warns when it responds at least one build-out step before the first manhole newly surcharges along that region's build-out. " +
-    "The set is chosen for the worst of the 7 wet cases, from every manhole. Warned on the same runs it was chosen on; the left-out figures, chosen without the case or region tested, are the fairer guide.";
+    "The set is chosen for the worst of the 7 wet cases, from every manhole. Unseen means chosen without the weather case or region tested, then scored on it: higher is better, and it is the fairer guide.";
   function warnSentence(pl) {
-    const e = pl.warn, W = WARN(st.rule), pc = v => v == null ? "n/a" : pct(v);
-    return "<p style='margin:0 0 8px'><b>" + e.k + "</b> sensor" + (e.k === 1 ? " warns" : "s warn") + " of <b>" + e.warned + " of " + W.total + "</b> overloads before the first surcharge" +
+    const e = pl.warn, W = WARN(st.rule);
+    return "<p style='margin:0 0 8px'><b>" + e.k + "</b> sensor" + (e.k === 1 ? " warns" : "s warn") + " of <b>" + e.plausible_warned + " of " + W.plausible_total + "</b> overloads by 100% build-out, before the first surcharge" +
       (e.needed < e.k ? " (" + e.needed + " would do; the rest are chosen to see more growth)" : "") + ". " +
-      "Chosen without the part tested: <b>" + pc(e.out_case) + "</b> on a weather case left out, <b>" + pc(e.out_area) + "</b> on a region left out. " +
+      "Chosen without the part tested: <b>" + e.plausible_unseen_weather + " of " + W.plausible_total + "</b> on unseen weather, <b>" + e.plausible_unseen_region + " of " + W.plausible_total + "</b> on an unseen region. " +
       "They also see " + pct(e.detect_worst) + " of detectable growth in the worst wet case.</p>";
   }
   function infillPlacement() {
@@ -416,7 +416,7 @@ window.Sim35UI = (function () {
     $("#wxHint").textContent = c.label + (c.settled === false ? " (480-minute runs)" : "");
     $("#kBig").textContent = st.k + " sensor" + (st.k === 1 ? "" : "s");
     const pl = placement();
-    $("#kHint").textContent = pl.warn ? "warn of " + pl.warn.warned + " of " + WARN(st.rule).total + " overloads before surcharge" : pl.worst != null ? "catch " + pct(pl.worst) + " of detectable growth, worst case" : "";
+    $("#kHint").textContent = pl.warn ? "warn of " + pl.warn.plausible_warned + " of " + WARN(st.rule).plausible_total + " overloads by 100% build-out" : pl.worst != null ? "catch " + pct(pl.worst) + " of detectable growth, worst case" : "";
     $("#kInfo").dataset.tip = pl.warn ? WARN_TIP : "The best set of this many level sensors, chosen once for the worst of all " + famCases().length + " weather and leakage cases. " +
       "A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth. " +
       "Detectable growth means the scenarios that at least one manhole anywhere would see; the percentage is the share of those that this set notices." +
@@ -489,7 +489,7 @@ window.Sim35UI = (function () {
     if (!hasRisk && st.method === "risk") st.method = "exact";
     const methText = st.fam !== "one"
       ? (st.method === "warn" ? "Warn before surcharge: the best set of this size for warning at least one build-out step before the first new surcharge, worst of the 7 wet cases." : st.method === "exact" ? "Exact: the best set of this size, solved exactly over all cases for the worst case (PuLP + HiGHS). The recommendation."
-         : st.method === "risk" ? "Risk-weighted (Kimbrough): each scenario weighted by severity (homes draining through the manhole where it bites) x occurrence (how far it pushes that manhole towards 0.7 of its bore). The set that notices the most risk, solved exactly. A comparison, not the recommendation: it pulls sensors towards trunk mains already near capacity."
+         : st.method === "risk" ? "Risk-weighted: a severity x occurrence score of the kind Kimbrough (2019) uses, with this page's own scales. Severity is homes draining through the manhole where it bites; occurrence is how far it pushes that manhole towards 0.7 of its bore. The set that notices the most risk, solved exactly. A comparison, not the recommendation: it pulls sensors towards trunk mains already near capacity."
                                : "Greedy: each sensor is the best addition to the ones before it. Up to 10 points below the exact optimum at the same size.")
       : "The greenfield grid publishes the greedy order only; the exact solver has run on the infill family.";
     const objText = st.fam !== "one" && st.method !== "greedy" ? "" : (st.obj === "worst"
@@ -791,7 +791,7 @@ window.Sim35UI = (function () {
     let extra = "";
     if (isIn && st.view === "expert" && pl.compare && pl.compare.plain_set) {
       const c = pl.compare, hi = ' class="hi"';
-      extra += "<h4>Plain against risk-weighted, " + k + " sensors <i class='info-i left' data-tip='Worst case over the cases, each set scored both ways. Risk weight = severity x occurrence per scenario (Kimbrough 2019, as applied in the risk note of 22 Oct 2026); the current scenario&#39;s weight is in the region card.'>i</i></h4><table class='sm'><tr><th>Set</th><th>Plain coverage</th><th>Risk-weighted</th></tr>" +
+      extra += "<h4>Plain against risk-weighted, " + k + " sensors <i class='info-i left' data-tip='Worst case over the cases, each set scored both ways. Risk weight = severity x occurrence per scenario, the kind of score Kimbrough (2019) uses; the scales are this page&#39;s own. The current scenario&#39;s weight is in the region card.'>i</i></h4><table class='sm'><tr><th>Set</th><th>Plain coverage</th><th>Risk-weighted</th></tr>" +
         "<tr><td>Exact (plain)</td><td" + (st.method !== "risk" ? hi : "") + ">" + pct(c.plain_set.plain) + "</td><td>" + pct(c.plain_set.risk) + "</td></tr>" +
         "<tr><td>Risk-weighted</td><td>" + pct(c.risk_set.plain) + "</td><td" + (st.method === "risk" ? hi : "") + ">" + pct(c.risk_set.risk) + "</td></tr></table>" +
         "<p class='quiet'>The two sets share " + c.shared + " of " + k + " manholes.</p>";
@@ -1024,15 +1024,25 @@ window.Sim35UI = (function () {
     '<option value="' + c.tag + '"' + (c.tag === RES.tag ? " selected" : "") + ">" + esc(c.label) + "</option>").join("") + "</select>";
   const RULE_OPTS = [["r10", "10 mm rule"], ["r25", "25 mm rule"]];
   const info = t => ' <i class="info-i left" data-tip="' + esc(t) + '">i</i>';
+  // Where a tab's numbers come from, beside the table. The text is in the data, written by the builder.
+  const sources = key => "<div class='src'><b>Where these numbers come from</b>" + window.SIM35.sources[key].map(([tag, t]) =>
+    "<div><span class='srctag'>" + esc(tag) + "</span> " + esc(t) + "</div>").join("") + "</div>";
+  const say = html => "<p class='say'>" + html + "</p>";
+  const head = (t, sub) => esc(t) + "<span class='thsub'>" + esc(sub) + "</span>";
+  const listAnd = a => a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1];
+  const caseLabel = () => (S().cases.find(c => c.tag === RES.tag) || {}).label || "";
 
   function ladderTab() {
     const X = window.SIM35, rule = RES.rule === "r25" ? "r25" : "r10", W = X.warn[rule], e = W.sets[st.k - 1], set = new Set(e.chosen), lad = S().ladder;
     const rows = S().rows[RES.tag] || [];
     let body = "";
+    const tally = { warned: [], missed: [], stress: 0 };
     S().regions.forEach((reg, ri) => {
       const rr = rows.filter(x => x.r === ri).sort((a, b) => a.s - b.s);
       const first = rr.findIndex(x => x.sur.length || x.spill.length);
       const fire = rr.findIndex(x => x.rise.some(([i, v]) => v >= W.R && set.has(i)));
+      if (first >= 0 && lad[first] > 1) tally.stress++;
+      else if (first >= 0) (fire >= 0 && fire < first ? tally.warned : tally.missed).push(reg.id);
       let cells = "";
       rr.forEach((x, s) => {
         const over = first >= 0 && s >= first, f = fire >= 0 && s >= fire;
@@ -1047,29 +1057,41 @@ window.Sim35UI = (function () {
         : "Overloads at " + Math.round(lad[first] * 100) + "% with no warning";
       body += "<tr" + (first < 0 ? ' class="dimrow"' : "") + '><th title="' + esc(reg.name) + '">' + esc(reg.id) + "</th>" + cells + "<td class='lnote'>" + esc(note) + "</td></tr>";
     });
-    const pc = v => v == null ? "n/a" : pct(v);
+    const nOver = tally.warned.length + tally.missed.length;
+    const line = "In " + esc(caseLabel()) + ", with " + st.k + " sensors at the " + W.R + " mm rule: " + (nOver
+      ? (nOver === 1 ? "the one region that overloads by 100% build-out " + (tally.warned.length ? "<b>gets a warning first</b>" : "<b>gets no warning first</b>") : "<b>" + tally.warned.length + " of " + nOver + "</b> regions that overload by 100% build-out get a warning first") + (nOver > 1 && tally.missed.length ? " (no warning: " + listAnd(tally.missed) + ")" : "") + "."
+      : "no region overloads by 100% build-out.") + (tally.stress ? " " + tally.stress + " more overload only in the stress steps." : "");
     return "<p class='q'>Does a sensor respond before the first manhole newly surcharges?" + info("Each row is one region's build-out, in the weather chosen. A tick means a chosen sensor has responded with no surcharge yet: that is a warning. A cross means a manhole has newly surcharged. Ticks must come before crosses. Hover any cell for the detail.") + "</p>" +
+      say(line) +
       "<div class='resctl'>" + caseSelect() + seg("rule", rule, RULE_OPTS) + seg("k", st.k, [[3, "3 sensors"], [5, "5 sensors"], [8, "8 sensors"]]) + "</div>" +
       "<div class='tscroll'><table class='ladder'><thead><tr><th>Region</th>" + lad.map(f => "<th>" + Math.round(f * 100) + "%</th>").join("") + "<th class='lnote'>Reading</th></tr></thead><tbody>" + body + "</tbody></table></div>" +
       "<p class='quiet'>Blue \u2713: responded, no surcharge yet. Red \u2715: newly surcharged, no response. Purple \u2715: newly surcharged, responded too late. 100% is the region's 2041 share; 150% and 300% are stress steps.</p>" +
-      "<div class='kpis'><div><b>" + e.warned + " of " + W.total + "</b>overloads warned, same runs</div><div><b>" + e.plausible_warned + " of " + W.plausible_total + "</b>of those by 100% build-out</div><div><b>" + pc(e.out_case) + "</b>weather case left out</div><div><b>" + pc(e.out_area) + "</b>region left out</div></div>";
+      "<div class='kpis'><div><b>" + e.plausible_warned + " of " + W.plausible_total + "</b>overloads by 100% build-out warned, on the runs the sensors were chosen on</div><div><b>" + e.plausible_unseen_weather + " of " + W.plausible_total + "</b>on unseen weather: chosen without that weather case</div><div><b>" + e.plausible_unseen_region + " of " + W.plausible_total + "</b>on an unseen region: chosen without that region</div><div><b>" + e.warned + " of " + W.total + "</b>on the runs chosen on, adding the 150% and 300% stress steps</div></div>" +
+      sources("warn");
   }
 
   const BAND_ICON = { "runs out": ["bo", "\u25CF"], "uncertain": ["bu", "\u25D0"], "room left": ["br", "\u25CB"], "already over": ["bg", "\u25A0"] };
+  const BAND_LABEL = { "runs out": "Likely to reach the limit", "uncertain": "Could go either way", "room left": "Room left", "already over": "Already past the limit" };
   function roomRow(id, name, e, L) {
     const x = e[L], ic = BAND_ICON[x.band], top = "over " + Math.round(e.top_homes);
     const a = x.homes_p10 == null ? top : String(x.homes_p10), b = x.homes_p90 == null ? top : String(x.homes_p90);
-    return "<tr><th title='" + esc(name) + "'>" + esc(id) + "</th><td class='r'>" + Math.round(e.share_100) + "</td><td><span class='" + ic[0] + "'>" + ic[1] + "</span> " + esc(x.band) +
-      "</td><td class='r'>" + (a === b ? a : a + " to " + b) + "</td><td class='r'>" + e.rise_mm_per_100_homes.toFixed(0) + " mm</td><td class='r'>" + Math.round(x.already_over * 100) + "%</td></tr>";
+    return "<tr><th title='" + esc(name) + "'>" + esc(id) + "</th><td><span class='" + ic[0] + "'>" + ic[1] + "</span> " + esc(BAND_LABEL[x.band]) +
+      "</td><td class='r'>" + (a === b ? a : a + " to " + b) + " <span class='quiet'>(" + Math.round(e.share_100) + " expected)</span></td><td class='r'>" + e.rise_mm_per_100_homes.toFixed(0) + " mm</td><td class='r'>" + Math.round(x.already_over * 100) + "%</td></tr>";
   }
   function roomTab() {
     const C = window.SIM35.capacity, L = RES.limit, areas = C.areas[RES.tag] || {};
     const rows = S().regions.map(r => areas[r.id] ? roomRow(r.id, r.name, areas[r.id], L) : "").join("");
     const sub_ = C.suburb[RES.tag] ? roomRow("Whole suburb", "485 homes across every region at once (56 runs by Ashis Jose Kalathil)", C.suburb[RES.tag], L) : "";
+    const inBand = b => S().regions.filter(r => areas[r.id] && areas[r.id][L].band === b).map(r => r.id);
+    const part = (b, t) => inBand(b).length ? listAnd(inBand(b)) + " " + t : null;
+    const line = "In " + esc(caseLabel()) + ", with pipes limited to " + L + " of their height: " + [part("runs out", inBand("runs out").length > 1 ? "are likely to reach the limit before their 2041 homes arrive" : "is likely to reach the limit before its 2041 homes arrive"),
+      part("uncertain", "could go either way"), part("room left", inBand("room left").length > 1 ? "have room" : "has room"), part("already over", inBand("already over").length > 1 ? "are already past the limit along much of their path" : "is already past the limit along much of its path")].filter(Boolean).join("; ") + ".";
     return "<p class='q'>How many new homes can each region take before growth uses up the buffer on its path?" + info("The path is the region's manholes and everything downstream. A manhole under the limit has buffer. The homes figure is when the first of them reaches the limit, re-read with each manhole's starting level shifted by an assumed error, because the model is uncalibrated: this is why it is a range. The limit is declared, not a standard.") + "</p>" +
+      say(line) +
       "<div class='resctl'>" + caseSelect() + seg("limit", L, C.limits.map(v => [v, "limit " + v])) + "</div>" +
-      "<div class='tscroll'><table class='rtab'><thead><tr><th>Region</th><th class='r'>2041 share</th><th>Band" + info("Runs out: reaches the limit within its 2041 share in at least 80% of draws. Room left: in at most 20%. Already over: no new pipe passes, but 25% or more of the path is past the limit before growth. Otherwise uncertain.") + "</th><th class='r'>Homes to first pipe" + info("10th to 90th percentile of the draws.") + "</th><th class='r'>Rise per 100 homes" + info("The largest rise on the path, at 100% build-out. Steady as growth builds in a given weather, but it changes with the weather. Divide the utility's real buffer by this to read homes directly.") + "</th><th class='r'>Path already over</th></tr></thead><tbody>" + rows + sub_ + "</tbody></table></div>" +
-      "<p class='quiet'>Whole suburb: 56 runs by Ashis Jose Kalathil, growth everywhere at once. Uncalibrated; the limit and the error are assumed.</p>";
+      "<div class='tscroll'><table class='rtab'><thead><tr><th>Region</th><th>" + head("Outlook for its 2041 homes", "does growth use up the buffer?") + info("Likely to reach the limit: within the homes expected by 2041, in at least 80% of draws. Room left: in at most 20%. Already past the limit: no new pipe passes it, but 25% or more of the path is past it before growth. Otherwise, could go either way.") + "</th><th class='r'>" + head("New homes before a pipe reaches the limit", "range, with homes expected by 2041") + info("10th to 90th percentile of the draws: when the first pipe on the path with any buffer left reaches the limit.") + "</th><th class='r'>" + head("Water rise per 100 new homes", "largest rise on the path") + info("The largest rise on the path, at 100% build-out. Steady as growth builds in a given weather, but it changes with the weather. The utility's real buffer on that pipe divided by this gives homes for that pipe; other pipes rise less, so they would take more homes.") + "</th><th class='r'>" + head("Path already past the limit", "share of the path, before growth") + "</th></tr></thead><tbody>" + rows + sub_ + "</tbody></table></div>" +
+      "<p class='quiet'>Whole suburb: 56 runs by Ashis Jose Kalathil, growth everywhere at once.</p>" +
+      sources("room");
   }
 
   function floatTab() {
@@ -1077,11 +1099,17 @@ window.Sim35UI = (function () {
     const cmp = rows.map(r => "<tr><th>" + esc(r.name) + "</th><td class='r'>" + usd(r.budget) + "</td><td class='r'>" + r.in.level + " + " + r.in.float + "</td><td class='r'>" + pc(r.in.worst) + " / " + pc(r.in.average) + "</td><td class='r'>" + pc(r.out.case_mean) + "</td><td class='r'>" + pc(r.out.area) + "</td></tr>").join("");
     const c3 = (x) => x ? pc(x.worst) + " / " + pc(x.average) + " <span class='quiet'>(" + x.level + "+" + x.float + ")</span>" : "n/a";
     const bud = M.budget[key].map(r => "<tr><th class='r'>" + usd(r.budget) + "</th><td class='r'>" + c3(r.level) + "</td><td class='r'>" + c3(r.float) + "</td><td class='r'>" + c3(r.mix) + "</td></tr>").join("");
+    const named = n => rows.find(r => r.name === n);
+    const line = "On weather they were not chosen for, for the same money: <b>" + usd(named("1 level sensor").budget) + "</b> buys 1 level sensor at " + pc(named("1 level sensor").out.case_mean) + ", or floats at " + pc(named("25 floats").out.case_mean) +
+      "; <b>" + usd(named("5 level sensors").budget) + "</b> buys " + named("5 level sensors").in.level + " level sensors at " + pc(named("5 level sensors").out.case_mean) + ", or floats at " + pc(named("125 floats").out.case_mean) + ".";
     return "<p class='q'>Do float switches beat level sensors?" + info("A float earns credit only when it clears its manhole's normal level by " + M.margin + " mm (assumed) and growth carries the water past it. It must also stay quiet on a Design wet day. Prices are assumed, not quotes.") + "</p>" +
+      say(line) +
+      "<p class='quiet'>These tables score seeing growth, not notifying of an overflow, which is what a float is for and which a level sensor can also do. The right mix depends on which job the budget is buying.</p>" +
       "<div class='resctl'>" + seg("score", RES.score, [["detect", "Sees growth"], ["warn", "Warns before surcharge"]]) + seg("rule", RES.rule === "r25" ? "r25" : "r10", RULE_OPTS) + "</div>" +
-      "<div class='tscroll'><table class='rtab'><thead><tr><th>Set</th><th class='r'>Budget</th><th class='r'>Bought: level + float</th><th class='r'>Same runs, worst / average</th><th class='r'>Weather left out" + info("Average share, chosen without the weather case tested. This is where floats fall away: a float's useful height moves with the weather.") + "</th><th class='r'>Region left out</th></tr></thead><tbody>" + cmp + "</tbody></table></div>" +
-      "<h3>By budget, same runs, worst / average</h3><div class='tscroll'><table class='rtab'><thead><tr><th class='r'>Budget</th><th class='r'>Level only</th><th class='r'>Float only</th><th class='r'>Free mix</th></tr></thead><tbody>" + bud + "</tbody></table></div>" +
-      "<p class='quiet'>Prices assumed: " + usd(M.price.level) + " a level sensor, " + usd(M.price.float) + " a float. The solver buys only what adds something, so a float set can stop short of its budget. Same-runs figures flatter every set; read the left-out columns.</p>";
+      "<div class='tscroll'><table class='rtab'><thead><tr><th>Set</th><th class='r'>Budget</th><th class='r'>Bought: level + float</th><th class='r'>" + head("Runs it was chosen on", "worst / average of the wet cases") + "</th><th class='r'>" + head("Unseen weather", "higher is better") + info("Average share, chosen without the weather case tested, then scored on it. This is where floats fall away: a float's useful height moves with the weather.") + "</th><th class='r'>" + head("Unseen region", "higher is better") + info("Share seen in a region, chosen without that region, then scored on it.") + "</th></tr></thead><tbody>" + cmp + "</tbody></table></div>" +
+      "<h3>By budget, on the runs it was chosen on, worst / average</h3><div class='tscroll'><table class='rtab'><thead><tr><th class='r'>Budget</th><th class='r'>Level only</th><th class='r'>Float only</th><th class='r'>Free mix</th></tr></thead><tbody>" + bud + "</tbody></table></div>" +
+      "<p class='quiet'>Prices assumed: " + usd(M.price.level) + " a level sensor, " + usd(M.price.float) + " a float. The solver buys only what adds something, so a float set can stop short of its budget. Scores on the runs a set was chosen on flatter every set; read the unseen columns.</p>" +
+      sources("float");
   }
 
   function minTab() {
@@ -1089,17 +1117,26 @@ window.Sim35UI = (function () {
     const cost = x => usd(x.level * pL + x.float * pF);
     const cellTxt = x => x ? "<td class='r'>" + x.level + " + " + x.float + "</td><td class='r'>" + cost(x) + "</td><td class='r'>" + pc(x.out.case_mean) + " / " + pc(x.out.area) + "</td>" : "<td colspan='3' class='r quiet'>not reachable at any budget</td>";
     const rows = M.tolerance[key].map(r => "<tr><th class='r'>" + pct(r.pass) + "</th>" + cellTxt(r.level) + cellTxt(r.mix) + "</tr>").join("");
+    const reach = M.tolerance[key].filter(r => r.level), top_ = reach[reach.length - 1], eighty = M.tolerance[key].find(r => r.pass === 0.8 && r.level);
+    const scoreName = RES.score === "warn" ? "warn before surcharge in" : "see growth in";
+    const pick = eighty || top_;
+    const line = !pick ? "At the " + (RES.rule === "r25" ? 25 : 10) + " mm rule, no listed pass mark can be reached for this score." :
+      "At the " + (RES.rule === "r25" ? 25 : 10) + " mm rule, to " + scoreName + " at least <b>" + pct(pick.pass) + "</b> of scenarios in the worst wet case takes <b>" + pick.level.level + " level sensors</b> (" + cost(pick.level) + ")" + (eighty ? "." : ". That is the highest listed mark level sensors can reach.");
     return "<p class='q'>What is the fewest sensors that passes?" + info("The cheapest set whose worst wet case reaches the pass mark. The pass mark is the network operator's call: it is what 'enough visibility' means. Then the same pass mark is re-solved without one weather case or region, and scored on it.") + "</p>" +
+      say(line) +
       "<div class='resctl'>" + seg("score", RES.score, [["detect", "Sees growth"], ["warn", "Warns before surcharge"]]) + seg("rule", RES.rule === "r25" ? "r25" : "r10", RULE_OPTS) +
       "<label class='price'>Level $<input type='number' min='1' step='500' data-price='pL' value='" + pL + "'></label><label class='price'>Float $<input type='number' min='1' step='100' data-price='pF' value='" + pF + "'></label></div>" +
-      "<div class='tscroll'><table class='rtab'><thead><tr><th class='r' rowspan='2'>Pass mark</th><th colspan='3' class='c'>Level sensors only</th><th colspan='3' class='c'>Free mix</th></tr><tr><th class='r'>Level + float</th><th class='r'>Cost</th><th class='r'>Left out: weather / region</th><th class='r'>Level + float</th><th class='r'>Cost</th><th class='r'>Left out: weather / region</th></tr></thead><tbody>" + rows + "</tbody></table></div>" +
-      "<p class='quiet'>Prices are assumed, not quotes. Editing them recalculates cost only: the sets were chosen at the default prices. Differences under about 10 points are noise.</p>";
+      "<div class='tscroll'><table class='rtab'><thead><tr><th class='r' rowspan='2'>Pass mark</th><th colspan='3' class='c'>Level sensors only</th><th colspan='3' class='c'>Free mix</th></tr><tr><th class='r'>Level + float</th><th class='r'>Cost</th><th class='r'>" + head("Unseen: weather / region", "higher is better") + "</th><th class='r'>Level + float</th><th class='r'>Cost</th><th class='r'>" + head("Unseen: weather / region", "higher is better") + "</th></tr></thead><tbody>" + rows + "</tbody></table></div>" +
+      "<p class='quiet'>Prices are assumed, not quotes. Editing them recalculates cost only: the sets were chosen at the default prices. Differences under about 10 points are noise.</p>" +
+      sources("min");
   }
+
+  const limitsTab = () => "<div class='docbody'>" + markdown(window.SIM35.limits) + "</div>";
 
   function renderResults() {
     const box = $("#modalBox");
-    const TABS = [["warn", "Warning"], ["room", "Room for homes"], ["float", "Level or float"], ["min", "How many sensors"]];
-    const pane = RES.tab === "warn" ? ladderTab() : RES.tab === "room" ? roomTab() : RES.tab === "float" ? floatTab() : minTab();
+    const TABS = [["warn", "Warning"], ["room", "Room for homes"], ["float", "Level or float"], ["min", "How many sensors"], ["limits", "Limits and next steps"]];
+    const pane = RES.tab === "warn" ? ladderTab() : RES.tab === "room" ? roomTab() : RES.tab === "float" ? floatTab() : RES.tab === "limits" ? limitsTab() : minTab();
     box.innerHTML = CLOSE + "<h2>Results</h2><div class='restabs'>" + TABS.map(([v, t]) => "<button data-tab='" + v + "'" + (v === RES.tab ? " class='on'" : "") + ">" + esc(t) + "</button>").join("") + "</div>" + pane;
     $("#modalClose").onclick = () => { $("#modal").hidden = true; };
     box.querySelectorAll(".restabs button").forEach(b => { b.onclick = () => { RES.tab = b.dataset.tab; renderResults(); }; });
