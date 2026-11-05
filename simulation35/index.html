@@ -360,6 +360,30 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .ressel{background:var(--panel2,#16233a); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font:inherit; font-size:12.5px; max-width:100%}
 .price{font-size:12px; color:var(--dim)} .price input{width:78px; margin-left:4px; background:transparent; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:4px 6px; font:inherit}
 .tscroll{overflow-x:auto}
+.covknob button{padding:5px 10px; white-space:nowrap}
+.resctl .covknob{width:auto; margin:0}
+.resctl input[type=range]{width:150px; vertical-align:middle; accent-color:var(--accent)}
+#covKv{color:var(--ink); display:inline-block; min-width:2ch}
+.covgrid{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:12px; margin-top:12px}
+.covmap,.covchart{position:relative}
+#covSvg,#covPlot{width:100%; height:auto; display:block}
+.covpin{cursor:pointer}
+.covlegend{display:flex; flex-wrap:wrap; gap:4px 12px; font-size:11.5px; color:var(--dim); margin:6px 0}
+.covlegend i{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; box-sizing:border-box}
+.covlegend svg{margin-right:5px; vertical-align:-1px}
+.covdetail{font-size:12.5px; color:var(--dim); margin:0 0 8px; min-height:3.6em}
+.covdetail b{color:var(--ink)}
+.covlist{max-height:430px; overflow:auto; border-top:1px solid var(--line)}
+.covlist thead th{position:sticky; top:0; background:var(--panel)}
+.covrow{cursor:pointer}
+.covrow:hover td{background:rgba(57,135,229,.1)}
+.covrow.sel td{background:rgba(57,135,229,.24)}
+.covsw{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:6px; transform:rotate(45deg)}
+.covtip{position:absolute; pointer-events:none; background:#0b1220; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:12px; max-width:300px; z-index:5; box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.covgl{stroke:rgba(255,255,255,.08)}
+.covax{fill:var(--dim); font-size:12px}
+.covlab{fill:var(--ink); font-size:12.5px; font-weight:600}
+.covcross{stroke:var(--dim); stroke-width:1}
 .say{background:#141d2b; border-left:3px solid var(--accent); border-radius:4px; padding:8px 11px; margin:0 0 12px; font-size:13.5px; color:var(--ink); line-height:1.45}
 .thsub{display:block; font-weight:400; color:var(--faint); font-size:11px; margin-top:1px}
 .src{margin-top:14px; padding-top:10px; border-top:1px solid var(--line); font-size:12px; color:var(--dim); line-height:1.5}
@@ -568,8 +592,8 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 <script src="../simulation3/growth_3d.js?v=9"></script>
 <script src="../simulation3/osp_core.js?v=9"></script>
 <script src="../simulation3/placement.js?v=9"></script>
-<script src="data/sim35.js?v=3"></script>
-<script src="sim35_ui.js?v=3"></script>
+<script src="data/sim35.js?v=4"></script>
+<script src="sim35_ui.js?v=4"></script>
 <script type="module">
   Sim35UI.init();
 </script>
