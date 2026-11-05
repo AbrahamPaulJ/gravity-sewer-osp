@@ -26,6 +26,7 @@
     "sim1": false,
     "sim2": false,
     "sim35": true,
+    "coverage": true,
     "sim3": true,
     "sim3e": false,
     "sim25": true,
