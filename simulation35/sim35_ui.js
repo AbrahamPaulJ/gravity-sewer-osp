@@ -42,13 +42,65 @@ window.Sim35UI = (function () {
   // blinking cyan sleeves, and it alone has a label at its centre. The colours below are for
   // the "Regions" view only: a quick look at how the suburb is divided, with every result colour
   // off while it is on.
-  const REGION_COLS = ["#3987e5", "#d55181", "#199e70", "#b06ad6", "#9ba33a", "#b08457", "#6a5acd", "#e39bb6"];
-  const regionCol = ri => REGION_COLS[ri % REGION_COLS.length];
+  // Fixed by region id, not list position. Regions that touch on the map were checked pair by pair for colour
+  // blindness; R7, the leftovers, is a dark grey so the seven named regions stand out against it. No amber: that is the pump mains' colour.
+  const REGION_COLS = { R1: "#3987e5", R2: "#d95926", R3: "#008300", R4: "#e87ba4", R5: "#199e70", R6: "#39c5cf", R7: "#5b6470", R8: "#9085e9" };
+  const regionCol = ri => REGION_COLS[S().regions[ri].id] || "#5b6470";
   const SIZES_TIP = "The size of the new estate, all of it draining into the sewer at the chosen manhole. 10, 30, 80 and 150 homes are realistic: one year of the whole council's growth landing at one point is about 30 to 80 homes, one apartment project 50 to 150. 700 is a stress case, roughly a decade of the council's growth in one place, kept as an upper bound and not a plausible development. For scale, the state projection (PlanSA, 2021 to 2041) is 390 to 485 new dwellings over twenty years for the whole council; the infill family spreads that figure over the regions, and Sim 2.5's corridor runs placed exactly 390 and 485 along Walkerville Terrace, where the state expects them.";
   // Region indices in the order of their ids (R1, R2, ...), for the dropdown and the chips;
   // the data lists them in another order.
   const regionOrder = () => S().regions.map((r, i) => i).sort((a, b) => String(S().regions[a].id).localeCompare(String(S().regions[b].id), undefined, { numeric: true }));
   const strip = html => String(html).replace(/<[^>]+>/g, "");
+  /* Which region every point on the map is drawn in. The data lists manholes only, so a pipe run with no manhole at
+     either end had no colour and fell back to the default blue. A manhole shared by two regions keeps the first
+     listed, as its pipes do. A point with no manhole takes the region of the manhole upstream of it, or, at the head
+     of a line, the region it drains to. labelAt: the manhole for a region's label, the most central one in its
+     largest connected piece, so a label always sits on its own region. */
+  let _paint = null;
+  function regionPaint() {
+    if (_paint) return _paint;
+    const g = G(), N = g.nodes.length, of = new Array(N).fill(-1), idx = {}, out = g.nodes.map(() => []);
+    g.nodes.forEach((nd, a) => { idx[nd.name] = a; });
+    for (let p = 0; p < g.nPipes; p++) out[g.up[p]].push(p);
+    S().regions.forEach((r, ri) => r.manholes.forEach(i => { const a = idx[nameOf(i)]; if (of[a] < 0) of[a] = ri; }));
+    for (let a = 0; a < N; a++) {
+      if (g.nodes[a].kind === "inline" || of[a] < 0) continue;
+      const stack = [a];
+      while (stack.length) out[stack.pop()].forEach(p => {
+        const d = g.down[p];
+        if (of[d] < 0 && g.nodes[d].kind === "inline") { of[d] = of[a]; stack.push(d); }
+      });
+    }
+    for (let a = 0; a < N; a++) {
+      if (of[a] >= 0 || g.nodes[a].kind !== "inline") continue;
+      const path = [a], seen = new Set();
+      let cur = a;
+      while (of[cur] < 0 && out[cur].length && !seen.has(cur)) { seen.add(cur); cur = g.down[out[cur][0]]; path.push(cur); }
+      if (of[cur] >= 0) path.forEach(x => { of[x] = of[cur]; });
+    }
+    // Pipes take the colour growth_3d.js gives them: the downstream end's, else the upstream end's.
+    const pipeRegion = p => of[g.down[p]] >= 0 ? of[g.down[p]] : of[g.up[p]];
+    const pieces = [], labelAt = [];
+    S().regions.forEach((r, ri) => {
+      const parent = {};
+      const find = x => { while (parent[x] !== undefined && parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+      for (let p = 0; p < g.nPipes; p++) if (pipeRegion(p) === ri) { const u = find(g.up[p]), d = find(g.down[p]); parent[u] = u; parent[d] = d; if (u !== d) parent[u] = d; }
+      const groups = {};
+      Object.keys(parent).forEach(k => { const root = find(+k); (groups[root] = groups[root] || []).push(+k); });
+      const list = Object.values(groups);
+      const own = n => n.filter(a => of[a] === ri && g.nodes[a].kind === "chamber");
+      const big = list.reduce((b, c) => own(c).length > own(b).length ? c : b, list[0] || []);
+      const pts = own(big), cx = pts.reduce((t, a) => t + g.nodes[a].x, 0) / (pts.length || 1), cy = pts.reduce((t, a) => t + g.nodes[a].y, 0) / (pts.length || 1);
+      const at = pts.reduce((b, a) => Math.hypot(g.nodes[a].x - cx, g.nodes[a].y - cy) < Math.hypot(g.nodes[b].x - cx, g.nodes[b].y - cy) ? a : b, pts[0]);
+      pieces.push(list.length);
+      labelAt.push(at === undefined ? nameOf(r.manholes[0]) : g.nodes[at].name);
+    });
+    let unpainted = 0;
+    for (let p = 0; p < g.nPipes; p++) if (pipeRegion(p) < 0) unpainted++;
+    _paint = { regionOfNode: of, labelAt, pieces, unpainted };
+    window.SIM35.regionPaint = { pieces, unpainted };                  // read by tools/verify_sim35_web.js
+    return _paint;
+  }
   const FAM_NOTE = {
     infill: "New homes spread through one region in proportion to the homes already there. The region's 100% is its share of the planning projection for the whole council area (" + S().anchor + " dwellings by 2041).",
     one: "A new estate joining the sewer at one manhole, all its flow entering there. Click a manhole to move it.",
@@ -251,18 +303,18 @@ window.Sim35UI = (function () {
     }
     if (st.areasView) {
       const tints = {};
-      S().regions.forEach((r, ri) => r.manholes.forEach(i => { tints[nameOf(i)] = regionCol(ri); }));
+      regionPaint().regionOfNode.forEach((ri, a) => { if (ri >= 0) tints[G().nodes[a].name] = regionCol(ri); });
       Growth3D.setRegionTints(tints);
       Growth3D.paint({}, null, [], null);
       Growth3D.setPulse([]);
-      Growth3D.setRegionLabels(S().regions.map((r, ri) => ({ names: r.manholes.map(nameOf), text: r.id, col: regionCol(ri) })));
+      Growth3D.setRegionLabels(S().regions.map((r, ri) => ({ names: [regionPaint().labelAt[ri]], text: r.id, col: regionCol(ri) })));
       Growth3D.setSpills([], []);
     } else {
       Growth3D.setRegionTints(null);
       Growth3D.paint(named, site, sensors, heatValues());
       if (st.fam === "infill") {
         Growth3D.setPulse(region().manholes.map(nameOf));
-        Growth3D.setRegionLabels([{ names: region().manholes.map(nameOf), text: region().id, col: "#00d4ff" }]);
+        Growth3D.setRegionLabels([{ names: [regionPaint().labelAt[st.region]], text: region().id, col: "#00d4ff" }]);
       } else { Growth3D.setPulse([]); Growth3D.setRegionLabels([]); }
       Growth3D.setSpills(spillsBefore, spillsNew);
     }
@@ -438,7 +490,8 @@ window.Sim35UI = (function () {
     on("#ruleKnob", b => { st.rule = b.dataset.r; repaint(); });
     $("#toggleLegend").onclick = () => { st.legend = !st.legend; legendGroups(); };
     $("#toggleAreas").onclick = () => { st.areasView = !st.areasView; legendGroups(); repaint(); };
-    $("#areasKeyList").innerHTML = regionOrder().map(i => { const r = S().regions[i]; return '<span><span class="k" style="background:' + regionCol(i) + '"></span>' + esc(r.id + " " + shortName(r)) + "</span>"; }).join("");
+    $("#areasKeyList").innerHTML = regionOrder().map(i => { const r = S().regions[i]; return '<span><span class="k" style="background:' + regionCol(i) + '"></span>' + esc(r.id + " " + shortName(r)) + "</span>"; }).join("") +
+      '<span class="quiet">R7 is what the others leave, so it is in ' + regionPaint().pieces[S().regions.findIndex(r => r.id === "R7")] + " separate pieces.</span>";
     on("#addKnob", b => { st.add = +b.dataset.i; repaint(); });
     on("#methKnob", b => { st.method = b.dataset.m; st.pickedGreedy = b.dataset.m === "greedy"; repaint(); });
     on("#objKnob", b => { st.obj = b.dataset.o; repaint(); });
@@ -1004,13 +1057,14 @@ window.Sim35UI = (function () {
     };
     apply();
   }
-  // Every document opens in the one popup: About (the scenario), Assumptions, Findings.
+  // Documents open in the one popup: About (the scenario) and Assumptions. Findings is a tab of Results.
   const CLOSE = '<button class="close" id="modalClose" title="Close (Esc)">&times;</button>';
   function showDoc(kind) {
+    if (kind !== "ref") { RES.tab = "findings"; return showResults(); }   // old #open=qa links, and a presenter on that tab
     const box = $("#modalBox");
     box.classList.add("wide");
-    box.innerHTML = CLOSE + '<div class="docbody">' + (kind === "ref" ? refHtml() : markdown(window.SIM35.findings) + markdown(IDX().docs.findings)) + "</div>";
-    if (kind === "ref") wireRegister(box.querySelector(".docbody .regBody"));
+    box.innerHTML = CLOSE + '<div class="docbody">' + refHtml() + "</div>";
+    wireRegister(box.querySelector(".docbody .regBody"));
     $("#modal").hidden = false;
     box.scrollTop = 0;
     $("#modalClose").onclick = () => { $("#modal").hidden = true; };
@@ -1325,10 +1379,11 @@ window.Sim35UI = (function () {
     plot.addEventListener("mouseleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
   }
 
+  const findingsTab = () => '<div class="docbody">' + markdown(window.SIM35.findings) + markdown(IDX().docs.findings) + "</div>";
   function renderResults() {
     const box = $("#modalBox");
-    const TABS = [["warn", "Warning"], ["room", "Room for homes"], ["float", "Level or float"], ["min", "How many sensors"], ["cover", "Sensor coverage"], ["limits", "Limits and next steps"]];
-    const pane = RES.tab === "warn" ? ladderTab() : RES.tab === "room" ? roomTab() : RES.tab === "float" ? floatTab() : RES.tab === "limits" ? limitsTab() : RES.tab === "cover" ? coverTab() : minTab();
+    const TABS = [["warn", "Warning"], ["room", "Room for homes"], ["float", "Level or float"], ["min", "How many sensors"], ["cover", "Sensor coverage"], ["limits", "Limits and next steps"], ["findings", "Findings"]];
+    const pane = RES.tab === "warn" ? ladderTab() : RES.tab === "room" ? roomTab() : RES.tab === "float" ? floatTab() : RES.tab === "limits" ? limitsTab() : RES.tab === "cover" ? coverTab() : RES.tab === "findings" ? findingsTab() : minTab();
     box.innerHTML = CLOSE + "<h2>Results</h2><div class='restabs'>" + TABS.map(([v, t]) => "<button data-tab='" + v + "'" + (v === RES.tab ? " class='on'" : "") + ">" + esc(t) + "</button>").join("") + "</div>" + pane;
     $("#modalClose").onclick = () => { $("#modal").hidden = true; };
     box.querySelectorAll(".restabs button").forEach(b => { b.onclick = () => { RES.tab = b.dataset.tab; renderResults(); }; });
@@ -1519,7 +1574,6 @@ window.Sim35UI = (function () {
     $("#btn-results").onclick = showResults;
     { const h = new URLSearchParams(location.hash.slice(1)); if (h.get("results")) { RES.tab = h.get("results"); if (h.get("rescase")) RES.tag = h.get("rescase"); setTimeout(showResults, 400); } }
     $("#tab-ref").onclick = () => showDoc("ref");
-    $("#tab-qa").onclick = () => showDoc("qa");
     $("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").hidden = true; };
     document.addEventListener("keydown", e => { if (e.key === "Escape") { $("#modal").hidden = true; closeDDs(); } });
     // The (i) bubble: one fixed box, placed under the icon and kept inside the window.
