@@ -1267,7 +1267,7 @@ window.Sim35UI = (function () {
       $("#covRows").innerHTML = sensors.map(s => "<tr class='covrow" + (sel === s.r ? " sel" : "") + "' data-r='" + s.r + "'><td><span class='covsw' style='background:" + (COV.m === "who" ? color(s.r) : "#e7edf7") + "'></span>S" + (s.r + 1) + " <span class='quiet'>" + esc(nameOf(s.c).replace("MH", "")) + "</span></td><td>" + esc(regionOf.has(s.c) ? regs[regionOf.get(s.c)].id : "") + "</td><td>" + (s.sees.length ? s.sees.map(ri => regs[ri].id).join(", ") : "<span class='quiet'>none</span>") + "</td><td class='r'>" + s.only + "</td></tr>").join("");
       $$("#covRows tr").forEach(tr => { tr.onclick = () => select(+tr.dataset.r); });
       const s = sel != null ? sensors[sel] : null;
-      $("#covDetail").innerHTML = s ? "<b>S" + (sel + 1) + "</b> sits in " + esc(regs[regionOf.get(s.c)].id) + " and sees growth in " + (s.sees.length ? "<b>" + s.sees.map(ri => regs[ri].id).join(", ") + "</b>" : "no region") + " at " + stepTxt + "." + (s.sees.length > 1 ? " A sensor near the trunk main sees several regions, because branches drain through it." : "") : "Click a sensor to see every region it covers.";
+      $("#covDetail").innerHTML = s ? "<b>S" + (sel + 1) + "</b> sits in " + esc(regs[regionOf.get(s.c)].id) + " and sees growth in " + (s.sees.length ? "<b>" + s.sees.map(ri => regs[ri].id).join(", ") + "</b>" : "no region") + " at " + stepTxt + "." + (s.sees.length > 1 ? " A sensor can respond in two ways: the new flow passes it, or water backs up to it from a fuller pipe downstream." : "") : "Click a sensor to see every region it covers.";
     }
     dots.forEach(g => {
       g.addEventListener("mousemove", e => {
