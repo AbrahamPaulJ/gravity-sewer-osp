@@ -69,6 +69,11 @@ window.Sim3UI = (function () {
   /* ------------------------------------------------------------- index spaces */
   const names = () => R().chambers;                 // chamber index -> SWMM name "MH<id>"
   const nameOf = i => R().chambers[i];
+  // Greenfield: an estate joins at a network-edge manhole or a main of 225 mm or more
+  // (eligibleSites, from tools/greenfield_filter.py). Without the list, every manhole.
+  let gfSet = null;
+  const gfOK = i => { const e = R().eligibleSites; if (!e) return true; gfSet = gfSet || new Set(e); return gfSet.has(i); };
+  const GF_NO = "Not a greenfield connection point: estates join at the network edge or a main of 225 mm or more";
   const mhOf = i => R().manholeIds[i];
   const label = i => "MH " + mhOf(i);
   const idxOfName = {};
@@ -305,7 +310,7 @@ window.Sim3UI = (function () {
       row("#1f4fff", "<strong>" + r.here + "</strong> reach it first" + (r.here > r.direct ? " (" + (r.here - r.direct) + " via unrecorded pipe ends)" : ""), true),
       row("#7dc4e0", "<strong>" + r.through + "</strong> drain through it from further up"),
       row("#3a2430", "<strong>" + r.elsewhere + "</strong> elsewhere"),
-      st.hover ? (st.fam === "one" ? "Click to move the growth here" : "Click to inspect it") : "");
+      st.hover ? (st.fam === "one" ? (st.hover in idxOfName && !gfOK(idxOfName[st.hover]) ? GF_NO : "Click to move the growth here") : "Click to inspect it") : "");
   }
   const shortName = reg => reg.name.split(":")[0];
 
@@ -378,7 +383,7 @@ window.Sim3UI = (function () {
     const desc = String(reg.name).split(":").slice(1).join(":").trim();
     $("#whereSel").title = st.fam === "infill" ? reg.name : "";
     $("#whereHint").textContent = st.fam === "infill" ? (desc ? desc.charAt(0).toUpperCase() + desc.slice(1) + "; " : "") + reg.dwellings + " homes, " + reg.nManholes + " manholes today"
-      : st.fam === "one" ? (st.site != null ? "At " + label(st.site) + ". Click another manhole to move it." : "Click a manhole on the map to place it.")
+      : st.fam === "one" ? (st.site != null ? "At " + label(st.site) + ". Click another manhole to move it." : "Click a manhole at the network edge or on a 225 mm+ main to place it.")
       : "No homes added. Amber manholes are over the alarm already.";
     const how = $("#howStep");
     if (st.fam === "infill") {
@@ -613,7 +618,7 @@ window.Sim3UI = (function () {
       return;
     }
     if (st.fam === "one") {
-      if (st.site == null) { el.innerHTML = '<span class="tag">Greenfield</span>Click a manhole to place the new estate there.'; return; }
+      if (st.site == null) { el.innerHTML = '<span class="tag">Greenfield</span>Click a manhole at the network edge or on a 225 mm+ main to place the new estate there.'; return; }
       const cl = cell(), row = rowFor(cl, st.site), tipped = row ? row.tip : [], chosen = placement().chosen, caught = chosen.filter(i => tipped.includes(i));
       el.innerHTML = '<span class="tag">Greenfield</span><b>' + R().growthLevels[st.add] + " dwellings</b> joining at <b>" + esc(label(st.site)) + "</b> in " + wx + ": " +
         (tipped.length ? "<b>" + tipped.length + "</b> manhole" + (tipped.length === 1 ? "" : "s") + " see it" : "no manhole passes the rule") + ". " +
@@ -1020,7 +1025,7 @@ window.Sim3UI = (function () {
     const Rr = R(), sel = $("#site");
     const homes = i => { const r = Growth3D.reach(nameOf(i)); return r ? r.here : (Rr.dwellingsAt[i] || 0); };
     const n = Rr.chambers.map((_, i) => homes(i));
-    const order = Rr.chambers.map((_, i) => i).sort((a, b) => n[b] - n[a]);
+    const order = Rr.chambers.map((_, i) => i).filter(gfOK).sort((a, b) => n[b] - n[a]);
     sel.innerHTML = '<option value="">No manhole selected</option>' + order.map(i => "<option value=" + JSON.stringify(String(i)) + ">" + esc(label(i)) + "  (" + n[i] + " homes)</option>").join("");
     return order;
   }
@@ -1112,7 +1117,7 @@ window.Sim3UI = (function () {
     if (hp.get("rule") && ruleOf(hp.get("rule"))) st.rule = hp.get("rule");
     if (hp.get("k")) st.k = Math.max(1, Math.min(10, +hp.get("k") || st.k));
     if (hp.get("method") === "greedy" || hp.get("method") === "risk") st.method = hp.get("method");
-    if (hp.get("site") != null && names()[+hp.get("site")]) st.site = +hp.get("site");
+    if (hp.get("site") != null && names()[+hp.get("site")] && gfOK(+hp.get("site"))) st.site = +hp.get("site");
     if (st.fam === "one" && st.method === "exact") st.method = "greedy";
     if (st.view === "simple") st.rule = "r10";
     if (hp.get("areas") === "1") st.areasView = true;
@@ -1123,7 +1128,7 @@ window.Sim3UI = (function () {
       if (!nd) { st.pick = null; if (st.fam === "one" && st.site != null) st.site = null; repaint(); return; }
       if (!(nd.name in idxOfName)) return;
       const i = idxOfName[nd.name];
-      if (st.fam === "one") { st.site = i; st.pick = null; }
+      if (st.fam === "one") { if (!gfOK(i)) return; st.site = i; st.pick = null; }
       else st.pick = nd.name;          // inspect it; the selected area stays (23 Oct 2026)
       repaint();
     }, nd => {
