@@ -56,28 +56,36 @@ window.Sim35UI = (function () {
      listed, as its pipes do. A point with no manhole takes the region of the manhole upstream of it, or, at the head
      of a line, the region it drains to. labelAt: the manhole for a region's label, the most central one in its
      largest connected piece, so a label always sits on its own region. */
-  let _paint = null;
-  function regionPaint() {
-    if (_paint) return _paint;
-    const g = G(), N = g.nodes.length, of = new Array(N).fill(-1), idx = {}, out = g.nodes.map(() => []);
-    g.nodes.forEach((nd, a) => { idx[nd.name] = a; });
+  let _paint = null, _owner = null;
+  // For every point on the map, the node of the manhole it is drawn with (-1 for an outfall).
+  function nodeOwner() {
+    if (_owner) return _owner;
+    const g = G(), N = g.nodes.length, own = new Array(N).fill(-1), out = g.nodes.map(() => []);
     for (let p = 0; p < g.nPipes; p++) out[g.up[p]].push(p);
-    S().regions.forEach((r, ri) => r.manholes.forEach(i => { const a = idx[nameOf(i)]; if (of[a] < 0) of[a] = ri; }));
+    g.nodes.forEach((nd, a) => { if (nd.kind === "chamber") own[a] = a; });
     for (let a = 0; a < N; a++) {
-      if (g.nodes[a].kind === "inline" || of[a] < 0) continue;
+      if (g.nodes[a].kind !== "chamber") continue;
       const stack = [a];
       while (stack.length) out[stack.pop()].forEach(p => {
         const d = g.down[p];
-        if (of[d] < 0 && g.nodes[d].kind === "inline") { of[d] = of[a]; stack.push(d); }
+        if (own[d] < 0 && g.nodes[d].kind === "inline") { own[d] = a; stack.push(d); }
       });
     }
     for (let a = 0; a < N; a++) {
-      if (of[a] >= 0 || g.nodes[a].kind !== "inline") continue;
+      if (own[a] >= 0 || g.nodes[a].kind !== "inline") continue;
       const path = [a], seen = new Set();
       let cur = a;
-      while (of[cur] < 0 && out[cur].length && !seen.has(cur)) { seen.add(cur); cur = g.down[out[cur][0]]; path.push(cur); }
-      if (of[cur] >= 0) path.forEach(x => { of[x] = of[cur]; });
+      while (own[cur] < 0 && out[cur].length && !seen.has(cur)) { seen.add(cur); cur = g.down[out[cur][0]]; path.push(cur); }
+      if (own[cur] >= 0) path.forEach(x => { own[x] = own[cur]; });
     }
+    return (_owner = own);
+  }
+  function regionPaint() {
+    if (_paint) return _paint;
+    const g = G(), N = g.nodes.length, of = new Array(N).fill(-1), byChamber = {}, idx = {};
+    g.nodes.forEach((nd, a) => { idx[nd.name] = a; });
+    S().regions.forEach((r, ri) => r.manholes.forEach(i => { const a = idx[nameOf(i)]; if (byChamber[a] === undefined) byChamber[a] = ri; }));
+    nodeOwner().forEach((o, a) => { if (o >= 0 && byChamber[o] !== undefined) of[a] = byChamber[o]; });
     // Pipes take the colour growth_3d.js gives them: the downstream end's, else the upstream end's.
     const pipeRegion = p => of[g.down[p]] >= 0 ? of[g.down[p]] : of[g.up[p]];
     const pieces = [], labelAt = [];
@@ -117,6 +125,7 @@ window.Sim35UI = (function () {
     hover: null, pick: null,            // hovered / clicked manhole NAME for the right panel
     legend: false,                      // the colour key, off until asked for
     areasView: false,                   // every region in its colour, nothing else
+    coverView: false,                   // the map coloured by which sensor sees growth where
     rb: true, lb: true, top: true,      // right panel, left panel, top bar shown
     words: true,                        // the summary bubble on the map open
   };
@@ -309,6 +318,8 @@ window.Sim35UI = (function () {
       Growth3D.setPulse([]);
       Growth3D.setRegionLabels(S().regions.map((r, ri) => ({ names: [regionPaint().labelAt[ri]], text: r.id, col: regionCol(ri) })));
       Growth3D.setSpills([], []);
+    } else if (coverOn()) {
+      paintCover(site, sensors);
     } else {
       Growth3D.setRegionTints(null);
       Growth3D.paint(named, site, sensors, heatValues());
@@ -326,6 +337,7 @@ window.Sim35UI = (function () {
     renderPanel();
     renderSide();
     renderSensors();
+    renderCover();
     renderWords();
     $("#heatKey").hidden = !st.showHeat;
     $("#heatWhich").textContent = (st.obj === "worst" ? "worst of the " : "average of the ") + famCases().length +
@@ -344,6 +356,7 @@ window.Sim35UI = (function () {
     let spec, lead;
     if (st.areasView) spec = { mode: "none" };
     else if (st.hover) { spec = { mode: "site", name: st.hover }; lead = "Homes behind " + esc(mhName(st.hover)); }
+    else if (coverOn()) spec = { mode: "none" };
     else if (st.fam === "infill") spec = { mode: "region", names: region().manholes.map(nameOf) };
     else if (st.showSensors && sensors.length && st.fam !== "one") spec = { mode: "sensors", names: sensors };
     else if (st.fam === "one" && st.site != null) { spec = { mode: "site", name: nameOf(st.site) }; lead = "Homes behind " + esc(label(st.site)); }
@@ -489,7 +502,12 @@ window.Sim35UI = (function () {
     buildStrip();
     on("#ruleKnob", b => { st.rule = b.dataset.r; repaint(); });
     $("#toggleLegend").onclick = () => { st.legend = !st.legend; legendGroups(); };
-    $("#toggleAreas").onclick = () => { st.areasView = !st.areasView; legendGroups(); repaint(); };
+    $("#toggleAreas").onclick = () => { st.areasView = !st.areasView; if (st.areasView) st.coverView = false; legendGroups(); repaint(); };
+    $("#toggleCover").onclick = () => {
+      st.coverView = !st.coverView;
+      if (st.coverView) { st.areasView = false; st.pick = null; if (!st.rb) setFold("rb", true); }
+      legendGroups(); repaint();
+    };
     $("#areasKeyList").innerHTML = regionOrder().map(i => { const r = S().regions[i]; return '<span><span class="k" style="background:' + regionCol(i) + '"></span>' + esc(r.id + " " + shortName(r)) + "</span>"; }).join("") +
       '<span class="quiet">R7 is what the others leave, so it is in ' + regionPaint().pieces[S().regions.findIndex(r => r.id === "R7")] + " separate pieces.</span>";
     on("#addKnob", b => { st.add = +b.dataset.i; repaint(); });
@@ -537,6 +555,8 @@ window.Sim35UI = (function () {
         "in reality the dwellings arrive over three to five years, which is why the time-to-notice figures matter as much as the millimetres.";
     }
     $("#objKnob").style.display = st.fam !== "one" && st.method !== "greedy" ? "none" : "";
+    $("#methKnob").style.display = st.fam === "one" ? "none" : "";      // the greenfield grid publishes greedy only, so there is nothing to choose
+    $("#methNote").hidden = st.fam !== "one";
     const hasRisk = st.fam !== "one" && !!((S().rules[st.rule] || {}).risk);
     $("#methRisk").hidden = !hasRisk;
     if (!hasRisk && st.method === "risk") st.method = "exact";
@@ -689,6 +709,16 @@ window.Sim35UI = (function () {
   /* ------------------------------------------------------------ right panel */
   function renderSide() {
     const box = $("#mhFacts");
+    if (st.coverView) {
+      $("#rightSensors").hidden = true;
+      $("#rightCover").hidden = !!st.pick;
+      if (!st.pick) { box.innerHTML = ""; return; }
+      renderManhole(box, st.pick);
+      box.insertAdjacentHTML("afterbegin", '<button id="rbBack">&#9664; Back to coverage</button>');
+      $("#rbBack").onclick = () => { st.pick = null; repaint(); };
+      return;
+    }
+    $("#rightCover").hidden = true;
     if (st.view === "simple") {
       const show = st.pick || (st.fam === "one" && st.site != null ? nameOf(st.site) : null);
       $("#rightSensors").hidden = !!show;
@@ -869,7 +899,7 @@ window.Sim35UI = (function () {
   function renderCurve() {
     const el = $("#curve");
     if (st.view !== "expert") { el.innerHTML = ""; return; }
-    let series = [];
+    let series = [], note = "";
     if (st.fam !== "one") {
       const rr = S().rules[st.rule];
       if (!rr) { el.innerHTML = ""; return; }
@@ -877,9 +907,13 @@ window.Sim35UI = (function () {
       series = [{ name: "Exact, worst case", col: "var(--worst)", v: ex.map(e => e.worst) },
                 { name: "Exact, average", col: "var(--mean)", v: ex.map(e => e.average) },
                 { name: "Greedy, worst case", col: "var(--greedy)", v: gr.map(c => c.worst), dash: true }];
+      if (st.method === "warn" && WARN(st.rule)) series.push({ name: "Warn before surcharge, worst case", col: "var(--selset)", v: WARN(st.rule).sets.map(e => e.detect_worst) });
+      if (st.method === "risk" && rr.risk && rr.risk.compare) series.push({ name: "Risk-weighted, worst case", col: "var(--selset)", v: rr.risk.compare.slice().sort((a, b) => a.k - b.k).map(c => c.risk_set.plain) });
+      note = "Selected set: " + methodName() + ".";
     } else {
       const pl = R().sensors[st.rule][st.obj];
-      series = [{ name: "Worst case", col: "var(--worst)", v: pl.worst }, { name: "Average", col: "var(--mean)", v: pl.mean }];
+      series = [{ name: "Greedy, worst case", col: "var(--worst)", v: pl.worst }, { name: "Greedy, average", col: "var(--mean)", v: pl.mean }];
+      note = "Greedy: each sensor is the one that most raises the " + (st.obj === "worst" ? "worst case" : "average") + ". Greenfield publishes greedy only.";
     }
     series = series.filter(s => s.v && s.v.length);
     if (!series.length) { el.innerHTML = ""; return; }
@@ -890,6 +924,7 @@ window.Sim35UI = (function () {
     const grid = [0, 0.5, 1].map(v => '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="#22314d"/><text x="' + (L - 5) + '" y="' + (y(v) + 3.5) + '" text-anchor="end" font-size="10" fill="#6f81a3">' + (v * 100) + "%</text>").join("");
     const ticks = Array.from({ length: n }, (_, i) => '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="' + (i === k - 1 ? "#e7edf7" : "#6f81a3") + '">' + (i + 1) + "</text>").join("");
     el.innerHTML = '<div class="lg">' + series.map(s => "<span><i style=\"background:" + s.col + '"></i>' + esc(s.name) + "</span>").join("") + "</div>" +
+      '<p class="quiet" id="curveNote">' + esc(note) + "</p>" +
       '<svg viewBox="0 0 ' + W + " " + (H + 10) + '" role="img" aria-label="Share of detectable growth caught against number of sensors">' + grid +
       '<line x1="' + x(k - 1) + '" x2="' + x(k - 1) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="#a9b8d4" stroke-dasharray="3 3"/>' +
       series.map(s => '<path d="' + line(s.v) + '" fill="none" stroke="' + s.col + '" stroke-width="2"' + (s.dash ? ' stroke-dasharray="4 3"' : "") + "/>" +
@@ -1187,194 +1222,149 @@ window.Sim35UI = (function () {
 
   const limitsTab = () => "<div class='docbody'>" + markdown(window.SIM35.limits) + "</div>";
 
-  /* ------------------------------------------------------------------ Sensor coverage. The map and chart design are after
-     Siddhartha Balanagu's coverage view; the logic is this page's: the region runs, the left panel's sensors, the same rules. */
-  const COV = { view: "map", step: 4, m: "who", sel: null };
-  const COV_COL = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];   // validated on the panel colour
+  /* ------------------------------------------------------------------ Sensor coverage, on the main map. The idea and chart
+     design are after Siddhartha Balanagu's coverage view; the logic is this page's: whatever the left panel has selected
+     (growth type, build-out or estate size, weather, rule, method, number of sensors) decides what is painted. */
+  const COV = { m: "who", sel: null };
+  const COV_COL = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
   const COV_SEQ = ["#184f95", "#3987e5", "#9ec5f4"], COV_LEVEL = "#3987e5", COV_FLOAT = "#c98500";
-  const NS = "http://www.w3.org/2000/svg";
-  const covRule = () => RES.rule === "r25" ? "r25" : "r10";
-  const coverTab = () => "<p class='q'>Which sensor sees growth in which region?" + info("Each dot is a manhole, coloured by the first sensor that sees growth in its region. These are the left panel's sensors, on the same runs as the other tabs. Click a sensor or a table row to see every region it covers.") + "</p>" +
-    "<p class='say' id='covSay'></p>" +
-    "<div class='resctl'><div class='knob covknob' id='covView'><button data-v='map'>Coverage map</button><button data-v='curve'>Level and float curves</button></div>" +
-    "<div class='knob covknob' id='covRule'>" + RULE_OPTS.map(([v, t]) => "<button data-v='" + v + "'>" + esc(t) + "</button>").join("") + "</div></div>" +
-    "<div id='covBody'></div>" + sources("cover");
-
-  function wireCover() {
-    const paint = () => {
-      $$("#covView button").forEach(b => b.classList.toggle("on", b.dataset.v === COV.view));
-      $$("#covRule button").forEach(b => b.classList.toggle("on", b.dataset.v === covRule()));
-      if (COV.view === "map") coverMap(); else coverCurve();
-    };
-    $$("#covView button").forEach(b => { b.onclick = () => { COV.view = b.dataset.v; paint(); }; });
-    $$("#covRule button").forEach(b => { b.onclick = () => { RES.rule = b.dataset.v; st.rule = b.dataset.v; repaint(); paint(); }; });
-    paint();
-  }
-
-  function coverMap() {
-    const G = window.GROWTH_GEOM, regs = S().regions, lad = S().ladder;
-    const k0 = Math.max(1, Math.min(10, st.k));
-    $("#covBody").innerHTML = "<div class='resctl'><label class='price'>Level sensors <input id='covK' type='range' min='1' max='10' value='" + k0 + "'> <b id='covKv'></b></label>" +
-      "<select class='ressel' id='covCase'>" + S().cases.map(c => "<option value='" + c.tag + "'" + (c.tag === RES.tag ? " selected" : "") + ">" + esc(c.label) + "</option>").join("") + "</select>" +
-      "<select class='ressel' id='covStep'>" + lad.map((f, i) => "<option value='" + i + "'" + (i === COV.step ? " selected" : "") + ">" + Math.round(f * 100) + "% build-out" + (f > 1 ? " (stress step)" : "") + "</option>").join("") + "</select>" +
-      "<div class='knob covknob' id='covMode'><button data-v='who'>Which sensor</button><button data-v='count'>How many sensors</button></div></div>" +
-      "<div class='kpis' id='covTiles'></div>" +
-      "<div class='covgrid'><div class='covmap'><svg id='covSvg' role='img' aria-label='Sewer network with the level sensors and the regions each one sees'></svg><div class='covlegend' id='covLegend'></div><div class='covtip' id='covTip' hidden></div></div>" +
-      "<div class='covside'><p class='covdetail' id='covDetail'></p><div class='covlist'><table class='rtab'><thead><tr><th>Sensor</th><th>Sits in</th><th>Sees growth in</th><th class='r'>Only it" + info("Regions no other placed sensor sees, at this build-out and in this weather.") + "</th></tr></thead><tbody id='covRows'></tbody></table></div></div></div>";
-    const svg = $("#covSvg"), tip = $("#covTip"), byName = new Map(G.nodes.map(n => [n.name, n]));
-    const nodeOf = i => byName.get(nameOf(i));
-    const regionOf = new Map();
-    regs.forEach((r, ri) => r.manholes.forEach(i => { if (!regionOf.has(i)) regionOf.set(i, ri); }));   // a shared manhole goes to the first listed region
-    const xs = Array.from(G.px), ys = Array.from(G.py), pad = 600;
-    const minX = Math.min(...xs) - pad, maxX = Math.max(...xs) + pad, minY = Math.min(...ys) - pad, maxY = Math.max(...ys) + pad;
-    svg.setAttribute("viewBox", "0 0 " + (maxX - minX) + " " + (maxY - minY));
-    const X = x => x - minX, Y = y => maxY - y;          // north up
-    const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const a in attrs) e.setAttribute(a, attrs[a]); (parent || svg).appendChild(e); return e; };
-    const gPipes = el("g", {}), gSites = el("g", {}), gLinks = el("g", {}), gLabels = el("g", {}), gSensors = el("g", {});
-    for (let i = 0; i + 1 < G.ptr.length; i++) {
-      let d = "";
-      for (let j = G.ptr[i]; j < G.ptr[i + 1]; j++) d += (j === G.ptr[i] ? "M" : "L") + X(G.px[j]) + " " + Y(G.py[j]);
-      el("path", { d, fill: "none", stroke: "#51647f", "stroke-width": G.dia[i] >= 300 ? 90 : G.dia[i] >= 225 ? 60 : 40, "stroke-linecap": "round" }, gPipes);
+  const COV_MISS = "#e7edf7", COV_NONE = "#3a4350", COV_DIM = "#262d38";
+  const coverOn = () => st.coverView && st.fam !== "none";
+  const methodName = () => st.fam === "one" ? "Greedy" : { warn: "Warn before surcharge", exact: "Exact optimum", greedy: "Greedy", risk: "Risk-weighted" }[st.method] || "";
+  // One unit per region (infill) or per manhole the estate could join at (greenfield): who sees growth there.
+  function coverData() {
+    const pl = placement(), placed = pl.chosen, units = [];
+    const entry = (id, s) => ({ id, det: s.size > 0, by: placed.map((c, r) => s.has(c) ? r : -1).filter(r => r >= 0) });
+    if (st.fam === "infill") {
+      S().regions.forEach((r, ri) => units.push(entry(r.id, new Set(seers(infillRow(curTag(), ri, st.step), st.rule)))));
+    } else {
+      const bySite = new Map(cell().rows.map(x => [x.site, x]));
+      names().forEach((nm, i) => { const row = bySite.get(i); units.push(entry(label(i), new Set(row ? row.tip : []))); });
     }
-    const dots = [];
-    regionOf.forEach((ri, i) => {
-      const n = nodeOf(i), g = el("g", { transform: "translate(" + X(n.x) + "," + Y(n.y) + ")" }, gSites);
-      g.dot = el("circle", { r: 150 }, g); g.ri = ri;
-      g.cross = el("path", { d: "M-100 -100L100 100M-100 100L100 -100", stroke: "#7f8ea3", "stroke-width": 40, fill: "none" }, g);
-      el("circle", { r: 320, fill: "transparent" }, g);
-      dots.push(g);
-    });
-    // Each region's label sits at the middle of its manholes.
-    const mid = regs.map((r, ri) => {
-      const ns = r.manholes.filter(i => regionOf.get(i) === ri).map(nodeOf), x = ns.reduce((a, n) => a + n.x, 0) / ns.length, y = ns.reduce((a, n) => a + n.y, 0) / ns.length;
-      return { x: X(x), y: Y(y) };
-    });
-    regs.forEach((r, ri) => {
-      el("text", { x: mid[ri].x, y: mid[ri].y, "text-anchor": "middle", dy: "0.35em", "font-size": 640, "font-weight": 700, fill: "#e7edf7", stroke: "#111c2f", "stroke-width": 130, "paint-order": "stroke", "pointer-events": "none" }, gLabels).textContent = r.id;
-    });
-    const color = r => COV_COL[r % COV_COL.length];
-    const tag = () => RES.tag, W = () => window.SIM35.warn[covRule()];
-    let C_;
-    const showTip = (e, html) => {
-      const b = svg.parentNode.getBoundingClientRect();
-      tip.innerHTML = html; tip.hidden = false;
-      let x = e.clientX - b.left + 14;
-      if (x + 240 > b.width) x = e.clientX - b.left - 14 - tip.offsetWidth;
-      tip.style.left = x + "px"; tip.style.top = (e.clientY - b.top + 14) + "px";
-    };
-    const hideTip = () => { tip.hidden = true; };
-    const select = r => { COV.sel = COV.sel === r ? null : r; draw(); };
-    const compute = () => {
-      const R_ = W().R, set = W().sets[Math.max(1, Math.min(10, st.k)) - 1], placed = set.chosen;
-      const rows = S().rows[tag()] || [], at = regs.map((_, ri) => rows.find(x => x.r === ri && x.s === COV.step));
-      const regions = at.map(row => {
-        if (!row) return { run: false, det: false, by: [] };
-        const rise = new Map(row.rise);
-        const det = row.rise.some(([, v]) => v >= R_);
-        const by = placed.map((c, r) => (rise.get(c) || 0) >= R_ ? r : -1).filter(r => r >= 0);
-        return { run: true, det, by, homes: Math.round(row.dw) };
-      });
-      const sensors = placed.map((c, r) => ({ c, r, sees: [], only: 0 }));
-      regions.forEach((x, ri) => { x.by.forEach(r => sensors[r].sees.push(ri)); if (x.by.length === 1) sensors[x.by[0]].only++; });
-      return { set, placed, regions, sensors };
-    };
-    function draw() {
-      C_ = compute();
-      const { regions, sensors, placed, set } = C_, k = placed.length, sel = COV.sel != null && COV.sel < k ? COV.sel : null;
-      const det = regions.filter(x => x.det).length, hit = regions.filter(x => x.by.length).length;
-      const stepTxt = Math.round(lad[COV.step] * 100) + "% build-out", label = (S().cases.find(c => c.tag === tag()) || {}).label || "";
-      $("#covKv").textContent = k;
-      $("#covSay").innerHTML = "In " + esc(label) + ", at " + stepTxt + ": <b>" + k + " sensor" + (k === 1 ? "" : "s") + "</b> see growth in <b>" + hit + " of the " + det + "</b> regions where any manhole could see it. Across all 7 wet cases and every step, these sensors see <b>" + pct(set.detect_worst) + "</b> of detectable growth in the worst case.";
-      $("#covTiles").innerHTML = "<div><b>" + hit + " of " + det + "</b>regions with detectable growth are seen</div><div><b>" + (det - hit) + "</b>detectable, but missed by these sensors</div><div><b>" + regions.filter(x => x.by.length >= 2).length + "</b>seen by 2 or more sensors</div><div><b>" + (regs.length - det) + "</b>no manhole passes the rule at this step</div>";
-      dots.forEach(g => {
-        const x = regions[g.ri], mine = sel != null && x.by.includes(sel);
-        g.cross.style.display = x.det ? "none" : ""; g.dot.style.display = x.det ? "" : "none";
-        let fill, stroke = "none", w = 0;
-        if (!x.by.length) { fill = "#111c2f"; stroke = "#7f8ea3"; w = 40; }
-        else if (COV.m === "who") fill = color(x.by[0]);
-        else fill = COV_SEQ[Math.min(x.by.length, 3) - 1];
-        if (mine) { stroke = "#ffffff"; w = 40; }
-        g.dot.setAttribute("fill", fill); g.dot.setAttribute("stroke", stroke); g.dot.setAttribute("stroke-width", w);
-        g.style.opacity = !x.det ? (sel != null ? .18 : .55) : sel != null && !mine ? .18 : 1;
-      });
-      gLinks.replaceChildren();
-      if (sel != null) {
-        const a = nodeOf(placed[sel]);
-        sensors[sel].sees.forEach(ri => el("line", { x1: X(a.x), y1: Y(a.y), x2: mid[ri].x, y2: mid[ri].y, stroke: "#ffffff", "stroke-width": 50, "stroke-dasharray": "160 110", opacity: .75 }, gLinks));
-      }
-      gSensors.replaceChildren();
-      placed.forEach((c, r) => {
-        const n = nodeOf(c);
-        const g = el("g", { transform: "translate(" + X(n.x) + "," + Y(n.y) + ")", opacity: sel != null && sel !== r ? .35 : 1, "data-r": r, class: "covpin" }, gSensors);
-        el("rect", { x: -470, y: -470, width: 940, height: 940, rx: 60, transform: "rotate(45)", fill: COV.m === "who" ? color(r) : "#e7edf7", stroke: "#111c2f", "stroke-width": 60 }, g);
-        el("text", { "text-anchor": "middle", dy: "0.35em", "font-size": 560, "font-weight": 700, fill: COV.m === "who" ? "#ffffff" : "#111c2f" }, g).textContent = r + 1;
-        el("circle", { r: 800, fill: "transparent" }, g);
-        g.addEventListener("click", e => { e.stopPropagation(); select(r); });
-        g.addEventListener("mousemove", e => { const s = sensors[r]; showTip(e, "<b>S" + (r + 1) + "</b>, " + esc(nameOf(c)) + "<br>Sees growth in " + (s.sees.length ? s.sees.map(ri => regs[ri].id).join(", ") : "no region at this step")); });
-        g.addEventListener("mouseleave", hideTip);
-      });
-      const item = (st_, t) => "<span><i style='" + st_ + "'></i>" + esc(t) + "</span>";
-      $("#covLegend").innerHTML = (COV.m === "who"
-        ? placed.map((c, r) => item("background:" + color(r), "S" + (r + 1))).join("")
-        : item("background:" + COV_SEQ[0], "Seen by 1 sensor") + item("background:" + COV_SEQ[1], "2 sensors") + item("background:" + COV_SEQ[2], "3 or more")) +
-        item("background:transparent;border:1.5px solid #7f8ea3", "Detectable, no placed sensor sees it") + "<span class='covx'>✕ No manhole passes the rule</span>";
-      $("#covRows").innerHTML = sensors.map(s => "<tr class='covrow" + (sel === s.r ? " sel" : "") + "' data-r='" + s.r + "'><td><span class='covsw' style='background:" + (COV.m === "who" ? color(s.r) : "#e7edf7") + "'></span>S" + (s.r + 1) + " <span class='quiet'>" + esc(nameOf(s.c).replace("MH", "")) + "</span></td><td>" + esc(regionOf.has(s.c) ? regs[regionOf.get(s.c)].id : "") + "</td><td>" + (s.sees.length ? s.sees.map(ri => regs[ri].id).join(", ") : "<span class='quiet'>none</span>") + "</td><td class='r'>" + s.only + "</td></tr>").join("");
-      $$("#covRows tr").forEach(tr => { tr.onclick = () => select(+tr.dataset.r); });
-      const s = sel != null ? sensors[sel] : null;
-      $("#covDetail").innerHTML = s ? "<b>S" + (sel + 1) + "</b> sits in " + esc(regs[regionOf.get(s.c)].id) + " and sees growth in " + (s.sees.length ? "<b>" + s.sees.map(ri => regs[ri].id).join(", ") + "</b>" : "no region") + " at " + stepTxt + "." + (s.sees.length > 1 ? " A sensor can respond in two ways: the new flow passes it, or water backs up to it from a fuller pipe downstream." : "") : "Click a sensor to see every region it covers.";
-    }
-    dots.forEach(g => {
-      g.addEventListener("mousemove", e => {
-        const x = C_.regions[g.ri], r = regs[g.ri];
-        showTip(e, "<b>" + esc(r.id) + "</b><br>" + (!x.det ? "No manhole passes the rule at this step." : !x.by.length ? "Detectable, but no placed sensor sees it." : "Seen by " + x.by.map(q => "S" + (q + 1)).join(", ")));
-      });
-      g.addEventListener("mouseleave", hideTip);
-      g.addEventListener("click", e => { e.stopPropagation(); const x = C_.regions[g.ri]; if (x.by.length) select(x.by[0]); });
-    });
-    svg.addEventListener("click", () => { if (COV.sel != null) { COV.sel = null; draw(); } });
-    // The slider moves the left panel too: they show one set of sensors.
-    $("#covK").oninput = e => { st.k = +e.target.value; if (COV.sel != null && COV.sel >= st.k) COV.sel = null; repaint(); draw(); };
-    $("#covCase").onchange = e => { RES.tag = e.target.value; draw(); };
-    $("#covStep").onchange = e => { COV.step = +e.target.value; draw(); };
-    const paintMode = () => $$("#covMode button").forEach(b => b.classList.toggle("on", b.dataset.v === COV.m));
-    $$("#covMode button").forEach(b => { b.onclick = () => { COV.m = b.dataset.v; paintMode(); draw(); }; });
-    paintMode();
-    draw();
+    const sensors = placed.map((c, r) => ({ c, r, sees: [], only: 0 }));
+    units.forEach((u, ui) => { u.by.forEach(r => sensors[r].sees.push(ui)); if (u.by.length === 1) sensors[u.by[0]].only++; });
+    if (COV.sel != null && COV.sel >= placed.length) COV.sel = null;
+    return { pl, placed, units, sensors, det: units.filter(u => u.det).length, hit: units.filter(u => u.by.length).length, multi: units.filter(u => u.by.length >= 2).length };
   }
-
-  function coverCurve() {
-    const D = window.SIM35.coverage.rules[covRule()], R_ = D.R;
-    const K = Math.max(...D.level.map(p => p.n), ...D.float.map(p => p.n));
-    const W_ = 880, H_ = 350, L = 46, Rt = 170, T = 12, B = 42;
-    const x = k => L + (W_ - L - Rt) * (k - 1) / (K - 1), y = v => T + (H_ - T - B) * (1 - v);
+  function unitCol(u) {
+    const mine = COV.sel != null && u.by.includes(COV.sel);
+    if (COV.sel != null && !mine) return COV_DIM;
+    if (!u.det) return COV_NONE;
+    if (!u.by.length) return COV_MISS;
+    return COV.m === "who" ? COV_COL[(mine ? COV.sel : u.by[0]) % COV_COL.length] : COV_SEQ[Math.min(u.by.length, 3) - 1];
+  }
+  function coverTints(d) {
+    const g = G(), rp = regionPaint(), owner = nodeOwner(), tints = {};
+    g.nodes.forEach((nd, a) => {
+      let u = null;
+      if (st.fam === "infill") { if (rp.regionOfNode[a] >= 0) u = d.units[rp.regionOfNode[a]]; }
+      else if (owner[a] >= 0) u = d.units[idxOfName[g.nodes[owner[a]].name]];
+      if (u) tints[nd.name] = unitCol(u);
+    });
+    return tints;
+  }
+  function paintCover(site, sensors) {
+    const d = coverData(), tints = coverTints(d);
+    Growth3D.setRegionTints(tints);
+    Growth3D.paint({}, site, sensors, null);
+    if (st.fam === "infill") {
+      Growth3D.setPulse(region().manholes.map(nameOf));
+      Growth3D.setRegionLabels(S().regions.map((r, ri) => ({ names: [regionPaint().labelAt[ri]], text: r.id, col: ri === st.region ? "#00d4ff" : "#8b949e" })));
+    } else { Growth3D.setPulse([]); Growth3D.setRegionLabels([]); }
+    Growth3D.setSpills([], []);
+    // read by tools/verify_sim35_web.js
+    window.SIM35.coverState = { k: d.placed.length, det: d.det, hit: d.hit, units: d.units.length, tinted: Object.keys(tints).length, sig: d.units.map(unitCol).join() + "|" + d.units.map(u => u.by.join("+")).join() };
+  }
+  function renderCoverKey(d) {
+    const item = (col, t) => '<span><span class="k" style="background:' + col + '"></span>' + esc(t) + "</span>";
+    const unit = st.fam === "infill" ? "region" : "manhole";
+    $("#coverKeyList").innerHTML = !coverOn() ? "<span>Coverage needs growth on the map: choose a region or a greenfield site.</span>" :
+      (COV.m === "who" ? d.placed.map((c, r) => item(COV_COL[r % COV_COL.length], "first seen by S" + (r + 1))).join("")
+        : item(COV_SEQ[0], "seen by 1 sensor") + item(COV_SEQ[1], "2 sensors") + item(COV_SEQ[2], "3 or more")) +
+      item(COV_MISS, "detectable, no placed sensor sees it") + item(COV_NONE, "no manhole passes the rule for this " + unit);
+  }
+  function renderCover() {
+    if (!st.coverView) return;
+    const box = $("#rightCover");
+    const tip = "Each part of the map takes the colour of the first sensor that sees growth there, for what the left panel has selected. Change the growth, weather, rule, method or number of sensors and the map follows. Click a sensor in the table to see everything it covers.";
+    const title = "<h4 style='margin-top:0'>Sensor coverage <i class='info-i left' data-tip='" + esc(tip) + "'>i</i></h4>";
+    if (!coverOn()) {
+      renderCoverKey(null);
+      box.innerHTML = title + "<p class='quiet'>Coverage shows which sensor sees which growth, so it needs growth on the map. Choose a region or a greenfield site.</p>";
+      return;
+    }
+    const d = coverData(), k = d.placed.length, isIn = st.fam === "infill", regs = S().regions, sel = COV.sel;
+    renderCoverKey(d);
+    const S_ = by => by.map(r => "S" + (r + 1)).join(", ");
+    const wx = esc(curCase().label);
+    const cur = isIn ? d.units[st.region] : st.site != null ? d.units[st.site] : null;
+    const line = cur ? " <b>" + esc(cur.id) + "</b>" + (isIn ? ", the selected region" : ", where the estate joins") + ": " + (!cur.det ? "no manhole passes the rule." : !cur.by.length ? "detectable, but no placed sensor sees it." : "seen by " + S_(cur.by) + ".") : "";
+    const say_ = "In " + wx + (isIn ? ", at " + Math.round(ladder()[st.step] * 100) + "% build-out: " : ", with " + R().growthLevels[st.add] + " homes joining at one manhole: ") +
+      "<b>" + k + " sensor" + (k === 1 ? "" : "s") + "</b> see" + (k === 1 ? "s" : "") + " growth in <b>" + d.hit + " of the " + d.det + "</b> " + (isIn ? "regions" : "manholes") + " where any manhole could see it." + line +
+      (d.pl.worst != null ? " The " + esc(methodName()) + " set sees <b>" + pct(d.pl.worst) + "</b> of detectable growth in the worst case it was chosen for." : " Set: " + esc(methodName()) + ".");
+    const unitWord = isIn ? "regions" : "manholes";
+    const sitsIn = c => { const ri = regionPaint().regionOfNode[G().nodes.findIndex(n => n.name === nameOf(c))]; return ri >= 0 ? regs[ri].id : ""; };
+    const swatch = r => "<span class='covsw' style='background:" + (COV.m === "who" ? COV_COL[r % COV_COL.length] : "#e7edf7") + "'></span>";
+    const sees = s => !s.sees.length ? "<span class='quiet'>none</span>" : isIn ? s.sees.map(ui => regs[ui].id).join(", ") : s.sees.length + " of " + d.det;
+    const s = sel != null ? d.sensors[sel] : null;
+    const detail = s ? "<b>S" + (sel + 1) + "</b> sits in " + esc(sitsIn(s.c)) + " and sees growth in " + (s.sees.length ? "<b>" + (isIn ? s.sees.map(ui => regs[ui].id).join(", ") : s.sees.length + " " + unitWord) + "</b>" : "nothing here") + "." +
+        (s.sees.length > 1 ? " A sensor can respond in two ways: the new flow passes it, or water backs up to it from a fuller pipe downstream." : "")
+      : "Click a sensor to see everything it covers.";
+    box.innerHTML = title + "<p class='say' id='covSay'>" + say_ + "</p>" +
+      "<div class='covstats'><div><b>" + d.hit + " of " + d.det + "</b>detectable " + unitWord + " seen</div><div><b>" + (d.det - d.hit) + "</b>detectable, missed</div><div><b>" + d.multi + "</b>seen by 2 or more</div><div><b>" + (d.units.length - d.det) + "</b>no manhole passes the rule</div></div>" +
+      "<div class='knob covknob' id='covMode'><button data-v='who'" + (COV.m === "who" ? " class='on'" : "") + ">Which sensor</button><button data-v='count'" + (COV.m === "count" ? " class='on'" : "") + ">How many sensors</button></div>" +
+      "<p class='covdetail' id='covDetail'>" + detail + "</p>" +
+      "<table class='sm' id='covTable'><thead><tr><th>Sensor</th><th>Sits in</th><th>Sees growth in</th><th>Only it <i class='info-i left' data-tip='" + (isIn ? "Regions" : "Manholes") + " no other placed sensor sees, for what is selected on the left.'>i</i></th></tr></thead><tbody id='covRows'>" +
+      d.sensors.map(q => "<tr class='covrow" + (sel === q.r ? " sel" : "") + "' data-r='" + q.r + "'><td>" + swatch(q.r) + "S" + (q.r + 1) + " <span class='quiet'>" + esc(String(mhOf(q.c))) + "</span></td><td>" + esc(sitsIn(q.c)) + "</td><td>" + sees(q) + "</td><td>" + q.only + "</td></tr>").join("") + "</tbody></table>" +
+      coverCurveHtml(k, isIn) + sources("cover");
+    box.querySelectorAll("#covMode button").forEach(b => { b.onclick = () => { COV.m = b.dataset.v; repaint(); }; });
+    box.querySelectorAll("#covRows tr").forEach(tr => { tr.onclick = () => { const r = +tr.dataset.r; COV.sel = COV.sel === r ? null : r; repaint(); }; });
+    wireCoverCurve();
+  }
+  // Level against float, small enough for the right panel. It moves with the rule and the number of sensors.
+  let _covCurve = null;
+  function coverCurveHtml(k, isIn) {
+    _covCurve = null;
+    const head = "<h4>Level and float curves</h4>";
+    if (!isIn) return head + "<p class='quiet'>Worked out for infill growth only.</p>";
+    const rule = (window.SIM35.coverage.rules || {})[st.rule];
+    if (!rule) return head + "<p class='quiet'>Worked out for the 10 mm and 25 mm rules.</p>";
+    const K = Math.max(...rule.level.map(p => p.n), ...rule.float.map(p => p.n));
+    const W_ = 300, H_ = 186, L = 34, Rt = 10, T = 8, B = 36;
+    const x = n => L + (W_ - L - Rt) * (n - 1) / (K - 1), y = v => T + (H_ - T - B) * (1 - v);
     const pts = (a, f) => { const m = new Map(); a.forEach(p => m.set(p.n, p[f])); return [...m.entries()].sort((p, q) => p[0] - q[0]); };
-    const SER = [{ name: "Level sensors, worst wet case", p: pts(D.level, "worst"), col: COV_LEVEL, dash: "" }, { name: "Level sensors, average of 7 wet cases", p: pts(D.level, "average"), col: COV_LEVEL, dash: "7 5" },
-      { name: "Float switches, average of 7 wet cases", p: pts(D.float, "average"), col: COV_FLOAT, dash: "7 5" }, { name: "Float switches, worst wet case", p: pts(D.float, "worst"), col: COV_FLOAT, dash: "" }];
+    const SER = [{ name: "Level, worst wet case", p: pts(rule.level, "worst"), col: COV_LEVEL, dash: "" }, { name: "Level, average", p: pts(rule.level, "average"), col: COV_LEVEL, dash: "6 4" },
+      { name: "Float, worst wet case", p: pts(rule.float, "worst"), col: COV_FLOAT, dash: "" }, { name: "Float, average", p: pts(rule.float, "average"), col: COV_FLOAT, dash: "6 4" }];
     SER.forEach(s => { const last = s.p[s.p.length - 1]; if (last[0] < K) s.p.push([K, last[1]]); });   // a set that stops improving stays level
-    const line = s => s.p.map(([n, v], i) => (i ? "L" : "M") + x(n).toFixed(1) + " " + y(v).toFixed(1)).join("");
-    const valueAt = (s, k) => { let v = s.p[0][1]; s.p.forEach(([n, q]) => { if (n <= k) v = q; }); return k < s.p[0][0] ? null : v; };
-    const gridY = [0, .2, .4, .6, .8, 1].map(v => "<line x1='" + L + "' x2='" + (W_ - Rt) + "' y1='" + y(v) + "' y2='" + y(v) + "' class='covgl'/><text x='" + (L - 8) + "' y='" + (y(v) + 4) + "' text-anchor='end' class='covax'>" + pct(v) + "</text>").join("");
-    const ticks = []; for (let k = 5; k <= K; k += 5) ticks.push(k);
-    const gridX = [1].concat(ticks).map(k => "<text x='" + x(k) + "' y='" + (H_ - B + 18) + "' text-anchor='middle' class='covax'>" + k + "</text>").join("");
-    const lv = D.level, five = lv.find(p => p.n === 5), top = lv[lv.length - 1], fTop = D.float[D.float.length - 1];
-    const full = top.worst >= 1 - 1e-9;
-    const dot = (k, v, col, t, dy) => "<circle cx='" + x(k) + "' cy='" + y(v) + "' r='5' fill='" + col + "' stroke='#111c2f' stroke-width='2'/><text x='" + (x(k) + 9) + "' y='" + (y(v) + (dy == null ? 16 : dy)) + "' class='covlab'>" + esc(t) + "</text>";
-    $("#covSay").innerHTML = "At the " + R_ + " mm rule, level sensors in the worst wet case see <b>" + pct(five.worst) + "</b> at 5 and " + (full ? "reach <b>100%</b> at " + top.n : "stop near <b>" + pct(top.worst) + "</b>, the most this rule allows") + ". Floats stop at <b>" + pct(fTop.worst) + "</b> in the worst case and <b>" + pct(fTop.average) + "</b> on average, however many are added.";
-    $("#covBody").innerHTML = "<div class='covlegend'>" + SER.map(s => "<span><svg width='26' height='10'><line x1='0' x2='26' y1='5' y2='5' stroke='" + s.col + "' stroke-width='2.5' stroke-dasharray='" + s.dash + "'/></svg>" + esc(s.name) + "</span>").join("") + "</div>" +
-      "<div class='covchart'><svg id='covPlot' viewBox='0 0 " + W_ + " " + H_ + "' role='img' aria-label='Share of detectable growth seen against number of sensors, for level sensors and float switches'>" + gridY + gridX +
-      "<text x='" + ((L + W_ - Rt) / 2) + "' y='" + (H_ - 6) + "' text-anchor='middle' class='covax'>Number of sensors, the best set of each size</text>" +
-      SER.map(s => "<path d='" + line(s) + "' fill='none' stroke='" + s.col + "' stroke-width='2' stroke-linejoin='round' stroke-dasharray='" + s.dash + "'/>").join("") +
-      dot(5, five.worst, COV_LEVEL, "5: " + pct(five.worst)) + dot(top.n, top.worst, COV_LEVEL, (full ? top.n + " sensors: 100%" : top.n + " sensors: " + pct(top.worst) + ", the most this rule allows"), full ? 20 : -10) + dot(K, fTop.average, COV_FLOAT, "Floats: " + pct(fTop.average) + " average", 5) + dot(K, fTop.worst, COV_FLOAT, "Floats: " + pct(fTop.worst) + " worst", 5) +
+    const path = s => s.p.map(([n, v], i) => (i ? "L" : "M") + x(n).toFixed(1) + " " + y(v).toFixed(1)).join("");
+    const valueAt = (s, n) => { let v = null; s.p.forEach(([m, q]) => { if (m <= n) v = q; }); return v; };
+    const ticks = [1]; for (let n = 5; n <= K; n += 5) ticks.push(n);
+    const at = Math.min(k, K), lv = valueAt(SER[0], at), top = rule.level[rule.level.length - 1], fTop = rule.float[rule.float.length - 1], full = top.worst >= 1 - 1e-9;
+    const text = "At the " + rule.R + " mm rule, " + at + " level sensor" + (at === 1 ? "" : "s") + " see" + (at === 1 ? "s" : "") + " <b>" + (lv == null ? "n/a" : pct(lv)) + "</b> in the worst wet case, " + (full ? "reaching 100% at " + top.n : "stopping near " + pct(top.worst)) +
+      ". Floats stop at <b>" + pct(fTop.worst) + "</b> worst and <b>" + pct(fTop.average) + "</b> average, however many are added.";
+    _covCurve = { SER, K, W_, L, Rt, x, valueAt };
+    return head + "<p class='covdetail' id='covCurveSay'>" + text + "</p>" +
+      "<div class='covlegend'>" + SER.map(s => "<span><svg width='22' height='8'><line x1='0' x2='22' y1='4' y2='4' stroke='" + s.col + "' stroke-width='2' stroke-dasharray='" + s.dash + "'/></svg>" + esc(s.name) + "</span>").join("") + "</div>" +
+      "<div class='covchart'><svg id='covPlot' viewBox='0 0 " + W_ + " " + H_ + "' role='img' aria-label='Share of detectable growth seen against number of sensors, for level sensors and float switches'>" +
+      [0, .5, 1].map(v => "<line x1='" + L + "' x2='" + (W_ - Rt) + "' y1='" + y(v) + "' y2='" + y(v) + "' class='covgl'/><text x='" + (L - 6) + "' y='" + (y(v) + 4) + "' text-anchor='end' class='covax'>" + pct(v) + "</text>").join("") +
+      ticks.map(n => "<text x='" + x(n) + "' y='" + (H_ - B + 15) + "' text-anchor='middle' class='covax'>" + n + "</text>").join("") +
+      "<text x='" + ((L + W_ - Rt) / 2) + "' y='" + (H_ - 4) + "' text-anchor='middle' class='covax'>Sensors, the best set of each size</text>" +
+      "<line x1='" + x(at) + "' x2='" + x(at) + "' y1='" + T + "' y2='" + (H_ - B) + "' class='covcross' stroke-dasharray='3 3'/>" +
+      SER.map(s => "<path d='" + path(s) + "' fill='none' stroke='" + s.col + "' stroke-width='2' stroke-linejoin='round' stroke-dasharray='" + s.dash + "'/>").join("") +
+      (lv == null ? "" : "<circle cx='" + x(at) + "' cy='" + y(lv) + "' r='4.5' fill='" + COV_LEVEL + "' stroke='#111c2f' stroke-width='2'/>") +
       "<line id='covCross' y1='" + T + "' y2='" + (H_ - B) + "' class='covcross' visibility='hidden'/></svg><div class='covtip' id='covTip' hidden></div></div>" +
-      "<p class='quiet'>The same scores as the Level or float and How many sensors tabs, on the runs each set was chosen on. Read the unseen columns on those tabs for how well they hold up.</p>";
-    const plot = $("#covPlot"), tip = $("#covTip"), cross = $("#covCross");
+      "<p class='quiet'>The best set of each size for seeing growth, so it can sit above the Warn before surcharge set. Scored on the runs each set was chosen on; the Level or float tab in Results has the unseen scores.</p>";
+  }
+  function wireCoverCurve() {
+    if (!_covCurve) return;
+    const { SER, K, W_, L, Rt, x, valueAt } = _covCurve, plot = $("#covPlot"), tip = $("#covTip"), cross = $("#covCross");
     plot.addEventListener("mousemove", e => {
-      const b = plot.getBoundingClientRect(), sx = (e.clientX - b.left) * W_ / b.width, k = Math.max(1, Math.min(K, Math.round(1 + (sx - L) * (K - 1) / (W_ - L - Rt))));
-      cross.setAttribute("x1", x(k)); cross.setAttribute("x2", x(k)); cross.setAttribute("visibility", "visible");
-      tip.innerHTML = "<b>" + k + " sensor" + (k === 1 ? "" : "s") + "</b><br>" + SER.map(s => { const v = valueAt(s, k); return esc(s.name) + ": <b>" + (v == null ? "n/a" : pct(v)) + "</b>"; }).join("<br>");
+      const b = plot.getBoundingClientRect(), sx = (e.clientX - b.left) * W_ / b.width, n = Math.max(1, Math.min(K, Math.round(1 + (sx - L) * (K - 1) / (W_ - L - Rt))));
+      cross.setAttribute("x1", x(n)); cross.setAttribute("x2", x(n)); cross.setAttribute("visibility", "visible");
+      tip.innerHTML = "<b>" + n + " sensor" + (n === 1 ? "" : "s") + "</b><br>" + SER.map(s => { const v = valueAt(s, n); return esc(s.name) + ": <b>" + (v == null ? "n/a" : pct(v)) + "</b>"; }).join("<br>");
       tip.hidden = false;
       const left = e.clientX - b.left;
-      tip.style.left = (left > b.width * .55 ? left - tip.offsetWidth - 14 : left + 14) + "px"; tip.style.top = "30px";
+      tip.style.left = (left > b.width * .5 ? Math.max(0, left - tip.offsetWidth - 10) : left + 10) + "px"; tip.style.top = "6px";
     });
     plot.addEventListener("mouseleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
   }
@@ -1382,8 +1372,8 @@ window.Sim35UI = (function () {
   const findingsTab = () => '<div class="docbody">' + markdown(window.SIM35.findings) + markdown(IDX().docs.findings) + "</div>";
   function renderResults() {
     const box = $("#modalBox");
-    const TABS = [["warn", "Warning"], ["room", "Room for homes"], ["float", "Level or float"], ["min", "How many sensors"], ["cover", "Sensor coverage"], ["limits", "Limits and next steps"], ["findings", "Findings"]];
-    const pane = RES.tab === "warn" ? ladderTab() : RES.tab === "room" ? roomTab() : RES.tab === "float" ? floatTab() : RES.tab === "limits" ? limitsTab() : RES.tab === "cover" ? coverTab() : RES.tab === "findings" ? findingsTab() : minTab();
+    const TABS = [["warn", "Warning"], ["room", "Room for homes"], ["float", "Level or float"], ["min", "How many sensors"], ["limits", "Limits and next steps"], ["findings", "Findings"]];
+    const pane = RES.tab === "warn" ? ladderTab() : RES.tab === "room" ? roomTab() : RES.tab === "float" ? floatTab() : RES.tab === "limits" ? limitsTab() : RES.tab === "findings" ? findingsTab() : minTab();
     box.innerHTML = CLOSE + "<h2>Results</h2><div class='restabs'>" + TABS.map(([v, t]) => "<button data-tab='" + v + "'" + (v === RES.tab ? " class='on'" : "") + ">" + esc(t) + "</button>").join("") + "</div>" + pane;
     $("#modalClose").onclick = () => { $("#modal").hidden = true; };
     box.querySelectorAll(".restabs button").forEach(b => { b.onclick = () => { RES.tab = b.dataset.tab; renderResults(); }; });
@@ -1398,7 +1388,6 @@ window.Sim35UI = (function () {
     });
     box.querySelectorAll("select.ressel").forEach(s => { s.onchange = () => { RES[s.dataset.res] = s.value; renderResults(); }; });
     box.querySelectorAll("input[data-price]").forEach(i => { i.onchange = () => { RES[i.dataset.price] = Math.max(1, +i.value || 1); renderResults(); }; });
-    if (RES.tab === "cover") wireCover();      // last: the shared select wiring above must not catch this tab's own controls
   }
   function showResults() {
     const c = S().cases.find(x => x.tag === (curCase() || {}).tag);
@@ -1468,14 +1457,16 @@ window.Sim35UI = (function () {
   function legendGroups() {
     // One Legend button. Off by default; on, it shows the groups that apply (the heatmap key
     // is driven by repaint, the pump and connection keys by their own toggles).
-    const av = st.areasView;
-    $("#legend").hidden = !(st.legend || av);
+    const av = st.areasView, cv = st.coverView, own = av || cv;     // these two views bring their own key
+    $("#legend").hidden = !(st.legend || own);
     $("#areasKey").hidden = !av;
-    $("#simpleKey").hidden = av;
-    $$(".legend .lg-results").forEach(g => { if (g.id !== "heatKey") g.hidden = av; else if (av) g.hidden = true; });
-    $$(".legend .lg-network").forEach(g => { g.hidden = av || (g.id === "pumpKey" ? !st.showPumps : g.id === "connKey" ? !st.showConn : !(st.showPumps || st.showConn)); });
-    $("#toggleLegend").classList.toggle("primary", st.legend && !av);
+    $("#coverKey").hidden = !cv;
+    $("#simpleKey").hidden = own;
+    $$(".legend .lg-results").forEach(g => { if (g.id !== "heatKey") g.hidden = own; else if (own) g.hidden = true; });
+    $$(".legend .lg-network").forEach(g => { g.hidden = own || (g.id === "pumpKey" ? !st.showPumps : g.id === "connKey" ? !st.showConn : !(st.showPumps || st.showConn)); });
+    $("#toggleLegend").classList.toggle("primary", st.legend && !own);
     $("#toggleAreas").classList.toggle("primary", av);
+    $("#toggleCover").classList.toggle("primary", cv);
     Growth3D.resize($("#stage"));
   }
   /* Live presentation sync (Capstone Live). Its script mirrors buttons, sliders and selects by
@@ -1484,7 +1475,7 @@ window.Sim35UI = (function () {
      with Esc) and gives a viewer who joins late the presenter's whole view. */
   const LIVE = ["region", "step", "site", "add", "caseTag", "rule", "k", "method", "obj", "pickedGreedy", "pick"];
   const LIVE_TOGGLES = { showSensors: "#toggleSensors", showHeat: "#toggleHeat", showPumps: "#togglePumps",
-                         showConn: "#toggleConn", legend: "#toggleLegend", areasView: "#toggleAreas" };
+                         showConn: "#toggleConn", legend: "#toggleLegend", areasView: "#toggleAreas", coverView: "#toggleCover" };
   const docOpen = () => $("#modal").hidden ? null : $("#modalBox .docbody > .lead") ? "ref" : $("#modalBox").classList.contains("wide") ? "qa" : "about";
   function liveGet() {
     const v = { view: st.view, fam: st.fam, rb: st.rb, lb: st.lb, top: st.top, words: st.words, doc: docOpen() };
@@ -1526,6 +1517,7 @@ window.Sim35UI = (function () {
     if (st.fam === "one" && (st.method === "exact" || st.method === "warn")) st.method = "greedy";
     if (st.view === "simple") st.rule = "r10";
     if (hp.get("areas") === "1") st.areasView = true;
+    if (hp.get("cover") === "1" || hp.get("results") === "cover") st.coverView = true;   // the old Results tab's link lands on the view
     document.body.classList.toggle("simple", st.view === "simple");
     document.body.classList.toggle("expert", st.view === "expert");
     Growth3D.build($("#stage"), nd => {
@@ -1572,7 +1564,10 @@ window.Sim35UI = (function () {
       document.addEventListener("webkitfullscreenchange", sync);
     }
     $("#btn-results").onclick = showResults;
-    { const h = new URLSearchParams(location.hash.slice(1)); if (h.get("results")) { RES.tab = h.get("results"); if (h.get("rescase")) RES.tag = h.get("rescase"); setTimeout(showResults, 400); } }
+    { const foot = $("#mapFoot"), sync = () => $("#stageWrap").style.setProperty("--foot", foot.offsetHeight + "px");
+      if (window.ResizeObserver) new ResizeObserver(sync).observe(foot);
+      sync(); }
+    { const h = new URLSearchParams(location.hash.slice(1)); if (h.get("results") && h.get("results") !== "cover") { RES.tab = h.get("results"); if (h.get("rescase")) RES.tag = h.get("rescase"); setTimeout(showResults, 400); } }
     $("#tab-ref").onclick = () => showDoc("ref");
     $("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").hidden = true; };
     document.addEventListener("keydown", e => { if (e.key === "Escape") { $("#modal").hidden = true; closeDDs(); } });

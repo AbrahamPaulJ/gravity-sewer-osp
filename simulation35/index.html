@@ -151,7 +151,9 @@ h4{margin:14px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.
   background:var(--panel-2); font-size:12.5px}
 #sensorBox h4{margin-top:0}
 #objKnob,#methKnob{margin-top:8px}
-#curve{position:relative; margin-top:10px; --worst:#d95926; --mean:#3987e5; --greedy:#8b949e}
+#curve{position:relative; margin-top:10px; --worst:#d95926; --mean:#3987e5; --greedy:#8b949e; --selset:#2ef56b}
+#curveNote{margin:0 0 4px; font-size:11px}
+#methNote{margin:8px 0 0; font-size:11.5px}
 #curve svg{display:block; width:100%; height:auto; overflow:visible}
 #curve .lg{display:flex; gap:14px; font-size:11px; color:var(--dim); margin-bottom:4px; flex-wrap:wrap}
 #curve .lg i{display:inline-block; width:14px; height:2px; vertical-align:3px; margin-right:5px}
@@ -221,8 +223,13 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .labels .lbl.pumprate{color:#e3b341; font-weight:600; transform:translate(-50%,160%)}
 .labels .lbl.scale{color:#8b949e; font-weight:500; font-size:10.5px; transform:translate(6px,-50%)}
 .labels .lbl.scale.cap{color:#a9b8d4; transform:translate(6px, 80%)}
-.legend{padding:10px 14px 4px; background:#0d1117; color:#8b949e; font-size:11.5px;
+/* The legend and scale line lie over the foot of the map, see-through, and the map can be dragged under them. */
+#mapFoot{position:absolute; left:0; right:0; bottom:0; z-index:2; pointer-events:none;
+  text-shadow:0 0 3px #0d1117, 0 0 3px #0d1117, 0 1px 2px #0d1117}
+.legend{padding:6px 14px 2px; background:transparent; color:#c9d1d9; font-size:11.5px;
   display:flex; gap:7px 18px; flex-wrap:wrap; align-items:center}
+#coverKeyList{display:inline-flex; gap:6px 16px; flex-wrap:wrap}
+#coverKeyList span{white-space:nowrap}
 .legend[hidden]{display:none}
 #areasKeyList{display:inline-flex; gap:6px 16px; flex-wrap:wrap}
 #areasKeyList span{white-space:nowrap}
@@ -250,9 +257,11 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   background:linear-gradient(90deg,#104281,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb)}
 /* The one overlay on the map: the sentence (its long form behind the (i)) and, under it, the
    homes line (the selected region's homes, or the hovered manhole's). Foot of the map, both views. */
-#inWords{position:absolute; left:12px; bottom:12px; z-index:3; max-width:min(760px, calc(100% - 24px));
-  background:rgba(13,17,23,.9); border:1px solid #22314d; border-radius:8px; padding:9px 13px;
-  color:#c9d1d9; font-size:13px; line-height:1.45}
+#inWords{position:absolute; left:12px; bottom:calc(var(--foot, 0px) + 4px); z-index:3; max-width:min(760px, calc(100% - 24px));
+  background:transparent; border:0; padding:6px 13px 4px 2px; pointer-events:none;
+  color:#e7edf7; font-size:13px; line-height:1.45;
+  text-shadow:0 0 3px #0d1117, 0 0 3px #0d1117, 0 1px 2px #0d1117}
+#inWords .info-i,#wordsTab{pointer-events:auto}
 #inWords b{color:#e7edf7}
 #inWords .info-i{margin-left:6px}
 #inWords{padding-right:34px}
@@ -264,16 +273,16 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 #wordsMini{display:none}
 #inWords.collapsed #wordsMini{display:inline}
 #inWords.collapsed #wordsTab{top:3px}
-#homesLine{margin-top:5px; font-size:11.5px; color:#8b949e; display:flex; gap:4px 14px; flex-wrap:wrap; align-items:center}
+#homesLine{margin-top:5px; font-size:11.5px; color:#c9d1d9; display:flex; gap:4px 14px; flex-wrap:wrap; align-items:center}
 #homesLine:empty{display:none}
 #homesLine strong{color:#e7edf7; font-variant-numeric:tabular-nums}
 #homesLine .k{display:inline-block; width:10px; height:10px; border-radius:50%; vertical-align:-1px; margin-right:5px}
 #homesLine .k.ring{box-shadow:0 0 0 2px #ffffff}
 #homesLine .hd{color:#c9d1d9; font-weight:600}
-#homesLine .quiet2{color:#6e7681}
+#homesLine .quiet2{color:#a9b8d4}
 #inWords .tag{display:inline-block; font-size:10px; letter-spacing:.04em; text-transform:uppercase;
   padding:1px 6px; border-radius:99px; background:#1c2942; color:#a9b8d4; margin-right:6px; vertical-align:1px}
-#scale{padding:2px 14px 10px; font-size:10.5px; color:#6e7681; background:#0d1117}
+#scale{padding:2px 14px 8px; font-size:10.5px; color:#a9b8d4; background:transparent}
 /* Documents (About, Assumptions) and Results open in the same popup. */
 .docbody h1{font-size:19px; margin:4px 0 6px}
 .docbody h2{font-size:15px; margin:22px 0 8px; color:var(--accent); border-bottom:1px solid var(--line); padding-bottom:5px}
@@ -360,21 +369,20 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .ressel{background:var(--panel2,#16233a); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font:inherit; font-size:12.5px; max-width:100%}
 .price{font-size:12px; color:var(--dim)} .price input{width:78px; margin-left:4px; background:transparent; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:4px 6px; font:inherit}
 .tscroll{overflow-x:auto}
-.covknob button{padding:5px 10px; white-space:nowrap}
-.resctl .covknob{width:auto; margin:0}
-.resctl input[type=range]{width:150px; vertical-align:middle; accent-color:var(--accent)}
-#covKv{color:var(--ink); display:inline-block; min-width:2ch}
-.covgrid{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:12px; margin-top:12px}
+.covknob button{padding:5px 8px; white-space:nowrap}
+.covstats{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:0 0 10px; font-size:11px; color:var(--dim)}
+.covstats div{border:1px solid var(--line); border-radius:6px; padding:6px 8px; line-height:1.3}
+.covstats b{display:block; color:var(--ink); font-size:14px; margin-bottom:1px}
+#rightCover .say{font-size:12.5px}
+#rightCover .covdetail{margin:8px 0; min-height:0}
+#covPlot{overflow:visible}
 .covmap,.covchart{position:relative}
 #covSvg,#covPlot{width:100%; height:auto; display:block}
-.covpin{cursor:pointer}
 .covlegend{display:flex; flex-wrap:wrap; gap:4px 12px; font-size:11.5px; color:var(--dim); margin:6px 0}
 .covlegend i{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; box-sizing:border-box}
 .covlegend svg{margin-right:5px; vertical-align:-1px}
 .covdetail{font-size:12.5px; color:var(--dim); margin:0 0 8px; min-height:3.6em}
 .covdetail b{color:var(--ink)}
-.covlist{max-height:430px; overflow:auto; border-top:1px solid var(--line)}
-.covlist thead th{position:sticky; top:0; background:var(--panel)}
 .covrow{cursor:pointer}
 .covrow:hover td{background:rgba(57,135,229,.1)}
 .covrow.sel td{background:rgba(57,135,229,.24)}
@@ -482,6 +490,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
     </div>
     <label class="fld" for="kRange">Number of sensors: <b id="kVal"></b></label>
     <input type="range" id="kRange" min="1" max="10" step="1">
+    <p class="x quiet" id="methNote" hidden>Greedy only: each sensor is the best addition to the ones before. The exact solver has run on infill growth only.</p>
     <div class="knob x" id="objKnob">
       <button data-o="worst" title="Each sensor is the one that most raises the WORST case">Best worst case</button>
       <button data-o="mean" title="Each sensor is the one that most raises the AVERAGE over the cases">Best average</button>
@@ -505,10 +514,11 @@ nav button.info:hover{background:var(--accent); color:#06131f}
       <button id="toggleIds" class="x" title="Label every manhole with its number">Manhole ids</button>
       <button id="toggleLegend" title="Show what the colours mean">Legend</button>
       <button id="toggleAreas" title="See how the suburb is divided into regions, each in its own colour; click again to come back">Regions</button>
+      <button id="toggleCover" title="Colour the map by which sensor sees growth where. It follows the growth, weather, rule, method and number of sensors on the left; the detail opens on the right">Coverage</button>
     </div>
     <span class="navsep"></span>
     <div class="navgrp">
-      <button id="btn-results" class="primary" title="Warning, room for new homes, level or float, how many sensors, coverage, limits and findings">Results</button>
+      <button id="btn-results" class="primary" title="Warning, room for new homes, level or float, how many sensors, limits and findings">Results</button>
       <button id="tab-ref">Assumptions</button>
       <button id="btn-info" class="info" title="What this model is and the numbers behind it">About</button>
       <button id="btn-full" title="Full screen" aria-label="Full screen"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg></button>
@@ -527,8 +537,10 @@ nav button.info:hover{background:var(--accent); color:#06131f}
     <div id="inWords"><button id="wordsTab" title="Fold the summary away">&#9662;</button><span id="wordsMini">Summary</span><div id="wordsText"></div><div id="homesLine"></div></div>
   </div>
 
+  <div id="mapFoot">
   <div class="legend" id="legend" hidden>
     <div class="grp" id="areasKey" hidden><b>Regions</b><span id="areasKeyList"></span></div>
+    <div class="grp" id="coverKey" hidden><b>Coverage</b><span id="coverKeyList"></span></div>
     <div class="grp s" id="simpleKey"><b>Map</b>
       <span><span class="k" style="background:#2ef56b"></span>recommended sensor, numbered as in the list</span>
       <span><span class="k" style="background:#ff2d55"></span>sees this growth</span>
@@ -547,7 +559,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
     </div>
     <div class="grp lg-results x"><b>Manholes</b>
       <span><span class="k" style="background:#ff2d55"></span>sees the growth (the selected rule)</span>
-      <span><span class="k" style="background:#ff8c69"></span>rises 10 mm or more, below the rule</span>
+      <span><span class="k" style="background:#fff176"></span>rises 10 mm or more, below the rule</span>
       <span><span class="k" style="background:#ffa500"></span>over the alarm before growth</span>
       <span><span class="kr" style="border-color:#bc8cff"></span>overflowing before growth</span>
       <span><span class="kr" style="border-color:#ff3df5"></span>overflows because of the growth</span>
@@ -575,10 +587,12 @@ nav button.info:hover{background:var(--accent); color:#06131f}
     </div>
   </div>
   <div id="scale"></div>
+  </div>
 </main>
 
 <aside id="mhSide" aria-label="The recommended sensors, or the selected manhole">
   <div id="rightSensors" class="s"></div>
+  <div id="rightCover" hidden></div>
   <div id="mhFacts"></div>
 </aside>
 
@@ -588,11 +602,11 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 <script src="../simulation3/data/growth.js?v=9"></script>
 <script src="../simulation3/data/regions.js?v=9"></script>
 <script src="../simulation3/data/index.js?v=9"></script>
-<script src="../simulation3/growth_3d.js?v=9"></script>
+<script src="growth_3d.js?v=1"></script>
 <script src="../simulation3/osp_core.js?v=9"></script>
 <script src="../simulation3/placement.js?v=9"></script>
-<script src="data/sim35.js?v=5"></script>
-<script src="sim35_ui.js?v=5"></script>
+<script src="data/sim35.js?v=6"></script>
+<script src="sim35_ui.js?v=6"></script>
 <script type="module">
   Sim35UI.init();
 </script>
