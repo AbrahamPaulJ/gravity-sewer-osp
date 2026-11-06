@@ -1318,6 +1318,41 @@ window.Sim35UI = (function () {
     return "<p class='covdetail' id='covDetail'>" + text + "</p><h4>" + head + "</h4><p class='quiet covsub'>" + sub_ + "</p><div class='covbars' id='covBars'>" +
       b.bars.map(x => "<div class='covbar" + (x.now ? " now" : "") + "' title='" + esc(x.tip) + "'><span class='covbarl'>" + esc(x.id) + (x.ri === b.home ? " <span class='quiet'>sits here</span>" : "") + "</span><span class='covbart'><i style='width:" + (x.v * 100).toFixed(1) + "%'></i></span><span class='covbarv'>" + pct(x.v) + "</span></div>").join("") + "</div>";
   }
+  // A sensor showing none here is usually not useless: say where it does respond, from the same runs.
+  function coverWhyHtml(d) {
+    const none = d.sensors.filter(s => !s.sees.length);
+    if (!none.length) return "";
+    const isIn = st.fam === "infill", cs = famCases(), here = caseIndex(), wx = esc(curCase().label);
+    const line = s => {
+      const me = "<b>S" + (s.r + 1) + "</b>";
+      let best = 0, bestCase = null, first = "";
+      if (isIn) {
+        const inCase = tag => S().regions.filter((_, ri) => seers(infillRow(tag, ri, st.step), st.rule).includes(s.c)).length;
+        cs.forEach((c, ci) => { if (ci !== here) { const n = inCase(c.tag); if (n > best) { best = n; bestCase = c; } } });
+        const at = ladder().findIndex((_, j) => S().regions.some((_r, ri) => seers(infillRow(curTag(), ri, j), st.rule).includes(s.c)));
+        if (at >= 0) first = " In " + wx + " it first responds at " + Math.round(ladder()[at] * 100) + "% build-out.";
+        return me + (best ? " sees " + best + " region" + (best === 1 ? "" : "s") + " at this build-out in " + esc(bestCase.label) + "." : " sees no region at this build-out in any weather.") + first;
+      }
+      const grid = (ci, add) => R().cells.find(c => c.case === ci && c.add === add && c.rule === st.rule);
+      const reach_ = (ci, add) => { const c = grid(ci, add); return c ? c.rows.filter(r => r.tip.includes(s.c)).length : 0; };
+      const size = R().growthLevels[st.add];
+      cs.forEach((c, ci) => { if (ci !== here) { const n = reach_(ci, size); if (n > best) { best = n; bestCase = c; } } });
+      const bigger = R().growthLevels.find(lv => lv > size && reach_(here, lv) > 0);
+      if (bigger) first = " In " + wx + " it first responds at " + bigger + " homes, for " + reach_(here, bigger) + " manholes.";
+      return me + (best ? " sees " + best + " estates of " + size + " homes in " + esc(bestCase.label) + "." : " sees no estate of " + size + " homes in any weather.") + first;
+    };
+    return "<div class='covwhy' id='covWhy'><p><b>Why a sensor can show none.</b> Sensors are chosen to lift the worst weather case, so some respond only in other weather or to more growth.</p><ul>" +
+      none.map(s => "<li>" + line(s) + "</li>").join("") + "</ul></div>";
+  }
+  // On the summary line while the pointer is over a manhole: who sees growth there.
+  function coverHoverLine() {
+    if (!coverOn() || !st.hover || !(st.hover in idxOfName)) return;
+    const d = coverData(), i = idxOfName[st.hover], isIn = st.fam === "infill", u = isIn ? d.units[chamberRegion()[i]] : d.units[i];
+    if (!u) return;
+    const who = !u.det ? "no manhole passes the rule" : !u.by.length ? "detectable, but no placed sensor sees it" : "seen by " + u.by.map(r => "S" + (r + 1)).join(", ");
+    const t = isIn ? esc(u.id) + " at " + Math.round(ladder()[st.step] * 100) + "% build-out: " + who : R().growthLevels[st.add] + " homes joining here: " + who;
+    $("#homesLine").insertAdjacentHTML("afterbegin", "<span class='hd' id='covHover'>" + t + "</span>");
+  }
   function renderCoverKey(d) {
     const item = (col, t) => '<span><span class="k" style="background:' + col + '"></span>' + esc(t) + "</span>";
     const unit = st.fam === "infill" ? "region" : "manhole";
@@ -1361,7 +1396,7 @@ window.Sim35UI = (function () {
       "<p class='covdetail'>" + (s ? "S" + (sel + 1) + " is selected: click its row again to clear it." : "Click a sensor for green arcs to everything it covers, and how much of each region it sees.") + "</p>" +
       "<table class='sm' id='covTable'><thead><tr><th>Sensor</th><th>Sits in</th><th>Sees growth in</th><th>Seen only by this sensor <i class='info-i left' id='covOnlyTip' data-tip='" + esc(onlyTip) + "'>i</i></th></tr></thead><tbody id='covRows'>" +
       d.sensors.map(q => "<tr class='covrow" + (sel === q.r ? " sel" : "") + "' data-r='" + q.r + "'><td>" + swatch(q.r) + "S" + (q.r + 1) + " <span class='quiet'>" + esc(String(mhOf(q.c))) + "</span></td><td>" + esc(sitsIn(q.c)) + "</td><td>" + sees(q) + "</td><td>" + q.only + "</td></tr>").join("") + "</tbody></table>" +
-      (s ? coverDetailHtml(d, s) : "") +
+      (s ? coverDetailHtml(d, s) : "") + coverWhyHtml(d) +
       coverCurveHtml(k, isIn) + sources("cover");
     box.querySelectorAll("#covMode button").forEach(b => { b.onclick = () => { COV.m = b.dataset.v; repaint(); }; });
     box.querySelectorAll("#covRows tr").forEach(tr => { tr.onclick = () => { const r = +tr.dataset.r; COV.sel = COV.sel === r ? null : r; repaint(); }; });
@@ -1371,22 +1406,27 @@ window.Sim35UI = (function () {
   let _covCurve = null;
   function coverCurveHtml(k, isIn) {
     _covCurve = null;
-    const head = "<h4>Level and float curves</h4>";
-    if (!isIn) return head + "<p class='quiet'>Worked out for infill growth only.</p>";
-    const rule = (window.SIM35.coverage.rules || {})[st.rule];
-    if (!rule) return head + "<p class='quiet'>Worked out for the 10 mm and 25 mm rules.</p>";
-    const K = Math.max(...rule.level.map(p => p.n), ...rule.float.map(p => p.n));
+    const gf = !isIn && (window.SIM35.coverage.greenfield.rules || {})[st.rule];
+    const head = "<h4>" + (isIn ? "Level and float curves" : "Sensors to see every greenfield run") + "</h4>";
+    if (!isIn && !gf) return head + "<p class='quiet'>Not worked out for this rule.</p>";
+    const rule = isIn ? (window.SIM35.coverage.rules || {})[st.rule] : null;
+    if (isIn && !rule) return head + "<p class='quiet'>Worked out for the 10 mm and 25 mm rules.</p>";
+    const K = isIn ? Math.max(...rule.level.map(p => p.n), ...rule.float.map(p => p.n)) : gf.n;
     const W_ = 300, H_ = 186, L = 34, Rt = 10, T = 8, B = 36;
     const x = n => L + (W_ - L - Rt) * (n - 1) / (K - 1), y = v => T + (H_ - T - B) * (1 - v);
     const pts = (a, f) => { const m = new Map(); a.forEach(p => m.set(p.n, p[f])); return [...m.entries()].sort((p, q) => p[0] - q[0]); };
-    const SER = [{ name: "Level, worst wet case", p: pts(rule.level, "worst"), col: COV_LEVEL, dash: "" }, { name: "Level, average", p: pts(rule.level, "average"), col: COV_LEVEL, dash: "6 4" },
-      { name: "Float, worst wet case", p: pts(rule.float, "worst"), col: COV_FLOAT, dash: "" }, { name: "Float, average", p: pts(rule.float, "average"), col: COV_FLOAT, dash: "6 4" }];
+    const SER = isIn ? [{ name: "Level, worst wet case", p: pts(rule.level, "worst"), col: COV_LEVEL, dash: "" }, { name: "Level, average", p: pts(rule.level, "average"), col: COV_LEVEL, dash: "6 4" },
+      { name: "Float, worst wet case", p: pts(rule.float, "worst"), col: COV_FLOAT, dash: "" }, { name: "Float, average", p: pts(rule.float, "average"), col: COV_FLOAT, dash: "6 4" }]
+      : [{ name: "Greedy, worst weather case", p: gf.worst.map((v, i) => [i + 1, v]), col: COV_LEVEL, dash: "" }, { name: "Greedy, average of 8 cases", p: gf.mean.map((v, i) => [i + 1, v]), col: COV_LEVEL, dash: "6 4" }];
     SER.forEach(s => { const last = s.p[s.p.length - 1]; if (last[0] < K) s.p.push([K, last[1]]); });   // a set that stops improving stays level
     const path = s => s.p.map(([n, v], i) => (i ? "L" : "M") + x(n).toFixed(1) + " " + y(v).toFixed(1)).join("");
     const valueAt = (s, n) => { let v = null; s.p.forEach(([m, q]) => { if (m <= n) v = q; }); return v; };
-    const ticks = [1]; for (let n = 5; n <= K; n += 5) ticks.push(n);
-    const at = Math.min(k, K), lv = valueAt(SER[0], at), top = rule.level[rule.level.length - 1], fTop = rule.float[rule.float.length - 1], full = top.worst >= 1 - 1e-9;
-    const text = "At the " + rule.R + " mm rule, " + at + " level sensor" + (at === 1 ? "" : "s") + " see" + (at === 1 ? "s" : "") + " <b>" + (lv == null ? "n/a" : pct(lv)) + "</b> in the worst wet case, " + (full ? "reaching 100% at " + top.n : "stopping near " + pct(top.worst)) +
+    const tickStep = K <= 40 ? 5 : K <= 100 ? 20 : 50;
+    const ticks = [1]; for (let n = tickStep; n <= K; n += tickStep) ticks.push(n);
+    const at = Math.min(k, K), lv = valueAt(SER[0], at);
+    const top = isIn ? rule.level[rule.level.length - 1] : null, fTop = isIn ? rule.float[rule.float.length - 1] : null, full = isIn && top.worst >= 1 - 1e-9;
+    const text = !isIn ? at + " sensor" + (at === 1 ? "" : "s") + " see" + (at === 1 ? "s" : "") + " <b>" + pct(lv) + "</b> of detectable runs in the worst weather case. Seeing every run takes <b>" + gf.n + "</b>, and 90% takes " + (gf.n90 || "n/a") + ". " +
+        "That count leans on the " + (window.SIM35.coverage.greenfield.cases - window.SIM35.coverage.greenfield.settled_cases) + " weather cases that are still fixed 480-minute runs: on settled cases alone it is <b>" + gf.settled_n + "</b>, and 90% takes " + (gf.settled_n90 || "n/a") + "." : "At the " + rule.R + " mm rule, " + at + " level sensor" + (at === 1 ? "" : "s") + " see" + (at === 1 ? "s" : "") + " <b>" + (lv == null ? "n/a" : pct(lv)) + "</b> in the worst wet case, " + (full ? "reaching 100% at " + top.n : "stopping near " + pct(top.worst)) +
       ". Floats stop at <b>" + pct(fTop.worst) + "</b> worst and <b>" + pct(fTop.average) + "</b> average, however many are added.";
     _covCurve = { SER, K, W_, L, Rt, x, valueAt };
     return head + "<p class='covdetail' id='covCurveSay'>" + text + "</p>" +
@@ -1394,12 +1434,13 @@ window.Sim35UI = (function () {
       "<div class='covchart'><svg id='covPlot' viewBox='0 0 " + W_ + " " + H_ + "' role='img' aria-label='Share of detectable growth seen against number of sensors, for level sensors and float switches'>" +
       [0, .5, 1].map(v => "<line x1='" + L + "' x2='" + (W_ - Rt) + "' y1='" + y(v) + "' y2='" + y(v) + "' class='covgl'/><text x='" + (L - 6) + "' y='" + (y(v) + 4) + "' text-anchor='end' class='covax'>" + pct(v) + "</text>").join("") +
       ticks.map(n => "<text x='" + x(n) + "' y='" + (H_ - B + 15) + "' text-anchor='middle' class='covax'>" + n + "</text>").join("") +
-      "<text x='" + ((L + W_ - Rt) / 2) + "' y='" + (H_ - 4) + "' text-anchor='middle' class='covax'>Sensors, the best set of each size</text>" +
+      "<text x='" + ((L + W_ - Rt) / 2) + "' y='" + (H_ - 4) + "' text-anchor='middle' class='covax'>" + (isIn ? "Sensors, the best set of each size" : "Sensors, in greedy order") + "</text>" +
       "<line x1='" + x(at) + "' x2='" + x(at) + "' y1='" + T + "' y2='" + (H_ - B) + "' class='covcross' stroke-dasharray='3 3'/>" +
       SER.map(s => "<path d='" + path(s) + "' fill='none' stroke='" + s.col + "' stroke-width='2' stroke-linejoin='round' stroke-dasharray='" + s.dash + "'/>").join("") +
       (lv == null ? "" : "<circle cx='" + x(at) + "' cy='" + y(lv) + "' r='4.5' fill='" + COV_LEVEL + "' stroke='#111c2f' stroke-width='2'/>") +
       "<line id='covCross' y1='" + T + "' y2='" + (H_ - B) + "' class='covcross' visibility='hidden'/></svg><div class='covtip' id='covTip' hidden></div></div>" +
-      "<p class='quiet'>The best set of each size for seeing growth, so it can sit above the Warn before surcharge set. Scored on the runs each set was chosen on; the Level or float tab in Results has the unseen scores.</p>";
+      "<p class='quiet'>" + (isIn ? "The best set of each size for seeing growth, so it can sit above the Warn before surcharge set. Scored on the runs each set was chosen on; the Level or float tab in Results has the unseen scores."
+        : "Greenfield growth only, so these counts do not compare with infill's. All five estate sizes count, 700 homes included. The map and slider stop at " + (R().maxSensors || 10) + " sensors; the curve carries on past them.") + "</p>";
   }
   function wireCoverCurve() {
     if (!_covCurve) return;
@@ -1582,6 +1623,7 @@ window.Sim35UI = (function () {
       if (name === st.hover) return;
       st.hover = name;
       renderHomes(sensorSet());
+      coverHoverLine();
     }).then(() => {
       $("#kRange").max = String(R().maxSensors || 10);
       buildKnobs();

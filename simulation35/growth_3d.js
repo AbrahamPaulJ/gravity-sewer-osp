@@ -174,7 +174,34 @@ window.Growth3D = (function () {
          dollies toward one fixed point, so every zoom went into the middle of the map and
          nowhere else could be reached. */
       controls.screenSpacePanning = false;
-      controls.zoomToCursor = true;
+      controls.zoomToCursor = true;/* SIM35 BEGIN */
+      /* Sim 3.5 only, added at publish by tools/build_sim35_web.py. The wheel zoom, from Siddhartha Balanagu's buildings demo.
+         OrbitControls' zoom-to-cursor in three.js r160 stops once the camera nears the orbit target, divides by
+         (devicePixelRatio | 0), which is 0 below 100% browser zoom, and scales with the raw wheel delta. Here each wheel event
+         moves the camera and the orbit target together toward the point on the ground under the pointer, like a web map. */
+      controls.enableZoom = false;
+      const ZOOM_PER_PX = 0.0012, ZOOM_CAP = 250, NEAR_M = 4, FAR_M = 20000;
+      const zRay = new THREE.Raycaster(), zNdc = new THREE.Vector2(), zHit = new THREE.Vector3(), zPlane = new THREE.Plane();
+      renderer.domElement.addEventListener("wheel", e => {
+        e.preventDefault();
+        const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 800 : 1;
+        const dy = Math.max(-ZOOM_CAP, Math.min(ZOOM_CAP, e.deltaY * unit));
+        if (!dy) return;
+        const r = renderer.domElement.getBoundingClientRect();
+        zNdc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+        zRay.setFromCamera(zNdc, camera);
+        zPlane.set(new THREE.Vector3(0, 1, 0), -controls.target.y);
+        // The point under the pointer on the ground through the target; above the horizon, zoom straight along the view.
+        let P = zRay.ray.intersectPlane(zPlane, zHit);
+        if (!P || P.distanceTo(camera.position) > FAR_M) P = zHit.copy(controls.target);
+        const d = camera.position.distanceTo(P);
+        let k = Math.exp(dy * ZOOM_PER_PX);
+        k = Math.max(NEAR_M / Math.max(d, 1e-6), Math.min(FAR_M / Math.max(d, 1e-6), k));
+        camera.position.sub(P).multiplyScalar(k).add(P);
+        controls.target.sub(P).multiplyScalar(k).add(P);
+        controls.update();
+      }, { passive: false });
+/* SIM35 END */
       renderer.domElement.addEventListener("pointerdown", onDown);
       renderer.domElement.addEventListener("pointerup", onUp);
       renderer.domElement.addEventListener("pointermove", onMove);
@@ -1581,10 +1608,18 @@ window.Growth3D = (function () {
     const c = (COL.sensor >> 16) & 255, d = (COL.sensor >> 8) & 255, e = COL.sensor & 255;
     stalk.material.color.setRGB((c + (255 - c) * b) / 255, (d + (255 - d) * b) / 255, (e + (255 - e) * b) / 255);
   }
+  // Read by tools/verify_sim35_web.js: the camera, and where a manhole falls on screen.
+  const mapCam = () => ({ dist: camera.position.distanceTo(controls.target), pos: camera.position.toArray() });
+  function screenOf(name) {
+    const m = chamberMeshes.find(x => x.userData.node.name === name);
+    if (!m) return null;
+    const v = m.position.clone().project(camera), r = renderer.domElement.getBoundingClientRect();
+    return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height };
+  }
   const coverSelectInfo = () => coverSel ? { sensor: coverSel.mesh.userData.node.name, arcs: coverSel.arcs, pin: !!coverSel.mark } : null;
 
 /* SIM35 END */  return { build, liveCamera, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, setSpills, setPumpRates, mapState, frameNodes,
            setRegionTints, setRegionLabels, showRegionLabels, setPulse,
            frame, resize, heatHex,
-           ZEXAG/* SIM35 BEGIN */, setCoverSelect, coverSelectInfo/* SIM35 END */ };
+           ZEXAG/* SIM35 BEGIN */, setCoverSelect, coverSelectInfo, mapCam, screenOf/* SIM35 END */ };
 })();
