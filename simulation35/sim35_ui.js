@@ -286,6 +286,7 @@ window.Sim35UI = (function () {
   /* ------------------------------------------------------------------ paint */
   function repaint() {
     const sensors = sensorSet();
+    Growth3D.setCoverSelect(null);
     let named = {}, site = null, spillsBefore = [], spillsNew = [];
     if (st.fam === "infill") {
       const row = curRow(), byIdx = infillState(row);
@@ -1272,8 +1273,50 @@ window.Sim35UI = (function () {
       Growth3D.setRegionLabels(S().regions.map((r, ri) => ({ names: [regionPaint().labelAt[ri]], text: r.id, col: ri === st.region ? "#00d4ff" : "#8b949e" })));
     } else { Growth3D.setPulse([]); Growth3D.setRegionLabels([]); }
     Growth3D.setSpills([], []);
+    if (COV.sel != null) Growth3D.setCoverSelect(nameOf(d.placed[COV.sel]), coverBreakdown(d, d.sensors[COV.sel]).targets.map(nameOf));
     // read by tools/verify_sim35_web.js
     window.SIM35.coverState = { k: d.placed.length, det: d.det, hit: d.hit, units: d.units.length, tinted: Object.keys(tints).length, sig: d.units.map(unitCol).join() + "|" + d.units.map(u => u.by.join("+")).join() };
+  }
+  // Each manhole's region, by chamber index. A manhole shared by two regions goes to the first listed.
+  let _chReg = null;
+  const chamberRegion = () => {
+    if (_chReg) return _chReg;
+    const at = {}, of = regionPaint().regionOfNode;
+    G().nodes.forEach((n, a) => { at[n.name] = a; });
+    return (_chReg = names().map(nm => of[at[nm]]));
+  };
+  /* What one sensor covers. targets: the manholes its arcs go to. bars: visibility per region. Infill grows a whole region,
+     so a region is seen or not at one build-out; its bar is the share of build-out steps at which growth there reaches the
+     sensor. Greenfield grows at one manhole; its bar is the share of the region's manholes where growth would reach it. */
+  function coverBreakdown(d, s) {
+    const regs = S().regions, chReg = chamberRegion(), isIn = st.fam === "infill", seen = new Set(s.sees);
+    const targets = isIn ? names().map((_, i) => i).filter(i => seen.has(chReg[i])) : s.sees.slice();
+    const per = regs.map((_, ri) => targets.filter(i => chReg[i] === ri).length);
+    const size = regs.map((_, ri) => chReg.filter(x => x === ri).length);
+    const bars = regionOrder().map(ri => {
+      if (isIn) {
+        const steps = ladder().map((_, j) => seers(infillRow(curTag(), ri, j), st.rule).includes(s.c));
+        const n = steps.filter(Boolean).length;
+        return { ri, id: regs[ri].id, v: n / steps.length, now: seen.has(ri), tip: "S" + (s.r + 1) + " sees growth in " + regs[ri].id + " at " + n + " of " + steps.length + " build-out steps" };
+      }
+      return { ri, id: regs[ri].id, v: size[ri] ? per[ri] / size[ri] : 0, now: per[ri] > 0, tip: "S" + (s.r + 1) + " sees growth at " + per[ri] + " of " + regs[ri].id + "'s " + size[ri] + " manholes" };
+    });
+    return { targets, per, size, bars, home: chReg[s.c] };
+  }
+  function coverDetailHtml(d, s) {
+    const regs = S().regions, b = coverBreakdown(d, s), isIn = st.fam === "infill", total = b.targets.length, home = regs[b.home], me = "S" + (s.r + 1);
+    const homeShare = total ? pct(b.per[b.home] / total) : "0%";
+    let top = -1;
+    b.per.forEach((n, ri) => { if (ri !== b.home && n > (top < 0 ? 0 : b.per[top])) top = ri; });
+    const backwater = s.sees.length > 1 ? " A sensor can respond in two ways: the new flow passes it, or water backs up to it from a fuller pipe downstream." : "";
+    const text = !total ? "<b>" + me + "</b> sits in " + esc(home.id) + " and sees no growth " + (isIn ? "at this build-out" : "at this estate size") + "." :
+      isIn ? "<b>" + me + "</b> sits in " + esc(home.id) + " and sees growth in <b>" + s.sees.map(ui => regs[ui].id).join(", ") + "</b> at " + Math.round(ladder()[st.step] * 100) + "% build-out. Those regions hold <b>" + total + " manholes</b>: <b>" + homeShare + "</b> are in " + esc(home.id) + ", its own region." + backwater
+        : "<b>" + me + "</b> sits in " + esc(home.id) + " and sees growth at <b>" + total + " manholes</b>: <b>" + homeShare + "</b> are in " + esc(home.id) + ", its own region" + (top >= 0 ? ", and " + pct(b.per[top] / total) + " in " + esc(regs[top].id) : "") + "." + backwater;
+    const head = isIn ? "How often " + me + " sees each region" : "How much of each region " + me + " sees";
+    const sub_ = isIn ? "Share of the " + ladder().length + " build-out steps at which growth there reaches " + me + ", " + esc(curCase().label) + ". Bold: seen at the step selected now."
+      : "Share of each region's manholes where " + R().growthLevels[st.add] + " new homes would reach " + me + ", " + esc(curCase().label) + ".";
+    return "<p class='covdetail' id='covDetail'>" + text + "</p><h4>" + head + "</h4><p class='quiet covsub'>" + sub_ + "</p><div class='covbars' id='covBars'>" +
+      b.bars.map(x => "<div class='covbar" + (x.now ? " now" : "") + "' title='" + esc(x.tip) + "'><span class='covbarl'>" + esc(x.id) + (x.ri === b.home ? " <span class='quiet'>sits here</span>" : "") + "</span><span class='covbart'><i style='width:" + (x.v * 100).toFixed(1) + "%'></i></span><span class='covbarv'>" + pct(x.v) + "</span></div>").join("") + "</div>";
   }
   function renderCoverKey(d) {
     const item = (col, t) => '<span><span class="k" style="background:' + col + '"></span>' + esc(t) + "</span>";
@@ -1281,7 +1324,8 @@ window.Sim35UI = (function () {
     $("#coverKeyList").innerHTML = !coverOn() ? "<span>Coverage needs growth on the map: choose a region or a greenfield site.</span>" :
       (COV.m === "who" ? d.placed.map((c, r) => item(COV_COL[r % COV_COL.length], "first seen by S" + (r + 1))).join("")
         : item(COV_SEQ[0], "seen by 1 sensor") + item(COV_SEQ[1], "2 sensors") + item(COV_SEQ[2], "3 or more")) +
-      item(COV_MISS, "detectable, no placed sensor sees it") + item(COV_NONE, "no manhole passes the rule for this " + unit);
+      item(COV_MISS, "detectable, no placed sensor sees it") + item(COV_NONE, "no manhole passes the rule for this " + unit) +
+      (COV.sel == null ? "" : '<span><span class="kl" style="background:#2ef56b"></span>' + (st.fam === "infill" ? "green arc: a manhole in a region S" + (COV.sel + 1) + " sees" : "green arc: growth joining at this manhole reaches S" + (COV.sel + 1)) + "</span>");
   }
   function renderCover() {
     if (!st.coverView) return;
@@ -1307,15 +1351,13 @@ window.Sim35UI = (function () {
     const swatch = r => "<span class='covsw' style='background:" + (COV.m === "who" ? COV_COL[r % COV_COL.length] : "#e7edf7") + "'></span>";
     const sees = s => !s.sees.length ? "<span class='quiet'>none</span>" : isIn ? s.sees.map(ui => regs[ui].id).join(", ") : s.sees.length + " of " + d.det;
     const s = sel != null ? d.sensors[sel] : null;
-    const detail = s ? "<b>S" + (sel + 1) + "</b> sits in " + esc(sitsIn(s.c)) + " and sees growth in " + (s.sees.length ? "<b>" + (isIn ? s.sees.map(ui => regs[ui].id).join(", ") : s.sees.length + " " + unitWord) + "</b>" : "nothing here") + "." +
-        (s.sees.length > 1 ? " A sensor can respond in two ways: the new flow passes it, or water backs up to it from a fuller pipe downstream." : "")
-      : "Click a sensor to see everything it covers.";
     box.innerHTML = title + "<p class='say' id='covSay'>" + say_ + "</p>" +
       "<div class='covstats'><div><b>" + d.hit + " of " + d.det + "</b>detectable " + unitWord + " seen</div><div><b>" + (d.det - d.hit) + "</b>detectable, missed</div><div><b>" + d.multi + "</b>seen by 2 or more</div><div><b>" + (d.units.length - d.det) + "</b>no manhole passes the rule</div></div>" +
       "<label class='fld'>Colour by</label><div class='knob covknob' id='covMode'><button data-v='who'" + (COV.m === "who" ? " class='on'" : "") + ">First sensor</button><button data-v='count'" + (COV.m === "count" ? " class='on'" : "") + ">Number of sensors</button></div>" +
-      "<p class='covdetail' id='covDetail'>" + detail + "</p>" +
+      "<p class='covdetail'>" + (s ? "S" + (sel + 1) + " is selected: click its row again to clear it." : "Click a sensor for green arcs to everything it covers, and how much of each region it sees.") + "</p>" +
       "<table class='sm' id='covTable'><thead><tr><th>Sensor</th><th>Sits in</th><th>Sees growth in</th><th>Seen only by this sensor <i class='info-i left' data-tip='" + (isIn ? "Regions" : "Manholes") + " no other placed sensor sees, for what is selected on the left. Zero does not make a sensor useless: another sensor may also see what it sees.'>i</i></th></tr></thead><tbody id='covRows'>" +
       d.sensors.map(q => "<tr class='covrow" + (sel === q.r ? " sel" : "") + "' data-r='" + q.r + "'><td>" + swatch(q.r) + "S" + (q.r + 1) + " <span class='quiet'>" + esc(String(mhOf(q.c))) + "</span></td><td>" + esc(sitsIn(q.c)) + "</td><td>" + sees(q) + "</td><td>" + q.only + "</td></tr>").join("") + "</tbody></table>" +
+      (s ? coverDetailHtml(d, s) : "") +
       coverCurveHtml(k, isIn) + sources("cover");
     box.querySelectorAll("#covMode button").forEach(b => { b.onclick = () => { COV.m = b.dataset.v; repaint(); }; });
     box.querySelectorAll("#covRows tr").forEach(tr => { tr.onclick = () => { const r = +tr.dataset.r; COV.sel = COV.sel === r ? null : r; repaint(); }; });

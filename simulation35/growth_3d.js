@@ -204,7 +204,8 @@ window.Growth3D = (function () {
           const sc = 1.1 + 0.7 * (0.5 + 0.5 * beat);
           pulseMeshes.forEach(m => m.scale.setScalar((m.userData.baseScale || 1) * sc));
         }
-        renderer.render(scene, camera);
+/* SIM35 BEGIN */        coverTick(t);
+/* SIM35 END */        renderer.render(scene, camera);
         if (pumpsOn) {
           const sc = 2.0 + 0.45 * (0.5 + 0.5 * beat);    // in phase with the linked homes
           stationMeshes.forEach(m => m.scale.setScalar(sc));
@@ -1522,8 +1523,68 @@ window.Growth3D = (function () {
       });
   }
 
-  return { build, liveCamera, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, setSpills, setPumpRates, mapState, frameNodes,
+/* SIM35 BEGIN */
+  /* Sim 3.5 only, added to Sim 3's map code at publish by tools/build_sim35_web.py. The sensor selected in the coverage
+     table: its pin grows and blinks, and a green arc runs from it to every manhole it covers. */
+  let coverSel = null, coverArcs = null;
+  function setCoverSelect(sensorName, targets) {
+    if (coverSel) {
+      coverSel.mesh.scale.setScalar(coverSel.mesh.userData.baseScale || 1);
+      if (coverSel.mark) {
+        coverSel.mark.group.children.forEach(o => o.scale.set(1, 1, 1));
+        coverSel.mark.group.children[0].material.color.setHex(COL.sensor);
+        coverSel.mark.label.el.classList.remove("sel");
+      }
+      coverSel = null;
+    }
+    if (coverArcs) { scene.remove(coverArcs); coverArcs.geometry.dispose(); coverArcs.material.dispose(); coverArcs = null; }
+    if (!built || !sensorName) return;
+    const from = chamberMeshes.find(m => m.userData.node.name === sensorName);
+    if (!from) return;
+    const mark = sensorMarks.find(m => m.name === sensorName) || null;
+    if (mark) mark.label.el.classList.add("sel");
+    const want = new Set(targets || []);
+    want.delete(sensorName);
+    const ends = chamberMeshes.filter(m => want.has(m.userData.node.name));
+    coverSel = { mesh: from, mark, arcs: ends.length };
+    if (!ends.length) return;
+    const STEPS = 14, xyz = new Float32Array(ends.length * STEPS * 6), a = from.position;
+    let o = 0;
+    const at = (b, h, u) => {
+      const v = 1 - u;
+      return [v * v * a.x + 2 * v * u * (a.x + b.x) / 2 + u * u * b.x,
+              v * v * a.y + 2 * v * u * ((a.y + b.y) / 2 + h) + u * u * b.y,
+              v * v * a.z + 2 * v * u * (a.z + b.z) / 2 + u * u * b.z];
+    };
+    ends.forEach(m => {
+      const b = m.position, h = 40 + 0.28 * a.distanceTo(b);
+      for (let k = 0; k < STEPS; k++) {
+        xyz.set(at(b, h, k / STEPS), o); xyz.set(at(b, h, (k + 1) / STEPS), o + 3);
+        o += 6;
+      }
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(xyz, 3));
+    coverArcs = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: COL.sensor, transparent: true, opacity: 0.7, depthTest: false, depthWrite: false }));
+    coverArcs.renderOrder = 5;
+    scene.add(coverArcs);
+  }
+  function coverTick(t) {
+    if (!coverSel) return;
+    const b = 0.5 + 0.5 * Math.sin(t * 6.5), s = 2.6 + 2.4 * b;
+    coverSel.mesh.scale.setScalar((coverSel.mesh.userData.baseScale || 1) * (1.2 + 0.9 * b));
+    if (!coverSel.mark) return;
+    const [stalk, head, ring] = coverSel.mark.group.children;
+    stalk.scale.set(1.8, 1, 1.8);
+    head.scale.setScalar(s);
+    ring.scale.setScalar(s);
+    const c = (COL.sensor >> 16) & 255, d = (COL.sensor >> 8) & 255, e = COL.sensor & 255;
+    stalk.material.color.setRGB((c + (255 - c) * b) / 255, (d + (255 - d) * b) / 255, (e + (255 - e) * b) / 255);
+  }
+  const coverSelectInfo = () => coverSel ? { sensor: coverSel.mesh.userData.node.name, arcs: coverSel.arcs, pin: !!coverSel.mark } : null;
+
+/* SIM35 END */  return { build, liveCamera, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, setSpills, setPumpRates, mapState, frameNodes,
            setRegionTints, setRegionLabels, showRegionLabels, setPulse,
            frame, resize, heatHex,
-           ZEXAG };
+           ZEXAG/* SIM35 BEGIN */, setCoverSelect, coverSelectInfo/* SIM35 END */ };
 })();
