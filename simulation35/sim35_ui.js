@@ -1312,9 +1312,9 @@ window.Sim35UI = (function () {
       : "Click a sensor to see everything it covers.";
     box.innerHTML = title + "<p class='say' id='covSay'>" + say_ + "</p>" +
       "<div class='covstats'><div><b>" + d.hit + " of " + d.det + "</b>detectable " + unitWord + " seen</div><div><b>" + (d.det - d.hit) + "</b>detectable, missed</div><div><b>" + d.multi + "</b>seen by 2 or more</div><div><b>" + (d.units.length - d.det) + "</b>no manhole passes the rule</div></div>" +
-      "<div class='knob covknob' id='covMode'><button data-v='who'" + (COV.m === "who" ? " class='on'" : "") + ">Which sensor</button><button data-v='count'" + (COV.m === "count" ? " class='on'" : "") + ">How many sensors</button></div>" +
+      "<label class='fld'>Colour by</label><div class='knob covknob' id='covMode'><button data-v='who'" + (COV.m === "who" ? " class='on'" : "") + ">First sensor</button><button data-v='count'" + (COV.m === "count" ? " class='on'" : "") + ">Number of sensors</button></div>" +
       "<p class='covdetail' id='covDetail'>" + detail + "</p>" +
-      "<table class='sm' id='covTable'><thead><tr><th>Sensor</th><th>Sits in</th><th>Sees growth in</th><th>Only it <i class='info-i left' data-tip='" + (isIn ? "Regions" : "Manholes") + " no other placed sensor sees, for what is selected on the left.'>i</i></th></tr></thead><tbody id='covRows'>" +
+      "<table class='sm' id='covTable'><thead><tr><th>Sensor</th><th>Sits in</th><th>Sees growth in</th><th>Seen only by this sensor <i class='info-i left' data-tip='" + (isIn ? "Regions" : "Manholes") + " no other placed sensor sees, for what is selected on the left. Zero does not make a sensor useless: another sensor may also see what it sees.'>i</i></th></tr></thead><tbody id='covRows'>" +
       d.sensors.map(q => "<tr class='covrow" + (sel === q.r ? " sel" : "") + "' data-r='" + q.r + "'><td>" + swatch(q.r) + "S" + (q.r + 1) + " <span class='quiet'>" + esc(String(mhOf(q.c))) + "</span></td><td>" + esc(sitsIn(q.c)) + "</td><td>" + sees(q) + "</td><td>" + q.only + "</td></tr>").join("") + "</tbody></table>" +
       coverCurveHtml(k, isIn) + sources("cover");
     box.querySelectorAll("#covMode button").forEach(b => { b.onclick = () => { COV.m = b.dataset.v; repaint(); }; });
@@ -1372,7 +1372,7 @@ window.Sim35UI = (function () {
   const findingsTab = () => '<div class="docbody">' + markdown(window.SIM35.findings) + markdown(IDX().docs.findings) + "</div>";
   function renderResults() {
     const box = $("#modalBox");
-    const TABS = [["warn", "Warning"], ["room", "Room for homes"], ["float", "Level or float"], ["min", "How many sensors"], ["limits", "Limits and next steps"], ["findings", "Findings"]];
+    const TABS = [["warn", "Warning"], ["room", "Room for homes"], ["float", "Level or float"], ["min", "Fewest sensors needed"], ["limits", "Limits and next steps"], ["findings", "Findings"]];
     const pane = RES.tab === "warn" ? ladderTab() : RES.tab === "room" ? roomTab() : RES.tab === "float" ? floatTab() : RES.tab === "limits" ? limitsTab() : RES.tab === "findings" ? findingsTab() : minTab();
     box.innerHTML = CLOSE + "<h2>Results</h2><div class='restabs'>" + TABS.map(([v, t]) => "<button data-tab='" + v + "'" + (v === RES.tab ? " class='on'" : "") + ">" + esc(t) + "</button>").join("") + "</div>" + pane;
     $("#modalClose").onclick = () => { $("#modal").hidden = true; };
