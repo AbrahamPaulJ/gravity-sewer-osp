@@ -340,7 +340,7 @@ window.Sim35UI = (function () {
     renderSensors();
     renderCover();
     renderWords();
-    $("#heatKey").hidden = !st.showHeat;
+    legendKeys();
     $("#heatWhich").textContent = (st.obj === "worst" ? "worst of the " : "average of the ") + famCases().length +
       " cases, " + ruleOf(st.rule).label.toLowerCase() + (st.fam === "infill" ? ", infill scenarios" : ", greenfield scenarios");
   }
@@ -1313,7 +1313,7 @@ window.Sim35UI = (function () {
       isIn ? "<b>" + me + "</b> sits in " + esc(home.id) + " and sees growth in <b>" + s.sees.map(ui => regs[ui].id).join(", ") + "</b> at " + Math.round(ladder()[st.step] * 100) + "% build-out. Those regions hold <b>" + total + " manholes</b>: <b>" + homeShare + "</b> are in " + esc(home.id) + ", its own region." + backwater
         : "<b>" + me + "</b> sits in " + esc(home.id) + " and sees growth at <b>" + total + " manholes</b>: <b>" + homeShare + "</b> are in " + esc(home.id) + ", its own region" + (top >= 0 ? ", and " + pct(b.per[top] / total) + " in " + esc(regs[top].id) : "") + "." + backwater;
     const head = isIn ? "How often " + me + " sees each region" : "How much of each region " + me + " sees";
-    const sub_ = isIn ? "Share of the " + ladder().length + " build-out steps at which growth there reaches " + me + ", " + esc(curCase().label) + ". Bold: seen at the step selected now."
+    const sub_ = isIn ? "Share of the " + ladder().length + " build-out steps at which growth there reaches " + me + ", " + esc(curCase().label) + ". Bold: seen at " + Math.round(ladder()[st.step] * 100) + "% build-out."
       : "Share of each region's manholes where " + R().growthLevels[st.add] + " new homes would reach " + me + ", " + esc(curCase().label) + ".";
     return "<p class='covdetail' id='covDetail'>" + text + "</p><h4>" + head + "</h4><p class='quiet covsub'>" + sub_ + "</p><div class='covbars' id='covBars'>" +
       b.bars.map(x => "<div class='covbar" + (x.now ? " now" : "") + "' title='" + esc(x.tip) + "'><span class='covbarl'>" + esc(x.id) + (x.ri === b.home ? " <span class='quiet'>sits here</span>" : "") + "</span><span class='covbart'><i style='width:" + (x.v * 100).toFixed(1) + "%'></i></span><span class='covbarv'>" + pct(x.v) + "</span></div>").join("") + "</div>";
@@ -1330,7 +1330,7 @@ window.Sim35UI = (function () {
   function renderCover() {
     if (!st.coverView) return;
     const box = $("#rightCover");
-    const tip = "Each part of the map takes the colour of the first sensor that sees growth there, for what the left panel has selected. Change the growth, weather, rule, method or number of sensors and the map follows. Click a sensor in the table to see everything it covers.";
+    const tip = "Each part of the map is coloured by the first sensor that sees growth there. The map uses the growth, weather, sensor rule and number of sensors set in the left panel, so it changes when you change them. Click a sensor in the table to see everything it covers.";
     const title = "<h4 style='margin-top:0'>Sensor coverage <i class='info-i left' data-tip='" + esc(tip) + "'>i</i></h4>";
     if (!coverOn()) {
       renderCoverKey(null);
@@ -1351,11 +1351,15 @@ window.Sim35UI = (function () {
     const swatch = r => "<span class='covsw' style='background:" + (COV.m === "who" ? COV_COL[r % COV_COL.length] : "#e7edf7") + "'></span>";
     const sees = s => !s.sees.length ? "<span class='quiet'>none</span>" : isIn ? s.sees.map(ui => regs[ui].id).join(", ") : s.sees.length + " of " + d.det;
     const s = sel != null ? d.sensors[sel] : null;
+    const onlyTip = k === 1 ? "With one sensor placed, this counts everything it sees, " + (isIn ? "at " + Math.round(ladder()[st.step] * 100) + "% build-out in " : "with " + R().growthLevels[st.add] + " new homes in ") + curCase().label + "."
+      : (isIn ? "The number of regions this sensor sees and none of the other " + (k - 1) + " sensors do, at " + Math.round(ladder()[st.step] * 100) + "% build-out in " + curCase().label + "."
+          : "The number of manholes where " + R().growthLevels[st.add] + " new homes would reach this sensor and none of the other " + (k - 1) + " sensors, in " + curCase().label + ".") +
+        " A 0 does not make a sensor useless: another sensor may see the same growth, or this one may only respond at other settings.";
     box.innerHTML = title + "<p class='say' id='covSay'>" + say_ + "</p>" +
       "<div class='covstats'><div><b>" + d.hit + " of " + d.det + "</b>detectable " + unitWord + " seen</div><div><b>" + (d.det - d.hit) + "</b>detectable, missed</div><div><b>" + d.multi + "</b>seen by 2 or more</div><div><b>" + (d.units.length - d.det) + "</b>no manhole passes the rule</div></div>" +
       "<label class='fld'>Colour by</label><div class='knob covknob' id='covMode'><button data-v='who'" + (COV.m === "who" ? " class='on'" : "") + ">First sensor</button><button data-v='count'" + (COV.m === "count" ? " class='on'" : "") + ">Number of sensors</button></div>" +
       "<p class='covdetail'>" + (s ? "S" + (sel + 1) + " is selected: click its row again to clear it." : "Click a sensor for green arcs to everything it covers, and how much of each region it sees.") + "</p>" +
-      "<table class='sm' id='covTable'><thead><tr><th>Sensor</th><th>Sits in</th><th>Sees growth in</th><th>Seen only by this sensor <i class='info-i left' data-tip='" + (isIn ? "Regions" : "Manholes") + " no other placed sensor sees, for what is selected on the left. Zero does not make a sensor useless: another sensor may also see what it sees.'>i</i></th></tr></thead><tbody id='covRows'>" +
+      "<table class='sm' id='covTable'><thead><tr><th>Sensor</th><th>Sits in</th><th>Sees growth in</th><th>Seen only by this sensor <i class='info-i left' id='covOnlyTip' data-tip='" + esc(onlyTip) + "'>i</i></th></tr></thead><tbody id='covRows'>" +
       d.sensors.map(q => "<tr class='covrow" + (sel === q.r ? " sel" : "") + "' data-r='" + q.r + "'><td>" + swatch(q.r) + "S" + (q.r + 1) + " <span class='quiet'>" + esc(String(mhOf(q.c))) + "</span></td><td>" + esc(sitsIn(q.c)) + "</td><td>" + sees(q) + "</td><td>" + q.only + "</td></tr>").join("") + "</tbody></table>" +
       (s ? coverDetailHtml(d, s) : "") +
       coverCurveHtml(k, isIn) + sources("cover");
@@ -1496,19 +1500,22 @@ window.Sim35UI = (function () {
   function syncDDs() { $$("select[data-dd]").forEach(syncDD); }
   function closeDDs() { $$(".dd").forEach(d => { d.classList.remove("open"); d.querySelector(".ddList").hidden = true; }); }
 
-  function legendGroups() {
-    // One Legend button. Off by default; on, it shows the groups that apply (the heatmap key
-    // is driven by repaint, the pump and connection keys by their own toggles).
-    const av = st.areasView, cv = st.coverView, own = av || cv;     // these two views bring their own key
-    $("#legend").hidden = !(st.legend || own);
+  function legendKeys() {
+    // One Legend button. Off by default; on, it shows the groups that apply. Regions, Coverage and the Heatmap bring their
+    // own key whether Legend is on or not, and the heatmap key shows only while the heatmap does.
+    const av = st.areasView, cv = st.coverView, own = av || cv, heat = st.showHeat && !own, full = st.legend && !own;
+    $("#legend").hidden = !(full || own || heat);
     $("#areasKey").hidden = !av;
     $("#coverKey").hidden = !cv;
-    $("#simpleKey").hidden = own;
-    $$(".legend .lg-results").forEach(g => { if (g.id !== "heatKey") g.hidden = own; else if (own) g.hidden = true; });
-    $$(".legend .lg-network").forEach(g => { g.hidden = own || (g.id === "pumpKey" ? !st.showPumps : g.id === "connKey" ? !st.showConn : !(st.showPumps || st.showConn)); });
+    $("#simpleKey").hidden = !full;
+    $$(".legend .lg-results").forEach(g => { g.hidden = g.id === "heatKey" ? !heat : !full; });
+    $$(".legend .lg-network").forEach(g => { g.hidden = !full || (g.id === "pumpKey" ? !st.showPumps : g.id === "connKey" ? !st.showConn : !(st.showPumps || st.showConn)); });
     $("#toggleLegend").classList.toggle("primary", st.legend && !own);
     $("#toggleAreas").classList.toggle("primary", av);
     $("#toggleCover").classList.toggle("primary", cv);
+  }
+  function legendGroups() {
+    legendKeys();
     Growth3D.resize($("#stage"));
   }
   /* Live presentation sync (Capstone Live). Its script mirrors buttons, sliders and selects by
