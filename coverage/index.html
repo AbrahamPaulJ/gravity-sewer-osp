@@ -69,57 +69,70 @@ tr.row.sel td { background: color-mix(in srgb, var(--s1) 20%, transparent); }
 .covered span { font-size: 11.5px; font-variant-numeric: tabular-nums; border: 1px solid var(--grid); border-radius: 4px; padding: 0 5px; color: var(--ink2); }
 .covered span.own { border-color: var(--ink2); color: var(--ink); }
 .covered b { font-weight: 600; }
+.detail .m, #pop .m { color: var(--muted); }
+.est { margin-top: 8px; }
+.est th { position: static; }
+.est td, .est th { padding: 4px 5px; }
+.est td.who, .est th.who { text-align: left; }
+.est .sw, .detail .sw, #pop .sw { margin-right: 3px; }
+#pop { position: absolute; z-index: 6; width: 250px; background: var(--surface); border: 1px solid var(--axis); border-radius: 8px; padding: 10px 12px; box-shadow: 0 4px 16px rgba(0,0,0,.3); font-size: 13px; }
+#pop .pt { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+#pop .px { background: none; border: 0; color: var(--ink2); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; }
+#pop .pl { color: var(--ink2); font-size: 12px; margin-bottom: 4px; }
+#pop .seg button { padding: 4px 9px; }
+#pop .pr { margin-top: 8px; color: var(--ink2); font-size: 12.5px; }
+#pop .prm, .detail .prm { margin-top: 8px; background: none; border: 1px solid var(--axis); border-radius: 6px; color: var(--ink2); font: inherit; font-size: 12px; padding: 3px 8px; cursor: pointer; }
 </style>
 </head>
 <body>
 <main>
-  <h1>Which sensor sees growth where <small>· Simulation 3, greenfield growth</small></h1>
-  <p class="sub">Sensor placement read backwards: placement chooses sensors from the growth they see; this page starts from the sensors and shows the manholes they cover. Each dot is a manhole where a new estate joins the network in Simulation 3, coloured by the level sensor that detects that growth under the chosen rule. Sensors are added in Simulation 3's greedy order, for the best worst weather case or the best average over the eight, carried on past its ten until every detectable run is seen. Click a sensor on the map or in the table to list every manhole it covers.</p>
+  <h1>Which sensor notices new homes <small>· Simulation 3, greenfield growth</small></h1>
+  <p class="sub">Click a manhole and choose how many new homes to build there. The map shows the manholes where the water rises enough to notice that estate, and which of the placed sensors do. Simulation 3 ran every manhole and estate size on its own, so the page places one estate at a time. Click a sensor to see how it treats the estate, or, with no estate placed, the manholes where it would notice one.</p>
 
   <div class="controls">
     <label>Level sensors <input id="k" type="range" min="1" max="10" value="5"> <span class="kval" id="kv">5</span></label>
     <label>Detection rule <select id="rule"></select></label>
     <label>Sensors chosen for <span class="seg" id="obj"><button data-o="worst" class="on" title="Each sensor added is the one that most raises the share seen in the worst of the eight weather cases (ties by the average)">Best worst case</button><button data-o="mean" title="Each sensor added is the one that most raises the share seen on average over the eight weather cases (ties by the worst case)">Best average</button></span></label>
     <label>Weather <select id="case"></select></label>
-    <label>New homes <select id="size"></select></label>
-    <span class="seg" id="mode"><button data-m="who" class="on">Which sensor</button><button data-m="count">How many sensors</button></span>
   </div>
 
   <div class="tiles">
-    <div class="tile"><div class="v" id="t1">–</div><div class="l" id="t1l">growth sites seen</div></div>
-    <div class="tile"><div class="v" id="t2">–</div><div class="l" id="t2l">growth sites missed by these sensors</div></div>
-    <div class="tile"><div class="v" id="t3">–</div><div class="l">sites seen by 2 or more sensors</div></div>
-    <div class="tile"><div class="v" id="t4">–</div><div class="l" id="t4l">sites no manhole can detect at this size</div></div>
+    <div class="tile"><div class="v" id="t1">–</div><div class="l" id="t1l"></div></div>
+    <div class="tile"><div class="v" id="t2">–</div><div class="l" id="t2l"></div></div>
+    <div class="tile"><div class="v" id="t3">–</div><div class="l" id="t3l"></div></div>
+    <div class="tile"><div class="v" id="t4">–</div><div class="l" id="t4l"></div></div>
   </div>
 
   <div class="layout">
-    <div class="card">
-      <svg id="map" role="img" aria-label="Sewer network map with level sensors and the growth sites each one detects"></svg>
+    <div class="card" id="mapCard">
+      <svg id="map" role="img" aria-label="Sewer network map: click a manhole to add new homes and see which sensors notice them"></svg>
       <div class="legend" id="legend"></div>
       <div id="tip"></div>
+      <div id="pop" hidden></div>
     </div>
     <div class="card side">
       <h2>Share of growth seen as sensors are added</h2>
       <p class="hint" id="curveHint"></p>
       <svg id="curve" viewBox="0 0 320 170" role="img" aria-label="Share of detectable growth seen by number of sensors"></svg>
+      <h2 id="detailHead">New homes</h2>
+      <div class="detail" id="detail"></div>
       <h2>Sensors</h2>
       <p class="hint" id="rowsHint"></p>
-      <div class="detail" id="detail">Click a sensor to highlight its coverage.</div>
-      <div class="list"><table><thead id="rowsHead"></thead><tbody id="rows"></tbody></table></div>
+      <div class="list"><table><thead><tr><th>#</th><th>Manhole</th><th>This estate</th><th>Runs</th><th>Only it</th></tr></thead><tbody id="rows"></tbody></table></div>
     </div>
   </div>
 
-  <p class="foot">Simulation 3's greenfield runs: a new estate of 10, 30, 80, 150 or 700 homes joins at each of 328 manholes, under eight weather cases, solved in EPA SWMM. The first ten sensors for each rule and objective are the greedy sets Simulation 3 publishes (this page reproduces their order and scores exactly); later sensors continue the same method: each one is the manhole that most raises the share seen in the worst weather case (best worst case) or on average over the eight (best average), all five estate sizes counted. "All weather cases" shows a manhole as covered when a placed sensor sees its growth in at least one case, and outlines it more faintly when some cases where it shows are missed. Simulation 3's recommended set comes from its infill runs and the exact solver, so it can differ from this order. Four weather cases (Dry, Design wet and its two variants) are still the fixed 480-minute runs, not re-run until levels settle; they are marked in the weather list. The hydraulic model is uncalibrated, so these are model estimates, not field results.</p>
-  <p class="foot">Why a sensor can see nothing in one view: each sensor is chosen over all eight weather cases, so some only work in wet weather or for large estates. In the best-worst-case set under the 10 mm rule at 150 homes, sensor 1 (manhole 4454116) runs 0.15 to 0.25 m deep in dry and design wet weather and sees no estate there, but once it surcharges in beyond-design weather it sees 219. Sensor 2 (manhole 1629194) sees almost nothing below 700 homes, and 313 of the 700-home estates in dry weather. Simulation 2 showed a third reason: a manhole just downstream that already spills sends the extra flow out as overflow instead of raising the level upstream.</p>
+  <p class="foot">Simulation 3's greenfield runs: a new estate of 10, 30, 80, 150 or 700 homes joins at one of the 328 manholes, everything else unchanged, under eight weather cases, solved in EPA SWMM: one run per manhole, size and weather, 13,120 in all. No run adds homes at two manholes, so this page places one estate at a time; several developments at once would need new SWMM runs (Simulation 2.5's scenario builder does that). A manhole "notices" the estate when its peak depth rises by at least the chosen amount, or newly passes 150 mm under the alarm rule. The first ten sensors for each rule and objective are the greedy sets Simulation 3 publishes (this page reproduces their order and scores exactly); later sensors continue the same method over all five sizes. Simulation 3's recommended set comes from its infill runs and the exact solver, so it can differ from this order. Four weather cases (Dry, Design wet and its two variants) are still the fixed 480-minute runs, not re-run until levels settle; they are marked in the weather list. The hydraulic model is uncalibrated, so these are model estimates, not field results.</p>
 </main>
 <script src="data.js?v=2"></script>
 <script>
 (() => {
   const D = window.COV, NS = "http://www.w3.org/2000/svg";
-  const svg = document.getElementById("map"), tip = document.getElementById("tip");
+  const svg = document.getElementById("map"), tip = document.getElementById("tip"), pop = document.getElementById("pop");
   const $ = (id) => document.getElementById(id);
-  const SLOTS = 8, ALL = -1;
-  const st = { rule: "r10", obj: "worst", k: 5, c: ALL, s: Math.max(0, D.sizes.indexOf(150)), m: "who", sel: null };
+  const SLOTS = 8, ALL = -1, BIG = D.sizes[D.sizes.length - 1];
+  // est: the one estate placed ({ i: manhole index, s: size index}); pend: the manhole whose popup is open.
+  const st = { rule: "r10", obj: "worst", k: 5, c: ALL, est: null, pend: null, sel: null };
 
   const xs = [], ys = [];
   D.pipes.forEach((p) => { for (let i = 0; i < p.p.length; i += 2) { xs.push(p.p[i]); ys.push(p.p[i + 1]); } });
@@ -129,7 +142,7 @@ tr.row.sel td { background: color-mix(in srgb, var(--s1) 20%, transparent); }
   const X = (x) => x - minX, Y = (y) => maxY - y;
   const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); (parent || svg).appendChild(e); return e; };
 
-  const gPipes = el("g", {}), gLinks = el("g", {}), gSites = el("g", {}), gSensors = el("g", {});
+  const gPipes = el("g", {}), gLinks = el("g", {}), gSites = el("g", { style: "cursor:pointer" }), gEst = el("g", {}), gSensors = el("g", {});
   D.pipes.forEach((p) => {
     let d = "";
     for (let i = 0; i < p.p.length; i += 2) d += (i ? "L" : "M") + X(p.p[i]).toFixed(1) + " " + Y(p.p[i + 1]).toFixed(1);
@@ -142,14 +155,15 @@ tr.row.sel td { background: color-mix(in srgb, var(--s1) 20%, transparent); }
 
   const siteEls = D.chambers.map((c, i) => {
     const g = el("g", { transform: `translate(${X(c.x).toFixed(1)},${Y(c.y).toFixed(1)})` }, gSites);
-    g.dot = el("circle", { r: 15 }, g);
-    g.x = el("path", { d: "M-11 -11L11 11M-11 11L11 -11", stroke: "var(--muted)", "stroke-width": 4, fill: "none" }, g);
+    g.dot = el("circle", { r: 12 }, g);
     el("circle", { r: 32, fill: "transparent" }, g);
     return g;
   });
 
   const plan = () => D.plans[st.rule][st.obj];
   const allWeather = () => st.c === ALL;
+  const cases = () => allWeather() ? D.cases.map((_, i) => i) : [st.c];
+  const seenAt = (c, s, i) => D.seen[st.rule][c][s][i] || [];
   const OBJ = { worst: "best worst case", mean: "best average" };
   D.rules.forEach((r) => $("rule").add(new Option(r.label, r.id)));
   function ruleLabels() {
@@ -158,10 +172,10 @@ tr.row.sel td { background: color-mix(in srgb, var(--s1) 20%, transparent); }
   ruleLabels();
   $("case").add(new Option("All weather cases (as placement uses them)", ALL));
   D.cases.forEach((c, i) => $("case").add(new Option(c.label + (c.settled ? "" : " · 480-min runs"), i)));
-  D.sizes.forEach((s, i) => $("size").add(new Option(s + " homes", i)));
-  $("rule").value = st.rule; $("case").value = st.c; $("size").value = st.s;
+  $("rule").value = st.rule; $("case").value = st.c;
 
   const color = (rank) => rank < SLOTS ? `var(--s${rank + 1})` : "var(--ink2)";
+  const ruleText = () => st.rule === "alarm" ? "newly passes 150 mm" : `rises ${st.rule.slice(1)} mm or more`;
 
   function syncK() {
     const K = plan().order.length;
@@ -171,31 +185,45 @@ tr.row.sel td { background: color-mix(in srgb, var(--s1) 20%, transparent); }
     if (st.sel != null && st.sel >= st.k) st.sel = null;
   }
 
-  // A site is one manhole's growth at the chosen size. Under one weather case it is seen or not;
-  // under all of them, nDet counts the cases where some manhole sees it and nHit those where a
-  // placed sensor does; per maps each placed sensor (by rank) to the cases it sees it in.
-  // Sensor totals are kept two ways: by manhole (seen in any case) and by run (manhole x case),
-  // because two sensors can cover the same manholes in different weather.
-  function compute() {
+  // Every run in the chosen weather (each estate size at each manhole): what the placed sensors notice.
+  function overall() {
     const placed = plan().order.slice(0, st.k), rankOf = new Map(placed.map((ch, r) => [ch, r]));
-    const cs = allWeather() ? D.cases.map((_, i) => i) : [st.c];
-    const sensors = placed.map((ch, r) => ({ ch, r, sees: 0, first: 0, only: 0, runs: 0, firstRuns: 0, onlyRuns: 0 }));
-    const sites = D.chambers.map((_, i) => {
-      let nDet = 0, nHit = 0;
-      const per = new Map();
-      cs.forEach((c) => {
-        const t = D.seen[st.rule][c][st.s][i];
-        if (!t || !t.length) return;
-        nDet++;
-        const rs = t.filter((ch) => rankOf.has(ch)).map((ch) => rankOf.get(ch)).sort((a, b) => a - b);
-        rs.forEach((r) => { per.set(r, (per.get(r) || 0) + 1); sensors[r].runs++; });
-        if (rs.length) { nHit++; sensors[rs[0]].firstRuns++; }
-        if (rs.length === 1) sensors[rs[0]].onlyRuns++;
-      });
-      return { det: nDet > 0, nDet, nHit, per, by: [...per.keys()].sort((a, b) => a - b) };
+    const sensors = placed.map((ch, r) => ({ ch, r, runs: 0, onlyRuns: 0 }));
+    let rd = 0, rh = 0;
+    const mDet = new Set(), mHit = new Set();
+    cases().forEach((c) => D.sizes.forEach((_, s) => D.seen[st.rule][c][s].forEach((t, i) => {
+      if (!t || !t.length) return;
+      rd++; mDet.add(i);
+      const rs = t.filter((m) => rankOf.has(m)).map((m) => rankOf.get(m));
+      rs.forEach((r) => sensors[r].runs++);
+      if (rs.length) { rh++; mHit.add(i); }
+      if (rs.length === 1) sensors[rs[0]].onlyRuns++;
+    })));
+    return { placed, rankOf, sensors, rd, rh, mDet: mDet.size, mHit: mHit.size };
+  }
+
+  // The placed estate: where the water rises (and in how many weather cases), and who notices.
+  function estate() {
+    if (!st.est) return null;
+    const { i, s } = st.est, cs = cases(), rise = new Map(), noticed = new Map();
+    const perCase = cs.map((c) => {
+      const t = seenAt(c, s, i);
+      t.forEach((m) => rise.set(m, (rise.get(m) || 0) + 1));
+      const by = t.filter((m) => R.rankOf.has(m)).map((m) => R.rankOf.get(m)).sort((a, b) => a - b);
+      by.forEach((r) => noticed.set(r, (noticed.get(r) || 0) + 1));
+      return { c, n: t.length, by };
     });
-    sites.forEach((s) => { s.by.forEach((r) => sensors[r].sees++); if (s.by.length) sensors[s.by[0]].first++; if (s.by.length === 1) sensors[s.by[0]].only++; });
-    return { placed, sites, sensors };
+    let smallest = null;
+    for (let z = 0; z < D.sizes.length && smallest == null; z++) if (cs.some((c) => seenAt(c, z, i).some((m) => R.rankOf.has(m)))) smallest = z;
+    return { i, s, rise, noticed, perCase, nc: cs.length, shows: perCase.filter((p) => p.n).length, hit: perCase.filter((p) => p.by.length).length, smallest };
+  }
+
+  // With no estate placed: each manhole where sensor r would notice an estate built there on its own,
+  // and the smallest size at which it does.
+  function reach(r) {
+    const ch = R.placed[r], out = new Map();
+    D.chambers.forEach((_, i) => { for (let z = 0; z < D.sizes.length; z++) if (cases().some((c) => seenAt(c, z, i).includes(ch))) { out.set(i, z); break; } });
+    return out;
   }
 
   function drawCurve() {
@@ -214,134 +242,167 @@ tr.row.sel td { background: color-mix(in srgb, var(--s1) 20%, transparent); }
     el("line", { x1: Xc(st.k), x2: Xc(st.k), y1: t, y2: h - b, stroke: "var(--muted)", "stroke-width": 1 }, c);
     const mean = st.obj === "mean";
     el("circle", { cx: Xc(st.k), cy: Yc((mean ? P.mean : P.worst)[st.k - 1]), r: 4, fill: mean ? "var(--q3)" : "var(--s1)", stroke: "var(--surface)", "stroke-width": 2 }, c);
-    $("curveHint").innerHTML = `Chosen for the ${OBJ[st.obj]}. <b style="color:var(--ink)">${st.k} sensors: ${(100 * P.worst[st.k - 1]).toFixed(0)}%</b> in the worst weather case (solid), <b style="color:var(--ink)">${(100 * P.mean[st.k - 1]).toFixed(0)}%</b> on average over the eight cases (dashed). All five estate sizes counted.`;
+    $("curveHint").innerHTML = `Chosen for the ${OBJ[st.obj]}. <b style="color:var(--ink)">${st.k} sensors: ${(100 * P.worst[st.k - 1]).toFixed(0)}%</b> of runs noticed in the worst weather case (solid), <b style="color:var(--ink)">${(100 * P.mean[st.k - 1]).toFixed(0)}%</b> on average over the eight cases (dashed). All five estate sizes counted.`;
   }
 
-  let R;
+  let R, E;
   function draw() {
     syncK();
-    R = compute();
-    const { sites, sensors, placed } = R, all = allWeather();
-    const det = sites.filter((s) => s.det).length, hit = sites.filter((s) => s.by.length).length;
-    if (all) {
-      const dr = sites.reduce((a, s) => a + s.nDet, 0), hr = sites.reduce((a, s) => a + s.nHit, 0);
-      $("t1").textContent = `${hr} of ${dr}`;
-      $("t1l").textContent = `growth runs seen, manhole × weather case (${dr ? (100 * hr / dr).toFixed(0) : 0}%)`;
-      $("t2").textContent = dr - hr;
-      $("t2l").textContent = "growth runs missed by these sensors";
-      $("t4l").textContent = `sites no manhole can detect at ${D.sizes[st.s]} homes in any weather`;
-    } else {
-      $("t1").textContent = `${hit} of ${det}`;
-      $("t1l").textContent = `growth sites seen (${det ? (100 * hit / det).toFixed(0) : 0}%)`;
-      $("t2").textContent = det - hit;
-      $("t2l").textContent = "growth sites missed by these sensors";
-      $("t4l").textContent = `sites no manhole can detect at ${D.sizes[st.s]} homes`;
-    }
-    $("t3").textContent = sites.filter((s) => s.by.length >= 2).length;
-    $("t4").textContent = sites.length - det;
+    R = overall();
+    E = estate();
+    const { placed, sensors } = R, n = D.chambers.length;
+    $("t1").textContent = `${R.rh} of ${R.rd}`;
+    $("t1l").textContent = `runs the placed sensors notice (${R.rd ? (100 * R.rh / R.rd).toFixed(0) : 0}%); a run is one estate size at one manhole in one weather case`;
+    $("t2").textContent = R.rd - R.rh;
+    $("t2l").textContent = "runs no placed sensor notices";
+    $("t3").textContent = `${R.mHit} of ${n}`;
+    $("t3l").textContent = "manholes where an estate of some size would be noticed";
+    $("t4").textContent = n - R.mDet;
+    $("t4l").textContent = `manholes where even ${BIG} homes shows nowhere`;
 
-    const selR = st.sel;
-    sites.forEach((s, i) => {
-      const g = siteEls[i];
-      g.x.style.display = s.det ? "none" : "";
-      g.dot.style.display = s.det ? "" : "none";
-      const part = all && s.by.length && s.nHit < s.nDet;
-      let fill, stroke = "none", sw = 0, op = 1;
-      if (!s.by.length) { fill = "var(--surface)"; stroke = "var(--muted)"; sw = 4; }
-      else if (st.m === "who") fill = color(s.by[0]);
-      else fill = s.by.length >= 3 ? "var(--q3)" : s.by.length === 2 ? "var(--q2)" : "var(--q1)";
-      if (part) { stroke = fill; sw = 4; }
-      if (selR != null) { const mine = s.by.includes(selR); op = mine ? 1 : 0.18; if (mine) { stroke = "var(--ink)"; sw = 4; } }
-      g.dot.setAttribute("fill", fill); g.dot.setAttribute("fill-opacity", part ? 0.35 : 1);
-      g.dot.setAttribute("stroke", stroke); g.dot.setAttribute("stroke-width", sw);
-      g.style.opacity = s.det ? op : (selR != null ? 0.18 : 0.7);
+    // A selected sensor shows everything it covers, whether or not new homes are placed.
+    const rm = st.sel != null ? reach(st.sel) : null;
+    siteEls.forEach((g, i) => {
+      let fill = "var(--muted)", fo = 0.55, r = 12;
+      if (rm) {
+        if (rm.has(i)) { fill = color(st.sel); fo = 1; r = 15; } else fo = 0.2;
+      } else if (E) {
+        const k = E.rise.get(i) || 0;
+        if (k) { fill = "var(--q3)"; fo = E.nc > 1 ? 0.3 + 0.7 * k / E.nc : 1; r = 16; } else fo = 0.25;
+      }
+      g.dot.setAttribute("r", r); g.dot.setAttribute("fill", fill); g.dot.setAttribute("fill-opacity", fo);
+      g.dot.setAttribute("stroke", st.pend === i ? "var(--ink)" : "none"); g.dot.setAttribute("stroke-width", 5);
     });
 
-    gLinks.replaceChildren();
-    if (selR != null) {
-      const sc = D.chambers[placed[selR]];
-      sites.forEach((s, i) => {
-        if (!s.by.includes(selR)) return;
-        const c = D.chambers[i];
-        el("line", { x1: X(sc.x), y1: Y(sc.y), x2: X(c.x), y2: Y(c.y), stroke: st.m === "who" ? color(selR) : "var(--q2)", "stroke-width": 3, opacity: 0.55 }, gLinks);
-      });
+    gLinks.replaceChildren(); gEst.replaceChildren();
+    if (rm) {
+      const sc = D.chambers[placed[st.sel]];
+      rm.forEach((_, i) => { const c = D.chambers[i]; el("line", { x1: X(sc.x), y1: Y(sc.y), x2: X(c.x), y2: Y(c.y), stroke: color(st.sel), "stroke-width": 2, opacity: 0.35 }, gLinks); });
+    }
+    if (E) {
+      const ec = D.chambers[E.i];
+      if (!rm) E.noticed.forEach((_, r) => { const sc = D.chambers[placed[r]]; el("line", { x1: X(ec.x), y1: Y(ec.y), x2: X(sc.x), y2: Y(sc.y), stroke: color(r), "stroke-width": st.sel === r ? 9 : 4, opacity: 0.85 }, gLinks); });
+      const g = el("g", { transform: `translate(${X(ec.x).toFixed(1)},${Y(ec.y).toFixed(1)})`, style: "cursor:pointer" }, gEst);
+      g.addEventListener("click", (e) => { e.stopPropagation(); hideTip(); st.pend = E.i; draw(); });
+      g.addEventListener("mousemove", (e) => showTip(e, `<b>+${D.sizes[E.s]} new homes</b><br><span class="m">Manhole ${D.chambers[E.i].id}: click to change or remove them</span>`));
+      g.addEventListener("mouseleave", hideTip);
+      el("path", { d: "M0 -42L36 -12V30H-36V-12Z", fill: "var(--s4)", stroke: "var(--surface)", "stroke-width": 6 }, g);
+      const t = el("text", { y: -58, "text-anchor": "middle", "font-size": 40, "font-weight": 700, fill: "var(--ink)", stroke: "var(--surface)", "stroke-width": 10, "paint-order": "stroke" }, g);
+      t.textContent = `+${D.sizes[E.s]} homes`;
     }
 
     gSensors.replaceChildren();
     placed.forEach((ch, r) => {
       const c = D.chambers[ch];
-      const g = el("g", { transform: `translate(${X(c.x).toFixed(1)},${Y(c.y).toFixed(1)})`, style: "cursor:pointer", opacity: selR != null && selR !== r ? 0.35 : 1 }, gSensors);
+      const dim = st.sel != null ? st.sel !== r : E ? !E.noticed.has(r) : false;
+      const g = el("g", { transform: `translate(${X(c.x).toFixed(1)},${Y(c.y).toFixed(1)})`, style: "cursor:pointer", opacity: dim ? 0.3 : 1 }, gSensors);
       const big = r < 10 ? 34 : 26;
-      el("rect", { x: -big, y: -big, width: 2 * big, height: 2 * big, rx: 6, transform: "rotate(45)", fill: st.m === "who" ? color(r) : "var(--ink)", stroke: "var(--surface)", "stroke-width": 6 }, g);
-      const t = el("text", { "text-anchor": "middle", dy: "0.35em", "font-size": r < 10 ? 36 : 26, "font-weight": 700, fill: st.m === "who" ? (r === 3 ? "#0b0b0b" : "#ffffff") : "var(--surface)" }, g);
-      t.textContent = r + 1;
+      if (st.sel === r) el("circle", { r: big + 22, fill: "none", stroke: "var(--ink)", "stroke-width": 5 }, g);
+      el("rect", { x: -big, y: -big, width: 2 * big, height: 2 * big, rx: 6, transform: "rotate(45)", fill: color(r), stroke: "var(--surface)", "stroke-width": 6 }, g);
+      el("text", { "text-anchor": "middle", dy: "0.35em", "font-size": r < 10 ? 36 : 26, "font-weight": 700, fill: r === 3 ? "#0b0b0b" : "#ffffff" }, g).textContent = r + 1;
       el("circle", { r: 60, fill: "transparent" }, g);
-      g.addEventListener("click", (e) => { e.stopPropagation(); select(r); });
+      g.addEventListener("click", (e) => { e.stopPropagation(); st.sel = st.sel === r ? null : r; draw(); });
       g.addEventListener("mousemove", (e) => showTip(e, sensorTip(r)));
       g.addEventListener("mouseleave", hideTip);
     });
 
     const L = $("legend"); L.replaceChildren();
     const item = (cls, style, text) => { const s = document.createElement("span"); s.innerHTML = `<i class="${cls}" style="${style}"></i>${text}`; L.appendChild(s); };
-    if (st.m === "who") {
-      for (let r = 0; r < Math.min(st.k, SLOTS); r++) item("", `background:${color(r)}`, `Sensor ${r + 1}`);
-      if (st.k > SLOTS) item("", "background:var(--ink2)", `Sensors ${SLOTS + 1}–${st.k}`);
-      item("sq", "background:var(--ink2)", "Sensor (dot colour = first sensor in order that sees it)");
+    if (rm) {
+      item("", `background:${color(st.sel)}`, `Covered by sensor ${st.sel + 1}: it notices an estate built there, of some size`);
+      item("", "background:var(--muted);opacity:.4", "Not covered by it");
+      if (E) item("sq", "background:var(--s4);transform:none;border-radius:2px", `${D.sizes[E.s]} new homes at manhole ${D.chambers[E.i].id}`);
+      item("sq", "background:var(--ink2)", "Click the sensor again to go back");
+    } else if (E) {
+      item("sq", "background:var(--s4);transform:none;border-radius:2px", `${D.sizes[E.s]} new homes at manhole ${D.chambers[E.i].id}`);
+      item("", "background:var(--q3)", `Water ${ruleText()}${E.nc > 1 ? " (fainter: in fewer weather cases)" : ""}`);
+      item("sq", "background:var(--ink2)", "Sensor that notices it (faded: does not)");
     } else {
-      item("", "background:var(--q1)", "Seen by 1 sensor"); item("", "background:var(--q2)", "2 sensors"); item("", "background:var(--q3)", "3 or more");
-      item("sq", "background:var(--ink)", "Sensor");
+      item("", "background:var(--muted)", "Manhole: click to add new homes");
+      item("sq", "background:var(--ink2)", "Placed sensor: click to see the manholes it covers");
     }
-    if (all) item("", "background:color-mix(in srgb, var(--ink2) 35%, transparent);box-shadow:inset 0 0 0 1.5px var(--ink2)", "Seen in only some of the weather cases where it shows");
-    item("ring", "", "Detectable, but no placed sensor sees it");
-    item("x", "", all ? "No manhole detects it at this size in any weather" : "No manhole detects it at this size");
 
-    $("rowsHint").textContent = all
-      ? `"Manholes" counts the manholes whose growth a sensor detects in at least one weather case at this size. The other columns count runs, one manhole in one weather case: "runs" every run it sees, "first" those it is credited with in order, "only it" those no other placed sensor sees. Two sensors can cover the same manholes in different weather; the runs tell them apart.`
-      : `"Sees" counts every growth site a sensor detects in this weather and size; "first" counts the sites it is credited with in order; "only it" counts sites no other placed sensor sees.`;
-    $("rowsHead").innerHTML = all
-      ? `<tr><th>#</th><th>Manhole</th><th>Manholes</th><th>Runs</th><th>First</th><th>Only it</th></tr>`
-      : `<tr><th>#</th><th>Manhole</th><th>Sees</th><th>First</th><th>Only it</th></tr>`;
+    $("rowsHint").textContent = `"This estate": whether the sensor notices the new homes you placed${allWeather() ? ", in how many of the weather cases" : ""}. "Runs" and "only it" count, over every simulation in the chosen weather (each estate size at each manhole, one at a time), the runs the sensor notices and those no other placed sensor notices.`;
     const tb = $("rows"); tb.replaceChildren();
     sensors.forEach((s) => {
-      const tr = document.createElement("tr"); tr.className = "row" + (selR === s.r ? " sel" : "");
-      const sw = st.m === "who" ? color(s.r) : "var(--ink)";
-      tr.innerHTML = `<td><span class="sw" style="background:${sw}"></span>${s.r + 1}</td><td>${D.chambers[s.ch].id}</td>` +
-        (all ? `<td>${s.sees}</td><td>${s.runs}</td><td>${s.firstRuns}</td><td>${s.onlyRuns}</td>` : `<td>${s.sees}</td><td>${s.first}</td><td>${s.only}</td>`);
-      tr.addEventListener("click", () => select(s.r));
+      const tr = document.createElement("tr"); tr.className = "row" + (st.sel === s.r ? " sel" : "");
+      const here = !E ? "" : E.noticed.has(s.r) ? (E.nc > 1 ? `${E.noticed.get(s.r)} of ${E.nc}` : "yes") : "–";
+      tr.innerHTML = `<td><span class="sw" style="background:${color(s.r)}"></span>${s.r + 1}</td><td>${D.chambers[s.ch].id}</td><td>${here}</td><td>${s.runs}</td><td>${s.onlyRuns}</td>`;
+      tr.addEventListener("click", () => { st.sel = st.sel === s.r ? null : s.r; draw(); });
       tb.appendChild(tr);
     });
-    $("detail").innerHTML = selR == null ? "Click a sensor to list the manholes it covers." : coverList(selR);
+
+    $("detailHead").textContent = rm ? `Sensor ${st.sel + 1}` : E ? "The new homes" : "New homes";
+    $("detail").innerHTML = rm ? reachText(rm) : E ? estateText() : "Click a manhole on the map to add new homes there, or a sensor to see the manholes it covers.";
+    const rmBtn = $("detail").querySelector(".prm");
+    if (rmBtn) rmBtn.addEventListener("click", () => { st.est = null; draw(); });
+    if (st.pend != null) showPop(); else pop.hidden = true;
     drawCurve();
   }
 
-  function coverList(r) {
-    const s = R.sensors[r], all = allWeather();
-    const list = R.sites.map((x, i) => ({ x, i })).filter(({ x }) => x.by.includes(r))
-      .map(({ x, i }) => ({ id: D.chambers[i].id, n: x.per.get(r), of: x.nDet, own: i === s.ch }))
-      .sort((a, b) => a.id - b.id);
-    const head = all
-      ? `<b>Sensor ${r + 1}</b> (manhole ${D.chambers[s.ch].id}) covers <b>${s.sees}</b> manholes in at least one weather case at ${D.sizes[st.s]} homes: <b>${s.runs}</b> runs (manhole × weather case), <b>${s.onlyRuns}</b> of which no other placed sensor sees. Beside each: the weather cases in which this sensor sees it, of those in which any manhole does.`
-      : `<b>Sensor ${r + 1}</b> (manhole ${D.chambers[s.ch].id}) covers <b>${s.sees}</b> manholes in ${D.cases[st.c].label} weather at ${D.sizes[st.s]} homes; <b>${s.only}</b> of them no other placed sensor sees.`;
-    return head +
-      (all ? `<div class="hint">Per weather case: ${D.cases.map((c, ci) => `${c.label} ${R.sites.filter((_, i) => { const t = D.seen[st.rule][ci][st.s][i]; return t && t.includes(s.ch); }).length}`).join(" · ")}</div>` : "") +
-      `<div class="covered">${list.map((c) => `<span${c.own ? ` class="own" title="The sensor's own manhole"` : ""}>${c.id}${all ? ` <b>${c.n}/${c.of}</b>` : ""}</span>`).join("")}</div>`;
+  const sensorList = (rs, counts) => rs.map((r) => `<span class="sw" style="background:${color(r)}"></span>${r + 1}${counts ? ` <span class="m">(${counts.get(r)})</span>` : ""}`).join(" &nbsp;");
+  function verdict() {
+    if (!E.shows) return `Too small to notice: no manhole's water ${ruleText()}.`;
+    if (!E.hit) return `The water ${ruleText()} at ${E.rise.size} manhole${E.rise.size > 1 ? "s" : ""}, but none of the ${st.k} placed sensors is among them.`;
+    const rs = [...E.noticed.keys()].sort((a, b) => a - b);
+    return `Noticed by sensor${rs.length > 1 ? "s" : ""} ${sensorList(rs, E.nc > 1 ? E.noticed : null)}` + (E.nc > 1 ? `<br><span class="m">in ${E.hit} of the ${E.shows} weather cases where it shows (number per sensor: cases)</span>` : "");
   }
+  const removeBtn = () => `<br><button class="prm">Remove the ${D.sizes[E.s]} new homes at manhole ${D.chambers[E.i].id}</button>`;
+  function estateText() {
+    const id = D.chambers[E.i].id;
+    let html = `<b>+${D.sizes[E.s]} homes at manhole ${id}</b>${allWeather() ? "" : `, ${D.cases[st.c].label}`}.<br>${verdict()}`;
+    if (st.sel != null) {
+      const k = E.noticed.get(st.sel) || 0;
+      html += `<br><b>Sensor ${st.sel + 1}</b> ${k ? `notices it${E.nc > 1 ? ` in ${k} of ${E.nc} weather cases` : ""}` : "does not notice it"}.`;
+    }
+    html += `<br><span class="m">Smallest estate here that a placed sensor notices: ${E.smallest == null ? `none, even ${BIG} homes` : `${D.sizes[E.smallest]} homes`}.</span>`;
+    html += removeBtn();
+    if (allWeather()) html += `<table class="est"><thead><tr><th>Weather</th><th>Manholes rising</th><th class="who">Noticed by</th></tr></thead><tbody>${E.perCase.map((p) =>
+      `<tr><td>${D.cases[p.c].label}</td><td>${p.n || "–"}</td><td class="who">${p.by.length ? sensorList(p.by) : `<span class="m">${p.n ? "no placed sensor" : "too small"}</span>`}</td></tr>`).join("")}</tbody></table>`;
+    return html;
+  }
+  function reachText(rm) {
+    const s = R.sensors[st.sel], list = [...rm].map(([i, z]) => ({ id: D.chambers[i].id, z, own: i === s.ch })).sort((a, b) => a.z - b.z || a.id - b.id);
+    let est = "";
+    if (E) {
+      const k = E.noticed.get(st.sel) || 0, id = D.chambers[E.i].id;
+      est = `<br>Your <b>+${D.sizes[E.s]} homes at manhole ${id}</b>: sensor ${st.sel + 1} ${k ? `notices them${E.nc > 1 ? ` in ${k} of ${E.nc} weather cases` : ""}` : rm.has(E.i) ? `does not notice them; it needs ${D.sizes[rm.get(E.i)]} homes there` : "does not notice them, at any size"}. Click the sensor again to see the estate on its own.` + removeBtn();
+    }
+    return `<b>Sensor ${st.sel + 1}</b> (manhole ${D.chambers[s.ch].id}) would notice an estate built at any of these <b>${list.length}</b> manholes, each one on its own${allWeather() ? " (in at least one weather case)" : ""}. The number is the smallest estate there it notices.` + est +
+      `<div class="covered">${list.map((c) => `<span${c.own ? ` class="own" title="The sensor's own manhole"` : ""}>${c.id} <b>${D.sizes[c.z]}</b></span>`).join("")}</div>`;
+  }
+
+  function showPop() {
+    const i = st.pend, c = D.chambers[i], here = st.est && st.est.i === i;
+    pop.innerHTML = `<div class="pt"><b>Manhole ${c.id}</b><button class="px" title="Close">×</button></div>` +
+      `<div class="pl">New homes to build here</div>` +
+      `<div class="seg">${D.sizes.map((sz, s) => `<button data-s="${s}"${here && st.est.s === s ? ` class="on"` : ""}>${sz}</button>`).join("")}</div>` +
+      (here ? `<div class="pr">${verdict()}</div><button class="prm">Remove the new homes</button>` : `<div class="pr m">${st.est ? `Placing homes here moves the estate from manhole ${D.chambers[st.est.i].id}: one estate at a time.` : "One estate at a time: each was simulated on its own."}</div>`);
+    pop.hidden = false;
+    pop.querySelectorAll("button[data-s]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); st.est = { i, s: +b.dataset.s }; draw(); }));
+    pop.querySelector(".px").addEventListener("click", (e) => { e.stopPropagation(); st.pend = null; draw(); });
+    const rmb = pop.querySelector(".prm");
+    if (rmb) rmb.addEventListener("click", (e) => { e.stopPropagation(); st.est = null; draw(); });
+    const card = $("mapCard").getBoundingClientRect(), pt = svg.createSVGPoint();
+    pt.x = X(c.x); pt.y = Y(c.y);
+    const p = pt.matrixTransform(svg.getScreenCTM());
+    let x = p.x - card.left + 18, y = p.y - card.top - 20;
+    if (x + pop.offsetWidth > card.width - 8) x = p.x - card.left - 18 - pop.offsetWidth;
+    y = Math.max(8, Math.min(y, card.height - pop.offsetHeight - 8));
+    pop.style.left = x + "px"; pop.style.top = y + "px";
+  }
+  pop.addEventListener("click", (e) => e.stopPropagation());
 
   function sensorTip(r) {
     const s = R.sensors[r];
-    return `<b>Sensor ${r + 1}</b><br><span class="m">Manhole ${D.chambers[s.ch].id}</span><br>` +
-      (allWeather() ? `Covers ${s.sees} manholes · ${s.runs} runs · only it: ${s.onlyRuns} runs` : `Covers ${s.sees} manholes · only it: ${s.only}`);
+    return `<b>Sensor ${r + 1}</b><br><span class="m">Manhole ${D.chambers[s.ch].id}</span><br>Notices ${s.runs} runs · only it: ${s.onlyRuns}` +
+      (E ? `<br>${E.noticed.has(r) ? "Notices the new homes" : "Does not notice the new homes"}` : "");
   }
   function siteTip(i) {
-    const s = R.sites[i], id = D.chambers[i].id, rule = D.rules.find((r) => r.id === st.rule).label.toLowerCase();
-    if (allWeather()) {
-      if (!s.det) return `<b>Manhole ${id}</b><br><span class="m">An estate of ${D.sizes[st.s]} homes here is not seen anywhere under the ${rule} rule in any weather case.</span>`;
-      if (!s.by.length) return `<b>Manhole ${id}</b><br><span class="m">Shows in ${s.nDet} of ${D.cases.length} weather cases, but none of the ${st.k} placed sensors sees it.</span>`;
-      return `<b>Manhole ${id}</b><br>Seen in ${s.nHit} of the ${s.nDet} weather cases where it shows<br><span class="m">by sensor${s.by.length > 1 ? "s" : ""} ${s.by.map((r) => `${r + 1} (${s.per.get(r)})`).join(", ")}</span>`;
-    }
-    if (!s.det) return `<b>Manhole ${id}</b><br><span class="m">An estate of ${D.sizes[st.s]} homes here is not seen anywhere under the ${rule} rule in this weather.</span>`;
-    if (!s.by.length) return `<b>Manhole ${id}</b><br><span class="m">Detectable, but none of the ${st.k} placed sensors sees it.</span>`;
-    return `<b>Manhole ${id}</b><br>Seen by sensor${s.by.length > 1 ? "s" : ""} ${s.by.map((r) => r + 1).join(", ")}`;
+    const id = D.chambers[i].id;
+    if (E && E.i === i) return `<b>Manhole ${id}</b><br>+${D.sizes[E.s]} new homes here`;
+    if (E && E.rise.has(i)) return `<b>Manhole ${id}</b><br>Water ${ruleText()} here${E.nc > 1 ? ` in ${E.rise.get(i)} of ${E.nc} weather cases` : ""}`;
+    return `<b>Manhole ${id}</b><br><span class="m">Click to add new homes here</span>`;
   }
   function showTip(e, html) {
     const box = svg.parentNode.getBoundingClientRect();
@@ -351,25 +412,22 @@ tr.row.sel td { background: color-mix(in srgb, var(--s1) 20%, transparent); }
     tip.style.left = x + "px"; tip.style.top = y + "px";
   }
   function hideTip() { tip.style.display = "none"; }
-  function select(r) { st.sel = st.sel === r ? null : r; draw(); }
 
   siteEls.forEach((g, i) => {
     g.addEventListener("mousemove", (e) => showTip(e, siteTip(i)));
     g.addEventListener("mouseleave", hideTip);
-    g.addEventListener("click", (e) => { e.stopPropagation(); const s = R.sites[i]; if (s.by.length) select(s.by[0]); });
+    g.addEventListener("click", (e) => { e.stopPropagation(); hideTip(); st.pend = st.pend === i ? null : i; draw(); });
   });
-  svg.addEventListener("click", () => { if (st.sel != null) { st.sel = null; draw(); } });
+  svg.addEventListener("click", () => { if (st.pend != null || st.sel != null) { st.pend = null; st.sel = null; draw(); } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && st.pend != null) { st.pend = null; draw(); } });
+  window.addEventListener("resize", () => { if (st.pend != null) showPop(); });
 
   $("rule").addEventListener("change", (e) => { st.rule = e.target.value; st.sel = null; draw(); });
   $("k").addEventListener("input", (e) => { st.k = +e.target.value; draw(); });
   $("case").addEventListener("change", (e) => { st.c = +e.target.value; draw(); });
-  $("size").addEventListener("change", (e) => { st.s = +e.target.value; draw(); });
   document.querySelectorAll("#obj button").forEach((b) => b.addEventListener("click", () => {
     st.obj = b.dataset.o; st.sel = null; ruleLabels();
     document.querySelectorAll("#obj button").forEach((x) => x.classList.toggle("on", x === b)); draw();
-  }));
-  document.querySelectorAll("#mode button").forEach((b) => b.addEventListener("click", () => {
-    st.m = b.dataset.m; document.querySelectorAll("#mode button").forEach((x) => x.classList.toggle("on", x === b)); draw();
   }));
   draw();
 })();
