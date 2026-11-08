@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sensor Coverage Map</title>
+<style>
+:root {
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --pipe: #b9b7ad;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+  --q1: #86b6ef; --q2: #2a78d6; --q3: #104281;
+}
+:root[data-theme="dark"] {
+  --page: #0b1220; --surface: #111c2f; --ink: #e7edf7; --ink2: #a9b8d4; --muted: #6f81a3;
+  --grid: #22314d; --axis: #2e4064; --pipe: #3a4a68;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --q1: #184f95; --q2: #3987e5; --q3: #9ec5f4;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1280px; margin: 0 auto; padding: 20px 16px 32px; }
+h1 { font-size: 20px; margin: 0 0 4px; font-weight: 600; }
+h1 small { font-weight: 400; color: var(--muted); font-size: 14px; }
+.sub { color: var(--ink2); margin: 0 0 14px; max-width: 920px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 12px; }
+.controls label { color: var(--ink2); font-size: 13px; display: flex; gap: 6px; align-items: center; }
+select, input[type=range] { accent-color: var(--s1); }
+select { background: var(--surface); color: var(--ink); border: 1px solid var(--axis); border-radius: 6px; padding: 4px 6px; font: inherit; font-size: 13px; }
+.seg { display: inline-flex; border: 1px solid var(--axis); border-radius: 6px; overflow: hidden; }
+.seg button { background: var(--surface); color: var(--ink2); border: 0; padding: 5px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+.seg button.on { background: var(--ink); color: var(--surface); }
+.kval { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; min-width: 3ch; display: inline-block; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.tile { background: var(--surface); border: 1px solid var(--grid); border-radius: 8px; padding: 10px 12px; }
+.tile .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tile .l { color: var(--ink2); font-size: 12px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+.card { background: var(--surface); border: 1px solid var(--grid); border-radius: 8px; padding: 10px; position: relative; }
+svg#map { width: 100%; height: auto; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink2); margin: 6px 4px 2px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.legend i.ring { background: transparent !important; border: 1.5px solid var(--muted); }
+.legend i.x { border-radius: 0; background: transparent !important; position: relative; }
+.legend i.x::before, .legend i.x::after { content: ""; position: absolute; left: 4px; top: 0; width: 1.5px; height: 10px; background: var(--muted); transform: rotate(45deg); }
+.legend i.x::after { transform: rotate(-45deg); }
+.legend i.sq { border-radius: 2px; transform: rotate(45deg); width: 9px; height: 9px; }
+.side h2 { font-size: 14px; margin: 2px 2px 6px; font-weight: 600; }
+.side .hint { color: var(--muted); font-size: 12px; margin: 0 2px 8px; }
+svg#curve { width: 100%; height: auto; display: block; margin-bottom: 8px; }
+svg#curve text { font-size: 10px; fill: var(--muted); }
+.list { max-height: 420px; overflow: auto; border-top: 1px solid var(--grid); }
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+th { text-align: right; color: var(--muted); font-weight: 500; padding: 5px 6px; position: sticky; top: 0; background: var(--surface); border-bottom: 1px solid var(--grid); }
+th:first-child, td:first-child { text-align: left; }
+td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--grid); color: var(--ink); }
+tr.row { cursor: pointer; }
+tr.row:hover td { background: color-mix(in srgb, var(--s1) 10%, transparent); }
+tr.row.sel td { background: color-mix(in srgb, var(--s1) 20%, transparent); }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; transform: rotate(45deg); }
+.detail { font-size: 13px; color: var(--ink2); margin: 4px 2px 10px; min-height: 3.2em; }
+.detail b { color: var(--ink); }
+.badge { font-size: 11px; border: 1px solid var(--axis); border-radius: 99px; padding: 0 7px; color: var(--ink2); margin-left: 4px; }
+#tip { position: absolute; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--axis); border-radius: 6px; padding: 6px 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.25); display: none; max-width: 260px; z-index: 5; }
+#tip .m { color: var(--ink2); }
+.foot { color: var(--muted); font-size: 12px; margin-top: 12px; max-width: 1000px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Which sensor sees growth where <small>· Simulation 3, greenfield growth</small></h1>
+  <p class="sub">Each dot is a manhole where a new estate joins the network in Simulation 3. Its colour shows which level sensor detects that growth under the chosen rule. Sensors are added in Simulation 3's greedy order (worst weather case), carried on past its ten until every detectable run is seen. Click a sensor on the map or in the table to see everything it covers.</p>
+
+  <div class="controls">
+    <label>Detection rule <select id="rule"></select></label>
+    <label>Level sensors <input id="k" type="range" min="1" max="10" value="5"> <span class="kval" id="kv">5</span></label>
+    <label>Weather <select id="case"></select></label>
+    <label>New homes <select id="size"></select></label>
+    <span class="seg" id="mode"><button data-m="who" class="on">Which sensor</button><button data-m="count">How many sensors</button></span>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="v" id="t1">–</div><div class="l" id="t1l">growth sites seen</div></div>
+    <div class="tile"><div class="v" id="t2">–</div><div class="l">growth sites missed by these sensors</div></div>
+    <div class="tile"><div class="v" id="t3">–</div><div class="l">sites seen by 2 or more sensors</div></div>
+    <div class="tile"><div class="v" id="t4">–</div><div class="l" id="t4l">sites no manhole can detect at this size</div></div>
+  </div>
+
+  <div class="layout">
+    <div class="card">
+      <svg id="map" role="img" aria-label="Sewer network map with level sensors and the growth sites each one detects"></svg>
+      <div class="legend" id="legend"></div>
+      <div id="tip"></div>
+    </div>
+    <div class="card side">
+      <h2>Share of growth seen as sensors are added</h2>
+      <p class="hint" id="curveHint"></p>
+      <svg id="curve" viewBox="0 0 320 170" role="img" aria-label="Share of detectable growth seen by number of sensors"></svg>
+      <h2>Sensors</h2>
+      <p class="hint">"Sees" counts every growth site a sensor detects in this weather and size; "first" counts the sites it is credited with in order; "only it" counts sites no other placed sensor sees.</p>
+      <div class="detail" id="detail">Click a sensor to highlight its coverage.</div>
+      <div class="list"><table><thead><tr><th>#</th><th>Manhole</th><th>Sees</th><th>First</th><th>Only it</th></tr></thead><tbody id="rows"></tbody></table></div>
+    </div>
+  </div>
+
+  <p class="foot">Simulation 3's greenfield runs: a new estate of 10, 30, 80, 150 or 700 homes joins at each of 328 manholes, under eight weather cases, solved in EPA SWMM. The first ten sensors for each rule are the greedy set Simulation 3 publishes (this page reproduces its order and scores exactly); later sensors continue the same method: each one is the manhole that most raises the share seen in the worst weather case. Simulation 3's recommended set comes from its infill runs and the exact solver, so it can differ from this order. Four weather cases (Dry, Design wet and its two variants) are still the fixed 480-minute runs, not re-run until levels settle; they are marked in the weather list. The hydraulic model is uncalibrated, so these are model estimates, not field results.</p>
+  <p class="foot">Why a sensor can see nothing in one view: each sensor is chosen to lift the worst weather case, so some only work in wet weather or for large estates. Under the 10 mm rule at 150 homes, sensor 1 (manhole 4454116) runs 0.15 to 0.25 m deep in dry and design wet weather and sees no estate there, but once it surcharges in beyond-design weather it sees 219. Sensor 2 (manhole 1629194) sees almost nothing below 700 homes, and 313 of the 700-home estates in dry weather. Simulation 2 showed a third reason: a manhole just downstream that already spills sends the extra flow out as overflow instead of raising the level upstream.</p>
+</main>
+<script src="data.js?v=1"></script>
+<script>
+(() => {
+  const D = window.COV, NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("map"), tip = document.getElementById("tip");
+  const $ = (id) => document.getElementById(id);
+  const SLOTS = 8;
+  const st = { rule: "r10", k: 5, c: 1, s: Math.max(0, D.sizes.indexOf(150)), m: "who", sel: null };
+
+  const xs = [], ys = [];
+  D.pipes.forEach((p) => { for (let i = 0; i < p.p.length; i += 2) { xs.push(p.p[i]); ys.push(p.p[i + 1]); } });
+  D.chambers.forEach((c) => { xs.push(c.x); ys.push(c.y); });
+  const pad = 60, minX = Math.min(...xs) - pad, maxX = Math.max(...xs) + pad, minY = Math.min(...ys) - pad, maxY = Math.max(...ys) + pad;
+  svg.setAttribute("viewBox", `0 0 ${maxX - minX} ${maxY - minY}`);
+  const X = (x) => x - minX, Y = (y) => maxY - y;
+  const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); (parent || svg).appendChild(e); return e; };
+
+  const gPipes = el("g", {}), gLinks = el("g", {}), gSites = el("g", {}), gSensors = el("g", {});
+  D.pipes.forEach((p) => {
+    let d = "";
+    for (let i = 0; i < p.p.length; i += 2) d += (i ? "L" : "M") + X(p.p[i]).toFixed(1) + " " + Y(p.p[i + 1]).toFixed(1);
+    el("path", { d, fill: "none", stroke: "var(--pipe)", "stroke-width": p.d >= 300 ? 9 : p.d >= 225 ? 6 : 4, "stroke-linecap": "round" }, gPipes);
+  });
+  const sb = el("g", { transform: `translate(${maxX - minX - 620},${maxY - minY - 40})` });
+  el("path", { d: "M0 0H500", stroke: "var(--muted)", "stroke-width": 5 }, sb);
+  el("text", { x: 250, y: -14, "text-anchor": "middle", fill: "var(--muted)", "font-size": 46 }, sb).textContent = "500 m";
+  el("text", { x: 560, y: 0, fill: "var(--muted)", "font-size": 46 }, sb).textContent = "N ↑";
+
+  const siteEls = D.chambers.map((c, i) => {
+    const g = el("g", { transform: `translate(${X(c.x).toFixed(1)},${Y(c.y).toFixed(1)})` }, gSites);
+    g.dot = el("circle", { r: 15 }, g);
+    g.x = el("path", { d: "M-11 -11L11 11M-11 11L11 -11", stroke: "var(--muted)", "stroke-width": 4, fill: "none" }, g);
+    el("circle", { r: 32, fill: "transparent" }, g);
+    return g;
+  });
+
+  D.rules.forEach((r) => $("rule").add(new Option(r.label + " (" + D.plans[r.id].order.length + " sensors to see every run)", r.id)));
+  D.cases.forEach((c, i) => $("case").add(new Option(c.label + (c.settled ? "" : " · 480-min runs"), i)));
+  D.sizes.forEach((s, i) => $("size").add(new Option(s + " homes", i)));
+  $("rule").value = st.rule; $("case").value = st.c; $("size").value = st.s;
+
+  const color = (rank) => rank < SLOTS ? `var(--s${rank + 1})` : "var(--ink2)";
+  const plan = () => D.plans[st.rule];
+
+  function syncK() {
+    const K = plan().order.length;
+    $("k").max = K;
+    if (st.k > K) st.k = K;
+    $("k").value = st.k; $("kv").textContent = st.k;
+    if (st.sel != null && st.sel >= st.k) st.sel = null;
+  }
+
+  function compute() {
+    const placed = plan().order.slice(0, st.k), rankOf = new Map(placed.map((ch, r) => [ch, r]));
+    const seen = D.seen[st.rule][st.c][st.s];
+    const sites = seen.map((s) => {
+      if (!s || !s.length) return { det: false, by: [] };
+      return { det: true, by: s.filter((ch) => rankOf.has(ch)).map((ch) => rankOf.get(ch)).sort((a, b) => a - b) };
+    });
+    const sensors = placed.map((ch, r) => ({ ch, r, sees: 0, first: 0, only: 0 }));
+    sites.forEach((s) => { s.by.forEach((r) => sensors[r].sees++); if (s.by.length) sensors[s.by[0]].first++; if (s.by.length === 1) sensors[s.by[0]].only++; });
+    return { placed, sites, sensors };
+  }
+
+  function drawCurve() {
+    const c = $("curve"); c.replaceChildren();
+    const P = plan(), K = P.order.length, l = 30, r = 10, t = 10, b = 26, w = 320, h = 170;
+    const Xc = (k) => l + (w - l - r) * (k - 1) / Math.max(K - 1, 1), Yc = (v) => t + (h - t - b) * (1 - v);
+    [0, 0.5, 1].forEach((v) => {
+      el("line", { x1: l, x2: w - r, y1: Yc(v), y2: Yc(v), stroke: "var(--grid)", "stroke-width": 1 }, c);
+      el("text", { x: l - 4, y: Yc(v) + 3, "text-anchor": "end" }, c).textContent = (v * 100) + "%";
+    });
+    [1, K].forEach((k) => { el("text", { x: Xc(k), y: h - 10, "text-anchor": "middle" }, c).textContent = k; });
+    el("text", { x: (l + w - r) / 2, y: h - 1, "text-anchor": "middle" }, c).textContent = "sensors";
+    const line = (vals) => vals.map((v, i) => (i ? "L" : "M") + Xc(i + 1).toFixed(1) + " " + Yc(v).toFixed(1)).join("");
+    el("path", { d: line(P.mean), fill: "none", stroke: "var(--q3)", "stroke-width": 1.5, "stroke-dasharray": "4 3" }, c);
+    el("path", { d: line(P.worst), fill: "none", stroke: "var(--s1)", "stroke-width": 2 }, c);
+    el("line", { x1: Xc(st.k), x2: Xc(st.k), y1: t, y2: h - b, stroke: "var(--muted)", "stroke-width": 1 }, c);
+    el("circle", { cx: Xc(st.k), cy: Yc(P.worst[st.k - 1]), r: 4, fill: "var(--s1)", stroke: "var(--surface)", "stroke-width": 2 }, c);
+    $("curveHint").innerHTML = `<b style="color:var(--ink)">${st.k} sensors: ${(100 * P.worst[st.k - 1]).toFixed(0)}%</b> in the worst weather case (solid), ${(100 * P.mean[st.k - 1]).toFixed(0)}% on average over the eight cases (dashed). All five estate sizes counted.`;
+  }
+
+  let R;
+  function draw() {
+    syncK();
+    R = compute();
+    const { sites, sensors, placed } = R;
+    const det = sites.filter((s) => s.det).length, hit = sites.filter((s) => s.by.length).length;
+    $("t1").textContent = `${hit} of ${det}`;
+    $("t1l").textContent = `growth sites seen (${det ? (100 * hit / det).toFixed(0) : 0}%)`;
+    $("t2").textContent = det - hit;
+    $("t3").textContent = sites.filter((s) => s.by.length >= 2).length;
+    $("t4").textContent = sites.length - det;
+    $("t4l").textContent = `sites no manhole can detect at ${D.sizes[st.s]} homes`;
+
+    const selR = st.sel;
+    sites.forEach((s, i) => {
+      const g = siteEls[i];
+      g.x.style.display = s.det ? "none" : "";
+      g.dot.style.display = s.det ? "" : "none";
+      let fill, stroke = "none", sw = 0, op = 1;
+      if (!s.by.length) { fill = "var(--surface)"; stroke = "var(--muted)"; sw = 4; }
+      else if (st.m === "who") fill = color(s.by[0]);
+      else fill = s.by.length >= 3 ? "var(--q3)" : s.by.length === 2 ? "var(--q2)" : "var(--q1)";
+      if (selR != null) { const mine = s.by.includes(selR); op = mine ? 1 : 0.18; if (mine) { stroke = "var(--ink)"; sw = 4; } }
+      g.dot.setAttribute("fill", fill); g.dot.setAttribute("stroke", stroke); g.dot.setAttribute("stroke-width", sw);
+      g.style.opacity = s.det ? op : (selR != null ? 0.18 : 0.7);
+    });
+
+    gLinks.replaceChildren();
+    if (selR != null) {
+      const sc = D.chambers[placed[selR]];
+      sites.forEach((s, i) => {
+        if (!s.by.includes(selR)) return;
+        const c = D.chambers[i];
+        el("line", { x1: X(sc.x), y1: Y(sc.y), x2: X(c.x), y2: Y(c.y), stroke: st.m === "who" ? color(selR) : "var(--q2)", "stroke-width": 3, opacity: 0.55 }, gLinks);
+      });
+    }
+
+    gSensors.replaceChildren();
+    placed.forEach((ch, r) => {
+      const c = D.chambers[ch];
+      const g = el("g", { transform: `translate(${X(c.x).toFixed(1)},${Y(c.y).toFixed(1)})`, style: "cursor:pointer", opacity: selR != null && selR !== r ? 0.35 : 1 }, gSensors);
+      const big = r < 10 ? 34 : 26;
+      el("rect", { x: -big, y: -big, width: 2 * big, height: 2 * big, rx: 6, transform: "rotate(45)", fill: st.m === "who" ? color(r) : "var(--ink)", stroke: "var(--surface)", "stroke-width": 6 }, g);
+      const t = el("text", { "text-anchor": "middle", dy: "0.35em", "font-size": r < 10 ? 36 : 26, "font-weight": 700, fill: st.m === "who" ? (r === 3 ? "#0b0b0b" : "#ffffff") : "var(--surface)" }, g);
+      t.textContent = r + 1;
+      el("circle", { r: 60, fill: "transparent" }, g);
+      g.addEventListener("click", (e) => { e.stopPropagation(); select(r); });
+      g.addEventListener("mousemove", (e) => showTip(e, sensorTip(r)));
+      g.addEventListener("mouseleave", hideTip);
+    });
+
+    const L = $("legend"); L.replaceChildren();
+    const item = (cls, style, text) => { const s = document.createElement("span"); s.innerHTML = `<i class="${cls}" style="${style}"></i>${text}`; L.appendChild(s); };
+    if (st.m === "who") {
+      for (let r = 0; r < Math.min(st.k, SLOTS); r++) item("", `background:${color(r)}`, `Sensor ${r + 1}`);
+      if (st.k > SLOTS) item("", "background:var(--ink2)", `Sensors ${SLOTS + 1}–${st.k}`);
+      item("sq", "background:var(--ink2)", "Sensor (dot colour = first sensor in order that sees it)");
+    } else {
+      item("", "background:var(--q1)", "Seen by 1 sensor"); item("", "background:var(--q2)", "2 sensors"); item("", "background:var(--q3)", "3 or more");
+      item("sq", "background:var(--ink)", "Sensor");
+    }
+    item("ring", "", "Detectable, but no placed sensor sees it");
+    item("x", "", "No manhole detects it at this size");
+
+    const tb = $("rows"); tb.replaceChildren();
+    sensors.forEach((s) => {
+      const tr = document.createElement("tr"); tr.className = "row" + (selR === s.r ? " sel" : "");
+      const sw = st.m === "who" ? color(s.r) : "var(--ink)";
+      tr.innerHTML = `<td><span class="sw" style="background:${sw}"></span>${s.r + 1}</td><td>${D.chambers[s.ch].id}</td><td>${s.sees}</td><td>${s.first}</td><td>${s.only}</td>`;
+      tr.addEventListener("click", () => select(s.r));
+      tb.appendChild(tr);
+    });
+    $("detail").innerHTML = selR == null ? "Click a sensor to highlight its coverage." :
+      (() => { const s = sensors[selR]; return `<b>Sensor ${selR + 1}</b> (manhole ${D.chambers[s.ch].id}) sees growth at <b>${s.sees}</b> sites in ${D.cases[st.c].label} weather at ${D.sizes[st.s]} homes; <b>${s.only}</b> of them no other placed sensor sees.`; })();
+    drawCurve();
+  }
+
+  function sensorTip(r) {
+    const s = R.sensors[r];
+    return `<b>Sensor ${r + 1}</b><br><span class="m">Manhole ${D.chambers[s.ch].id}</span><br>Sees ${s.sees} sites · only it: ${s.only}`;
+  }
+  function siteTip(i) {
+    const s = R.sites[i], id = D.chambers[i].id, rule = D.rules.find((r) => r.id === st.rule).label.toLowerCase();
+    if (!s.det) return `<b>Manhole ${id}</b><br><span class="m">An estate of ${D.sizes[st.s]} homes here is not seen anywhere under the ${rule} rule in this weather.</span>`;
+    if (!s.by.length) return `<b>Manhole ${id}</b><br><span class="m">Detectable, but none of the ${st.k} placed sensors sees it.</span>`;
+    return `<b>Manhole ${id}</b><br>Seen by sensor${s.by.length > 1 ? "s" : ""} ${s.by.map((r) => r + 1).join(", ")}`;
+  }
+  function showTip(e, html) {
+    const box = svg.parentNode.getBoundingClientRect();
+    tip.innerHTML = html; tip.style.display = "block";
+    let x = e.clientX - box.left + 14, y = e.clientY - box.top + 14;
+    if (x + 260 > box.width) x = e.clientX - box.left - 14 - tip.offsetWidth;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+  function hideTip() { tip.style.display = "none"; }
+  function select(r) { st.sel = st.sel === r ? null : r; draw(); }
+
+  siteEls.forEach((g, i) => {
+    g.addEventListener("mousemove", (e) => showTip(e, siteTip(i)));
+    g.addEventListener("mouseleave", hideTip);
+    g.addEventListener("click", (e) => { e.stopPropagation(); const s = R.sites[i]; if (s.by.length) select(s.by[0]); });
+  });
+  svg.addEventListener("click", () => { if (st.sel != null) { st.sel = null; draw(); } });
+
+  $("rule").addEventListener("change", (e) => { st.rule = e.target.value; st.sel = null; draw(); });
+  $("k").addEventListener("input", (e) => { st.k = +e.target.value; draw(); });
+  $("case").addEventListener("change", (e) => { st.c = +e.target.value; draw(); });
+  $("size").addEventListener("change", (e) => { st.s = +e.target.value; draw(); });
+  document.querySelectorAll("#mode button").forEach((b) => b.addEventListener("click", () => {
+    st.m = b.dataset.m; document.querySelectorAll("#mode button").forEach((x) => x.classList.toggle("on", x === b)); draw();
+  }));
+  draw();
+})();
+</script>
+</body>
+</html>
