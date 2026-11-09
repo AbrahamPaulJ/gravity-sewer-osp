@@ -20,13 +20,18 @@ Plus the CORRIDOR family (G14): growth spread along Walkerville Terrace, whole d
 
 Robustness is reported as how often each manhole is chosen across cases.
 
+In the whole area (Sim 3) a new estate does not join at any manhole: greenfield_sites keeps the
+trunk mains of GF_MIN_DIA_M or more, and --all-sites brings back every manhole.
+
 Usage:
     python sim25_grid.py --plan                 # list cases and run counts, run nothing
     python sim25_grid.py --cases nominal        # the 4 nominal weather cases
     python sim25_grid.py --cases all            # nominal + every sensitivity
     python sim25_grid.py --sites 6 --cases nominal   # quick shape check
+    python sim25_grid.py --all-sites --plan     # whole area with every manhole as a growth site
 """
 import argparse, json, math, os, shutil, time
+from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict
 
@@ -51,6 +56,9 @@ WHOLE_RISE_FLOOR_MM = 1.0
 MAX_MINUTES = sim25.MAX_MINUTES
 SETTLE = sim25.SETTLE
 NEST_MAX_II = 0.11       # X4: nesting validated up to design wet only
+# Narrowest main, internal diameter in metres, a greenfield estate is assumed to join (see
+# greenfield_sites). A team assumption, not an SA Water standard.
+GF_MIN_DIA_M = 0.225
 CORRIDOR_BUFFER_M = 25.0
 CORRIDOR_SIZES = list(sim25.CFG["simulation"]["corridor_dwellings"])   # P10; config.js
 
@@ -179,8 +187,31 @@ def corridor_nodes():
     return {n: v / tot for n, v in w.items()}
 
 
+# ---------------------------------------------------------------------- greenfield sites
+def _greenfield_kinds(net, candidate_nodes):
+    """For each candidate node, in the order given: "trunk" or None (not eligible)."""
+    widest = {}
+    for p in net.pipes:
+        widest[p.up] = max(widest.get(p.up, 0.0), p.dia)
+    return ["trunk" if widest.get(n, 0.0) >= GF_MIN_DIA_M else None for n in candidate_nodes]
+
+
+def greenfield_sites(net, candidate_nodes):
+    """The manholes where a greenfield estate can join the network, as manhole ids in the order
+    of candidate_nodes (node ids into net.nodes).
+
+    An estate lays its own pipes and joins the existing network on a trunk main, the pipes
+    sized to carry a district's flow, not on a street sewer at the head of a line. A candidate
+    manhole is eligible if its outgoing pipe has an internal diameter of GF_MIN_DIA_M (0.225 m)
+    or more; with more than one outgoing pipe, the widest counts. Whether the trunk has room
+    for a given estate is a separate check (the page's capacity view). A team assumption, not
+    an SA Water standard."""
+    kinds = _greenfield_kinds(net, candidate_nodes)
+    return [net.nodes[n].manhole_id for n, k in zip(candidate_nodes, kinds) if k]
+
+
 # ---------------------------------------------------------------------- one case
-def run_case(case, pool, sites_limit, sizes):
+def run_case(case, pool, sites_limit, sizes, all_sites=False):
     tag = case.tag()
     base_dir = os.path.join(OUT, tag)
     os.makedirs(base_dir, exist_ok=True)
@@ -190,7 +221,13 @@ def run_case(case, pool, sites_limit, sizes):
     seg = probe.candidates
     mh_of = {c: probe.nodes[c].manhole_id for c in seg}
 
-    sites = [mh_of[c] for c in seg][: sites_limit or None]
+    # Sensors may sit at any of seg; the growth sites are fewer in the whole area, where an
+    # estate joins a trunk main (greenfield_sites). The segment keeps all.
+    if whole_area and not all_sites:
+        sites = greenfield_sites(probe.net, [probe.chambers[c] for c in seg])
+    else:
+        sites = [mh_of[c] for c in seg]
+    sites = sites[: sites_limit or None]
     # Nesting solves only the segment with its outlet level handed down (X4), so it cannot
     # hold growth placed anywhere else: a whole-area grid is whole-domain runs throughout.
     nested = case.ii <= NEST_MAX_II and not whole_area
@@ -337,6 +374,9 @@ def main():
     ap.add_argument("--only", help="run only cases whose tag contains this text, e.g. ii0.40")
     ap.add_argument("--plan", action="store_true")
     ap.add_argument("--no-corridor", action="store_true")
+    ap.add_argument("--all-sites", action="store_true",
+                    help="whole area only: grow at every candidate manhole, not just the trunk mains "
+                         "of 225 mm or more (the grid as it was before greenfield_sites)")
     ap.add_argument("--resume", action="store_true",
                     help="skip cases whose summary.json already exists, and within a whole-area "
                          "case the runs whose checkpoint exists (e.g. after a stopped run)")
@@ -357,6 +397,17 @@ def main():
     sizes = [int(x) for x in args.sizes.split(",")] if args.sizes else sim25.GROWTH_DWELLINGS + [sim25.STRESS_DWELLINGS]
     whole_area = sim25.STUDY_AREA == "whole"
     n_sites = args.sites or (328 if whole_area else 71)
+    if whole_area:
+        # Only lists the candidates; nothing is simulated.
+        probe = Sim25Model(cs[0], whole=True, outlet_head=None)
+        kinds = Counter(_greenfield_kinds(probe.net, [probe.chambers[c] for c in probe.candidates]))
+        n_rule = kinds["trunk"]
+        print(f"greenfield sites: {n_rule} of {len(probe.candidates)} candidate manholes are on a "
+              f"trunk main of {GF_MIN_DIA_M * 1000:.0f} mm or more")
+        if args.all_sites:
+            print("  --all-sites: every candidate manhole is a growth site")
+        else:
+            n_sites = min(n_rule, args.sites) if args.sites else n_rule
     per_case = 1 + n_sites * len(sizes)
     nest = [] if whole_area else [c for c in cs if c.ii <= NEST_MAX_II]
     seg_runs = len(nest) * per_case
@@ -384,7 +435,7 @@ def main():
                     summaries.append(json.load(f))
                 print(f"  {c.tag()}: already done, kept", flush=True)
                 continue
-            summaries.append(run_case(c, pool, args.sites, sizes))
+            summaries.append(run_case(c, pool, args.sites, sizes, args.all_sites))
         # The corridor family follows --only and --resume like the cases do (22 Oct 2026).
         corridor = [] if args.no_corridor else [
             run_corridor(Case(ii=ii), pool, args.resume) for ii, _ in sim25.WEATHER
