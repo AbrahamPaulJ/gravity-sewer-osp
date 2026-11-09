@@ -70,21 +70,19 @@ python sim25_grid.py --all-sites --cases all --only ii0.40 --workers 6        # 
 python test_greenfield_sites.py                                               # the site rule, no SWMM
 ```
 
-An estate lays its own pipes and joins the existing sewer as an extension, at the edge of the
-network or at a main large enough to take it, so it is not placed at just any manhole. A
-candidate manhole is a growth site if
-
-- it is a network edge: no pipe in the network flows into it (the head of a line), or
-- its outgoing pipe has an internal diameter of 225 mm or more (`GF_MIN_DIA_M` in
-  `sim25_grid.py`). With more than one outgoing pipe, the widest counts.
+An estate lays its own pipes and joins the existing sewer on a trunk main, the pipes sized to
+carry a district's flow, not on a street sewer at the head of a line. A candidate manhole is a
+growth site if its outgoing pipe has an internal diameter of 225 mm or more (`GF_MIN_DIA_M` in
+`sim25_grid.py`); with more than one outgoing pipe, the widest counts.
 
 This is a team assumption, not an SA Water standard. `greenfield_sites()` in `sim25_grid.py` is
-the one place it is written. On the network data in this repository it keeps 120 of the 328
-candidate manholes, 29 at the network edge and 91 on a main of 225 mm or more, and every run
-prints that split. Sensors can still go at any of the 328; only the growth sites are fewer, and
-`--plan` counts the runs for the 120. The Sim 2.5 segment (71 manholes) is unchanged.
-`--all-sites` grows at every manhole, as the grid did before the rule. `test_greenfield_sites.py`
-checks the rule on a small made-up network and prints the counts for the real one.
+the one place it is written. On the network data in this repository it keeps 91 of the 328
+candidate manholes. Whether a trunk has room for a given estate is checked on the page (the
+capacity view), not by this rule. Sensors can still go at any of the 328; only the growth sites
+are fewer, and `--plan` counts the runs for the 91. The Sim 2.5 segment (71 manholes) is
+unchanged. `--all-sites` grows at every manhole, as the grid did before the rule.
+`test_greenfield_sites.py` checks the rule on a small made-up network and prints the counts for
+the real one.
 
 Outputs land in `results/sim25/grid_whole/`, one folder per case. The case folders that were
 already there were run with every manhole as a site (328 per case); they have not been re-run

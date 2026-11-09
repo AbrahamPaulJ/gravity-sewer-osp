@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 greenfield_filter.py - keep only the greenfield growth sites a new estate could join
-(sim25_grid.greenfield_sites: a network-edge manhole or one on a main of 225 mm or more) in
+(sim25_grid.greenfield_sites: a manhole on a trunk main of 225 mm or more) in
 simulation3/data/growth.js, and re-score the greenfield sensor placement on those runs.
 
 The SWMM results are not re-run: the grid already holds a run at every manhole, so the
@@ -83,15 +83,14 @@ def main():
     runs["heat"], runs["sensors"] = score(runs, set(keep))
     runs["eligibleSites"] = keep
     runs["eligibleKind"] = [kind_of[runs["manholeIds"][i]] for i in keep]
-    runs["eligibleRule"] = {"minDiaMm": 225, "note": "A greenfield estate joins at a network-edge "
-                            "manhole or on a main of 225 mm or more. A team assumption, not an "
+    runs["eligibleRule"] = {"minDiaMm": 225, "note": "A greenfield estate joins a trunk main "
+                            "of 225 mm or more. A team assumption, not an "
                             "SA Water standard."}
 
     body = json.dumps(runs, separators=(",", ":"))
     io.open(GROWTH, "w", encoding="utf-8", newline="\n").write(head + body + tail)
-    edge = runs["eligibleKind"].count("edge")
-    print(f"kept {len(keep)} of {len(runs['chambers'])} greenfield sites ({edge} edge, "
-          f"{len(keep) - edge} on 225 mm+ mains); heat and sensors re-scored -> {GROWTH}")
+    print(f"kept {len(keep)} of {len(runs['chambers'])} greenfield sites (trunk mains of 225 mm "
+          f"or more); heat and sensors re-scored -> {GROWTH}")
 
 
 if __name__ == "__main__":

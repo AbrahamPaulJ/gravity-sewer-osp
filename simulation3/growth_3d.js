@@ -1316,7 +1316,13 @@ window.Growth3D = (function () {
     return (mix(16) << 16) | (mix(8) << 8) | mix(0);
   }
 
-  function paint(state, siteName, sensors, heat) {
+  // SIM3 capacity view: new homes a pipe (or a connection at a manhole) can take before a
+  // pipe runs full, in five bands. Below zero means already full before any growth.
+  const CAP_BANDS = [[0, [255, 45, 85]], [50, [255, 140, 0]], [150, [240, 200, 40]], [700, [120, 200, 90]], [Infinity, [40, 170, 110]]];
+  const CAP_DIM = [58, 64, 78];
+  function capRGB(h) { if (Number.isNaN(h)) return CAP_DIM; for (const [lim, c] of CAP_BANDS) if (!(h >= lim)) return c; return CAP_BANDS[CAP_BANDS.length - 1][1]; }
+  const capHex = h => { const c = capRGB(h); return (c[0] << 16) | (c[1] << 8) | c[2]; };
+  function paint(state, siteName, sensors, heat, cap) {
     if (!built) return;
     const g = G();
     const nodeState = name => state[name] || "ok";
@@ -1340,7 +1346,7 @@ window.Growth3D = (function () {
     for (let s = 0; s < segPipe.length; s++) {
       // Heatmap on: pipes go neutral so the only colour on screen is the manholes' score.
       const pc = pipeCol[segPipe[s]];
-      const c = heat ? COL.heatPipe : pc === "tip" ? COL.tip : pc === "was" ? COL.was
+      const c = cap ? capRGB(cap.pipe[segPipe[s]]) : heat ? COL.heatPipe : pc === "tip" ? COL.tip : pc === "was" ? COL.was
         : (pipeTint[segPipe[s]] || COL.ok);
       for (let k = 0; k < 2; k++) {
         const o = (s * 2 + k) * 3;
@@ -1358,6 +1364,8 @@ window.Growth3D = (function () {
       const st = nodeState(nm);
       const rt = regionTint && regionTint[nm];
       const c = sensorSet.has(nm) ? COL.sensor
+        : cap && cap.fit != null ? (Number.isNaN(cap.node[nm]) ? 0x3a404e : cap.node[nm] >= cap.fit ? 0x28aa6e : 0xff2d55)
+        : cap ? capHex(cap.node[nm])
         : heat ? heatHex(heat[nm] || 0)
         : st === "tip" ? 0xff2d55 : st === "was" ? 0xffa500 : st === "rise" ? COL.rise
         : st === "fall" ? COL.fall
@@ -1366,7 +1374,7 @@ window.Growth3D = (function () {
         : rt ? ((Math.round(rt[0] + (255 - rt[0]) * 0.45) << 16) | (Math.round(rt[1] + (255 - rt[1]) * 0.45) << 8) | Math.round(rt[2] + (255 - rt[2]) * 0.45))
         : COL.chamber;
       m.material.color.setHex(c);
-      m.userData.baseScale = sensorSet.has(nm) ? 2.1 : heat ? 0.9 + 1.4 * (heat[nm] || 0)
+      m.userData.baseScale = sensorSet.has(nm) ? 2.1 : cap && cap.fit != null ? (Number.isNaN(cap.node[nm]) ? 0.6 : 1.6) : cap ? 1.15 : heat ? 0.9 + 1.4 * (heat[nm] || 0)
         : st === "ok" ? 1 : st === "rise" || st === "fall" ? 1.3 : 1.6;
       m.scale.setScalar(m.userData.baseScale);
       if (nm === siteName) {

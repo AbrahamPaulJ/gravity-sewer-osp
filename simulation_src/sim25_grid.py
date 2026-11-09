@@ -21,7 +21,7 @@ Plus the CORRIDOR family (G14): growth spread along Walkerville Terrace, whole d
 Robustness is reported as how often each manhole is chosen across cases.
 
 In the whole area (Sim 3) a new estate does not join at any manhole: greenfield_sites keeps the
-network edge and the mains of GF_MIN_DIA_M or more, and --all-sites brings back every manhole.
+trunk mains of GF_MIN_DIA_M or more, and --all-sites brings back every manhole.
 
 Usage:
     python sim25_grid.py --plan                 # list cases and run counts, run nothing
@@ -189,25 +189,23 @@ def corridor_nodes():
 
 # ---------------------------------------------------------------------- greenfield sites
 def _greenfield_kinds(net, candidate_nodes):
-    """For each candidate node, in the order given: "edge", "trunk" or None (not eligible)."""
-    fed = {p.down for p in net.pipes}
+    """For each candidate node, in the order given: "trunk" or None (not eligible)."""
     widest = {}
     for p in net.pipes:
         widest[p.up] = max(widest.get(p.up, 0.0), p.dia)
-    return ["edge" if n not in fed else "trunk" if widest.get(n, 0.0) >= GF_MIN_DIA_M else None
-            for n in candidate_nodes]
+    return ["trunk" if widest.get(n, 0.0) >= GF_MIN_DIA_M else None for n in candidate_nodes]
 
 
 def greenfield_sites(net, candidate_nodes):
     """The manholes where a greenfield estate can join the network, as manhole ids in the order
     of candidate_nodes (node ids into net.nodes).
 
-    An estate lays its own pipes and joins the existing network as an extension, at its edge or
-    at a main large enough to take it. This is a team assumption, not an SA Water standard. A
-    candidate manhole is eligible if
-      (a) it is a network edge: no pipe in the network flows into it, the head of a line, or
-      (b) its outgoing pipe has an internal diameter of GF_MIN_DIA_M (0.225 m) or more; with
-          more than one outgoing pipe, the widest counts."""
+    An estate lays its own pipes and joins the existing network on a trunk main, the pipes
+    sized to carry a district's flow, not on a street sewer at the head of a line. A candidate
+    manhole is eligible if its outgoing pipe has an internal diameter of GF_MIN_DIA_M (0.225 m)
+    or more; with more than one outgoing pipe, the widest counts. Whether the trunk has room
+    for a given estate is a separate check (the page's capacity view). A team assumption, not
+    an SA Water standard."""
     kinds = _greenfield_kinds(net, candidate_nodes)
     return [net.nodes[n].manhole_id for n, k in zip(candidate_nodes, kinds) if k]
 
@@ -224,7 +222,7 @@ def run_case(case, pool, sites_limit, sizes, all_sites=False):
     mh_of = {c: probe.nodes[c].manhole_id for c in seg}
 
     # Sensors may sit at any of seg; the growth sites are fewer in the whole area, where an
-    # estate joins at the network edge or a main (greenfield_sites). The segment keeps all.
+    # estate joins a trunk main (greenfield_sites). The segment keeps all.
     if whole_area and not all_sites:
         sites = greenfield_sites(probe.net, [probe.chambers[c] for c in seg])
     else:
@@ -377,8 +375,8 @@ def main():
     ap.add_argument("--plan", action="store_true")
     ap.add_argument("--no-corridor", action="store_true")
     ap.add_argument("--all-sites", action="store_true",
-                    help="whole area only: grow at every candidate manhole, not just the network "
-                         "edge and mains of 225 mm or more (the grid as it was before greenfield_sites)")
+                    help="whole area only: grow at every candidate manhole, not just the trunk mains "
+                         "of 225 mm or more (the grid as it was before greenfield_sites)")
     ap.add_argument("--resume", action="store_true",
                     help="skip cases whose summary.json already exists, and within a whole-area "
                          "case the runs whose checkpoint exists (e.g. after a stopped run)")
@@ -403,10 +401,9 @@ def main():
         # Only lists the candidates; nothing is simulated.
         probe = Sim25Model(cs[0], whole=True, outlet_head=None)
         kinds = Counter(_greenfield_kinds(probe.net, [probe.chambers[c] for c in probe.candidates]))
-        n_rule = kinds["edge"] + kinds["trunk"]
-        print(f"greenfield sites: {n_rule} of {len(probe.candidates)} candidate manholes are eligible, "
-              f"{kinds['edge']} at the network edge and {kinds['trunk']} on a main of "
-              f"{GF_MIN_DIA_M * 1000:.0f} mm or more")
+        n_rule = kinds["trunk"]
+        print(f"greenfield sites: {n_rule} of {len(probe.candidates)} candidate manholes are on a "
+              f"trunk main of {GF_MIN_DIA_M * 1000:.0f} mm or more")
         if args.all_sites:
             print("  --all-sites: every candidate manhole is a growth site")
         else:

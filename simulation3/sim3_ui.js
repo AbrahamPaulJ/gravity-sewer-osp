@@ -58,7 +58,7 @@ window.Sim3UI = (function () {
     site: null, add: 3,                 // greenfield: chamber index, growth size index
     caseTag: null,                      // the uncertainty case, by tag (shared by the families)
     rule: "r10", k: 5, method: "exact", obj: "worst",
-    showSensors: true, showHeat: false, showPumps: false, showConn: false,
+    showSensors: true, showHeat: false, showCap: false, showPumps: false, showConn: false,
     hover: null, pick: null,            // hovered / clicked manhole NAME for the right panel
     legend: false,                      // the colour key, off until asked for
     areasView: false,                   // every area in its colour, nothing else
@@ -69,11 +69,11 @@ window.Sim3UI = (function () {
   /* ------------------------------------------------------------- index spaces */
   const names = () => R().chambers;                 // chamber index -> SWMM name "MH<id>"
   const nameOf = i => R().chambers[i];
-  // Greenfield: an estate joins at a network-edge manhole or a main of 225 mm or more
+  // Greenfield: an estate joins a trunk main of 225 mm or more
   // (eligibleSites, from tools/greenfield_filter.py). Without the list, every manhole.
   let gfSet = null;
   const gfOK = i => { const e = R().eligibleSites; if (!e) return true; gfSet = gfSet || new Set(e); return gfSet.has(i); };
-  const GF_NO = "Not a greenfield connection point: estates join at the network edge or a main of 225 mm or more";
+  const GF_NO = "Not a greenfield connection point: a new estate joins a trunk main of 225 mm or more";
   const mhOf = i => R().manholeIds[i];
   const label = i => "MH " + mhOf(i);
   const idxOfName = {};
@@ -144,6 +144,56 @@ window.Sim3UI = (function () {
   // Each candidate's own coverage of the infill scenarios (worst and mean over cases), for the
   // heatmap and the cards. Computed once per rule from the same rows the map paints.
   const _heatInfill = {};
+  /* Capacity view (6 Nov 2026): where a greenfield estate could join. Baseline flow in every
+     pipe for the selected weather case (GrowthEst.flows, steady state, no backwater), against
+     the pipe's full-bore Manning capacity. Spare L/s / L/s per new home = homes it can take.
+     A manhole's connection capacity is the least spare on the path from it to the outlet
+     (largest pipe leaving each manhole; across a pump station the pump rate is not checked). */
+  let _capP = null; const _cap = {};
+  function capacity() {
+    const ci = caseIndex();
+    if (_cap[ci]) return _cap[ci];
+    const g = G(), P = _capP || (_capP = GrowthEst.prepare(g));
+    const q = GrowthEst.flows(P, R().baseLoads[ci]), per = R().lpsPerDwelling[ci];
+    const pipe = new Float64Array(P.nL), conn = new Float64Array(P.nN).fill(Infinity), via = new Int32Array(P.nN).fill(-1);
+    for (let l = 0; l < P.nL; l++) pipe[l] = (P.qFull[l] - q[l]) / per;
+    for (let k = P.order.length - 1; k >= 0; k--) {            // downstream first
+      const i = P.order[k], l = P.main[i];
+      if (l < 0) { const j = P.pumpTo[i]; if (j >= 0) { conn[i] = conn[j]; via[i] = via[j]; } continue; }
+      const d = g.down[l];
+      if (pipe[l] <= conn[d]) { conn[i] = pipe[l]; via[i] = l; } else { conn[i] = conn[d]; via[i] = via[d]; }
+    }
+    const node = {}, byName = {};
+    g.nodes.forEach((n, i) => { node[n.name] = conn[i]; byName[n.name] = i; });
+    return (_cap[ci] = { pipe, node, conn, via, byName, q, P });
+  }
+  // Greenfield mode: only the trunk mains and their manholes, scored against the estate size.
+  function gfCap() {
+    const c = capacity(), g = G(), node = {};
+    const pipe = Float64Array.from(c.pipe, (h, l) => g.dia[l] >= 225 ? h : NaN);
+    names().forEach((nm, i) => { node[nm] = gfOK(i) ? c.node[nm] : NaN; });
+    return { pipe, node, fit: R().growthLevels[st.add] };
+  }
+  function gfCheck() {
+    if (st.site == null) return "";
+    const c = capacity(), nm = nameOf(st.site), i = c.byName[nm], add = R().growthLevels[st.add], h = c.conn[i], l = c.via[i];
+    if (i == null || l < 0) return "";
+    const pipe = "pipe " + esc(String(G().pid ? G().pid[l] : l)) + " (" + Math.round(G().dia[l]) + " mm)";
+    return h >= add ? "<b style='color:#28aa6e'>Capacity check: fits.</b> About " + Math.floor(h).toLocaleString() + " homes fit here before " + pipe + " runs full. "
+      : "<b style='color:#ff2d55'>Capacity check: does not fit.</b> " + (h <= 0 ? pipe + " is already full in this weather. " : "Only about " + Math.floor(h) + " homes fit before " + pipe + " runs full. ");
+  }
+  const homesTxt = h => h <= 0 ? "none, already full" : !isFinite(h) ? "no limit found" : "about " + Math.floor(h).toLocaleString() + " homes";
+  function capLine(nm) {
+    if (!nm) return "Hover or pick a manhole to see how many new homes could join there.";
+    const c = capacity(), i = c.byName[nm], l = i == null ? -1 : c.via[i], g = G();
+    if (i == null) return "";
+    const n = g.nodes[i], who = n.mh ? "MH " + n.mh : nm;
+    if (l < 0) return esc(who) + ": no pipe limit on its path.";
+    const own = c.pipe[c.P.main[i]] ;
+    return "<b>" + esc(who) + "</b>: a connection here can take <b>" + homesTxt(c.conn[i]) + "</b> before pipe " +
+      esc(String(g.pid ? g.pid[l] : l)) + " (" + Math.round(g.dia[l]) + " mm, " + c.q[l].toFixed(1) + " of " + c.P.qFull[l].toFixed(1) + " L/s now) runs full" +
+      (c.P.main[i] >= 0 && c.P.main[i] !== l ? "; its own pipe alone could take " + homesTxt(own) : "") + ".";
+  }
   function infillHeat() {
     if (_heatInfill[st.rule]) return _heatInfill[st.rule];
     const n = names().length, per = [];
@@ -247,7 +297,8 @@ window.Sim3UI = (function () {
       Growth3D.setSpills([], []);
     } else {
       Growth3D.setRegionTints(null);
-      Growth3D.paint(named, site, sensors, heatValues());
+      const capPaint = st.showCap ? capacity() : st.fam === "one" && st.site == null ? gfCap() : null;
+      Growth3D.paint(named, site, sensors, capPaint ? null : heatValues(), capPaint);
       if (st.fam === "infill") {
         Growth3D.setPulse(region().manholes.map(nameOf));
         Growth3D.setRegionLabels([{ names: region().manholes.map(nameOf), text: region().id, col: "#00d4ff" }]);
@@ -264,7 +315,9 @@ window.Sim3UI = (function () {
     renderSide();
     renderSensors();
     renderWords();
-    $("#heatKey").hidden = !st.showHeat;
+    $("#heatKey").hidden = !st.showHeat || st.showCap;
+    $("#capKey").hidden = !st.showCap;
+    if (st.showCap) $("#capWhich").textContent = curCase().label;
     $("#heatWhich").textContent = (st.obj === "worst" ? "worst of the " : "average of the ") + famCases().length +
       " cases, " + ruleOf(st.rule).label.toLowerCase() + (st.fam === "infill" ? ", infill scenarios" : ", greenfield scenarios");
   }
@@ -278,6 +331,7 @@ window.Sim3UI = (function () {
     const put = (head, r1, r2, r3, hint) => {
       $("#homesLine").innerHTML = (head ? '<span class="hd">' + head + "</span>" : "") + r1 + r2 + r3 + (hint ? '<span class="quiet2">' + hint + "</span>" : "");
     };
+    if (st.showCap) $("#capHover").innerHTML = capLine(st.hover || (st.fam === "one" && st.site != null ? nameOf(st.site) : st.pick));
     let spec, lead;
     if (st.areasView) spec = { mode: "none" };
     else if (st.hover) { spec = { mode: "site", name: st.hover }; lead = "Homes behind " + esc(mhName(st.hover)); }
@@ -383,7 +437,7 @@ window.Sim3UI = (function () {
     const desc = String(reg.name).split(":").slice(1).join(":").trim();
     $("#whereSel").title = st.fam === "infill" ? reg.name : "";
     $("#whereHint").textContent = st.fam === "infill" ? (desc ? desc.charAt(0).toUpperCase() + desc.slice(1) + "; " : "") + reg.dwellings + " homes, " + reg.nManholes + " manholes today"
-      : st.fam === "one" ? (st.site != null ? "At " + label(st.site) + ". Click another manhole to move it." : "Click a manhole at the network edge or on a 225 mm+ main to place it.")
+      : st.fam === "one" ? (st.site != null ? "At " + label(st.site) + ". Click another manhole to move it." : "Click a coloured manhole on a trunk main to place it.")
       : "No homes added. Amber manholes are over the alarm already.";
     const how = $("#howStep");
     if (st.fam === "infill") {
@@ -618,11 +672,11 @@ window.Sim3UI = (function () {
       return;
     }
     if (st.fam === "one") {
-      if (st.site == null) { el.innerHTML = '<span class="tag">Greenfield</span>Click a manhole at the network edge or on a 225 mm+ main to place the new estate there.'; return; }
+      if (st.site == null) { const a = R().growthLevels[st.add]; el.innerHTML = '<span class="tag">Greenfield</span>Trunk mains (225 mm or more) are drawn in colour. Their manholes are <b style="color:#28aa6e">green</b> where a +' + a + ' home estate fits before any pipe downstream runs full, <b style="color:#ff2d55">red</b> where it does not. Click one to place the estate.'; return; }
       const cl = cell(), row = rowFor(cl, st.site), tipped = row ? row.tip : [], chosen = placement().chosen, caught = chosen.filter(i => tipped.includes(i));
       el.innerHTML = '<span class="tag">Greenfield</span><b>' + R().growthLevels[st.add] + " dwellings</b> joining at <b>" + esc(label(st.site)) + "</b> in " + wx + ": " +
         (tipped.length ? "<b>" + tipped.length + "</b> manhole" + (tipped.length === 1 ? "" : "s") + " see it" : "no manhole passes the rule") + ". " +
-        (st.showSensors ? (caught.length ? "Sensor" + (caught.length === 1 ? " " : "s ") + caught.map(i => "S" + (chosen.indexOf(i) + 1)).join(", ") + " see" + (caught.length === 1 ? "s" : "") + " it." : "<b>None of the chosen sensors sees it.</b>") : "");
+        gfCheck() + (st.showSensors ? (caught.length ? "Sensor" + (caught.length === 1 ? " " : "s ") + caught.map(i => "S" + (chosen.indexOf(i) + 1)).join(", ") + " see" + (caught.length === 1 ? "s" : "") + " it." : "<b>None of the chosen sensors sees it.</b>") : "");
       return;
     }
     el.innerHTML = '<span class="tag">No growth</span>The suburb as the model has it in ' + wx + ". Amber manholes are already over the " + ALARM_MM + " mm alarm" +
@@ -1078,7 +1132,7 @@ window.Sim3UI = (function () {
      the Pumps toggle, whose "Highlight" title it reads as a private action, a popup closed
      with Esc) and gives a viewer who joins late the presenter's whole view. */
   const LIVE = ["region", "step", "site", "add", "caseTag", "rule", "k", "method", "obj", "pickedGreedy", "pick"];
-  const LIVE_TOGGLES = { showSensors: "#toggleSensors", showHeat: "#toggleHeat", showPumps: "#togglePumps",
+  const LIVE_TOGGLES = { showSensors: "#toggleSensors", showHeat: "#toggleHeat", showCap: "#toggleCap", showPumps: "#togglePumps",
                          showConn: "#toggleConn", legend: "#toggleLegend", areasView: "#toggleAreas" };
   const docOpen = () => $("#modal").hidden ? null : $("#modalBox .docbody > .lead") ? "ref" : $("#modalBox").classList.contains("wide") ? "qa" : "about";
   function liveGet() {
@@ -1198,7 +1252,8 @@ window.Sim3UI = (function () {
       $("#togglePumps").classList.toggle("primary", st.showPumps);
       legendGroups();
     };
-    $("#toggleHeat").onclick = () => { st.showHeat = !st.showHeat; $("#toggleHeat").classList.toggle("primary", st.showHeat); repaint(); };
+    $("#toggleHeat").onclick = () => { st.showHeat = !st.showHeat; if (st.showHeat) { st.showCap = false; $("#toggleCap").classList.remove("primary"); } $("#toggleHeat").classList.toggle("primary", st.showHeat); repaint(); };
+    $("#toggleCap").onclick = () => { st.showCap = !st.showCap; if (st.showCap) { st.showHeat = false; $("#toggleHeat").classList.remove("primary"); } $("#toggleCap").classList.toggle("primary", st.showCap); repaint(); };
     $("#toggleConn").hidden = !(G().cptr && G().cptr.length > 1);
     $("#toggleConn").onclick = () => {
       st.showConn = !st.showConn;

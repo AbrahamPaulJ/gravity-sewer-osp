@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 test_greenfield_sites.py - checks sim25_grid.greenfield_sites, the rule for where a greenfield
-estate can join the network (a candidate manhole that is a network edge, or whose outgoing pipe
-is 225 mm or more; a team assumption, not an SA Water standard).
+estate can join the network (a candidate manhole whose outgoing pipe, a trunk main, is 225 mm or
+more; a team assumption, not an SA Water standard).
 
 Plain asserts, no pytest:   python3 simulation_src/test_greenfield_sites.py
 
@@ -47,9 +47,14 @@ def test_threshold_is_225_mm():
     assert GF_MIN_DIA_M == 0.225
 
 
-def test_edge_is_eligible_even_on_a_small_pipe():
-    assert greenfield_sites(NET, [0]) == [1000]      # head of a line, 150 mm
-    assert greenfield_sites(NET, [1]) == [1001]      # head of a line, 100 mm
+def test_head_of_a_line_on_a_small_pipe_is_not_eligible():
+    assert greenfield_sites(NET, [0]) == []          # head of a line, 150 mm
+    assert greenfield_sites(NET, [1]) == []          # head of a line, 100 mm
+
+
+def test_head_of_a_line_on_a_trunk_is_eligible():
+    net = make_net([(0, 1, 0.300), (1, 2, 0.300)], 3)
+    assert greenfield_sites(net, [0]) == [1000]
 
 
 def test_interior_node_on_150_mm_is_not_eligible():
@@ -77,18 +82,18 @@ def test_outlet_with_no_outgoing_pipe_is_not_eligible():
 
 
 def test_order_of_the_candidates_is_kept():
-    assert greenfield_sites(NET, [4, 0, 2, 3, 1, 5, 6, 8]) == [1004, 1000, 1003, 1001, 1005]
-    assert greenfield_sites(NET, [5, 1, 0, 4, 3]) == [1005, 1001, 1000, 1004, 1003]
+    assert greenfield_sites(NET, [4, 0, 2, 3, 1, 5, 6, 7, 8]) == [1004, 1003, 1005, 1007]
+    assert greenfield_sites(NET, [7, 5, 1, 0, 4, 3]) == [1007, 1005, 1004, 1003]
 
 
 def test_only_the_candidates_are_returned():
-    assert greenfield_sites(NET, [2, 3]) == [1003]   # eligible nodes 0, 1, 4, 5, 7 are not asked about
+    assert greenfield_sites(NET, [2, 3]) == [1003]   # eligible nodes 4, 5, 7 are not asked about
     assert greenfield_sites(NET, []) == []
 
 
 def test_kinds_say_why():
     assert _greenfield_kinds(NET, list(range(9))) == [
-        "edge", "edge", None, "trunk", "trunk", "trunk", None, "trunk", None]
+        None, None, None, "trunk", "trunk", "trunk", None, "trunk", None]
 
 
 def real_network_counts():
@@ -104,12 +109,11 @@ def real_network_counts():
     kinds = Counter(_greenfield_kinds(probe.net, nodes))
     ids = greenfield_sites(probe.net, nodes)
     manholes = [probe.net.nodes[n].manhole_id for n in nodes]
-    assert len(ids) == kinds["edge"] + kinds["trunk"]
+    assert len(ids) == kinds["trunk"]
     assert 0 < len(ids) < len(nodes)
     assert ids == [m for m in manholes if m in set(ids)]   # same order as the candidates
     print(f"real network ({time.time() - t0:.1f} s): {len(ids)} of {len(nodes)} candidate manholes "
-          f"eligible, {kinds['edge']} at the network edge and {kinds['trunk']} on a main of "
-          f"{GF_MIN_DIA_M * 1000:.0f} mm or more, {kinds[None]} not eligible")
+          f"on a trunk main of {GF_MIN_DIA_M * 1000:.0f} mm or more, {kinds[None]} not eligible")
 
 
 if __name__ == "__main__":
