@@ -147,21 +147,25 @@ const Sim4 = (() => {
     Growth3D.setCoverSelect(null);
   }
   const esc = t => String(t).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-  function showPop(name) {
+  const regionOf = name => { const ri = regionPaint().of[G().nodes.findIndex(n => n.name === name)]; return ri >= 0 ? ri : null; };
+  // Opens the popup at a manhole; the playground uses it too, with its own words and its own sensors to keep clear of.
+  function openPop(name, html, sel, avoid) {
     st.pick = name;
-    const k = step().k, info = k ? D().popups[k].find(x => x.name === name) : null;
     const box = $("#pop");
-    if (info) {
-      box.innerHTML = `<b>Sensor ${info.n} of ${k}: ${esc(name)}</b><dl><dt>Listens to</dt><dd>${esc(info.listens)}</dd><dt>First reacts</dt><dd>${esc(info.reacts)}</dd><dt>Without it</dt><dd>${esc(info.lost)}</dd></dl>${info.note ? `<p>${esc(info.note)}</p>` : ""}`;
-      Growth3D.setCoverSelect(name, []);
-    } else {
-      const ri = regionPaint().of[G().nodes.findIndex(n => n.name === name)], r = ri >= 0 ? S().regions[ri].id : null;
-      box.innerHTML = `<b>${esc(name)}</b><p>${r ? `In ${r}: ${D().triage[r]}.` : "Not in a region."} No sensor here.</p>`;
-      Growth3D.setCoverSelect(null);
-    }
+    box.innerHTML = html;
+    Growth3D.setCoverSelect(sel ? name : null, []);
     box.hidden = false;
     st.popAt = name;
-    st.popSide = popSide(name);
+    st.popSide = popSide(name, avoid || sensorNames());
+  }
+  function showPop(name) {
+    const k = step().k, info = k ? D().popups[k].find(x => x.name === name) : null;
+    if (info) {
+      openPop(name, `<b>Sensor ${info.n} of ${k}: ${esc(name)}</b><dl><dt>Listens to</dt><dd>${esc(info.listens)}</dd><dt>First reacts</dt><dd>${esc(info.reacts)}</dd><dt>Without it</dt><dd>${esc(info.lost)}</dd></dl>${info.note ? `<p>${esc(info.note)}</p>` : ""}`, true);
+    } else {
+      const ri = regionOf(name), r = ri == null ? null : S().regions[ri].id;
+      openPop(name, `<b>${esc(name)}</b><p>${r ? `In ${r}: ${D().triage[r]}.` : "Not in a region."} No sensor here.</p>`, false);
+    }
   }
   // Where the popup sits for one side of a manhole: kept on screen.
   function popRect(at, side, w, h) {
@@ -172,17 +176,19 @@ const Sim4 = (() => {
     y = Math.max(m, Math.min(innerHeight - h - m, y));
     return { x, y, w, h };
   }
-  // The first side that hides neither the manhole, another sensor nor the step card. Chosen once per popup, so it never jumps.
-  function popSide(name) {
+  // The first side that hides neither the manhole, another sensor, the step card nor the Expert panel. Chosen once per popup,
+  // so it never jumps.
+  function popSide(name, avoid) {
     const at = Growth3D.screenOf(name), box = $("#pop");
     if (!at) return "right";
-    const w = box.offsetWidth, h = box.offsetHeight, card = $("#card").getBoundingClientRect();
+    const w = box.offsetWidth, h = box.offsetHeight;
+    const blocks = ["#card", "#expert"].map(s => $(s)).filter(el => !el.hidden).map(el => el.getBoundingClientRect());
     const hides = (r, p, pad = 14) => p.x > r.x - pad && p.x < r.x + r.w + pad && p.y > r.y - pad && p.y < r.y + r.h + pad;
-    const others = sensorNames().map(n => Growth3D.screenOf(n)).filter(Boolean);
+    const others = avoid.filter(n => n !== name).map(n => Growth3D.screenOf(n)).filter(Boolean);
     const free = side => {
       const r = popRect(at, side, w, h);
-      const overCard = r.x < card.right && r.x + w > card.left && r.y < card.bottom && r.y + h > card.top;
-      return !overCard && !others.some(p => hides(r, p));
+      const over = blocks.some(b => r.x < b.right && r.x + w > b.left && r.y < b.bottom && r.y + h > b.top);
+      return !over && !others.some(p => hides(r, p));
     };
     return ["right", "left", "below", "above"].find(free) || "right";
   }
@@ -199,22 +205,32 @@ const Sim4 = (() => {
   }
 
   /* ---------------------------------------------------------- start */
-  function toggleExpert(on) {
+  // Expert takes the map over while it is open (the playground paints it); closing gives the step back.
+  function toggleExpert(on, pane) {
+    stopSweep(); hidePop();
     st.expert = on == null ? !st.expert : on;
     $("#expert").hidden = !st.expert;
+    $("#card").hidden = st.expert;
     $("#btnExpert").setAttribute("aria-expanded", String(st.expert));
     $("#btnExpert").textContent = st.expert ? "Close Expert" : "Expert";
+    if (st.expert) Sim4Play.open(pane || Sim4Play.pane());
+    else { Sim4Play.close(); paintMap(); history.replaceState(null, "", "#step=" + step().id); }
   }
   function init() {
-    $("#expertBody").innerHTML = D().expert;
+    $("#expertTables").innerHTML = D().expert.tables;
+    $("#expertLimits").innerHTML = D().expert.limits;
     Growth3D.build($("#stage"), nd => {
+      if (st.expert) { Sim4Play.pick(nd); return; }
       if (!nd) { hidePop(); paintMap(); return; }
       showPop(nd.name);
     }, nd => { $("#stage").style.cursor = nd ? "pointer" : ""; }).then(() => {
       Growth3D.frame(null);
       const want = (location.hash.match(/step=([0-9a-z]+)/) || [])[1];
       const at = D().steps.findIndex(s => s.id === want);
+      Sim4Play.init();
       go(at < 0 ? 0 : at, false);
+      const ex = (location.hash.match(/expert=(play|tables|limits)/) || [])[1];
+      if (ex) { Sim4Play.fromHash(location.hash); toggleExpert(true, ex); }
       placePop();
       document.body.dataset.ready = "1";
     });
@@ -227,12 +243,14 @@ const Sim4 = (() => {
     $("#btnExpert").onclick = () => toggleExpert();
     $("#expertClose").onclick = () => toggleExpert(false);
     addEventListener("keydown", e => {
-      if (e.target.tagName === "INPUT") return;
+      if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+      if (st.expert && e.key !== "Escape") return;
       if (e.key === "ArrowRight" || e.key === "PageDown") go(st.i + 1);
       else if (e.key === "ArrowLeft" || e.key === "PageUp") go(st.i - 1);
       else if (e.key === "Escape") { if (st.expert) toggleExpert(false); else { hidePop(); paintMap(); } }
     });
     addEventListener("resize", () => Growth3D.resize($("#stage")));
   }
-  return { init, state: st, step, levels: LEVELS, sensors: sensorNames, growthState };
+  return { init, state: st, step, levels: LEVELS, sensors: sensorNames, growthState, regionPaint, regionTints, actionLabels, regionOf,
+           openPop, hidePop, esc, ACTION_COL, LEGEND, toggleExpert };
 })();

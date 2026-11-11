@@ -170,5 +170,110 @@ PASS no single sensor sees all of Design wet
 PASS exactly one pair sees all of Design wet, and it starts the ladder  ['MH4450531', 'MH4450581']
 PASS real overload manholes  19
 PASS none on the old choke list
+PASS float: warn universe
+PASS float: $25k level scores
+PASS float: $25k level warned
+PASS float: $25k level cost within budget
+PASS float: $25k level floats quiet on Design wet
+PASS float: $25k float scores
+PASS float: $25k float warned
+PASS float: $25k float cost within budget
+PASS float: $25k float floats quiet on Design wet
+PASS float: $25k mix scores
+PASS float: $25k mix warned
+PASS float: $25k mix cost within budget
+PASS float: $25k mix floats quiet on Design wet
+PASS float: $25k level column is the list
+PASS float: $50k level scores
+PASS float: $50k level warned
+PASS float: $50k level cost within budget
+PASS float: $50k level floats quiet on Design wet
+PASS float: $50k float scores
+PASS float: $50k float warned
+PASS float: $50k float cost within budget
+PASS float: $50k float floats quiet on Design wet
+PASS float: $50k mix scores
+PASS float: $50k mix warned
+PASS float: $50k mix cost within budget
+PASS float: $50k mix floats quiet on Design wet
+PASS float: $50k level column is the list
+PASS float: $75k level scores
+PASS float: $75k level warned
+PASS float: $75k level cost within budget
+PASS float: $75k level floats quiet on Design wet
+PASS float: $75k float scores
+PASS float: $75k float warned
+PASS float: $75k float cost within budget
+PASS float: $75k float floats quiet on Design wet
+PASS float: $75k mix scores
+PASS float: $75k mix warned
+PASS float: $75k mix cost within budget
+PASS float: $75k mix floats quiet on Design wet
+PASS float: $75k level column is the list
+PASS float: $100k level scores
+PASS float: $100k level warned
+PASS float: $100k level cost within budget
+PASS float: $100k level floats quiet on Design wet
+PASS float: $100k float scores
+PASS float: $100k float warned
+PASS float: $100k float cost within budget
+PASS float: $100k float floats quiet on Design wet
+PASS float: $100k mix scores
+PASS float: $100k mix warned
+PASS float: $100k mix cost within budget
+PASS float: $100k mix floats quiet on Design wet
+PASS float: $100k level column is the list
+PASS float: $125k level scores
+PASS float: $125k level warned
+PASS float: $125k level cost within budget
+PASS float: $125k level floats quiet on Design wet
+PASS float: $125k float scores
+PASS float: $125k float warned
+PASS float: $125k float cost within budget
+PASS float: $125k float floats quiet on Design wet
+PASS float: $125k mix scores
+PASS float: $125k mix warned
+PASS float: $125k mix cost within budget
+PASS float: $125k mix floats quiet on Design wet
+PASS float: $125k level column is the list
+PASS float: $150k level scores
+PASS float: $150k level warned
+PASS float: $150k level cost within budget
+PASS float: $150k level floats quiet on Design wet
+PASS float: $150k float scores
+PASS float: $150k float warned
+PASS float: $150k float cost within budget
+PASS float: $150k float floats quiet on Design wet
+PASS float: $150k mix scores
+PASS float: $150k mix warned
+PASS float: $150k mix cost within budget
+PASS float: $150k mix floats quiet on Design wet
+PASS float: $150k level column is the list
+PASS float: $175k level scores
+PASS float: $175k level warned
+PASS float: $175k level cost within budget
+PASS float: $175k level floats quiet on Design wet
+PASS float: $175k float scores
+PASS float: $175k float warned
+PASS float: $175k float cost within budget
+PASS float: $175k float floats quiet on Design wet
+PASS float: $175k mix scores
+PASS float: $175k mix warned
+PASS float: $175k mix cost within budget
+PASS float: $175k mix floats quiet on Design wet
+PASS float: $175k level column is the list
+PASS float: $200k level scores
+PASS float: $200k level warned
+PASS float: $200k level cost within budget
+PASS float: $200k level floats quiet on Design wet
+PASS float: $200k float scores
+PASS float: $200k float warned
+PASS float: $200k float cost within budget
+PASS float: $200k float floats quiet on Design wet
+PASS float: $200k mix scores
+PASS float: $200k mix warned
+PASS float: $200k mix cost within budget
+PASS float: $200k mix floats quiet on Design wet
+PASS float: $200k level column is the list
 
 ALL PASS
