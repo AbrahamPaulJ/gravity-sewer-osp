@@ -39,7 +39,7 @@ ABOVE_CROWN = [100, 300, 500, 1000, 2000]               # and mm above the crown
 EPS = 1e-3
 TIME = 90
 
-reg, geo = C.read_js(os.path.join(C.DATA, "regions.js")), C.read_js(os.path.join(C.DATA, "catchment.js"))
+reg, geo = C.read_js(C.REGIONS), C.read_js(os.path.join(C.DATA, "catchment.js"))
 ch = C.chamber_names(); gm = C.geometry(geo, ch); n = len(ch)
 ix = {nd["name"]: j for j, nd in enumerate(geo["nodes"])}
 rim = [round(geo["nodes"][ix[c]]["depth"] * 1000) for c in ch]

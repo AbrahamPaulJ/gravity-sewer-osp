@@ -10,7 +10,7 @@ they were run on and every run's output, so each result can be reproduced or che
 | Simulation 2.5, growth and sensor placement | `sim25.py`, `sim25_grid.py` | see below |
 | Simulation 3, area growth on settled runs | `sim3_regions.py`, `sim3_analysis.py`, `sim25_grid.py` | see below |
 | Simulation 3.5, warning, room for homes, level or float | `sim35_*.py`, on Simulation 3's runs | see below |
-| Simulation 4, where to put the first sensors | `sim4_numbers.py`, on Simulation 3's runs | `python sim4_numbers.py` |
+| Simulation 4, where to put the first sensors | `sim3_regions.py --partition bisection`, `sim4_numbers.py` | see below |
 
 ## Setup
 
@@ -63,9 +63,8 @@ Outputs land in `results/sim3/regions/`: one folder per case with `summary.json`
 `analysis.json` and `report.md`.
 
 These are the hand-picked regions of 21 Oct 2026 (`simulation.regions.list`, partition `listed`,
-the default in `config.js`), which Simulations 3, 3.5 and 4 publish. An alternative, equal-home
-regions, has been run but is not published; see below. Rebuild the Sim 3 page's data from the
-repository root:
+the default in `config.js`), which Simulations 3 and 3.5 publish. Simulation 4 uses equal-home
+regions instead; see below. Rebuild the Sim 3 page's data from the repository root:
 
 ```
 python tools/build_sim3_regions.py            # simulation3/data/regions.js
@@ -94,15 +93,16 @@ Runs no SWMM: `sim35_capacity.py`, `sim35_capacity_check.py`, `sim35_mix.py`, `s
 (`simulation35/data/sim35.js`) was built by a builder that is not in the repository; its warn sets
 came from the method now in `sim35_warn.py`, which reproduces them exactly when run unset.
 
-## Equal-home regions (run, not published)
+## Simulation 4
 
-An alternative to the hand-picked regions: the spatial bisection method of Kim et al. (2022,
+The six-step story, on equal-home regions: the spatial bisection method of Kim et al. (2022,
 J. Environ. Manage. 320:115806). Each round cuts every part at the pipe whose upstream side and
 downstream remainder hold the most nearly equal number of existing dwellings; 3 rounds give 8
 regions (233 to 418 dwellings), plus the Walkerville Terrace corridor as a ninth, overlapping
-scenario (`simulation.regions.bisection` in `config.js`). Its SWMM runs and analysis are kept for
-comparison; no page publishes them. On an Apple-silicon Mac the 504-run sweep took 45 min on 9
-workers. From `simulation_src/`:
+scenario (`simulation.regions.bisection` in `config.js`). Simulations 3 and 3.5 keep the hand-picked
+regions.
+
+SWMM runs (on an Apple-silicon Mac the 504-run sweep took 45 min on 9 workers), from `simulation_src/`:
 
 ```
 python sim3_regions.py --plan --partition bisection                  # the regions, nothing run
@@ -110,9 +110,22 @@ python sim3_regions.py --cases all --partition bisection --workers 9 # results/s
 python sim3_analysis.py --partition bisection                        # its analysis.json and report.md
 ```
 
-`python tools/build_sim3_regions.py --partition bisection --out <file>` writes them in the pages'
-regions format. A page built on them (Simulation 3.5's analysis on these regions) is in commit
-1ddee1c, superseded by the team's Simulation 4.
+Then the page's regions, the figures (no SWMM, about a minute) and the page's data, from the
+repository root:
+
+```
+python tools/build_sim3_regions.py --partition bisection --out simulation4/data/regions.js
+cd simulation_src
+SIM35_TARGET=sim4 python sim35_capacity.py   # capacity bands on Sim 4's regions, results/sim4/capacity.json
+python sim4_numbers.py                        # results/sim4/numbers.json and numbers_report.txt
+cd ..
+python tools/build_sim4_web.py                # simulation4/data/sim4.js; --check compares instead
+```
+
+`SIM35_TARGET=sim4` makes the Sim 3.5 scripts read `simulation4/data/regions.js` and write
+`results/sim4/`; `sim4_numbers.py` sets it for itself. Unset, those scripts are Simulation 3.5 as
+published. The builder writes every number, region list and sensor note from `numbers.json`; given
+the hand-picked regions' figures it reproduces the page as first published, credits aside.
 
 ## Rebuild the Sim 2.5 browser page
 

@@ -21,11 +21,16 @@ sim35_mix.py and sim35_capacity.py, and fixes what the Sim 3.5 audit found (docs
 
 Level sensors only; the float comparison stays in sim35_mix.py. Prices are assumed, as everywhere.
 
-    python sim4_numbers.py       # writes results/sim4/numbers.json and numbers_report.txt
+    SIM35_TARGET=sim4 python sim35_capacity.py   # first: the capacity bands on Sim 4's regions, results/sim4/capacity.json
+    python sim4_numbers.py                        # writes results/sim4/numbers.json and numbers_report.txt
+
+Sim 4's regions are the equal-home regions (Kim et al. 2022 spatial bisection) in simulation4/data/regions.js. Run with
+SIM35_TARGET=sim35 to read Sim 3's hand-picked regions instead; the checks tied to those regions apply only then.
 """
 import heapq, itertools, json, os, random, sys, time
 from collections import Counter, defaultdict
 
+os.environ.setdefault("SIM35_TARGET", "sim4")      # Sim 4's own regions and capacity file, before sim35_capacity is read
 import sim35_mix as M
 
 C = M.C
@@ -39,6 +44,7 @@ WIDTH = 1500
 DRAWS = 5000
 SEED = 4
 OUT = os.path.join(C.HERE, "results", "sim4")
+LISTED = C.TARGET != "sim4"      # Sim 3's hand-picked regions: the checks below that name their regions apply only to them
 ACTION = {"runs out": "monitor", "uncertain": "watch", "room left": "leave", "already over": "leave"}
 lines = []
 cap = json.load(open(os.path.join(C.OUT, "capacity.json"), encoding="utf-8"))
@@ -191,7 +197,8 @@ def main():
     tri = triage()
     T = {rid.index(i) for i, v in tri.items() if v["action"] != "leave"}
     Tn = [rid[r] for r in sorted(T)]
-    assert {i for i, v in tri.items() if v["action"] == "monitor"} == {"R1", "R2"} and {i for i, v in tri.items() if v["action"] == "watch"} == {"R4", "R8"}, "triage moved: read the report before trusting the story"
+    if LISTED:
+        assert {i for i, v in tri.items() if v["action"] == "monitor"} == {"R1", "R2"} and {i for i, v in tri.items() if v["action"] == "watch"} == {"R4", "R8"}, "triage moved: read the report before trusting the story"
 
     say("=== 1. Triage: Design wet, limit 0.7. runs out = monitor, uncertain = watch, room left = leave")
     for i, v in tri.items():
@@ -199,8 +206,9 @@ def main():
         say(f"  {i}: {v['action']:8s} band {v['band']:10s} 2041 homes {v['homes_2041']:5.0f} (homes there now {v['homes_now']}); "
             f"same band in {kept} of 7 wet cases; limit 0.5/0.6/0.7 {v['by_limit']['0.5']}/{v['by_limit']['0.6']}/{v['by_limit']['0.7']}")
     say("  Bands by wet case: " + "; ".join(f"{i} " + ",".join(b.replace('runs out', 'O').replace('uncertain', 'U').replace('room left', 'R').replace('already over', 'A') for b in v["bands_by_case"].values()) for i, v in tri.items()))
-    s7 = sum(v["homes_2041"] for i, v in tri.items() if i != "R8")
-    say(f"  Homes: R1 to R7 add up to {s7:.0f}; R8 alone is {tri['R8']['homes_2041']:.0f} (the whole anchor by design, docs/18 D18). They are not shares of one total.")
+    anchor = [i for i, v in tri.items() if round(v["homes_2041"]) == round(reg["anchor"])]
+    s7 = sum(v["homes_2041"] for i, v in tri.items() if i not in anchor)
+    say(f"  Homes: the other regions add up to {s7:.0f}; {', '.join(anchor) or 'no region'} alone is {round(reg['anchor'])} (the whole anchor by design, docs/18 D18). They are not shares of one total.")
 
     Det = {R: M.Problem("detect", R, M.MARGIN) for R in (10, 25)}
     War = {R: M.Problem("warn", R, M.MARGIN) for R in (10, 25)}
@@ -271,13 +279,16 @@ def main():
     freq = Counter(i for S in equal for i in S)
     say(f"  How firm is the {RECOMMEND}-sensor set? {len(equal)} sets tie for best on worst, average and warned. Each sensor is in: " + ", ".join(f"{ch[i]} {freq[i]}" for i in L[:RECOMMEND]))
     seed = design_seeds(U[10], Uw[10])
-    assert len(seed) == 1 and len(seed[0]) == 2, "the Design wet pair is no longer unique: read the report"
-    pair = list(seed[0])
-    assert set(pair) == set(L[:2]), "the ladder does not start with the Design wet pair"
+    assert seed, "no set of 1 or 2 sensors sees all of Design wet: read the report"
+    if LISTED:
+        assert len(seed) == 1 and len(seed[0]) == 2, "the Design wet pair is no longer unique: read the report"
+    pair = list(L[:len(seed[0])])      # the ladder's Design wet set: one of the smallest sets that see all of it
+    assert any(set(pair) == set(x) for x in seed), "the ladder does not start with a Design wet set"
+    say(f"  Smallest sets that see all of Design wet: {len(seed)} of {len(seed[0])} sensor(s); the ladder starts with {[ch[i] for i in pair]}.")
     pool = sorted({d for t in wet for sc in U[10].scen[t] for d in sc["D"] if d < n} | {d for t in Uw[10].cases for sc in Uw[10].scen[t] for d in sc["D"] if d < n})
-    brute = max(round(value(U[10], Uw[10], pair + list(c)), 6) for c in itertools.combinations([i for i in pool if i not in pair], RECOMMEND - 2))
+    brute = max(round(value(U[10], Uw[10], pair + list(c)), 6) for c in itertools.combinations([i for i in pool if i not in pair], RECOMMEND - len(pair)))
     mine = round(value(U[10], Uw[10], L[:RECOMMEND]), 6)
-    say(f"  Brute force over every {RECOMMEND}-sensor set with the Design wet pair: best value {brute}, ladder {mine}.")
+    say(f"  Brute force over every {RECOMMEND}-sensor set with the Design wet set: best value {brute}, ladder {mine}.")
     assert mine >= brute - 1e-6, "the beam missed the best five: widen it"
     say(f"  [{(time.time() - t0) / 60:.1f} min]")
 
@@ -431,7 +442,8 @@ def main():
         w, a = U[10].wa(S); ow, oa = Uold.wa(S)
         compare[name] = {"worst": round(w, 4), "average": round(a, 4), "design_wet": round(U[10].per(S)[DESIGN], 4), "warned": Uw[10].seen(S), "old_worst": round(ow, 4), "old_average": round(oa, 4), "old_warned_13": Uw13.seen(S)}
         say(f"  {name}: Sim 4 scope {w:.0%}/{a:.0%}, Design wet {U[10].per(S)[DESIGN]:.0%}, warned {Uw[10].seen(S)}/{Uw[10].total()}; old scope {ow:.0%}/{oa:.0%} warned {Uw13.seen(S)}/13")
-    assert (round(compare["Sim 3.5 map five"]["old_worst"], 2), round(compare["Sim 3.5 coverage five"]["old_worst"], 2)) == (.80, .86), "old figures no longer reproduce"
+    if LISTED:
+        assert (round(compare["Sim 3.5 map five"]["old_worst"], 2), round(compare["Sim 3.5 coverage five"]["old_worst"], 2)) == (.80, .86), "old figures no longer reproduce"
 
     os.makedirs(OUT, exist_ok=True)
     payload = {"rule": {"limit": 0.7, "case": lab[DESIGN], "action": ACTION}, "triage": tri, "targets": Tn,

@@ -33,7 +33,12 @@ ROOT = os.path.dirname(HERE)
 DATA = next(d for d in (os.path.join(ROOT, "simulation3", "data"), os.path.join(ROOT, "sim3_web", "data")) if os.path.isdir(d))
 SUBURB = next((f for f in (os.path.join(HERE, "results", "sim3e", "suburb.json"),
                            os.path.join(ROOT, "public_demo", "simulation_src", "results", "sim3e", "suburb.json")) if os.path.exists(f)), "")
-OUT = os.path.join(HERE, "results", "sim35")
+# SIM35_TARGET=sim4 runs this for Simulation 4: its regions file (the equal-home regions, simulation4/data/regions.js)
+# and results/sim4, which sim4_numbers.py reads. Unset, it is Simulation 3.5 as published: simulation3/data/regions.js
+# and results/sim35. sim35_mix.py and the rest read the same two settings.
+TARGET = os.environ.get("SIM35_TARGET", "sim35")
+REGIONS = os.path.join(ROOT, "simulation4", "data", "regions.js") if TARGET == "sim4" else os.path.join(DATA, "regions.js")
+OUT = os.path.join(HERE, "results", TARGET)
 LIMITS = [0.5, 0.6, 0.7]
 HEADLINE = 0.7
 DESIGN = "ii0.11_flat_uniform_b1_sfree"
@@ -147,7 +152,7 @@ def band_for(F, bore, dw, share, rng):
 
 
 def main():
-    reg, geo = read_js(os.path.join(DATA, "regions.js")), read_js(os.path.join(DATA, "catchment.js"))
+    reg, geo = read_js(REGIONS), read_js(os.path.join(DATA, "catchment.js"))
     ch = chamber_names()
     gm = geometry(geo, ch)
     down = downstream(geo, ch)
@@ -317,7 +322,7 @@ def main():
                    "bands": bands, "first_pipe": results, "whole_suburb": suburb, "whole_suburb_bands": suburb_bands}, f, indent=1)
     with open(os.path.join(OUT, "capacity_report.txt"), "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
-    print("wrote results/sim35/capacity.json and capacity_report.txt")
+    print(f"wrote results/{TARGET}/capacity.json and capacity_report.txt")
 
 
 if __name__ == "__main__":
