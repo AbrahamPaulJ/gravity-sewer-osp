@@ -71,6 +71,13 @@ python tools/build_sim3_regions.py            # simulation3/data/regions.js
 python tools/build_sim3_regions.py --check    # rebuild in memory and compare
 ```
 
+Known gap, found 10 Nov 2026: `python sim3_regions.py --describe` today gives the corridor (R8) 173
+existing homes and the remainder (R7) 831, where the published runs and `results/sim3/regions/regions.json`
+have 175 and 829. The repository's own earlier code gives the same 173 and 831, so the inputs, not the
+code, changed after the 21 Oct runs; the cause is not traced. Re-running the hand-picked sweep today
+would raise R7's 2041 growth from 141.0 to 141.4 homes; the corridor keeps its fixed 485 but spreads
+them over its pipes slightly differently.
+
 The exact placement needs PuLP with the HiGHS solver (`highspy`); without HiGHS it falls back to
 PuLP's bundled CBC.
 
@@ -118,14 +125,32 @@ python tools/build_sim3_regions.py --partition bisection --out simulation4/data/
 cd simulation_src
 SIM35_TARGET=sim4 python sim35_capacity.py   # capacity bands on Sim 4's regions, results/sim4/capacity.json
 python sim4_numbers.py                        # results/sim4/numbers.json and numbers_report.txt
+SIM35_TARGET=sim35 python sim4_numbers.py     # the same on the hand-picked regions: numbers_handpicked.json
 cd ..
 python tools/build_sim4_web.py                # simulation4/data/sim4.js; --check compares instead
 ```
+
+The story's Explore button opens `simulation4/explore.html`: Simulation 3.5's full view on the same
+regions. Its data needs the rest of the Sim 3.5 analysis on Sim 4's regions, then its own builder:
+
+```
+cd simulation_src && export SIM35_TARGET=sim4
+python sim35_capacity_check.py && python sim35_mix.py && python sim35_warn.py
+python sim35_float_check.py && python sim35_coverage.py
+unset SIM35_TARGET && cd ..
+python tools/build_sim4_explore.py            # simulation4/data/explore.js; --check compares instead
+```
+
+Its sensor sets use Simulation 3.5's methods over every region and the stress steps, so they differ
+from the story's five, which are chosen only for the regions to monitor or watch.
 
 `SIM35_TARGET=sim4` makes the Sim 3.5 scripts read `simulation4/data/regions.js` and write
 `results/sim4/`; `sim4_numbers.py` sets it for itself. Unset, those scripts are Simulation 3.5 as
 published. The builder writes every number, region list and sensor note from `numbers.json`; given
 the hand-picked regions' figures it reproduces the page as first published, credits aside.
+`numbers_handpicked.json` (byte for byte the team's published figures) feeds the Expert panel's
+comparison of the two region cuts: 4 of the 5 sensors are the same either way, while the regions to
+watch, and whether a design day needs one sensor or two, change with the cut.
 
 ## Rebuild the Sim 2.5 browser page
 

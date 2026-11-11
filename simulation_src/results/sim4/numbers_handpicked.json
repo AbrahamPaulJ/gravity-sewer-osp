@@ -1,0 +1,3052 @@
+{
+ "rule": {
+  "limit": 0.7,
+  "case": "Design wet",
+  "action": {
+   "runs out": "monitor",
+   "uncertain": "watch",
+   "room left": "leave",
+   "already over": "leave"
+  }
+ },
+ "triage": {
+  "R1": {
+   "action": "monitor",
+   "band": "runs out",
+   "homes_2041": 109.6,
+   "homes_now": 644,
+   "p_runs_out": 0.995,
+   "homes_p10": 13,
+   "homes_p90": 77,
+   "mm_per_100_homes": 66.5,
+   "by_limit": {
+    "0.5": "watch",
+    "0.6": "monitor",
+    "0.7": "monitor"
+   },
+   "bands_by_case": {
+    "Design wet": "runs out",
+    "Beyond design": "runs out",
+    "Severe": "runs out",
+    "Design wet + age-weighted I&I": "uncertain",
+    "Design wet + outside inflow x1.5": "runs out",
+    "Beyond design + age-weighted I&I": "already over",
+    "Beyond design + outside inflow x1.5": "runs out"
+   }
+  },
+  "R2": {
+   "action": "monitor",
+   "band": "runs out",
+   "homes_2041": 55.1,
+   "homes_now": 324,
+   "p_runs_out": 0.902,
+   "homes_p10": 3,
+   "homes_p90": 54,
+   "mm_per_100_homes": 90.3,
+   "by_limit": {
+    "0.5": "watch",
+    "0.6": "watch",
+    "0.7": "monitor"
+   },
+   "bands_by_case": {
+    "Design wet": "runs out",
+    "Beyond design": "runs out",
+    "Severe": "already over",
+    "Design wet + age-weighted I&I": "room left",
+    "Design wet + outside inflow x1.5": "runs out",
+    "Beyond design + age-weighted I&I": "already over",
+    "Beyond design + outside inflow x1.5": "already over"
+   }
+  },
+  "R3": {
+   "action": "leave",
+   "band": "room left",
+   "homes_2041": 39.6,
+   "homes_now": 233,
+   "p_runs_out": 0.003,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": 5.4,
+   "by_limit": {
+    "0.5": "leave",
+    "0.6": "leave",
+    "0.7": "leave"
+   },
+   "bands_by_case": {
+    "Design wet": "room left",
+    "Beyond design": "room left",
+    "Severe": "room left",
+    "Design wet + age-weighted I&I": "room left",
+    "Design wet + outside inflow x1.5": "room left",
+    "Beyond design + age-weighted I&I": "room left",
+    "Beyond design + outside inflow x1.5": "room left"
+   }
+  },
+  "R4": {
+   "action": "watch",
+   "band": "uncertain",
+   "homes_2041": 17.0,
+   "homes_now": 100,
+   "p_runs_out": 0.537,
+   "homes_p10": 4,
+   "homes_p90": 40,
+   "mm_per_100_homes": 62.8,
+   "by_limit": {
+    "0.5": "leave",
+    "0.6": "watch",
+    "0.7": "watch"
+   },
+   "bands_by_case": {
+    "Design wet": "uncertain",
+    "Beyond design": "already over",
+    "Severe": "already over",
+    "Design wet + age-weighted I&I": "room left",
+    "Design wet + outside inflow x1.5": "already over",
+    "Beyond design + age-weighted I&I": "already over",
+    "Beyond design + outside inflow x1.5": "already over"
+   }
+  },
+  "R5": {
+   "action": "leave",
+   "band": "room left",
+   "homes_2041": 25.0,
+   "homes_now": 147,
+   "p_runs_out": 0.035,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": 5.2,
+   "by_limit": {
+    "0.5": "leave",
+    "0.6": "leave",
+    "0.7": "leave"
+   },
+   "bands_by_case": {
+    "Design wet": "room left",
+    "Beyond design": "already over",
+    "Severe": "already over",
+    "Design wet + age-weighted I&I": "room left",
+    "Design wet + outside inflow x1.5": "room left",
+    "Beyond design + age-weighted I&I": "already over",
+    "Beyond design + outside inflow x1.5": "uncertain"
+   }
+  },
+  "R6": {
+   "action": "leave",
+   "band": "room left",
+   "homes_2041": 19.2,
+   "homes_now": 113,
+   "p_runs_out": 0.0,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": 7.7,
+   "by_limit": {
+    "0.5": "leave",
+    "0.6": "leave",
+    "0.7": "leave"
+   },
+   "bands_by_case": {
+    "Design wet": "room left",
+    "Beyond design": "already over",
+    "Severe": "already over",
+    "Design wet + age-weighted I&I": "room left",
+    "Design wet + outside inflow x1.5": "room left",
+    "Beyond design + age-weighted I&I": "already over",
+    "Beyond design + outside inflow x1.5": "already over"
+   }
+  },
+  "R8": {
+   "action": "watch",
+   "band": "uncertain",
+   "homes_2041": 485.0,
+   "homes_now": 175,
+   "p_runs_out": 0.417,
+   "homes_p10": 127,
+   "homes_p90": 1276,
+   "mm_per_100_homes": 7.7,
+   "by_limit": {
+    "0.5": "watch",
+    "0.6": "monitor",
+    "0.7": "watch"
+   },
+   "bands_by_case": {
+    "Design wet": "uncertain",
+    "Beyond design": "already over",
+    "Severe": "already over",
+    "Design wet + age-weighted I&I": "uncertain",
+    "Design wet + outside inflow x1.5": "uncertain",
+    "Beyond design + age-weighted I&I": "already over",
+    "Beyond design + outside inflow x1.5": "already over"
+   }
+  },
+  "R7": {
+   "action": "leave",
+   "band": "room left",
+   "homes_2041": 141.0,
+   "homes_now": 829,
+   "p_runs_out": 0.113,
+   "homes_p10": 115,
+   "homes_p90": null,
+   "mm_per_100_homes": 5.9,
+   "by_limit": {
+    "0.5": "leave",
+    "0.6": "watch",
+    "0.7": "leave"
+   },
+   "bands_by_case": {
+    "Design wet": "room left",
+    "Beyond design": "already over",
+    "Severe": "already over",
+    "Design wet + age-weighted I&I": "room left",
+    "Design wet + outside inflow x1.5": "uncertain",
+    "Beyond design + age-weighted I&I": "uncertain",
+    "Beyond design + outside inflow x1.5": "already over"
+   }
+  }
+ },
+ "targets": [
+  "R1",
+  "R2",
+  "R4",
+  "R8"
+ ],
+ "leave_overloads": [
+  {
+   "case": "Severe",
+   "region": "R3",
+   "step": 0.25,
+   "max_rise_before": 0.79
+  },
+  {
+   "case": "Severe",
+   "region": "R6",
+   "step": 0.75,
+   "max_rise_before": 3.9
+  },
+  {
+   "case": "Severe",
+   "region": "R7",
+   "step": 0.25,
+   "max_rise_before": 2.06
+  },
+  {
+   "case": "Beyond design + outside inflow x1.5",
+   "region": "R5",
+   "step": 0.75,
+   "max_rise_before": 41.65
+  }
+ ],
+ "warnable_given_up": [
+  [
+   "Beyond design + outside inflow x1.5",
+   "R5",
+   0.75
+  ]
+ ],
+ "ladder": [
+  {
+   "k": 1,
+   "added": "MH4450581",
+   "chosen": [
+    "MH4450581"
+   ],
+   "worst": 0.0,
+   "average": 0.4693,
+   "exact_worst": 0.2308,
+   "exact_average": 0.3759,
+   "exact_status": 0,
+   "exact_set": [
+    "MH4452527"
+   ],
+   "design_wet": 0.9167,
+   "per_case": {
+    "Design wet": 0.9167,
+    "Beyond design": 0.6875,
+    "Severe": 0.0,
+    "Design wet + age-weighted I&I": 0.0,
+    "Design wet + outside inflow x1.5": 0.8,
+    "Beyond design + age-weighted I&I": 0.7143,
+    "Beyond design + outside inflow x1.5": 0.1667
+   },
+   "worst_25": 0.0,
+   "average_25": 0.2427,
+   "warned_target": 9,
+   "warned_target_25": 1,
+   "warned_13": 9,
+   "warned_25_overloads": 16,
+   "all_regions_worst": 0.0,
+   "all_regions_average": 0.4262,
+   "stress_worst": 0.0952,
+   "stress_average": 0.5623,
+   "dry": 0.0,
+   "cost": 25000
+  },
+  {
+   "k": 2,
+   "added": "MH4450531",
+   "chosen": [
+    "MH4450581",
+    "MH4450531"
+   ],
+   "worst": 0.0,
+   "average": 0.5785,
+   "exact_worst": 0.5333,
+   "exact_average": 0.6098,
+   "exact_status": 0,
+   "exact_set": [
+    "MH4428636",
+    "MH4452189"
+   ],
+   "design_wet": 1.0,
+   "per_case": {
+    "Design wet": 1.0,
+    "Beyond design": 0.75,
+    "Severe": 0.2308,
+    "Design wet + age-weighted I&I": 0.0,
+    "Design wet + outside inflow x1.5": 0.8667,
+    "Beyond design + age-weighted I&I": 0.7857,
+    "Beyond design + outside inflow x1.5": 0.4167
+   },
+   "worst_25": 0.0,
+   "average_25": 0.3158,
+   "warned_target": 9,
+   "warned_target_25": 3,
+   "warned_13": 9,
+   "warned_25_overloads": 19,
+   "all_regions_worst": 0.0,
+   "all_regions_average": 0.5067,
+   "stress_worst": 0.2778,
+   "stress_average": 0.6676,
+   "dry": 0.0,
+   "cost": 50000
+  },
+  {
+   "k": 3,
+   "added": "MH4450922",
+   "chosen": [
+    "MH4450581",
+    "MH4450531",
+    "MH4450922"
+   ],
+   "worst": 0.2308,
+   "average": 0.7214,
+   "exact_worst": 0.7,
+   "exact_average": 0.8031,
+   "exact_status": 0,
+   "exact_set": [
+    "MH4428636",
+    "MH4450531",
+    "MH4452189"
+   ],
+   "design_wet": 1.0,
+   "per_case": {
+    "Design wet": 1.0,
+    "Beyond design": 0.75,
+    "Severe": 0.2308,
+    "Design wet + age-weighted I&I": 1.0,
+    "Design wet + outside inflow x1.5": 0.8667,
+    "Beyond design + age-weighted I&I": 0.7857,
+    "Beyond design + outside inflow x1.5": 0.4167
+   },
+   "worst_25": 0.0,
+   "average_25": 0.4015,
+   "warned_target": 9,
+   "warned_target_25": 3,
+   "warned_13": 9,
+   "warned_25_overloads": 19,
+   "all_regions_worst": 0.15,
+   "all_regions_average": 0.6496,
+   "stress_worst": 0.2857,
+   "stress_average": 0.7708,
+   "dry": 0.0,
+   "cost": 75000
+  },
+  {
+   "k": 4,
+   "added": "MH4448345",
+   "chosen": [
+    "MH4450581",
+    "MH4450531",
+    "MH4450922",
+    "MH4448345"
+   ],
+   "worst": 0.5385,
+   "average": 0.8273,
+   "exact_worst": 0.8125,
+   "exact_average": 0.8973,
+   "exact_status": 0,
+   "exact_set": [
+    "MH4429013",
+    "MH4450391",
+    "MH4450922",
+    "MH4454116"
+   ],
+   "design_wet": 1.0,
+   "per_case": {
+    "Design wet": 1.0,
+    "Beyond design": 0.8125,
+    "Severe": 0.5385,
+    "Design wet + age-weighted I&I": 1.0,
+    "Design wet + outside inflow x1.5": 1.0,
+    "Beyond design + age-weighted I&I": 0.8571,
+    "Beyond design + outside inflow x1.5": 0.5833
+   },
+   "worst_25": 0.2308,
+   "average_25": 0.498,
+   "warned_target": 12,
+   "warned_target_25": 6,
+   "warned_13": 12,
+   "warned_25_overloads": 22,
+   "all_regions_worst": 0.35,
+   "all_regions_average": 0.7258,
+   "stress_worst": 0.5714,
+   "stress_average": 0.8508,
+   "dry": 0.0,
+   "cost": 100000
+  },
+  {
+   "k": 5,
+   "added": "MH4452994",
+   "chosen": [
+    "MH4450581",
+    "MH4450531",
+    "MH4450922",
+    "MH4448345",
+    "MH4452994"
+   ],
+   "worst": 0.8125,
+   "average": 0.907,
+   "exact_worst": 0.8667,
+   "exact_average": 0.9181,
+   "exact_status": 0,
+   "exact_set": [
+    "MH4429013",
+    "MH4450391",
+    "MH4450581",
+    "MH4450922",
+    "MH4454376"
+   ],
+   "design_wet": 1.0,
+   "per_case": {
+    "Design wet": 1.0,
+    "Beyond design": 0.8125,
+    "Severe": 0.8462,
+    "Design wet + age-weighted I&I": 1.0,
+    "Design wet + outside inflow x1.5": 1.0,
+    "Beyond design + age-weighted I&I": 0.8571,
+    "Beyond design + outside inflow x1.5": 0.8333
+   },
+   "worst_25": 0.4167,
+   "average_25": 0.5548,
+   "warned_target": 12,
+   "warned_target_25": 6,
+   "warned_13": 12,
+   "warned_25_overloads": 23,
+   "all_regions_worst": 0.6471,
+   "all_regions_average": 0.8224,
+   "stress_worst": 0.85,
+   "stress_average": 0.9273,
+   "dry": 0.0,
+   "cost": 125000
+  },
+  {
+   "k": 6,
+   "added": "MH4429013",
+   "chosen": [
+    "MH4450581",
+    "MH4450531",
+    "MH4450922",
+    "MH4448345",
+    "MH4452994",
+    "MH4429013"
+   ],
+   "worst": 0.8462,
+   "average": 0.9381,
+   "exact_worst": 0.875,
+   "exact_average": 0.9497,
+   "exact_status": 0,
+   "exact_set": [
+    "MH4429013",
+    "MH4449796",
+    "MH4449913",
+    "MH4450531",
+    "MH4450922",
+    "MH4454376"
+   ],
+   "design_wet": 1.0,
+   "per_case": {
+    "Design wet": 1.0,
+    "Beyond design": 0.875,
+    "Severe": 0.8462,
+    "Design wet + age-weighted I&I": 1.0,
+    "Design wet + outside inflow x1.5": 1.0,
+    "Beyond design + age-weighted I&I": 0.9286,
+    "Beyond design + outside inflow x1.5": 0.9167
+   },
+   "worst_25": 0.5,
+   "average_25": 0.5968,
+   "warned_target": 12,
+   "warned_target_25": 7,
+   "warned_13": 12,
+   "warned_25_overloads": 23,
+   "all_regions_worst": 0.7,
+   "all_regions_average": 0.8438,
+   "stress_worst": 0.8571,
+   "stress_average": 0.9469,
+   "dry": 0.0,
+   "cost": 150000
+  },
+  {
+   "k": 7,
+   "added": "MH4448474",
+   "chosen": [
+    "MH4450581",
+    "MH4450531",
+    "MH4450922",
+    "MH4448345",
+    "MH4452994",
+    "MH4429013",
+    "MH4448474"
+   ],
+   "worst": 0.875,
+   "average": 0.9609,
+   "exact_worst": 0.9167,
+   "exact_average": 0.9682,
+   "exact_status": 0,
+   "exact_set": [
+    "MH4429013",
+    "MH4446883",
+    "MH4448419",
+    "MH4449796",
+    "MH4450531",
+    "MH4450922",
+    "MH4454376"
+   ],
+   "design_wet": 1.0,
+   "per_case": {
+    "Design wet": 1.0,
+    "Beyond design": 0.875,
+    "Severe": 0.9231,
+    "Design wet + age-weighted I&I": 1.0,
+    "Design wet + outside inflow x1.5": 1.0,
+    "Beyond design + age-weighted I&I": 0.9286,
+    "Beyond design + outside inflow x1.5": 1.0
+   },
+   "worst_25": 0.5333,
+   "average_25": 0.6545,
+   "warned_target": 12,
+   "warned_target_25": 7,
+   "warned_13": 12,
+   "warned_25_overloads": 23,
+   "all_regions_worst": 0.7391,
+   "all_regions_average": 0.8594,
+   "stress_worst": 0.9048,
+   "stress_average": 0.9609,
+   "dry": 0.0,
+   "cost": 175000
+  },
+  {
+   "k": 8,
+   "added": "MH4429179",
+   "chosen": [
+    "MH4450581",
+    "MH4450531",
+    "MH4450922",
+    "MH4448345",
+    "MH4452994",
+    "MH4429013",
+    "MH4448474",
+    "MH4429179"
+   ],
+   "worst": 0.9231,
+   "average": 0.9801,
+   "exact_worst": 0.9231,
+   "exact_average": 0.9801,
+   "exact_status": 0,
+   "exact_set": [
+    "MH4429013",
+    "MH4446883",
+    "MH4448419",
+    "MH4449796",
+    "MH4450531",
+    "MH4450581",
+    "MH4450922",
+    "MH4454376"
+   ],
+   "design_wet": 1.0,
+   "per_case": {
+    "Design wet": 1.0,
+    "Beyond design": 0.9375,
+    "Severe": 0.9231,
+    "Design wet + age-weighted I&I": 1.0,
+    "Design wet + outside inflow x1.5": 1.0,
+    "Beyond design + age-weighted I&I": 1.0,
+    "Beyond design + outside inflow x1.5": 1.0
+   },
+   "worst_25": 0.5333,
+   "average_25": 0.6545,
+   "warned_target": 12,
+   "warned_target_25": 7,
+   "warned_13": 12,
+   "warned_25_overloads": 23,
+   "all_regions_worst": 0.75,
+   "all_regions_average": 0.8724,
+   "stress_worst": 0.9524,
+   "stress_average": 0.9872,
+   "dry": 0.0,
+   "cost": 200000
+  }
+ ],
+ "tied_best_sets": 184,
+ "in_tied_sets": {
+  "MH4450581": 184,
+  "MH4450531": 184,
+  "MH4450922": 46,
+  "MH4448345": 92,
+  "MH4452994": 8
+ },
+ "recommend": 5,
+ "fewest": [
+  {
+   "scope": "Design wet only",
+   "0.8": 1,
+   "ladder_0.8": 1,
+   "0.9": 1,
+   "ladder_0.9": 1,
+   "1.0": 2,
+   "ladder_1.0": 2
+  },
+  {
+   "scope": "Design wet + Beyond design",
+   "0.8": 2,
+   "ladder_0.8": 4,
+   "0.9": 3,
+   "ladder_0.9": 8,
+   "1.0": 5,
+   "ladder_1.0": null
+  },
+  {
+   "scope": "Design wet family (3)",
+   "0.8": 1,
+   "ladder_0.8": 3,
+   "0.9": 3,
+   "ladder_0.9": 4,
+   "1.0": 4,
+   "ladder_1.0": 4
+  },
+  {
+   "scope": "All 7 wet cases",
+   "0.8": 4,
+   "ladder_0.8": 5,
+   "0.9": 7,
+   "ladder_0.9": 8,
+   "1.0": 10,
+   "ladder_1.0": null
+  }
+ ],
+ "held_out": [
+  {
+   "k": 1,
+   "weather_runs": [
+    36,
+    92
+   ],
+   "weather_worst": 0.0,
+   "weather_warned": [
+    7,
+    12
+   ],
+   "region_runs": [
+    42,
+    92
+   ],
+   "region_warned": [
+    8,
+    12
+   ],
+   "region_per": {
+    "R1": 0.4242,
+    "R2": 0.4444,
+    "R4": 0.1667,
+    "R8": 0.5769
+   }
+  },
+  {
+   "k": 2,
+   "weather_runs": [
+    54,
+    92
+   ],
+   "weather_worst": 0.0,
+   "weather_warned": [
+    9,
+    12
+   ],
+   "region_runs": [
+    44,
+    92
+   ],
+   "region_warned": [
+    9,
+    12
+   ],
+   "region_per": {
+    "R1": 0.4848,
+    "R2": 0.4444,
+    "R4": 0.1667,
+    "R8": 0.5769
+   }
+  },
+  {
+   "k": 3,
+   "weather_runs": [
+    55,
+    92
+   ],
+   "weather_worst": 0.0,
+   "weather_warned": [
+    9,
+    12
+   ],
+   "region_runs": [
+    49,
+    92
+   ],
+   "region_warned": [
+    9,
+    12
+   ],
+   "region_per": {
+    "R1": 0.6061,
+    "R2": 0.4815,
+    "R4": 0.1667,
+    "R8": 0.5769
+   }
+  },
+  {
+   "k": 4,
+   "weather_runs": [
+    62,
+    92
+   ],
+   "weather_worst": 0.0,
+   "weather_warned": [
+    11,
+    12
+   ],
+   "region_runs": [
+    52,
+    92
+   ],
+   "region_warned": [
+    9,
+    12
+   ],
+   "region_per": {
+    "R1": 0.6061,
+    "R2": 0.4815,
+    "R4": 0.1667,
+    "R8": 0.6923
+   }
+  },
+  {
+   "k": 5,
+   "weather_runs": [
+    68,
+    92
+   ],
+   "weather_worst": 0.0,
+   "weather_warned": [
+    11,
+    12
+   ],
+   "region_runs": [
+    53,
+    92
+   ],
+   "region_warned": [
+    9,
+    12
+   ],
+   "region_per": {
+    "R1": 0.6364,
+    "R2": 0.4815,
+    "R4": 0.1667,
+    "R8": 0.6923
+   }
+  },
+  {
+   "k": 6,
+   "weather_runs": [
+    70,
+    92
+   ],
+   "weather_worst": 0.0,
+   "weather_warned": [
+    11,
+    12
+   ],
+   "region_runs": [
+    56,
+    92
+   ],
+   "region_warned": [
+    9,
+    12
+   ],
+   "region_per": {
+    "R1": 0.6364,
+    "R2": 0.5556,
+    "R4": 0.3333,
+    "R8": 0.6923
+   }
+  },
+  {
+   "k": 7,
+   "weather_runs": [
+    71,
+    92
+   ],
+   "weather_worst": 0.0,
+   "weather_warned": [
+    11,
+    12
+   ],
+   "region_runs": [
+    64,
+    92
+   ],
+   "region_warned": [
+    12,
+    12
+   ],
+   "region_per": {
+    "R1": 0.8788,
+    "R2": 0.5556,
+    "R4": 0.3333,
+    "R8": 0.6923
+   }
+  },
+  {
+   "k": 8,
+   "weather_runs": [
+    72,
+    92
+   ],
+   "weather_worst": 0.0,
+   "weather_warned": [
+    11,
+    12
+   ],
+   "region_runs": [
+    64,
+    92
+   ],
+   "region_warned": [
+    12,
+    12
+   ],
+   "region_per": {
+    "R1": 0.8788,
+    "R2": 0.5556,
+    "R4": 0.3333,
+    "R8": 0.6923
+   }
+  }
+ ],
+ "held_out_by_case": {
+  "Design wet": {
+   "1": 0.0,
+   "2": 0.8333,
+   "3": 0.8333,
+   "4": 0.8333,
+   "5": 0.8333,
+   "6": 0.8333,
+   "7": 0.8333,
+   "8": 0.8333
+  },
+  "Beyond design": {
+   "1": 0.6875,
+   "2": 0.75,
+   "3": 0.75,
+   "4": 0.8125,
+   "5": 0.8125,
+   "6": 0.8125,
+   "7": 0.875,
+   "8": 0.875
+  },
+  "Severe": {
+   "1": 0.0,
+   "2": 0.2308,
+   "3": 0.2308,
+   "4": 0.5385,
+   "5": 0.8462,
+   "6": 0.8462,
+   "7": 0.8462,
+   "8": 0.9231
+  },
+  "Design wet + age-weighted I&I": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0,
+   "6": 0.0,
+   "7": 0.0,
+   "8": 0.0
+  },
+  "Design wet + outside inflow x1.5": {
+   "1": 0.8,
+   "2": 0.8667,
+   "3": 0.8667,
+   "4": 0.8667,
+   "5": 0.8667,
+   "6": 0.8667,
+   "7": 0.8667,
+   "8": 0.8667
+  },
+  "Beyond design + age-weighted I&I": {
+   "1": 0.7143,
+   "2": 0.7857,
+   "3": 0.8571,
+   "4": 0.8571,
+   "5": 0.8571,
+   "6": 0.9286,
+   "7": 0.9286,
+   "8": 0.9286
+  },
+  "Beyond design + outside inflow x1.5": {
+   "1": 0.25,
+   "2": 0.4167,
+   "3": 0.4167,
+   "4": 0.5833,
+   "5": 0.75,
+   "6": 0.8333,
+   "7": 0.8333,
+   "8": 0.8333
+  }
+ },
+ "random": [
+  {
+   "k": 1,
+   "any": {
+    "worst_mean": 0.0016,
+    "worst_p95": 0.0,
+    "avg_mean": 0.0967,
+    "avg_p95": 0.3692,
+    "warned_mean": 1.73,
+    "warned_p95": 8,
+    "share_matching_ladder_worst": 1.0,
+    "share_matching_ladder_avg": 0.0246
+   },
+   "responsive": {
+    "worst_mean": 0.0034,
+    "worst_p95": 0.0,
+    "avg_mean": 0.2231,
+    "avg_p95": 0.4693,
+    "warned_mean": 4.01,
+    "warned_p95": 8,
+    "share_matching_ladder_worst": 1.0,
+    "share_matching_ladder_avg": 0.0506
+   }
+  },
+  {
+   "k": 2,
+   "any": {
+    "worst_mean": 0.006,
+    "worst_p95": 0.0,
+    "avg_mean": 0.1797,
+    "avg_p95": 0.4914,
+    "warned_mean": 3.24,
+    "warned_p95": 8,
+    "share_matching_ladder_worst": 1.0,
+    "share_matching_ladder_avg": 0.0146
+   },
+   "responsive": {
+    "worst_mean": 0.0178,
+    "worst_p95": 0.2308,
+    "avg_mean": 0.3486,
+    "avg_p95": 0.6128,
+    "warned_mean": 6.29,
+    "warned_p95": 11,
+    "share_matching_ladder_worst": 1.0,
+    "share_matching_ladder_avg": 0.0676
+   }
+  },
+  {
+   "k": 3,
+   "any": {
+    "worst_mean": 0.0106,
+    "worst_p95": 0.0,
+    "avg_mean": 0.2425,
+    "avg_p95": 0.558,
+    "warned_mean": 4.34,
+    "warned_p95": 10,
+    "share_matching_ladder_worst": 0.0208,
+    "share_matching_ladder_avg": 0.0022
+   },
+   "responsive": {
+    "worst_mean": 0.0459,
+    "worst_p95": 0.3077,
+    "avg_mean": 0.4323,
+    "avg_p95": 0.6878,
+    "warned_mean": 7.67,
+    "warned_p95": 11,
+    "share_matching_ladder_worst": 0.1118,
+    "share_matching_ladder_avg": 0.0278
+   }
+  },
+  {
+   "k": 4,
+   "any": {
+    "worst_mean": 0.0169,
+    "worst_p95": 0.1667,
+    "avg_mean": 0.2901,
+    "avg_p95": 0.6019,
+    "warned_mean": 5.19,
+    "warned_p95": 10,
+    "share_matching_ladder_worst": 0.0014,
+    "share_matching_ladder_avg": 0.0004
+   },
+   "responsive": {
+    "worst_mean": 0.0714,
+    "worst_p95": 0.5,
+    "avg_mean": 0.4939,
+    "avg_p95": 0.7365,
+    "warned_mean": 8.58,
+    "warned_p95": 11,
+    "share_matching_ladder_worst": 0.033,
+    "share_matching_ladder_avg": 0.0028
+   }
+  },
+  {
+   "k": 5,
+   "any": {
+    "worst_mean": 0.0276,
+    "worst_p95": 0.25,
+    "avg_mean": 0.3407,
+    "avg_p95": 0.6446,
+    "warned_mean": 6.02,
+    "warned_p95": 11,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   },
+   "responsive": {
+    "worst_mean": 0.1065,
+    "worst_p95": 0.5833,
+    "avg_mean": 0.5403,
+    "avg_p95": 0.7764,
+    "warned_mean": 9.19,
+    "warned_p95": 12,
+    "share_matching_ladder_worst": 0.0004,
+    "share_matching_ladder_avg": 0.0002
+   }
+  },
+  {
+   "k": 6,
+   "any": {
+    "worst_mean": 0.0352,
+    "worst_p95": 0.3077,
+    "avg_mean": 0.3829,
+    "avg_p95": 0.6687,
+    "warned_mean": 6.79,
+    "warned_p95": 11,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   },
+   "responsive": {
+    "worst_mean": 0.1343,
+    "worst_p95": 0.6154,
+    "avg_mean": 0.5798,
+    "avg_p95": 0.8121,
+    "warned_mean": 9.62,
+    "warned_p95": 12,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   }
+  },
+  {
+   "k": 7,
+   "any": {
+    "worst_mean": 0.0467,
+    "worst_p95": 0.3077,
+    "avg_mean": 0.4106,
+    "avg_p95": 0.7014,
+    "warned_mean": 7.22,
+    "warned_p95": 11,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   },
+   "responsive": {
+    "worst_mean": 0.1678,
+    "worst_p95": 0.6875,
+    "avg_mean": 0.6138,
+    "avg_p95": 0.8442,
+    "warned_mean": 9.99,
+    "warned_p95": 12,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   }
+  },
+  {
+   "k": 8,
+   "any": {
+    "worst_mean": 0.0592,
+    "worst_p95": 0.5,
+    "avg_mean": 0.4426,
+    "avg_p95": 0.7321,
+    "warned_mean": 7.71,
+    "warned_p95": 11,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   },
+   "responsive": {
+    "worst_mean": 0.1993,
+    "worst_p95": 0.75,
+    "avg_mean": 0.6429,
+    "avg_p95": 0.8662,
+    "warned_mean": 10.24,
+    "warned_p95": 12,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   }
+  }
+ ],
+ "reasons": [
+  {
+   "position": 1,
+   "manhole": "MH4450581",
+   "home_regions": [
+    "R7"
+   ],
+   "adds_runs": 46,
+   "adds_by_region": {
+    "R1": 16,
+    "R2": 12,
+    "R4": 3,
+    "R8": 15
+   },
+   "adds_by_case": {
+    "Design wet": 11,
+    "Beyond design": 11,
+    "Design wet + outside inflow x1.5": 12,
+    "Beyond design + age-weighted I&I": 10,
+    "Beyond design + outside inflow x1.5": 2
+   },
+   "hears": {
+    "R1": {
+     "first_step": 0.25,
+     "first_homes": 27,
+     "first_rise": 17.1,
+     "rise_at_100": 72.9,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "R2": {
+     "first_step": 0.5,
+     "first_homes": 28,
+     "first_rise": 14.4,
+     "rise_at_100": 29.5,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R4": {
+     "first_step": 1.0,
+     "first_homes": 17,
+     "first_rise": 10.7,
+     "rise_at_100": 10.7,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + outside inflow x1.5"
+     ]
+    },
+    "R8": {
+     "first_step": 0.5,
+     "first_homes": 242,
+     "first_rise": 18.0,
+     "rise_at_100": 37.2,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    }
+   },
+   "design_wet_silent": false,
+   "design_depth_mm": 174,
+   "bore_mm": 300,
+   "design_fullness": 0.58,
+   "surcharged_before_growth": false,
+   "over_alarm_before_growth": true,
+   "nearest_earlier_m": null
+  },
+  {
+   "position": 2,
+   "manhole": "MH4450531",
+   "home_regions": [
+    "R2"
+   ],
+   "adds_runs": 10,
+   "adds_by_region": {
+    "R2": 10
+   },
+   "adds_by_case": {
+    "Design wet": 1,
+    "Beyond design": 1,
+    "Severe": 3,
+    "Design wet + outside inflow x1.5": 1,
+    "Beyond design + age-weighted I&I": 1,
+    "Beyond design + outside inflow x1.5": 3
+   },
+   "hears": {
+    "R1": {
+     "first_step": 0.25,
+     "first_homes": 27,
+     "first_rise": 15.0,
+     "rise_at_100": 58.9,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R2": {
+     "first_step": 0.25,
+     "first_homes": 14,
+     "first_rise": 12.5,
+     "rise_at_100": 49.7,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Severe",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "R4": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 9.4,
+     "cases_heard": [
+      "Design wet + outside inflow x1.5"
+     ]
+    },
+    "R8": {
+     "first_step": 0.5,
+     "first_homes": 242,
+     "first_rise": 20.1,
+     "rise_at_100": 40.0,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    }
+   },
+   "design_wet_silent": false,
+   "design_depth_mm": 98,
+   "bore_mm": 150,
+   "design_fullness": 0.653,
+   "surcharged_before_growth": false,
+   "over_alarm_before_growth": false,
+   "nearest_earlier_m": 226
+  },
+  {
+   "position": 3,
+   "manhole": "MH4450922",
+   "home_regions": [
+    "R8"
+   ],
+   "adds_runs": 10,
+   "adds_by_region": {
+    "R1": 4,
+    "R2": 3,
+    "R8": 3
+   },
+   "adds_by_case": {
+    "Design wet + age-weighted I&I": 10
+   },
+   "hears": {
+    "R1": {
+     "first_step": 0.25,
+     "first_homes": 27,
+     "first_rise": 13.7,
+     "rise_at_100": 55.5,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R2": {
+     "first_step": 0.5,
+     "first_homes": 28,
+     "first_rise": 13.9,
+     "rise_at_100": 28.0,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R4": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 8.6,
+     "cases_heard": [
+      "Design wet + outside inflow x1.5"
+     ]
+    },
+    "R8": {
+     "first_step": 0.5,
+     "first_homes": 242,
+     "first_rise": 18.4,
+     "rise_at_100": 37.1,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    }
+   },
+   "design_wet_silent": false,
+   "design_depth_mm": 720,
+   "bore_mm": 300,
+   "design_fullness": 2.4,
+   "surcharged_before_growth": true,
+   "over_alarm_before_growth": true,
+   "nearest_earlier_m": 73
+  },
+  {
+   "position": 4,
+   "manhole": "MH4448345",
+   "home_regions": [
+    "R1"
+   ],
+   "adds_runs": 10,
+   "adds_by_region": {
+    "R1": 9,
+    "R4": 1
+   },
+   "adds_by_case": {
+    "Beyond design": 1,
+    "Severe": 4,
+    "Design wet + outside inflow x1.5": 2,
+    "Beyond design + age-weighted I&I": 1,
+    "Beyond design + outside inflow x1.5": 2
+   },
+   "hears": {
+    "R1": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 1.9,
+     "cases_heard": [
+      "Beyond design",
+      "Severe",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "R2": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R4": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Design wet + outside inflow x1.5"
+     ]
+    },
+    "R8": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    }
+   },
+   "design_wet_silent": true,
+   "design_depth_mm": 85,
+   "bore_mm": 225,
+   "design_fullness": 0.378,
+   "surcharged_before_growth": false,
+   "over_alarm_before_growth": false,
+   "nearest_earlier_m": 514
+  },
+  {
+   "position": 5,
+   "manhole": "MH4452994",
+   "home_regions": [
+    "R7"
+   ],
+   "adds_runs": 7,
+   "adds_by_region": {
+    "R8": 7
+   },
+   "adds_by_case": {
+    "Severe": 4,
+    "Beyond design + outside inflow x1.5": 3
+   },
+   "hears": {
+    "R1": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design"
+     ]
+    },
+    "R2": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R4": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R8": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Severe",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    }
+   },
+   "design_wet_silent": true,
+   "design_depth_mm": 55,
+   "bore_mm": 150,
+   "design_fullness": 0.367,
+   "surcharged_before_growth": false,
+   "over_alarm_before_growth": false,
+   "nearest_earlier_m": 837
+  },
+  {
+   "position": 6,
+   "manhole": "MH4429013",
+   "home_regions": [
+    "R1"
+   ],
+   "adds_runs": 3,
+   "adds_by_region": {
+    "R1": 3
+   },
+   "adds_by_case": {
+    "Beyond design": 1,
+    "Beyond design + age-weighted I&I": 1,
+    "Beyond design + outside inflow x1.5": 1
+   },
+   "hears": {
+    "R1": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 2.2,
+     "cases_heard": [
+      "Beyond design",
+      "Severe",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "R2": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design"
+     ]
+    },
+    "R4": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R8": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Beyond design + age-weighted I&I"
+     ]
+    }
+   },
+   "design_wet_silent": true,
+   "design_depth_mm": 55,
+   "bore_mm": 150,
+   "design_fullness": 0.367,
+   "surcharged_before_growth": false,
+   "over_alarm_before_growth": false,
+   "nearest_earlier_m": 356
+  },
+  {
+   "position": 7,
+   "manhole": "MH4448474",
+   "home_regions": [
+    "R2"
+   ],
+   "adds_runs": 2,
+   "adds_by_region": {
+    "R2": 2
+   },
+   "adds_by_case": {
+    "Severe": 1,
+    "Beyond design + outside inflow x1.5": 1
+   },
+   "hears": {
+    "R1": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R2": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 1.7,
+     "cases_heard": [
+      "Beyond design",
+      "Severe",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "R4": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R8": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Beyond design + age-weighted I&I"
+     ]
+    }
+   },
+   "design_wet_silent": true,
+   "design_depth_mm": 49,
+   "bore_mm": 150,
+   "design_fullness": 0.327,
+   "surcharged_before_growth": false,
+   "over_alarm_before_growth": false,
+   "nearest_earlier_m": 270
+  },
+  {
+   "position": 8,
+   "manhole": "MH4429179",
+   "home_regions": [
+    "R4"
+   ],
+   "adds_runs": 2,
+   "adds_by_region": {
+    "R4": 2
+   },
+   "adds_by_case": {
+    "Beyond design": 1,
+    "Beyond design + age-weighted I&I": 1
+   },
+   "hears": {
+    "R1": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "R2": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R4": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 1.0,
+     "cases_heard": [
+      "Beyond design",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R8": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Beyond design + age-weighted I&I"
+     ]
+    }
+   },
+   "design_wet_silent": true,
+   "design_depth_mm": 28,
+   "bore_mm": 150,
+   "design_fullness": 0.187,
+   "surcharged_before_growth": false,
+   "over_alarm_before_growth": false,
+   "nearest_earlier_m": 564
+  }
+ ],
+ "swaps": {
+  "1": {
+   "MH4450581": {
+    "without_worst": 0.0,
+    "without_average": 0.0,
+    "without_warned": 0,
+    "without_design": 0.0,
+    "without_per_case": {},
+    "stand_ins": 7,
+    "nearest_stand_ins": [
+     [
+      "MH4450922",
+      153
+     ],
+     [
+      "MH4451207",
+      215
+     ],
+     [
+      "MH4450531",
+      226
+     ]
+    ]
+   }
+  },
+  "2": {
+   "MH4450581": {
+    "without_worst": 0.0,
+    "without_average": 0.5339,
+    "without_warned": 8,
+    "without_design": 0.9167,
+    "without_per_case": {
+     "Design wet": 0.9167,
+     "Beyond design": 0.6875,
+     "Severe": 0.2308,
+     "Design wet + age-weighted I&I": 0.0,
+     "Design wet + outside inflow x1.5": 0.8667,
+     "Beyond design + age-weighted I&I": 0.7857,
+     "Beyond design + outside inflow x1.5": 0.25
+    },
+    "stand_ins": 103,
+    "nearest_stand_ins": [
+     [
+      "MH4450449",
+      77
+     ],
+     [
+      "MH4450554",
+      108
+     ],
+     [
+      "MH4450922",
+      153
+     ]
+    ]
+   },
+   "MH4450531": {
+    "without_worst": 0.0,
+    "without_average": 0.4693,
+    "without_warned": 9,
+    "without_design": 0.9167,
+    "without_per_case": {
+     "Design wet": 0.9167,
+     "Beyond design": 0.6875,
+     "Severe": 0.0,
+     "Design wet + age-weighted I&I": 0.0,
+     "Design wet + outside inflow x1.5": 0.8,
+     "Beyond design + age-weighted I&I": 0.7143,
+     "Beyond design + outside inflow x1.5": 0.1667
+    },
+    "stand_ins": 10,
+    "nearest_stand_ins": [
+     [
+      "MH4450922",
+      73
+     ],
+     [
+      "MH4451207",
+      134
+     ],
+     [
+      "MH4449796",
+      135
+     ]
+    ]
+   }
+  },
+  "3": {
+   "MH4450581": {
+    "without_worst": 0.2308,
+    "without_average": 0.6768,
+    "without_warned": 8,
+    "without_design": 0.9167,
+    "without_per_case": {
+     "Design wet": 0.9167,
+     "Beyond design": 0.6875,
+     "Severe": 0.2308,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 0.8667,
+     "Beyond design + age-weighted I&I": 0.7857,
+     "Beyond design + outside inflow x1.5": 0.25
+    },
+    "stand_ins": 98,
+    "nearest_stand_ins": [
+     [
+      "MH4450449",
+      77
+     ],
+     [
+      "MH4450554",
+      108
+     ],
+     [
+      "MH4450378",
+      166
+     ]
+    ]
+   },
+   "MH4450531": {
+    "without_worst": 0.0,
+    "without_average": 0.6122,
+    "without_warned": 9,
+    "without_design": 0.9167,
+    "without_per_case": {
+     "Design wet": 0.9167,
+     "Beyond design": 0.6875,
+     "Severe": 0.0,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 0.8,
+     "Beyond design + age-weighted I&I": 0.7143,
+     "Beyond design + outside inflow x1.5": 0.1667
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4449796",
+      135
+     ],
+     [
+      "MH4448474",
+      270
+     ],
+     [
+      "MH4429013",
+      1096
+     ]
+    ]
+   },
+   "MH4450922": {
+    "without_worst": 0.0,
+    "without_average": 0.5785,
+    "without_warned": 9,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.75,
+     "Severe": 0.2308,
+     "Design wet + age-weighted I&I": 0.0,
+     "Design wet + outside inflow x1.5": 0.8667,
+     "Beyond design + age-weighted I&I": 0.7857,
+     "Beyond design + outside inflow x1.5": 0.4167
+    },
+    "stand_ins": 4,
+    "nearest_stand_ins": [
+     [
+      "MH4451207",
+      62
+     ],
+     [
+      "MH4451871",
+      157
+     ],
+     [
+      "MH4452011",
+      184
+     ]
+    ]
+   }
+  },
+  "4": {
+   "MH4450581": {
+    "without_worst": 0.5385,
+    "without_average": 0.8065,
+    "without_warned": 12,
+    "without_design": 0.9167,
+    "without_per_case": {
+     "Design wet": 0.9167,
+     "Beyond design": 0.75,
+     "Severe": 0.5385,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.8571,
+     "Beyond design + outside inflow x1.5": 0.5833
+    },
+    "stand_ins": 58,
+    "nearest_stand_ins": [
+     [
+      "MH4449796",
+      361
+     ],
+     [
+      "MH4452189",
+      434
+     ],
+     [
+      "MH4448474",
+      496
+     ]
+    ]
+   },
+   "MH4450531": {
+    "without_worst": 0.3077,
+    "without_average": 0.7181,
+    "without_warned": 12,
+    "without_design": 0.9167,
+    "without_per_case": {
+     "Design wet": 0.9167,
+     "Beyond design": 0.75,
+     "Severe": 0.3077,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 0.9333,
+     "Beyond design + age-weighted I&I": 0.7857,
+     "Beyond design + outside inflow x1.5": 0.3333
+    },
+    "stand_ins": 2,
+    "nearest_stand_ins": [
+     [
+      "MH4449796",
+      135
+     ],
+     [
+      "MH4448474",
+      270
+     ]
+    ]
+   },
+   "MH4450922": {
+    "without_worst": 0.0,
+    "without_average": 0.6845,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.8125,
+     "Severe": 0.5385,
+     "Design wet + age-weighted I&I": 0.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.8571,
+     "Beyond design + outside inflow x1.5": 0.5833
+    },
+    "stand_ins": 4,
+    "nearest_stand_ins": [
+     [
+      "MH4451207",
+      62
+     ],
+     [
+      "MH4451871",
+      157
+     ],
+     [
+      "MH4452011",
+      184
+     ]
+    ]
+   },
+   "MH4448345": {
+    "without_worst": 0.2308,
+    "without_average": 0.7214,
+    "without_warned": 9,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.75,
+     "Severe": 0.2308,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 0.8667,
+     "Beyond design + age-weighted I&I": 0.7857,
+     "Beyond design + outside inflow x1.5": 0.4167
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4448419",
+      7
+     ],
+     [
+      "MH4429312",
+      254
+     ],
+     [
+      "MH4429013",
+      356
+     ]
+    ]
+   }
+  },
+  "5": {
+   "MH4450581": {
+    "without_worst": 0.75,
+    "without_average": 0.8862,
+    "without_warned": 12,
+    "without_design": 0.9167,
+    "without_per_case": {
+     "Design wet": 0.9167,
+     "Beyond design": 0.75,
+     "Severe": 0.8462,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.8571,
+     "Beyond design + outside inflow x1.5": 0.8333
+    },
+    "stand_ins": 10,
+    "nearest_stand_ins": [
+     [
+      "MH4429656",
+      544
+     ],
+     [
+      "MH4446883",
+      567
+     ],
+     [
+      "MH4429544",
+      577
+     ]
+    ]
+   },
+   "MH4450531": {
+    "without_worst": 0.5833,
+    "without_average": 0.7978,
+    "without_warned": 12,
+    "without_design": 0.9167,
+    "without_per_case": {
+     "Design wet": 0.9167,
+     "Beyond design": 0.75,
+     "Severe": 0.6154,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 0.9333,
+     "Beyond design + age-weighted I&I": 0.7857,
+     "Beyond design + outside inflow x1.5": 0.5833
+    },
+    "stand_ins": 2,
+    "nearest_stand_ins": [
+     [
+      "MH4449796",
+      135
+     ],
+     [
+      "MH4448474",
+      270
+     ]
+    ]
+   },
+   "MH4450922": {
+    "without_worst": 0.0,
+    "without_average": 0.7642,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.8125,
+     "Severe": 0.8462,
+     "Design wet + age-weighted I&I": 0.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.8571,
+     "Beyond design + outside inflow x1.5": 0.8333
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4451207",
+      62
+     ],
+     [
+      "MH4451871",
+      157
+     ],
+     [
+      "MH4452011",
+      184
+     ]
+    ]
+   },
+   "MH4448345": {
+    "without_worst": 0.5385,
+    "without_average": 0.8011,
+    "without_warned": 9,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.75,
+     "Severe": 0.5385,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 0.8667,
+     "Beyond design + age-weighted I&I": 0.7857,
+     "Beyond design + outside inflow x1.5": 0.6667
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4448419",
+      7
+     ],
+     [
+      "MH4429312",
+      254
+     ],
+     [
+      "MH4429013",
+      356
+     ]
+    ]
+   },
+   "MH4452994": {
+    "without_worst": 0.5385,
+    "without_average": 0.8273,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.8125,
+     "Severe": 0.5385,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.8571,
+     "Beyond design + outside inflow x1.5": 0.5833
+    },
+    "stand_ins": 22,
+    "nearest_stand_ins": [
+     [
+      "MH4453489",
+      110
+     ],
+     [
+      "MH4453579",
+      138
+     ],
+     [
+      "MH4453970",
+      206
+     ]
+    ]
+   }
+  },
+  "6": {
+   "MH4450581": {
+    "without_worst": 0.8125,
+    "without_average": 0.9172,
+    "without_warned": 12,
+    "without_design": 0.9167,
+    "without_per_case": {
+     "Design wet": 0.9167,
+     "Beyond design": 0.8125,
+     "Severe": 0.8462,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.9286,
+     "Beyond design + outside inflow x1.5": 0.9167
+    },
+    "stand_ins": 8,
+    "nearest_stand_ins": [
+     [
+      "MH4429656",
+      544
+     ],
+     [
+      "MH4446883",
+      567
+     ],
+     [
+      "MH4429544",
+      577
+     ]
+    ]
+   },
+   "MH4450531": {
+    "without_worst": 0.6154,
+    "without_average": 0.8288,
+    "without_warned": 12,
+    "without_design": 0.9167,
+    "without_per_case": {
+     "Design wet": 0.9167,
+     "Beyond design": 0.8125,
+     "Severe": 0.6154,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 0.9333,
+     "Beyond design + age-weighted I&I": 0.8571,
+     "Beyond design + outside inflow x1.5": 0.6667
+    },
+    "stand_ins": 2,
+    "nearest_stand_ins": [
+     [
+      "MH4449796",
+      135
+     ],
+     [
+      "MH4448474",
+      270
+     ]
+    ]
+   },
+   "MH4450922": {
+    "without_worst": 0.0,
+    "without_average": 0.7952,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.875,
+     "Severe": 0.8462,
+     "Design wet + age-weighted I&I": 0.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.9286,
+     "Beyond design + outside inflow x1.5": 0.9167
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4451207",
+      62
+     ],
+     [
+      "MH4451871",
+      157
+     ],
+     [
+      "MH4452011",
+      184
+     ]
+    ]
+   },
+   "MH4448345": {
+    "without_worst": 0.8462,
+    "without_average": 0.919,
+    "without_warned": 11,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.875,
+     "Severe": 0.8462,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 0.8667,
+     "Beyond design + age-weighted I&I": 0.9286,
+     "Beyond design + outside inflow x1.5": 0.9167
+    },
+    "stand_ins": 15,
+    "nearest_stand_ins": [
+     [
+      "MH4448419",
+      7
+     ],
+     [
+      "MH4450193",
+      308
+     ],
+     [
+      "MH4450378",
+      349
+     ]
+    ]
+   },
+   "MH4452994": {
+    "without_worst": 0.5385,
+    "without_average": 0.8584,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.875,
+     "Severe": 0.5385,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.9286,
+     "Beyond design + outside inflow x1.5": 0.6667
+    },
+    "stand_ins": 22,
+    "nearest_stand_ins": [
+     [
+      "MH4453489",
+      110
+     ],
+     [
+      "MH4453579",
+      138
+     ],
+     [
+      "MH4453970",
+      206
+     ]
+    ]
+   },
+   "MH4429013": {
+    "without_worst": 0.8125,
+    "without_average": 0.907,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.8125,
+     "Severe": 0.8462,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.8571,
+     "Beyond design + outside inflow x1.5": 0.8333
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   }
+  },
+  "7": {
+   "MH4450581": {
+    "without_worst": 0.8125,
+    "without_average": 0.9401,
+    "without_warned": 12,
+    "without_design": 0.9167,
+    "without_per_case": {
+     "Design wet": 0.9167,
+     "Beyond design": 0.8125,
+     "Severe": 0.9231,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.9286,
+     "Beyond design + outside inflow x1.5": 1.0
+    },
+    "stand_ins": 8,
+    "nearest_stand_ins": [
+     [
+      "MH4429656",
+      544
+     ],
+     [
+      "MH4446883",
+      567
+     ],
+     [
+      "MH4429544",
+      577
+     ]
+    ]
+   },
+   "MH4450531": {
+    "without_worst": 0.875,
+    "without_average": 0.9395,
+    "without_warned": 12,
+    "without_design": 0.9167,
+    "without_per_case": {
+     "Design wet": 0.9167,
+     "Beyond design": 0.875,
+     "Severe": 0.9231,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 0.9333,
+     "Beyond design + age-weighted I&I": 0.9286,
+     "Beyond design + outside inflow x1.5": 1.0
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4450922": {
+    "without_worst": 0.0,
+    "without_average": 0.8181,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.875,
+     "Severe": 0.9231,
+     "Design wet + age-weighted I&I": 0.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.9286,
+     "Beyond design + outside inflow x1.5": 1.0
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4451207",
+      62
+     ],
+     [
+      "MH4451871",
+      157
+     ],
+     [
+      "MH4452011",
+      184
+     ]
+    ]
+   },
+   "MH4448345": {
+    "without_worst": 0.8667,
+    "without_average": 0.9419,
+    "without_warned": 11,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.875,
+     "Severe": 0.9231,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 0.8667,
+     "Beyond design + age-weighted I&I": 0.9286,
+     "Beyond design + outside inflow x1.5": 1.0
+    },
+    "stand_ins": 5,
+    "nearest_stand_ins": [
+     [
+      "MH4448419",
+      7
+     ],
+     [
+      "MH4450193",
+      308
+     ],
+     [
+      "MH4450378",
+      349
+     ]
+    ]
+   },
+   "MH4452994": {
+    "without_worst": 0.6154,
+    "without_average": 0.8813,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.875,
+     "Severe": 0.6154,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.9286,
+     "Beyond design + outside inflow x1.5": 0.75
+    },
+    "stand_ins": 22,
+    "nearest_stand_ins": [
+     [
+      "MH4453489",
+      110
+     ],
+     [
+      "MH4453579",
+      138
+     ],
+     [
+      "MH4453970",
+      206
+     ]
+    ]
+   },
+   "MH4429013": {
+    "without_worst": 0.8125,
+    "without_average": 0.9299,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.8125,
+     "Severe": 0.9231,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.8571,
+     "Beyond design + outside inflow x1.5": 0.9167
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4448474": {
+    "without_worst": 0.8462,
+    "without_average": 0.9381,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.875,
+     "Severe": 0.8462,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.9286,
+     "Beyond design + outside inflow x1.5": 0.9167
+    },
+    "stand_ins": 1,
+    "nearest_stand_ins": [
+     [
+      "MH4449796",
+      135
+     ]
+    ]
+   }
+  },
+  "8": {
+   "MH4450581": {
+    "without_worst": 0.9167,
+    "without_average": 0.9682,
+    "without_warned": 12,
+    "without_design": 0.9167,
+    "without_per_case": {
+     "Design wet": 0.9167,
+     "Beyond design": 0.9375,
+     "Severe": 0.9231,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 1.0
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4450531": {
+    "without_worst": 0.9167,
+    "without_average": 0.9587,
+    "without_warned": 12,
+    "without_design": 0.9167,
+    "without_per_case": {
+     "Design wet": 0.9167,
+     "Beyond design": 0.9375,
+     "Severe": 0.9231,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 0.9333,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 1.0
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4450922": {
+    "without_worst": 0.0,
+    "without_average": 0.8372,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.9375,
+     "Severe": 0.9231,
+     "Design wet + age-weighted I&I": 0.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 1.0
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4451207",
+      62
+     ],
+     [
+      "MH4451871",
+      157
+     ],
+     [
+      "MH4452011",
+      184
+     ]
+    ]
+   },
+   "MH4448345": {
+    "without_worst": 0.8667,
+    "without_average": 0.961,
+    "without_warned": 11,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.9375,
+     "Severe": 0.9231,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 0.8667,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 1.0
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4448419",
+      7
+     ],
+     [
+      "MH4450193",
+      308
+     ],
+     [
+      "MH4450378",
+      349
+     ]
+    ]
+   },
+   "MH4452994": {
+    "without_worst": 0.6154,
+    "without_average": 0.9004,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.9375,
+     "Severe": 0.6154,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.75
+    },
+    "stand_ins": 22,
+    "nearest_stand_ins": [
+     [
+      "MH4453489",
+      110
+     ],
+     [
+      "MH4453579",
+      138
+     ],
+     [
+      "MH4453970",
+      206
+     ]
+    ]
+   },
+   "MH4429013": {
+    "without_worst": 0.875,
+    "without_average": 0.949,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.875,
+     "Severe": 0.9231,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.9286,
+     "Beyond design + outside inflow x1.5": 0.9167
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4448474": {
+    "without_worst": 0.8462,
+    "without_average": 0.9572,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.9375,
+     "Severe": 0.8462,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.9167
+    },
+    "stand_ins": 1,
+    "nearest_stand_ins": [
+     [
+      "MH4449796",
+      135
+     ]
+    ]
+   },
+   "MH4429179": {
+    "without_worst": 0.875,
+    "without_average": 0.9609,
+    "without_warned": 12,
+    "without_design": 1.0,
+    "without_per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.875,
+     "Severe": 0.9231,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 0.9286,
+     "Beyond design + outside inflow x1.5": 1.0
+    },
+    "stand_ins": 7,
+    "nearest_stand_ins": [
+     [
+      "MH4429503",
+      114
+     ],
+     [
+      "MH4429656",
+      328
+     ],
+     [
+      "MH4446883",
+      351
+     ]
+    ]
+   }
+  }
+ },
+ "overloads": [
+  {
+   "manhole": "MH4501866",
+   "runs": 15,
+   "spill_runs": 0,
+   "cases": [
+    "Severe"
+   ],
+   "regions": [
+    "R3",
+    "R6",
+    "R7",
+    "R8"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R3"
+   ]
+  },
+  {
+   "manhole": "MH4448345",
+   "runs": 9,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "R1",
+    "R2",
+    "R8"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R1"
+   ]
+  },
+  {
+   "manhole": "MH4429268",
+   "runs": 5,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design + age-weighted I&I"
+   ],
+   "regions": [
+    "R1",
+    "R2",
+    "R8"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R4"
+   ]
+  },
+  {
+   "manhole": "MH4453850",
+   "runs": 5,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design",
+    "Beyond design + age-weighted I&I"
+   ],
+   "regions": [
+    "R8"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7"
+   ]
+  },
+  {
+   "manhole": "MH4449011",
+   "runs": 4,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "R1",
+    "R8"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R4"
+   ]
+  },
+  {
+   "manhole": "MH4449977",
+   "runs": 4,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design"
+   ],
+   "regions": [
+    "R1",
+    "R8"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R1"
+   ]
+  },
+  {
+   "manhole": "MH4429527",
+   "runs": 3,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design"
+   ],
+   "regions": [
+    "R2",
+    "R8"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R2"
+   ]
+  },
+  {
+   "manhole": "MH4501851",
+   "runs": 3,
+   "spill_runs": 0,
+   "cases": [
+    "Severe"
+   ],
+   "regions": [
+    "R8"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R3"
+   ]
+  },
+  {
+   "manhole": "MH4447394",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "R1"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R1"
+   ]
+  },
+  {
+   "manhole": "MH4451945",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design + outside inflow x1.5"
+   ],
+   "regions": [
+    "R5"
+   ],
+   "from_target_region": false,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R5"
+   ]
+  },
+  {
+   "manhole": "MH4452809",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "R1",
+    "R8"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7"
+   ]
+  },
+  {
+   "manhole": "MH4454376",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "R8"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R8"
+   ]
+  },
+  {
+   "manhole": "MH4428268",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Severe"
+   ],
+   "regions": [
+    "R1"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R1"
+   ]
+  },
+  {
+   "manhole": "MH4428636",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design"
+   ],
+   "regions": [
+    "R1"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R1"
+   ]
+  },
+  {
+   "manhole": "MH4429357",
+   "runs": 1,
+   "spill_runs": 1,
+   "cases": [
+    "Beyond design + outside inflow x1.5"
+   ],
+   "regions": [
+    "R1"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R1"
+   ]
+  },
+  {
+   "manhole": "MH4448853",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "R1"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R1"
+   ]
+  },
+  {
+   "manhole": "MH4450531",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet"
+   ],
+   "regions": [
+    "R1"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R2"
+   ]
+  },
+  {
+   "manhole": "MH4451886",
+   "runs": 1,
+   "spill_runs": 1,
+   "cases": [
+    "Beyond design"
+   ],
+   "regions": [
+    "R8"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R8"
+   ]
+  },
+  {
+   "manhole": "MH4453788",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design"
+   ],
+   "regions": [
+    "R8"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7"
+   ]
+  }
+ ],
+ "facts": {
+  "before_growth": {
+   "Dry": {
+    "surcharged": 0,
+    "spilled": 0
+   },
+   "Design wet": {
+    "surcharged": 7,
+    "spilled": 0
+   },
+   "Beyond design": {
+    "surcharged": 107,
+    "spilled": 1
+   },
+   "Severe": {
+    "surcharged": 141,
+    "spilled": 6
+   },
+   "Design wet + age-weighted I&I": {
+    "surcharged": 7,
+    "spilled": 0
+   },
+   "Design wet + outside inflow x1.5": {
+    "surcharged": 29,
+    "spilled": 0
+   },
+   "Beyond design + age-weighted I&I": {
+    "surcharged": 104,
+    "spilled": 1
+   },
+   "Beyond design + outside inflow x1.5": {
+    "surcharged": 121,
+    "spilled": 5
+   }
+  },
+  "design_wet_at_100": {
+   "regions_with_new_surcharge": 1,
+   "regions_with_new_spill": 0
+  },
+  "design_wet_any_step_new_spill": 0,
+  "wet_rows_new_spill_by_100": 2,
+  "wet_rows_new_surcharge_by_100": 40,
+  "wet_rows_by_100": 280
+ },
+ "old_sets": {
+  "Sim 3.5 map five": {
+   "worst": 0.75,
+   "average": 0.8657,
+   "design_wet": 0.9167,
+   "warned": 12,
+   "old_worst": 0.8,
+   "old_average": 0.8992,
+   "old_warned_13": 13
+  },
+  "Sim 3.5 coverage five": {
+   "worst": 0.8,
+   "average": 0.8996,
+   "design_wet": 0.8333,
+   "warned": 11,
+   "old_worst": 0.8611,
+   "old_average": 0.9074,
+   "old_warned_13": 12
+  }
+ },
+ "price": {
+  "level": 25000,
+  "float": 1000
+ },
+ "responsive_manholes": 141,
+ "universe": {
+  "Design wet": 12,
+  "Beyond design": 16,
+  "Severe": 13,
+  "Design wet + age-weighted I&I": 10,
+  "Design wet + outside inflow x1.5": 15,
+  "Beyond design + age-weighted I&I": 14,
+  "Beyond design + outside inflow x1.5": 12
+ },
+ "warn_universe": {
+  "target": 12,
+  "plausible": 13,
+  "all": 25
+ }
+}

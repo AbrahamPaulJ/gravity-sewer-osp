@@ -69,6 +69,9 @@ button:disabled{opacity:.35; cursor:default}
 #next{background:#0e4f6e; border-color:#16709b}
 
 #btnExpert{position:fixed; top:16px; right:16px; z-index:12; background:var(--panel); font-size:13px; padding:5px 12px; color:var(--dim)}
+#btnExplore{position:fixed; top:16px; right:96px; z-index:12; background:var(--panel); font-size:13px; padding:5px 12px; color:var(--dim);
+  border:1px solid var(--line); border-radius:8px; text-decoration:none; line-height:1.5}
+#btnExplore:hover{color:var(--ink)}
 
 /* The popup */
 #pop{position:fixed; z-index:11; width:310px; background:var(--panel-solid); border:1px solid #2e4470; border-radius:10px; padding:11px 14px;
@@ -93,7 +96,7 @@ button:disabled{opacity:.35; cursor:default}
 #expert td{border-bottom:1px solid #1a2840; padding:4px 8px 4px 0; vertical-align:top}
 #expertClose{position:sticky; top:0; float:right}
 @media (prefers-reduced-motion:reduce){#card.in{animation:none}}
-@media (max-width:640px){#stepBody{font-size:14px} #stepTitle{font-size:17px} #btnExpert{top:auto; bottom:16px} #pop{width:min(310px, calc(100vw - 24px))}}
+@media (max-width:640px){#stepBody{font-size:14px} #stepTitle{font-size:17px} #btnExpert{top:auto; bottom:16px} #btnExplore{top:auto; bottom:16px} #pop{width:min(310px, calc(100vw - 24px))}}
 </style>
 </head>
 <body>
@@ -117,6 +120,7 @@ button:disabled{opacity:.35; cursor:default}
 
 <div id="pop" hidden></div>
 
+<a id="btnExplore" href="explore.html" title="Every weather case, rule, region and sensor method on these regions, in Sim 3.5's full view">Explore</a>
 <button id="btnExpert" type="button" aria-expanded="false" aria-controls="expert">Expert</button>
 <aside id="expert" hidden>
   <button id="expertClose" type="button">Close</button>
@@ -130,7 +134,7 @@ button:disabled{opacity:.35; cursor:default}
 <script src="data/regions.js?v=1"></script>
 <script src="../simulation3/data/index.js?v=9"></script>
 <script src="../simulation35/growth_3d.js?v=3"></script>
-<script src="data/sim4.js?v=3"></script>
+<script src="data/sim4.js?v=4"></script>
 <script src="sim4_story.js?v=2"></script>
 <script type="module">
   Sim4.init();

@@ -25,7 +25,9 @@ Level sensors only; the float comparison stays in sim35_mix.py. Prices are assum
     python sim4_numbers.py                        # writes results/sim4/numbers.json and numbers_report.txt
 
 Sim 4's regions are the equal-home regions (Kim et al. 2022 spatial bisection) in simulation4/data/regions.js. Run with
-SIM35_TARGET=sim35 to read Sim 3's hand-picked regions instead; the checks tied to those regions apply only then.
+SIM35_TARGET=sim35 to read Sim 3's hand-picked regions instead (it needs results/sim35/capacity.json): the checks tied to
+those regions apply only then, and it writes numbers_handpicked.json and its report beside numbers.json, for the
+story's comparison of the two region cuts.
 """
 import heapq, itertools, json, os, random, sys, time
 from collections import Counter, defaultdict
@@ -45,6 +47,7 @@ DRAWS = 5000
 SEED = 4
 OUT = os.path.join(C.HERE, "results", "sim4")
 LISTED = C.TARGET != "sim4"      # Sim 3's hand-picked regions: the checks below that name their regions apply only to them
+STEM = "numbers_handpicked" if LISTED else "numbers"
 ACTION = {"runs out": "monitor", "uncertain": "watch", "room left": "leave", "already over": "leave"}
 lines = []
 cap = json.load(open(os.path.join(C.OUT, "capacity.json"), encoding="utf-8"))
@@ -450,10 +453,10 @@ def main():
                "leave_overloads": left, "warnable_given_up": dropped, "ladder": rows, "tied_best_sets": len(equal), "in_tied_sets": {ch[i]: freq[i] for i in L[:RECOMMEND]}, "recommend": RECOMMEND, "fewest": fewest,
                "held_out": held, "held_out_by_case": held_case, "random": base, "reasons": reasons, "swaps": swaps, "overloads": over, "facts": facts, "old_sets": compare,
                "price": M.PRICE, "responsive_manholes": len(resp), "universe": {lab[t]: len(U[10].scen[t]) for t in wet}, "warn_universe": {"target": Uw[10].total(), "plausible": Uw13.total(), "all": Uw25.total()}}
-    with open(os.path.join(OUT, "numbers.json"), "w", encoding="utf-8", newline="\n") as f:
+    with open(os.path.join(OUT, STEM + ".json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(payload, f, indent=1)
     say(f"\ndone in {(time.time() - t0) / 60:.1f} min")
-    with open(os.path.join(OUT, "numbers_report.txt"), "w", encoding="utf-8", newline="\n") as f:
+    with open(os.path.join(OUT, STEM + "_report.txt"), "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
 
 
