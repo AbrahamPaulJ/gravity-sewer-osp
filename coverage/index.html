@@ -97,10 +97,10 @@ tr.row.sel td { background: color-mix(in srgb, var(--s1) 20%, transparent); }
   </div>
 
   <div class="tiles">
-    <div class="tile"><div class="v" id="t1">–</div><div class="l" id="t1l"></div></div>
-    <div class="tile"><div class="v" id="t2">–</div><div class="l" id="t2l"></div></div>
-    <div class="tile"><div class="v" id="t3">–</div><div class="l" id="t3l"></div></div>
-    <div class="tile"><div class="v" id="t4">–</div><div class="l" id="t4l"></div></div>
+    <div class="tile"><div class="v" id="t1">-</div><div class="l" id="t1l"></div></div>
+    <div class="tile"><div class="v" id="t2">-</div><div class="l" id="t2l"></div></div>
+    <div class="tile"><div class="v" id="t3">-</div><div class="l" id="t3l"></div></div>
+    <div class="tile"><div class="v" id="t4">-</div><div class="l" id="t4l"></div></div>
   </div>
 
   <div class="layout">
@@ -326,7 +326,7 @@ tr.row.sel td { background: color-mix(in srgb, var(--s1) 20%, transparent); }
     const tb = $("rows"); tb.replaceChildren();
     sensors.forEach((s) => {
       const tr = document.createElement("tr"); tr.className = "row" + (st.sel === s.r ? " sel" : "");
-      const here = !E ? "" : E.noticed.has(s.r) ? (E.nc > 1 ? `${E.noticed.get(s.r)} of ${E.nc}` : "yes") : "–";
+      const here = !E ? "" : E.noticed.has(s.r) ? (E.nc > 1 ? `${E.noticed.get(s.r)} of ${E.nc}` : "yes") : "-";
       tr.innerHTML = `<td><span class="sw" style="background:${color(s.r)}"></span>${s.r + 1}</td><td>${D.chambers[s.ch].id}</td><td>${here}</td><td>${s.runs}</td><td>${s.onlyRuns}</td>`;
       tr.addEventListener("click", () => { st.sel = st.sel === s.r ? null : s.r; draw(); });
       tb.appendChild(tr);
@@ -358,7 +358,7 @@ tr.row.sel td { background: color-mix(in srgb, var(--s1) 20%, transparent); }
     html += `<br><span class="m">Smallest estate here that a placed sensor notices: ${E.smallest == null ? `none, even ${BIG} homes` : `${D.sizes[E.smallest]} homes`}.</span>`;
     html += removeBtn();
     if (allWeather()) html += `<table class="est"><thead><tr><th>Weather</th><th>Manholes rising</th><th class="who">Noticed by</th></tr></thead><tbody>${E.perCase.map((p) =>
-      `<tr><td>${D.cases[p.c].label}</td><td>${p.n || "–"}</td><td class="who">${p.by.length ? sensorList(p.by) : `<span class="m">${p.n ? "no placed sensor" : "too small"}</span>`}</td></tr>`).join("")}</tbody></table>`;
+      `<tr><td>${D.cases[p.c].label}</td><td>${p.n || "-"}</td><td class="who">${p.by.length ? sensorList(p.by) : `<span class="m">${p.n ? "no placed sensor" : "too small"}</span>`}</td></tr>`).join("")}</tbody></table>`;
     return html;
   }
   function reachText(rm) {
