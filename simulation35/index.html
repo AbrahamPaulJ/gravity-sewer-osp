@@ -368,6 +368,12 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .resknob button{padding:5px 10px; white-space:nowrap}
 .ressel{background:var(--panel2,#16233a); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font:inherit; font-size:12.5px; max-width:100%}
 .price{font-size:12px; color:var(--dim)} .price input{width:78px; margin-left:4px; background:transparent; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:4px 6px; font:inherit}
+.roomset{display:flex; flex-wrap:wrap; gap:8px 18px; align-items:flex-end; margin:0 0 12px; padding:8px 10px; border:1px solid var(--line); border-radius:8px}
+.roomset>div{display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center}
+.roomset .rshead{display:block; width:100%; font-size:11.5px; color:var(--ink); font-weight:600}
+.roomset .price input{width:62px} .roomset .roomsel{margin-left:4px; background:transparent; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:3px 4px; font:inherit}
+.roomset .rng{font-size:12px; color:var(--dim); display:flex; align-items:center; gap:6px} .roomset .rng input{width:150px}
+.roomset .rsbtns{width:auto; margin:0 0 0 auto} .roomset .rsbtns button{flex:0 0 auto; padding:5px 10px}
 .tscroll{overflow-x:auto}
 .covknob button{padding:5px 8px; white-space:nowrap}
 .covstats{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:0 0 10px; font-size:11px; color:var(--dim)}
@@ -622,7 +628,9 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 <script src="../simulation3/osp_core.js?v=9"></script>
 <script src="../simulation3/placement.js?v=9"></script>
 <script src="data/sim35.js?v=12"></script>
-<script src="sim35_ui.js?v=12"></script>
+<script src="data/room.js?v=1"></script>
+<script src="room_calc.js?v=1"></script>
+<script src="sim35_ui.js?v=13"></script>
 <script type="module">
   Sim35UI.init();
 </script>

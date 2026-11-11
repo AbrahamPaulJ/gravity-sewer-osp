@@ -1106,7 +1106,7 @@ window.Sim35UI = (function () {
     $("#modalClose").onclick = () => { $("#modal").hidden = true; };
   }
   /* ------------------------------------------------------------------ the Results panel */
-  const RES = { tab: "warn", tag: null, limit: "0.7", rule: "r10", score: "detect", pL: null, pF: null };
+  const RES = { tab: "warn", tag: null, rule: "r10", score: "detect", pL: null, pF: null };
   const usd = v => "$" + Math.round(v).toLocaleString("en-AU");
   const seg = (name, cur, opts) => '<div class="knob resknob" data-res="' + name + '">' + opts.map(([v, t]) =>
     '<button data-v="' + v + '"' + (String(v) === String(cur) ? ' class="on"' : "") + ">" + esc(t) + "</button>").join("") + "</div>";
@@ -1115,7 +1115,7 @@ window.Sim35UI = (function () {
   const RULE_OPTS = [["r10", "10 mm rule"], ["r25", "25 mm rule"]];
   const info = t => ' <i class="info-i left" data-tip="' + esc(t) + '">i</i>';
   // Where a tab's numbers come from, beside the table. The text is in the data, written by the builder.
-  const sources = key => "<div class='src'><b>Where these numbers come from</b>" + window.SIM35.sources[key].map(([tag, t]) =>
+  const sources = (key, extra) => "<div class='src'><b>Where these numbers come from</b>" + window.SIM35.sources[key].concat(extra || []).map(([tag, t]) =>
     "<div><span class='srctag'>" + esc(tag) + "</span> " + esc(t) + "</div>").join("") + "</div>";
   const say = html => "<p class='say'>" + html + "</p>";
   const head = (t, sub) => esc(t) + "<span class='thsub'>" + esc(sub) + "</span>";
@@ -1162,26 +1162,51 @@ window.Sim35UI = (function () {
 
   const BAND_ICON = { "runs out": ["bo", "\u25CF"], "uncertain": ["bu", "\u25D0"], "room left": ["br", "\u25CB"], "already over": ["bg", "\u25A0"] };
   const BAND_LABEL = { "runs out": "Likely to reach the limit", "uncertain": "Could go either way", "room left": "Room left", "already over": "Already past the limit" };
-  function roomRow(id, name, e, L) {
-    const x = e[L], ic = BAND_ICON[x.band], top = "over " + Math.round(e.top_homes);
-    const a = x.homes_p10 == null ? top : String(x.homes_p10), b = x.homes_p90 == null ? top : String(x.homes_p90);
+  /* Room for homes is recalculated in the browser (room_calc.js), so the limit, the load of each new home and
+     the timing are the reader's to change. ROOM holds those settings; it starts from config.js's defaults. */
+  const ROOM = {};
+  const roomSet = () => { if (!ROOM.ready) Object.assign(ROOM, window.ROOM_CALC.defaults(), { ready: true }); return ROOM; };
+  const ROOM_PUBLISHED = { limit: 0.7, projection: "high", from: 2021 };   // what the published Sim 3.5 table was worked out at
+  const ROOM_FIELDS = { people: [0.5, 10], litres: [20, 1000], peak: [1, 6], from: [2000, 2100], lag: [0, 20] };
+  function roomRow(id, name, x, lag) {
+    const ic = BAND_ICON[x.band], over = "over " + Math.round(x.top_homes), yr = Math.floor;
+    const a = x.homes_p10 == null ? over : String(Math.round(x.homes_p10)), b = x.homes_p90 == null ? over : String(Math.round(x.homes_p90));
+    const ya = x.year_p10 == null ? "after " + yr(x.year_top) : String(yr(x.year_p10)), yb = x.year_p90 == null ? "after " + yr(x.year_top) : String(yr(x.year_p90));
+    const by = x.year_p10 == null ? "after " + (yr(x.year_top) - lag) : yr(x.year_p10) - lag <= roomSet().from ? "<b class='bad'>now</b>" : "by " + (yr(x.year_p10) - lag);
     return "<tr><th title='" + esc(name) + "'>" + esc(id) + "</th><td><span class='" + ic[0] + "'>" + ic[1] + "</span> " + esc(BAND_LABEL[x.band]) +
-      "</td><td class='r'>" + (a === b ? a : a + " to " + b) + " <span class='quiet'>(" + Math.round(e.share_100) + " expected)</span></td><td class='r'>" + e.rise_mm_per_100_homes.toFixed(0) + " mm</td><td class='r'>" + Math.round(x.already_over * 100) + "%</td></tr>";
+      "</td><td class='r'>" + (a === b ? a : a + " to " + b) + " <span class='quiet'>(" + Math.round(x.expected) + " expected)</span></td><td class='r'>" + (ya === yb ? ya : ya + " to " + yb) +
+      "</td><td class='r'>" + by + "</td><td class='r'>" + x.rise_mm_per_100_homes.toFixed(0) + " mm</td><td class='r'>" + Math.round(x.already_over * 100) + "%</td></tr>";
   }
   function roomTab() {
-    const C = window.SIM35.capacity, L = RES.limit, areas = C.areas[RES.tag] || {};
-    const rows = S().regions.map(r => areas[r.id] ? roomRow(r.id, r.name, areas[r.id], L) : "").join("");
-    const sub_ = C.suburb[RES.tag] ? roomRow("Whole suburb", "485 homes across every region at once (56 runs by Ashis Jose Kalathil)", C.suburb[RES.tag], L) : "";
-    const inBand = b => S().regions.filter(r => areas[r.id] && areas[r.id][L].band === b).map(r => r.id);
+    const o = Object.assign({}, roomSet(), { tag: RES.tag }), RC = window.ROOM_CALC, T = window.SIM35_ROOM.timing;
+    const res = {};
+    S().regions.forEach(r => { res[r.id] = RC.row(r.id, o); });
+    const sub = RC.row("suburb", o);
+    const L = o.limit.toFixed(2), ld = RC.load(o), end = T.years[1];
+    const rows = S().regions.map(r => roomRow(r.id, r.name, res[r.id], o.lag)).join("");
+    const sub_ = sub ? roomRow("Whole suburb", "Growth in every region at once: Sim 3-e's 56 runs by Ashis Jose Kalathil. Its share is the modelled area's 2,565 of the council's 2,851 connections, " + Math.round(sub.share100) + " homes by " + end + " in the high case.", sub, o.lag) : "";
+    const inBand = b => S().regions.filter(r => res[r.id].band === b).map(r => r.id);
     const part = (b, t) => inBand(b).length ? listAnd(inBand(b)) + " " + t : null;
-    const line = "In " + esc(caseLabel()) + ", with pipes limited to " + L + " of their height: " + [part("runs out", inBand("runs out").length > 1 ? "are likely to reach the limit before their 2041 homes arrive" : "is likely to reach the limit before its 2041 homes arrive"),
-      part("uncertain", "could go either way"), part("room left", inBand("room left").length > 1 ? "have room" : "has room"), part("already over", inBand("already over").length > 1 ? "are already past the limit along much of their path" : "is already past the limit along much of its path")].filter(Boolean).join("; ") + ".";
-    return "<p class='q'>How many new homes can each region take before growth uses up the buffer on its path?" + info("The path is the region's manholes and everything downstream. A manhole under the limit has buffer. The homes figure is when the first of them reaches the limit, re-read with each manhole's starting level shifted by an assumed error, because the model is uncalibrated: this is why it is a range. The limit is declared, not a standard.") + "</p>" +
+    const line = "In " + esc(caseLabel()) + ", with pipes limited to " + L + " of their height: " + [part("runs out", inBand("runs out").length > 1 ? "are likely to reach the limit before their " + end + " homes arrive" : "is likely to reach the limit before its " + end + " homes arrive"),
+      part("uncertain", "could go either way"), part("room left", inBand("room left").length > 1 ? "have room" : "has room"), part("already over", inBand("already over").length > 1 ? "are already past the limit along much of their path" : "is already past the limit along much of its path")].filter(Boolean).join("; ") + "." +
+      " Each new home adds <b>" + ld.lps.toFixed(4) + " L/s</b> at the peak hour" + (Math.abs(ld.ratio - 1) > 1e-9 ? " (" + ld.ratio.toFixed(2) + " times what the runs used)" : "") + "; homes are counted from " + o.from + ".";
+    const num = (k, label, step, unit) => "<label class='price'>" + esc(label) + "<input type='number' step='" + step + "' min='" + ROOM_FIELDS[k][0] + "' max='" + ROOM_FIELDS[k][1] + "' data-room='" + k + "' value='" + o[k] + "'>" + (unit ? " " + esc(unit) : "") + "</label>";
+    const isPub = o.limit === ROOM_PUBLISHED.limit && o.projection === "high" && o.from === ROOM_PUBLISHED.from && Math.abs(ld.ratio - 1) < 1e-9;
+    const settings = "<div class='roomset'>" +
+      "<div><span class='rshead'>Pipe limit" + info("The share of a pipe's height the water may reach before it counts as using up the buffer. Declared, not a standard: 0.7 after Kimbrough (2019), 0.6 about two thirds of full flow. The utility's own rating per pipe would replace it.") + "</span>" +
+      "<label class='rng'><input type='range' min='0.3' max='1' step='0.01' value='" + o.limit + "' data-room='limit'> <b id='roomLim'>" + L + "</b> of its height</label></div>" +
+      "<div><span class='rshead'>Each new home" + info("Changes the flow each NEW home adds. The runs added " + ld.base.toFixed(4) + " L/s per home; a run only sees the flow, so N homes at r times that flow raise the water as N x r homes did, and the homes figures are re-read as the runs' homes divided by r. Existing homes, leakage and outside inflow stay as modelled: changing those needs new SWMM runs.") + "</span>" +
+      num("people", "People", "0.1") + num("litres", "Litres a day each", "10") + num("peak", "Peak factor", "0.1") + "</div>" +
+      "<div><span class='rshead'>Timing" + info("Homes become years at the projection's rate: a region gains its 100% share over " + T.years[0] + " to " + end + " and keeps the same rate after. 'Counted from' is the year the network data stands for; homes built before it are already in the model. Approvals to review is the earliest year the limit could be reached, less the time from approval to connection.") + "</span>" +
+      "<label class='price'>Projection<select class='roomsel' data-room='projection'><option value='high'" + (o.projection === "high" ? " selected" : "") + ">High (" + T.high + " by " + end + ")</option><option value='medium'" + (o.projection === "medium" ? " selected" : "") + ">Medium (" + T.medium + " by " + end + ")</option></select></label>" +
+      num("from", "Counted from", "1") + num("lag", "Approval to connection", "1", "years") + "</div>" +
+      "<div class='knob rsbtns'><button data-room-reset='default' title='The defaults in config.js'>Reset</button><button data-room-reset='published'" + (isPub ? " class='on'" : "") + " title='Limit 0.7, high case, counted from 2021, the runs&apos; load: the settings the published Sim 3.5 table used'>Published settings</button></div></div>";
+    return "<p class='q'>How many new homes can each region take before growth uses up the buffer on its path, and when?" + info("The path is the region's manholes and everything downstream. A manhole under the limit has buffer. The homes figure is when the first of them reaches the limit, re-read with each manhole's starting level shifted by an assumed error, because the model is uncalibrated: this is why it is a range. The limit is declared, not a standard.") + "</p>" +
       say(line) +
-      "<div class='resctl'>" + caseSelect() + seg("limit", L, C.limits.map(v => [v, "limit " + v])) + "</div>" +
-      "<div class='tscroll'><table class='rtab'><thead><tr><th>Region</th><th>" + head("Outlook for its 2041 homes", "does growth use up the buffer?") + info("Likely to reach the limit: within the homes expected by 2041, in at least 80% of draws. Room left: in at most 20%. Already past the limit: no new pipe passes it, but 25% or more of the path is past it before growth. Otherwise, could go either way.") + "</th><th class='r'>" + head("New homes before a pipe reaches the limit", "range, with homes expected by 2041") + info("10th to 90th percentile of the draws: when the first pipe on the path with any buffer left reaches the limit.") + "</th><th class='r'>" + head("Water rise per 100 new homes", "largest rise on the path") + info("The largest rise on the path, at 100% build-out. Steady as growth builds in a given weather, but it changes with the weather. The utility's real buffer on that pipe divided by this gives homes for that pipe; other pipes rise less, so they would take more homes.") + "</th><th class='r'>" + head("Path already past the limit", "share of the path, before growth") + "</th></tr></thead><tbody>" + rows + sub_ + "</tbody></table></div>" +
-      "<p class='quiet'>Whole suburb: 56 runs by Ashis Jose Kalathil, growth everywhere at once.</p>" +
-      sources("room");
+      "<div class='resctl'>" + caseSelect() + "</div>" + settings +
+      "<div class='tscroll'><table class='rtab'><thead><tr><th>Region</th><th>" + head("Outlook by " + end, "does growth use up the buffer?") + info("Likely to reach the limit: within the homes expected by " + end + ", in at least 80% of draws. Room left: in at most 20%. Already past the limit: no new pipe passes it, but 25% or more of the path is past it before growth. Otherwise, could go either way.") + "</th><th class='r'>" + head("New homes before a pipe reaches the limit", "range, with homes expected by " + end) + info("10th to 90th percentile of the draws: when the first pipe on the path with any buffer left reaches the limit.") + "</th><th class='r'>" + head("Year it is reached", "range, at the projection's rate") + info("The homes range turned into years at this region's share of the projection, counted from " + o.from + ". 'After' means not reached by the top of the runs (300% build-out).") + "</th><th class='r'>" + head("Approvals to review", o.lag + " years before the earliest year") + info("The earliest year in the range less the time from approval to connection: approvals after this would connect after the limit could be reached. 'Now' means that year has passed.") + "</th><th class='r'>" + head("Water rise per 100 new homes", "largest rise on the path") + info("The largest rise on the path, at 100% build-out, at the load per new home set above. Steady as growth builds in a given weather, but it changes with the weather.") + "</th><th class='r'>" + head("Path already past the limit", "share of the path, before growth") + "</th></tr></thead><tbody>" + rows + sub_ + "</tbody></table></div>" +
+      "<p class='quiet'>Worked out in your browser from Sim 3's saved runs, with the same steps as sim35_capacity.py: with no starting-level error it gives the script's figures exactly, and with the error, the same bands up to the random draws (a probability near the 20% or 80% cut-off can land either side). The published table used the Published settings. Whole suburb: 56 runs by Ashis Jose Kalathil, growth everywhere at once.</p>" +
+      sources("room", [["Settings", "Load per new home: config.js loads (2.3 people, ABS 2021; 200 L a day, Barwon Water / WSAA; peak factor 2.0). Projection: PlanSA Local Area Population Projections 2021 to 2041, Walkerville, high 485 and medium 390. Approval to connection about 4 years: the network operator, 28 Sep 2026. Counted from 2026: assumed, the year of the network data."]]);
   }
 
   function floatTab() {
@@ -1475,6 +1500,27 @@ window.Sim35UI = (function () {
     });
     box.querySelectorAll("select.ressel").forEach(s => { s.onchange = () => { RES[s.dataset.res] = s.value; renderResults(); }; });
     box.querySelectorAll("input[data-price]").forEach(i => { i.onchange = () => { RES[i.dataset.price] = Math.max(1, +i.value || 1); renderResults(); }; });
+    // Room for homes settings. The slider shows its value while dragging and recalculates on release.
+    box.querySelectorAll("input[data-room]").forEach(i => {
+      const k = i.dataset.room;
+      if (k === "limit") {
+        i.oninput = () => { $("#roomLim").textContent = (+i.value).toFixed(2); };
+        i.onchange = () => { roomSet().limit = +i.value; renderResults(); };
+        return;
+      }
+      i.onchange = () => {
+        const [lo, hi] = ROOM_FIELDS[k], v = +i.value;
+        if (Number.isFinite(v) && i.value !== "") roomSet()[k] = Math.min(hi, Math.max(lo, k === "from" || k === "lag" ? Math.round(v) : v));
+        renderResults();
+      };
+    });
+    box.querySelectorAll("select[data-room]").forEach(s => { s.onchange = () => { roomSet()[s.dataset.room] = s.value; renderResults(); }; });
+    box.querySelectorAll("button[data-room-reset]").forEach(b => {
+      b.onclick = () => {
+        Object.assign(roomSet(), window.ROOM_CALC.defaults(), b.dataset.roomReset === "published" ? ROOM_PUBLISHED : {});
+        renderResults();
+      };
+    });
   }
   function showResults() {
     const c = S().cases.find(x => x.tag === (curCase() || {}).tag);

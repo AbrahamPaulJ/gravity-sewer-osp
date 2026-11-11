@@ -127,6 +127,13 @@
       "anchor_dwellings": 485,
       "_anchor": "PlanSA Local Area Population Projections 2021 to 2041, Walkerville LGA high case, +1,116 people at 2.3 per household (docs/15 s1); the medium case is 390. A region's nominal (100%) growth is the anchor times its share of the council's 2,851 connections (P01); the corridor's nominal is the anchor itself, as the state's named growth driver.",
       "council_connections": 2851,
+      "anchor_medium_dwellings": 390,
+      "timing": {
+        "projection_years": [2021, 2041],
+        "growth_counted_from": 2026,
+        "approval_to_connection_years": 4
+      },
+      "_timing": "Sim 3.5 Room for homes, timing controls (defaults only; the page lets the reader change each). The PlanSA projection covers 2021 to 2041, so a region gains its 100% share over 20 years, at the same rate after 2041. Growth is counted from 2026 because the network and connection layers are current, so homes built since 2021 are already in the baseline. Approval to connection: about 4 years (the network operator, 28 Sep 2026: 'it takes 4 years'; also 'three to four' and 'four or five'). The medium case (390) is the same projection's medium series.",
       "ladder": [0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0],
       "_ladder": "Build-out fractions of the nominal growth. 1.0 is the whole 20-year projection landing in the region; 3.0 is a stress step. Dwellings arrive over 3 to 5 years (28 Sep 2026), so the ladder reads as time as well as size.",
       "rise_floor_mm": 0.5,
