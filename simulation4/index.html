@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sim 4 Sensor Story</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+/* From the 6 Nov feedback: the map alone, with one small card for the step, and a popup on click.
+   Everything else sits behind Expert. Same dark ground and map colours as the earlier sims. */
+:root{
+  --bg:#0d1117; --panel:#111c2fee; --panel-solid:#111c2f; --ink:#e7edf7; --dim:#a9b8d4; --faint:#6f81a3;
+  --line:#22314d; --accent:#38bdf8; --green:#2ef56b;
+}
+*{box-sizing:border-box}
+html,body{margin:0; height:100%; overflow:hidden}
+body{background:var(--bg); color:var(--ink); font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+[hidden]{display:none !important}
+#stage{position:fixed; inset:0}
+#stage canvas{display:block; width:100%; height:100%}
+
+/* What the map code expects */
+.labels{position:absolute; inset:0; pointer-events:none; overflow:hidden}
+.pipeCard{display:none !important}
+.labels .lbl{position:absolute; transform:translate(-50%,-165%); white-space:nowrap; font-size:11px;
+  font-weight:600; color:#c9a3ff; text-shadow:0 0 4px #0d1117, 0 0 4px #0d1117}
+.labels .lbl.site{color:#7dd8ff; transform:translate(-50%, 42%)}
+.labels .lbl.pump{color:#e3b341; transform:translate(-50%,-230%)}
+.labels .lbl.scn{color:#00d4ff; transform:translate(-50%,-200%)}
+.labels .lbl.spill{color:#ff3df5; font-weight:600; transform:translate(-50%,-210%)}
+.labels .lbl.sensor{color:#04140a; background:#2ef56b; font-weight:700; font-size:11.5px;
+  padding:1px 6px; border-radius:4px; transform:translate(-50%,-140%); box-shadow:0 0 0 2px #0d1117; z-index:3}
+.labels .lbl.sensor.sel{font-size:15px; padding:2px 9px; z-index:6}
+.labels .lbl.pumprate{color:#e3b341; font-weight:600; transform:translate(-50%,160%)}
+.labels .lbl.scale,.labels .lbl.outlet{display:none !important}
+.labels .lbl.region{color:#04140a; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px;
+  transform:translate(-50%,-50%); text-shadow:none; box-shadow:0 0 0 2px #0d1117; opacity:.95}
+
+/* The one card */
+#card{position:fixed; top:16px; left:50%; transform:translate(-50%,0); width:min(620px, calc(100vw - 32px)); z-index:10;
+  background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 18px 12px; backdrop-filter:blur(6px)}
+#card.in{animation:rise .32s ease-out}
+@keyframes rise{from{opacity:.25; transform:translate(-50%,-6px)} to{opacity:1; transform:translate(-50%,0)}}
+#stepN{color:var(--faint); font-size:12px}
+#stepTitle{margin:0 0 4px; font-size:19px; font-weight:650; line-height:1.25}
+#stepBody{margin:0; font-size:15px; line-height:1.45; color:var(--ink)}
+#legend{display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:8px; font-size:12px; color:var(--dim)}
+#legend:empty{display:none}
+#legend span{display:inline-flex; align-items:center; gap:6px}
+#legend i{width:10px; height:10px; border-radius:50%; flex:none}
+#sliderRow{margin-top:10px}
+#sliderRow input{width:100%; accent-color:#fff176; margin:0}
+#homesOut{display:block; font-size:12.5px; color:var(--dim)}
+#nav{display:flex; align-items:center; gap:10px; margin-top:10px}
+#dots{display:flex; gap:6px; flex:1}
+#dots i{width:8px; height:8px; border-radius:50%; background:var(--line)}
+#dots i.on{background:var(--accent)}
+button{font:inherit; color:var(--ink); background:#1b2b47; border:1px solid var(--line); border-radius:8px; padding:6px 16px; cursor:pointer}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+button:disabled{opacity:.35; cursor:default}
+#next{background:#0e4f6e; border-color:#16709b}
+
+#btnExpert{position:fixed; top:16px; right:16px; z-index:12; background:var(--panel); font-size:13px; padding:5px 12px; color:var(--dim)}
+
+/* The popup */
+#pop{position:fixed; z-index:11; width:310px; background:var(--panel-solid); border:1px solid #2e4470; border-radius:10px; padding:11px 14px;
+  font-size:13px; line-height:1.4; box-shadow:0 8px 28px #0009}
+#pop b{display:block; font-size:14px; margin-bottom:6px}
+#pop dl{margin:0; display:grid; grid-template-columns:auto 1fr; gap:4px 10px}
+#pop dt{color:var(--faint); white-space:nowrap}
+#pop dd{margin:0}
+#pop p{margin:8px 0 0; color:var(--dim); font-size:12.5px}
+
+/* Expert keeps the left-panel rule */
+#expert{position:fixed; top:0; left:0; bottom:0; width:min(900px, 100vw); z-index:20; background:var(--panel-solid); border-right:1px solid var(--line);
+  overflow:auto; padding:18px 22px 40px; box-shadow:8px 0 30px #0008}
+#expert h1{font-size:18px; margin:0 0 4px}
+#expert h2{font-size:14.5px; margin:22px 0 4px}
+#expert p,#expert li{color:var(--dim); font-size:13px}
+#expert p{margin:0 0 8px}
+#expert ul{margin:4px 0 0; padding-left:18px}
+#expert a{color:var(--accent)}
+#expert table{border-collapse:collapse; width:100%; font-size:12.5px; margin-top:4px}
+#expert th{color:var(--faint); text-align:left; font-weight:600; border-bottom:1px solid var(--line); padding:4px 8px 4px 0; vertical-align:bottom}
+#expert td{border-bottom:1px solid #1a2840; padding:4px 8px 4px 0; vertical-align:top}
+#expertClose{position:sticky; top:0; float:right}
+@media (prefers-reduced-motion:reduce){#card.in{animation:none}}
+@media (max-width:640px){#stepBody{font-size:14px} #stepTitle{font-size:17px} #btnExpert{top:auto; bottom:16px} #pop{width:min(310px, calc(100vw - 24px))}}
+</style>
+</head>
+<body>
+<div id="stage" aria-label="Map of the sewer network"></div>
+
+<section id="card" aria-live="polite">
+  <div id="stepN"></div>
+  <h1 id="stepTitle"></h1>
+  <p id="stepBody"></p>
+  <div id="sliderRow" hidden>
+    <input id="homes" type="range" min="0" max="5" step="1" value="5" aria-label="Share of each region's 2041 homes">
+    <output id="homesOut" for="homes"></output>
+  </div>
+  <div id="legend"></div>
+  <div id="nav">
+    <div id="dots" aria-hidden="true"></div>
+    <button id="back" type="button">Back</button>
+    <button id="next" type="button">Next</button>
+  </div>
+</section>
+
+<div id="pop" hidden></div>
+
+<button id="btnExpert" type="button" aria-expanded="false" aria-controls="expert">Expert</button>
+<aside id="expert" hidden>
+  <button id="expertClose" type="button">Close</button>
+  <h1>Expert</h1>
+  <p>The figures behind the story. Everything is an uncalibrated model result.</p>
+  <div id="expertBody"></div>
+</aside>
+
+<script src="../simulation3/data/catchment.js?v=9"></script>
+<script src="../simulation3/data/growth.js?v=9"></script>
+<script src="../simulation3/data/regions.js?v=9"></script>
+<script src="../simulation3/data/index.js?v=9"></script>
+<script src="../simulation35/growth_3d.js?v=3"></script>
+<script src="data/sim4.js?v=2"></script>
+<script src="sim4_story.js?v=1"></script>
+<script type="module">
+  Sim4.init();
+</script>
+</body>
+</html>

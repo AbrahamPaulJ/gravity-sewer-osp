@@ -1,0 +1,174 @@
+PASS triage R1  monitor
+PASS triage R2  monitor
+PASS triage R3  leave
+PASS triage R4  watch
+PASS triage R5  leave
+PASS triage R6  leave
+PASS triage R8  watch
+PASS triage R7  leave
+PASS warn universe  12
+PASS k=1 exactly k sensors, nested
+PASS k=1 worst  0.0000
+PASS k=1 average  0.4693
+PASS k=1 Design wet  0.9167
+PASS k=1 25 mm
+PASS k=1 warned  9/12
+PASS k=2 exactly k sensors, nested
+PASS k=2 worst  0.0000
+PASS k=2 average  0.5785
+PASS k=2 Design wet  1.0000
+PASS k=2 25 mm
+PASS k=2 warned  9/12
+PASS k=3 exactly k sensors, nested
+PASS k=3 worst  0.2308
+PASS k=3 average  0.7214
+PASS k=3 Design wet  1.0000
+PASS k=3 25 mm
+PASS k=3 warned  9/12
+PASS k=4 exactly k sensors, nested
+PASS k=4 worst  0.5385
+PASS k=4 average  0.8273
+PASS k=4 Design wet  1.0000
+PASS k=4 25 mm
+PASS k=4 warned  12/12
+PASS k=5 exactly k sensors, nested
+PASS k=5 worst  0.8125
+PASS k=5 average  0.9070
+PASS k=5 Design wet  1.0000
+PASS k=5 25 mm
+PASS k=5 warned  12/12
+PASS k=6 exactly k sensors, nested
+PASS k=6 worst  0.8462
+PASS k=6 average  0.9381
+PASS k=6 Design wet  1.0000
+PASS k=6 25 mm
+PASS k=6 warned  12/12
+PASS k=7 exactly k sensors, nested
+PASS k=7 worst  0.8750
+PASS k=7 average  0.9609
+PASS k=7 Design wet  1.0000
+PASS k=7 25 mm
+PASS k=7 warned  12/12
+PASS k=8 exactly k sensors, nested
+PASS k=8 worst  0.9231
+PASS k=8 average  0.9801
+PASS k=8 Design wet  1.0000
+PASS k=8 25 mm
+PASS k=8 warned  12/12
+PASS k=2 without MH4450581
+PASS k=2 without MH4450531
+PASS k=5 without MH4450581
+PASS k=5 without MH4450531
+PASS k=5 without MH4450922
+PASS k=5 without MH4448345
+PASS k=5 without MH4452994
+PASS MH4450581 R1 is a target region
+PASS MH4450581 first reading from R1
+PASS MH4450581 rise at 100% from R1
+PASS MH4450581 R2 is a target region
+PASS MH4450581 first reading from R2
+PASS MH4450581 rise at 100% from R2
+PASS MH4450581 R4 is a target region
+PASS MH4450581 first reading from R4
+PASS MH4450581 rise at 100% from R4
+PASS MH4450581 R8 is a target region
+PASS MH4450581 first reading from R8
+PASS MH4450581 rise at 100% from R8
+PASS MH4450581 surcharged flag
+PASS MH4450531 R1 is a target region
+PASS MH4450531 first reading from R1
+PASS MH4450531 rise at 100% from R1
+PASS MH4450531 R2 is a target region
+PASS MH4450531 first reading from R2
+PASS MH4450531 rise at 100% from R2
+PASS MH4450531 R4 is a target region
+PASS MH4450531 first reading from R4
+PASS MH4450531 rise at 100% from R4
+PASS MH4450531 R8 is a target region
+PASS MH4450531 first reading from R8
+PASS MH4450531 rise at 100% from R8
+PASS MH4450531 surcharged flag
+PASS MH4450922 R1 is a target region
+PASS MH4450922 first reading from R1
+PASS MH4450922 rise at 100% from R1
+PASS MH4450922 R2 is a target region
+PASS MH4450922 first reading from R2
+PASS MH4450922 rise at 100% from R2
+PASS MH4450922 R4 is a target region
+PASS MH4450922 first reading from R4
+PASS MH4450922 rise at 100% from R4
+PASS MH4450922 R8 is a target region
+PASS MH4450922 first reading from R8
+PASS MH4450922 rise at 100% from R8
+PASS MH4450922 surcharged flag
+PASS MH4448345 R1 is a target region
+PASS MH4448345 first reading from R1
+PASS MH4448345 rise at 100% from R1
+PASS MH4448345 R2 is a target region
+PASS MH4448345 first reading from R2
+PASS MH4448345 rise at 100% from R2
+PASS MH4448345 R4 is a target region
+PASS MH4448345 first reading from R4
+PASS MH4448345 rise at 100% from R4
+PASS MH4448345 R8 is a target region
+PASS MH4448345 first reading from R8
+PASS MH4448345 rise at 100% from R8
+PASS MH4448345 surcharged flag
+PASS MH4452994 R1 is a target region
+PASS MH4452994 first reading from R1
+PASS MH4452994 rise at 100% from R1
+PASS MH4452994 R2 is a target region
+PASS MH4452994 first reading from R2
+PASS MH4452994 rise at 100% from R2
+PASS MH4452994 R4 is a target region
+PASS MH4452994 first reading from R4
+PASS MH4452994 rise at 100% from R4
+PASS MH4452994 R8 is a target region
+PASS MH4452994 first reading from R8
+PASS MH4452994 rise at 100% from R8
+PASS MH4452994 surcharged flag
+PASS MH4429013 R1 is a target region
+PASS MH4429013 first reading from R1
+PASS MH4429013 rise at 100% from R1
+PASS MH4429013 R2 is a target region
+PASS MH4429013 first reading from R2
+PASS MH4429013 rise at 100% from R2
+PASS MH4429013 R4 is a target region
+PASS MH4429013 first reading from R4
+PASS MH4429013 rise at 100% from R4
+PASS MH4429013 R8 is a target region
+PASS MH4429013 first reading from R8
+PASS MH4429013 rise at 100% from R8
+PASS MH4429013 surcharged flag
+PASS MH4448474 R1 is a target region
+PASS MH4448474 first reading from R1
+PASS MH4448474 rise at 100% from R1
+PASS MH4448474 R2 is a target region
+PASS MH4448474 first reading from R2
+PASS MH4448474 rise at 100% from R2
+PASS MH4448474 R4 is a target region
+PASS MH4448474 first reading from R4
+PASS MH4448474 rise at 100% from R4
+PASS MH4448474 R8 is a target region
+PASS MH4448474 first reading from R8
+PASS MH4448474 rise at 100% from R8
+PASS MH4448474 surcharged flag
+PASS MH4429179 R1 is a target region
+PASS MH4429179 first reading from R1
+PASS MH4429179 rise at 100% from R1
+PASS MH4429179 R2 is a target region
+PASS MH4429179 first reading from R2
+PASS MH4429179 rise at 100% from R2
+PASS MH4429179 R4 is a target region
+PASS MH4429179 first reading from R4
+PASS MH4429179 rise at 100% from R4
+PASS MH4429179 R8 is a target region
+PASS MH4429179 first reading from R8
+PASS MH4429179 rise at 100% from R8
+PASS MH4429179 surcharged flag
+PASS no single sensor sees all of Design wet
+PASS exactly one pair sees all of Design wet, and it starts the ladder  ['MH4450531', 'MH4450581']
+PASS real overload manholes  19
+PASS none on the old choke list
+
+ALL PASS

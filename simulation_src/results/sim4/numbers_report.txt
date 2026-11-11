@@ -1,0 +1,107 @@
+=== 1. Triage: Design wet, limit 0.7. runs out = monitor, uncertain = watch, room left = leave
+  R1: monitor  band runs out   2041 homes   110 (homes there now 644); same band in 5 of 7 wet cases; limit 0.5/0.6/0.7 watch/monitor/monitor
+  R2: monitor  band runs out   2041 homes    55 (homes there now 324); same band in 3 of 7 wet cases; limit 0.5/0.6/0.7 watch/watch/monitor
+  R3: leave    band room left  2041 homes    40 (homes there now 233); same band in 7 of 7 wet cases; limit 0.5/0.6/0.7 leave/leave/leave
+  R4: watch    band uncertain  2041 homes    17 (homes there now 100); same band in 1 of 7 wet cases; limit 0.5/0.6/0.7 leave/watch/watch
+  R5: leave    band room left  2041 homes    25 (homes there now 147); same band in 3 of 7 wet cases; limit 0.5/0.6/0.7 leave/leave/leave
+  R6: leave    band room left  2041 homes    19 (homes there now 113); same band in 3 of 7 wet cases; limit 0.5/0.6/0.7 leave/leave/leave
+  R8: watch    band uncertain  2041 homes   485 (homes there now 175); same band in 3 of 7 wet cases; limit 0.5/0.6/0.7 watch/monitor/watch
+  R7: leave    band room left  2041 homes   141 (homes there now 829); same band in 2 of 7 wet cases; limit 0.5/0.6/0.7 leave/watch/leave
+  Bands by wet case: R1 O,O,O,U,O,A,O; R2 O,O,A,R,O,A,A; R3 R,R,R,R,R,R,R; R4 U,A,A,R,A,A,A; R5 R,A,A,R,R,A,U; R6 R,A,A,R,R,A,A; R8 U,A,A,U,U,A,A; R7 R,A,A,R,U,U,A
+  Homes: R1 to R7 add up to 406; R8 alone is 485 (the whole anchor by design, docs/18 D18). They are not shares of one total.
+
+=== 2. What is being scored
+  Target regions ['R1', 'R2', 'R4', 'R8']. Runs a sensor could see at 10 mm by 100% build-out: Design wet 12, Beyond design 16, Severe 13, Design wet + age-weighted I&I 10, Design wet + outside inflow x1.5 15, Beyond design + age-weighted I&I 14, Beyond design + outside inflow x1.5 12
+  Dry, reported apart: 1 target runs show a 10 mm rise anywhere by 100%. Wet-day sensors are not chosen for these.
+  Overloads warnable by 100%: 12 in target regions of 13 anywhere (25 counting stress steps).
+  Warnable overloads given up by leaving regions out: [('Beyond design + outside inflow x1.5', 'R5', 0.75)]
+  Every overload by 100% in a leave region, warnable or not: [{'case': 'Severe', 'region': 'R3', 'step': 0.25, 'max_rise_before': 0.79}, {'case': 'Severe', 'region': 'R6', 'step': 0.75, 'max_rise_before': 3.9}, {'case': 'Severe', 'region': 'R7', 'step': 0.25, 'max_rise_before': 2.06}, {'case': 'Beyond design + outside inflow x1.5', 'region': 'R5', 'step': 0.75, 'max_rise_before': 41.65}]
+
+=== 3. The ladder: nested, level sensors, target regions, up to 100%, 7 wet cases
+  Order: MH4450581, MH4450531, MH4450922, MH4448345, MH4452994, MH4429013, MH4448474, MH4429179
+   k   worst/avg  exact worst/avg  Design   25mm w/a  warned  of 13  all regions   Dry   exact set
+   1    0%/ 47%      23%/ 38%      92%   0%/ 24%    9/12   9/13     0%/ 43%    0%   ['MH4452527']
+   2    0%/ 58%      53%/ 61%     100%   0%/ 32%    9/12   9/13     0%/ 51%    0%   ['MH4428636', 'MH4452189']
+   3   23%/ 72%      70%/ 80%     100%   0%/ 40%    9/12   9/13    15%/ 65%    0%   ['MH4428636', 'MH4450531', 'MH4452189']
+   4   54%/ 83%      81%/ 90%     100%  23%/ 50%   12/12  12/13    35%/ 73%    0%   ['MH4429013', 'MH4450391', 'MH4450922', 'MH4454116']
+   5   81%/ 91%      87%/ 92%     100%  42%/ 55%   12/12  12/13    65%/ 82%    0%   ['MH4429013', 'MH4450391', 'MH4450581', 'MH4450922', 'MH4454376']
+   6   85%/ 94%      88%/ 95%     100%  50%/ 60%   12/12  12/13    70%/ 84%    0%   ['MH4429013', 'MH4449796', 'MH4449913', 'MH4450531', 'MH4450922', 'MH4454376']
+   7   88%/ 96%      92%/ 97%     100%  53%/ 65%   12/12  12/13    74%/ 86%    0%   ['MH4429013', 'MH4446883', 'MH4448419', 'MH4449796', 'MH4450531', 'MH4450922', 'MH4454376']
+   8   92%/ 98%      92%/ 98%     100%  53%/ 65%   12/12  12/13    75%/ 87%    0%   ['MH4429013', 'MH4446883', 'MH4448419', 'MH4449796', 'MH4450531', 'MH4450581', 'MH4450922', 'MH4454376']
+  [0.1 min]
+  How firm is the 5-sensor set? 184 sets tie for best on worst, average and warned. Each sensor is in: MH4450581 184, MH4450531 184, MH4450922 46, MH4448345 92, MH4452994 8
+  Brute force over every 5-sensor set with the Design wet pair: best value 2.719519, ladder 2.719519.
+  [0.4 min]
+
+=== 4. Fewest sensors by how much of the weather you must cover (exact, target regions, up to 100%)
+  Design wet only              exact 80/90/100%: 1/1/2    ladder reaches them at 1/1/2
+  Design wet + Beyond design   exact 80/90/100%: 2/3/5    ladder reaches them at 4/8/None
+  Design wet family (3)        exact 80/90/100%: 1/3/4    ladder reaches them at 3/4/4
+  All 7 wet cases              exact 80/90/100%: 4/7/10    ladder reaches them at 5/8/None
+
+=== 5. Held out, exactly k sensors, same search without what is being tested
+  [1.3 min]
+  k=1: unseen weather runs 36/92 (39%), worst case 0%, warned 7/12 | unseen region runs 42/92 (46%) {'R1': 0.4242, 'R2': 0.4444, 'R4': 0.1667, 'R8': 0.5769}, warned 8/12
+  k=2: unseen weather runs 54/92 (59%), worst case 0%, warned 9/12 | unseen region runs 44/92 (48%) {'R1': 0.4848, 'R2': 0.4444, 'R4': 0.1667, 'R8': 0.5769}, warned 9/12
+  k=3: unseen weather runs 55/92 (60%), worst case 0%, warned 9/12 | unseen region runs 49/92 (53%) {'R1': 0.6061, 'R2': 0.4815, 'R4': 0.1667, 'R8': 0.5769}, warned 9/12
+  k=4: unseen weather runs 62/92 (67%), worst case 0%, warned 11/12 | unseen region runs 52/92 (57%) {'R1': 0.6061, 'R2': 0.4815, 'R4': 0.1667, 'R8': 0.6923}, warned 9/12
+  k=5: unseen weather runs 68/92 (74%), worst case 0%, warned 11/12 | unseen region runs 53/92 (58%) {'R1': 0.6364, 'R2': 0.4815, 'R4': 0.1667, 'R8': 0.6923}, warned 9/12
+  k=6: unseen weather runs 70/92 (76%), worst case 0%, warned 11/12 | unseen region runs 56/92 (61%) {'R1': 0.6364, 'R2': 0.5556, 'R4': 0.3333, 'R8': 0.6923}, warned 9/12
+  k=7: unseen weather runs 71/92 (77%), worst case 0%, warned 11/12 | unseen region runs 64/92 (70%) {'R1': 0.8788, 'R2': 0.5556, 'R4': 0.3333, 'R8': 0.6923}, warned 12/12
+  k=8: unseen weather runs 72/92 (78%), worst case 0%, warned 11/12 | unseen region runs 64/92 (70%) {'R1': 0.8788, 'R2': 0.5556, 'R4': 0.3333, 'R8': 0.6923}, warned 12/12
+  Unseen weather by case, runs seen at k=2/3/5/8:
+   Design wet                             12 runs:  83%  83%  83%  83%
+   Beyond design                          16 runs:  75%  75%  81%  88%
+   Severe                                 13 runs:  23%  23%  85%  92%
+   Design wet + age-weighted I&I          10 runs:   0%   0%   0%   0%
+   Design wet + outside inflow x1.5       15 runs:  87%  87%  87%  87%
+   Beyond design + age-weighted I&I       14 runs:  79%  86%  86%  93%
+   Beyond design + outside inflow x1.5    12 runs:  42%  42%  75%  83%
+
+=== 6. Random sets of k, same runs
+  Manholes that respond at 10 mm to any target run by 100%: 141 of 328
+  k=1: ladder   0%/ 47% warned 9 | any   0%/ 10% warned 1.7 | responsive   0%/ 22% warned 4.0, 95th pct   0%/ 47%, draws matching ladder avg 5.06%
+  k=2: ladder   0%/ 58% warned 9 | any   1%/ 18% warned 3.2 | responsive   2%/ 35% warned 6.3, 95th pct  23%/ 61%, draws matching ladder avg 6.76%
+  k=3: ladder  23%/ 72% warned 9 | any   1%/ 24% warned 4.3 | responsive   5%/ 43% warned 7.7, 95th pct  31%/ 69%, draws matching ladder avg 2.78%
+  k=4: ladder  54%/ 83% warned 12 | any   2%/ 29% warned 5.2 | responsive   7%/ 49% warned 8.6, 95th pct  50%/ 74%, draws matching ladder avg 0.28%
+  k=5: ladder  81%/ 91% warned 12 | any   3%/ 34% warned 6.0 | responsive  11%/ 54% warned 9.2, 95th pct  58%/ 78%, draws matching ladder avg 0.02%
+  k=6: ladder  85%/ 94% warned 12 | any   4%/ 38% warned 6.8 | responsive  13%/ 58% warned 9.6, 95th pct  62%/ 81%, draws matching ladder avg 0.00%
+  k=7: ladder  88%/ 96% warned 12 | any   5%/ 41% warned 7.2 | responsive  17%/ 61% warned 10.0, 95th pct  69%/ 84%, draws matching ladder avg 0.00%
+  k=8: ladder  92%/ 98% warned 12 | any   6%/ 44% warned 7.7 | responsive  20%/ 64% warned 10.2, 95th pct  75%/ 87%, draws matching ladder avg 0.00%
+  [1.4 min]
+
+=== 7. Why each sensor is there (Design wet unless stated). No leave region or stress step can appear here
+  1. MH4450581 in R7 [leave region: it is there for the flow passing through]; adds 46 runs {'R1': 16, 'R2': 12, 'R4': 3, 'R8': 15}; nearest earlier None m; fullness 0.58; R1 from 27 homes (+17.1 mm), +72.9 at 100%; R2 from 28 homes (+14.4 mm), +29.5 at 100%; R4 from 17 homes (+10.7 mm), +10.7 at 100%; R8 from 242 homes (+18.0 mm), +37.2 at 100%
+  2. MH4450531 in R2; adds 10 runs {'R2': 10}; nearest earlier 226 m; fullness 0.653; R1 from 27 homes (+15.0 mm), +58.9 at 100%; R2 from 14 homes (+12.5 mm), +49.7 at 100%; R4 silent (1/7 wet cases hear it); R8 from 242 homes (+20.1 mm), +40.0 at 100%
+  3. MH4450922 in R8; adds 10 runs {'R1': 4, 'R2': 3, 'R8': 3}; nearest earlier 73 m; fullness 2.4 [SURCHARGED BEFORE GROWTH in the model: check on site]; R1 from 27 homes (+13.7 mm), +55.5 at 100%; R2 from 28 homes (+13.9 mm), +28.0 at 100%; R4 silent (1/7 wet cases hear it); R8 from 242 homes (+18.4 mm), +37.1 at 100%
+  4. MH4448345 in R1; adds 10 runs {'R1': 9, 'R4': 1}; nearest earlier 514 m; fullness 0.378; R1 silent (5/7 wet cases hear it); R2 silent (3/7 wet cases hear it); R4 silent (1/7 wet cases hear it); R8 silent (3/7 wet cases hear it)
+  5. MH4452994 in R7 [leave region: it is there for the flow passing through]; adds 7 runs {'R8': 7}; nearest earlier 837 m; fullness 0.367; R1 silent (1/7 wet cases hear it); R2 silent (2/7 wet cases hear it); R4 silent (0/7 wet cases hear it); R8 silent (4/7 wet cases hear it)
+  6. MH4429013 in R1; adds 3 runs {'R1': 3}; nearest earlier 356 m; fullness 0.367; R1 silent (4/7 wet cases hear it); R2 silent (1/7 wet cases hear it); R4 silent (0/7 wet cases hear it); R8 silent (2/7 wet cases hear it)
+  7. MH4448474 in R2; adds 2 runs {'R2': 2}; nearest earlier 270 m; fullness 0.327; R1 silent (2/7 wet cases hear it); R2 silent (4/7 wet cases hear it); R4 silent (0/7 wet cases hear it); R8 silent (2/7 wet cases hear it)
+  8. MH4429179 in R4; adds 2 runs {'R4': 2}; nearest earlier 564 m; fullness 0.187; R1 silent (3/7 wet cases hear it); R2 silent (2/7 wet cases hear it); R4 silent (2/7 wet cases hear it); R8 silent (2/7 wet cases hear it)
+
+  Taking one out, and manholes that could stand in with the same worst and average:
+   k=2: MH4450581 without 0%/53%, stand-ins 103 ['MH4450449', 'MH4450554']; MH4450531 without 0%/47%, stand-ins 10 ['MH4450922', 'MH4451207']
+   k=4: MH4450581 without 54%/81%, stand-ins 58 ['MH4449796', 'MH4452189']; MH4450531 without 31%/72%, stand-ins 2 ['MH4449796', 'MH4448474']; MH4450922 without 0%/68%, stand-ins 4 ['MH4451207', 'MH4451871']; MH4448345 without 23%/72%, stand-ins 3 ['MH4448419', 'MH4429312']
+   k=5: MH4450581 without 75%/89%, stand-ins 10 ['MH4429656', 'MH4446883']; MH4450531 without 58%/80%, stand-ins 2 ['MH4449796', 'MH4448474']; MH4450922 without 0%/76%, stand-ins 3 ['MH4451207', 'MH4451871']; MH4448345 without 54%/80%, stand-ins 3 ['MH4448419', 'MH4429312']; MH4452994 without 54%/83%, stand-ins 22 ['MH4453489', 'MH4453579']
+   k=6: MH4450581 without 81%/92%, stand-ins 8 ['MH4429656', 'MH4446883']; MH4450531 without 62%/83%, stand-ins 2 ['MH4449796', 'MH4448474']; MH4450922 without 0%/80%, stand-ins 3 ['MH4451207', 'MH4451871']; MH4448345 without 85%/92%, stand-ins 15 ['MH4448419', 'MH4450193']; MH4452994 without 54%/86%, stand-ins 22 ['MH4453489', 'MH4453579']; MH4429013 without 81%/91%, stand-ins 0 []
+
+=== 8. Where the model really overloads by 100% (replaces the choke list), and the words to use
+  19 manholes newly surcharge or spill by 100%; 18 from target-region growth; 0 on Sim 3's choke list of 15.
+   MH4501866: 15 runs, 0 spilling; 1 cases; growth in ['R3', 'R6', 'R7', 'R8']; sits in ['R3']
+   MH4448345: 9 runs, 0 spilling; 1 cases; growth in ['R1', 'R2', 'R8']; sits in ['R1']
+   MH4429268: 5 runs, 0 spilling; 1 cases; growth in ['R1', 'R2', 'R8']; sits in ['R4']
+   MH4453850: 5 runs, 0 spilling; 2 cases; growth in ['R8']; sits in ['R7']
+   MH4449011: 4 runs, 0 spilling; 1 cases; growth in ['R1', 'R8']; sits in ['R4']
+   MH4449977: 4 runs, 0 spilling; 1 cases; growth in ['R1', 'R8']; sits in ['R1']
+   MH4429527: 3 runs, 0 spilling; 1 cases; growth in ['R2', 'R8']; sits in ['R2']
+   MH4501851: 3 runs, 0 spilling; 1 cases; growth in ['R8']; sits in ['R3']
+  Before growth: Dry 0 surcharged/0 spilling, Design wet 7 surcharged/0 spilling, Beyond design 107 surcharged/1 spilling, Severe 141 surcharged/6 spilling, Design wet + age-weighted I&I 7 surcharged/0 spilling, Design wet + outside inflow x1.5 29 surcharged/0 spilling, Beyond design + age-weighted I&I 104 surcharged/1 spilling, Beyond design + outside inflow x1.5 121 surcharged/5 spilling
+  Design wet at 100%: {'regions_with_new_surcharge': 1, 'regions_with_new_spill': 0}; new spill at any step in Design wet: 0. All wet rows by 100%: 40 with new surcharge, 2 with new spill, of 280.
+  So: growth here means surcharge, the warning sign before an overflow. It is not a count of overflows.
+
+=== 9. Sim 3.5's two '5 sensor' sets on the Sim 4 scope, and back on their old scope (audit check)
+  Sim 3.5 map five: Sim 4 scope 75%/87%, Design wet 92%, warned 12/12; old scope 80%/90% warned 13/13
+  Sim 3.5 coverage five: Sim 4 scope 80%/90%, Design wet 83%, warned 11/12; old scope 86%/91% warned 12/13
+
+done in 1.4 min
