@@ -490,7 +490,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--partition", choices=sim3_regions.PARTITIONS,
                     help=f"which region runs to read (default config.js regions.partition, now {sim3_regions.PARTITION}); "
-                         "bisection is Simulation 4's")
+                         "bisection is the unpublished equal-home regions")
     ap.add_argument("--max-sensors", type=int, default=sim25.CFG["simulation"].get("max_sensors", 10))
     ap.add_argument("--sigma", default="10,20,40", help="assumed day-to-day level noise, mm")
     ap.add_argument("--loo-k", type=int, default=4, help="sensor count for leave-one-case-out")

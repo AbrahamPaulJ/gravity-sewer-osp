@@ -104,11 +104,11 @@ This is a working tool for exploring that, running on a real network rather than
   </a>
   <a class="card big" href="#sim4" data-tab="sim4">
     <span class="tag">Interactive, latest</span>
-    <h3>Simulation 4: Simulation 3.5's questions on equal-home regions</h3>
-    <p>The same questions as Simulation 3.5, warning before surcharge, room for new homes, and level or float, asked on
-    new regions. Instead of hand-picked branches, the suburb is cut into eight regions holding near-equal numbers of existing
-    homes, by the spatial bisection method of Kim et al. (2022), with the Walkerville Terrace corridor as an overlapping ninth.
-    Every region was re-run in SWMM on the same settled model. Uncalibrated: a guide to where to look first.</p>
+    <h3>Simulation 4: where to put the first sensors, in six steps</h3>
+    <p>One map and one short card at a time: the network, a design wet day, the 2041 homes arriving, which regions to
+    watch, then 2 level sensors if the design day is right or 5 if the weather is unknown, and what they cost. Click a
+    sensor to see why it is there; the tables, stand-ins and limits are under Expert. Uncalibrated: a guide to where to
+    look first.</p>
   </a>
   <a class="card big" href="#sim35" data-tab="sim35">
     <span class="tag">Interactive</span>
@@ -259,7 +259,7 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 <div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html?v=32" title="Why observability is limited"></iframe></div>
 <div class="pane" id="pane-sim1" hidden><iframe data-src="simulation_legacy/index.html?v=32" title="Simulation 1: warning time"></iframe></div>
 <div class="pane" id="pane-sim2" hidden><iframe data-src="simulation/index.html?v=32" title="Simulation 2: growth and sensor placement"></iframe></div>
-<div class="pane" id="pane-sim4" hidden><iframe data-src="simulation4/index.html?v=1" allow="fullscreen" title="Simulation 4: Simulation 3.5's questions on equal-home regions"></iframe></div>
+<div class="pane" id="pane-sim4" hidden><iframe data-src="simulation4/index.html?v=1" allow="fullscreen" title="Simulation 4: where to put the first sensors"></iframe></div>
 <div class="pane" id="pane-sim35" hidden><iframe data-src="simulation35/index.html?v=2" allow="fullscreen" title="Simulation 3.5: warning, room for new homes, level or float"></iframe></div>
 <div class="pane" id="pane-coverage" hidden><iframe data-src="coverage/index.html?v=8" title="Coverage prototype: which sensor sees growth where (Simulation 3 runs)"></iframe></div>
 <div class="pane" id="pane-sim3" hidden><iframe data-src="simulation3/index.html?v=12" title="Simulation 3: growth and sensor placement"></iframe></div>
@@ -272,7 +272,7 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 <!-- config.js holds the project's settings; its "pages" section decides which pages this site offers. It carries its own cache key for
      the same reason the iframes do: it is a script, and a browser will reuse the copy
      it has. Bump it when the config changes. -->
-<script src="config.js?v=40"></script>
+<script src="config.js?v=41"></script>
 <script>
 // Drop the pages config.js turns off (keys starting "_" are notes), before anything is wired up. Removing the button
 // is what makes a deep link to a hidden page fall back to the overview: showTab looks

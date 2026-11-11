@@ -10,11 +10,10 @@ chamber list, which is what the Sim 3 and Sim 3.5 pages read.
 
     python tools/build_sim3_regions.py            # write simulation3/data/regions.js
     python tools/build_sim3_regions.py --check    # rebuild in memory, compare with the file, exit 1 if different
-    python tools/build_sim3_regions.py --partition bisection --out simulation4/data/regions.js   # Simulation 4's regions
+    python tools/build_sim3_regions.py --partition bisection --out <file>   # the equal-home regions, unpublished
 
-Simulation 3 and 3.5 publish the hand-picked (listed) regions from simulation3/data/regions.js. Simulation 4
-publishes the equal-home (bisection) regions from its own simulation4/data/regions.js; after rebuilding that,
-re-run the Sim 3.5 scripts for Simulation 4 and tools/build_sim4_web.py (see simulation_src/README.md).
+Simulations 3, 3.5 and 4 publish the hand-picked (listed) regions from simulation3/data/regions.js. The equal-home
+(bisection) regions have been run in SWMM but no page publishes them; --out writes them to a file of your choice.
 
 The partition (config.js simulation.regions.partition, or --partition) picks which runs are read:
 results/sim3/regions (listed) or results/sim3/regions_bisection (bisection).

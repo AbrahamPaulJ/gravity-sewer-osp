@@ -19,10 +19,10 @@ For k = 1 to 10 level sensors, at each of the 10, 25 and 50 mm rules:
     out_area, plausible_unseen_region              chosen without one region, scored on it alone: the share of
                                                    its overloads, and the plausible ones warned, over regions
 
-    SIM35_TARGET=sim4 python sim35_warn.py     # writes results/sim4/warn.json, for Simulation 4
+    python sim35_warn.py     # writes results/sim35/warn.json
 
-Simulation 3.5's warn sets came from this same method by a script that never reached the repository; run unset
-(regions from ../simulation3/data/regions.js), this reproduces them exactly.
+Simulation 3.5's warn sets came from this same method by a script that never reached the repository; on Sim 3.5's
+regions (../simulation3/data/regions.js) this reproduces them exactly.
 """
 import json, os
 

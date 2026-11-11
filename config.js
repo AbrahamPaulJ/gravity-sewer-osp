@@ -132,7 +132,7 @@
       "_ladder": "Build-out fractions of the nominal growth. 1.0 is the whole 20-year projection landing in the region; 3.0 is a stress step. Dwellings arrive over 3 to 5 years (28 Sep 2026), so the ladder reads as time as well as size.",
       "rise_floor_mm": 0.5,
       "partition": "listed",
-      "_partition": "Allowed: \"listed\" | \"bisection\". listed: the hand-picked regions in list below (results/sim3/regions), published by Simulation 3 and 3.5. bisection: Kim et al. (2022, J. Environ. Manage. 320:115806) spatial bisection, set under bisection (results/sim3/regions_bisection), published by Simulation 4 and run with --partition bisection. Preview without running: python sim3_regions.py --plan --partition bisection. sim3_analysis.py reads the partition named here unless given --partition.",
+      "_partition": "Allowed: \"listed\" | \"bisection\". listed: the hand-picked regions in list below (results/sim3/regions), published by Simulation 3, 3.5 and 4. bisection: Kim et al. (2022, J. Environ. Manage. 320:115806) spatial bisection, set under bisection (results/sim3/regions_bisection), run but not published by any page. Preview without running: python sim3_regions.py --plan --partition bisection. sim3_analysis.py reads the partition named here unless given --partition.",
       "bisection": {
         "levels": 3,
         "weight": "dwellings",
