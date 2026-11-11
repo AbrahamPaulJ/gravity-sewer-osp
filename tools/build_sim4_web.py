@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """
 build_sim4_web.py - write simulation4/data/sim4.js (window.SIM4), Simulation 4's six-step story, from
-simulation_src/results/sim4/numbers.json (sim4_numbers.py) and the regions file the page loads.
+simulation_src/results/sim4/numbers.json (sim4_numbers.py), float.json (sim4_float.py) and the regions file the page
+loads.
 
-Every number, region list and sensor note in the story, the popups and the Expert panel is read from those
-files, so the words follow the runs. Given the hand-picked regions' numbers.json and simulation3/data/regions.js,
-it reproduces the page as first published, except for two credits, which name no one here.
+Every number, region list and sensor note in the story, the popups and the Expert panel (Play, Tables, Limits) is read
+from those files, so the words follow the runs. Given the hand-picked regions' numbers and float files and
+simulation3/data/regions.js, it reproduces the team's page of 11 Nov 2026, except for two credits, which name no one here.
 
     python tools/build_sim4_web.py            # write simulation4/data/sim4.js
     python tools/build_sim4_web.py --check    # rebuild in memory, compare with the file, exit 1 if different
 
-Run first, from simulation_src/:  SIM35_TARGET=sim4 python sim35_capacity.py && python sim4_numbers.py
+Run first, from simulation_src/:  SIM35_TARGET=sim4 python sim35_capacity.py && python sim4_numbers.py && python sim4_float.py
 On the equal-home regions the Expert panel also compares them with the hand-picked ones, read from
 results/sim4/numbers_handpicked.json (SIM35_TARGET=sim35 python sim4_numbers.py); without that file the comparison is left out.
 """
@@ -19,6 +20,7 @@ import argparse, json, os, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NUMBERS = os.path.join(ROOT, "simulation_src", "results", "sim4", "numbers.json")
 HANDPICKED = os.path.join(ROOT, "simulation_src", "results", "sim4", "numbers_handpicked.json")
+FLOAT = os.path.join(ROOT, "simulation_src", "results", "sim4", "float.json")
 KIM = ("Kim, K., Ban, M. J., Kim, S., Park, M.-H., Stenstrom, M. K. and Kang, J.-H. (2022). Optimal allocation and operation of sewer monitoring sites for wastewater-based disease surveillance: A methodological proposal. Journal of Environmental Management, 320, 115806. doi:10.1016/j.jenvman.2022.115806.")
 REGIONS = os.path.join(ROOT, "simulation4", "data", "regions.js")
 TARGET = os.path.join(ROOT, "simulation4", "data", "sim4.js")
@@ -218,6 +220,8 @@ def expert(nm, reg, ctx):
           f"{fx['wet_rows_by_100']} show a new surcharge and {fx['wet_rows_new_spill_by_100']} a new spill.</p>",
           table(["Manhole", "Runs", "Spilling", "Weather cases", "Growth in", "Sits in"],
                 [[o["manhole"], o["runs"], o["spill_runs"], len(o["cases"]), ", ".join(o["regions"]), ", ".join(o["home_regions"]) or "none"] for o in nm["overloads"]])]
+    h += level_or_float(ctx["float"]) + [""]
+    tables, h = "\n".join(h), []
     u = nm["universe"].values()
     keep = [i for i, v in tri.items() if v["action"] == "leave" and all(b == "room left" for b in v["bands_by_case"].values())]
     keeps = (f"{listing(keep)} alone keeps room in all {ctx['nwet']} wet cases." if len(keep) == 1 else
@@ -257,7 +261,56 @@ def expert(nm, reg, ctx):
           + "and it covers all 8 regions and the stress steps, so its figures differ.</p>",
           "<p>The map's wheel zoom is from the team's buildings demo.</p>",
           *(["<h2>Source for the regions</h2>", f"<p>{KIM}</p>"] if ctx["bisection"] else []), ""]
-    return "\n".join(h)
+    return {"tables": tables, "limits": "\n".join(h)}
+
+
+def bought(c):
+    """'13 floats, $13k', '1 level', '2 level + 6 floats, $56k': the cost shown whenever it is not the budget."""
+    f = c["float"]
+    parts = ([f"{c['level']} level"] if c["level"] else []) + ([f"{f} float{'s' if f != 1 else ''}"] if f else [])
+    return " + ".join(parts) + (f", {kdollars(c['cost'])}" if f else "") if parts else "none"
+
+
+def level_or_float(fl):
+    """Level sensors (the list) against floats only and a free mix, for the same money, from sim4_float.py."""
+    B, P, m = fl["budgets"], fl["scope"]["price"], fl["scope"]["float_margin_mm"]
+    F = [r["float"] for r in B]
+    flat = all((f["worst"], f["average"]) == (F[0]["worst"], F[0]["average"]) for f in F)
+    best = max(F, key=lambda f: (f["worst"], f["average"]))
+    first = next(f for f in F if (f["worst"], f["average"]) == (best["worst"], best["average"]))
+    zero = [c for c, v in F[-1]["per_case"].items() if v == 0]
+    un = [f["unseen_weather"][0] / f["unseen_weather"][1] for f in F]
+    p = (f"Level sensors at {kdollars(P['level'])} each against floats at {kdollars(P['float'])}, both assumed. A float counts when it sits at "
+         f"least {m:.0f} mm above its manhole's normal level, stays quiet on a design wet day, and growth lifts the water past it. ")
+    p += (f"Floats only reach {pct(best['average'])} on average and {pct(best['worst'])} in the worst wet case at any budget: "
+          f"{first['float']} floats ({kdollars(first['cost'])}) already get there" if flat else
+          f"Floats only reach at most {pct(best['average'])} on average and {pct(best['worst'])} in the worst wet case")
+    p += (f", and in {listing([CASE_PHRASE.get(c, c) for c in zero])} no float sees any run. " if zero else ". ")
+    p += f"On weather they were not chosen for they see {'' if len(set(un)) == 1 else 'at most '}{pct(max(un))}. "
+    mixed = [r for r in B if r["mix"]["float"]]
+    p += ("The free mix buys level sensors only at every budget here; " if not mixed else
+          "The free mix buys level sensors only, except at " + listing([f"{kdollars(r['budget'])} ({bought(r['mix'])})" for r in mixed]) + "; ")
+    p += "it maximises the worst case and is not nested, so its sets differ from the list."
+    uw = lambda c: pct(c["unseen_weather"][0] / c["unseen_weather"][1])
+    return ["<h2>Level or float, for the same money</h2>", f"<p>{p}</p>",
+            table(["Budget", "Level, the list: worst / average", "Unseen weather", "Floats only: bought", "Worst / average", "Unseen weather",
+                   "Free mix: bought", "Worst / average", "Unseen weather"],
+                  [[kdollars(r["budget"]), wa(r["level"]["worst"], r["level"]["average"]), uw(r["level"]),
+                    bought(r["float"]), wa(r["float"]["worst"], r["float"]["average"]), uw(r["float"]),
+                    bought(r["mix"]), wa(r["mix"]["worst"], r["mix"]["average"]), uw(r["mix"])] for r in B])]
+
+
+def play(nm, fl):
+    """What the Expert playground scores against: the list, its figures, and the solver's float and mix sets per budget."""
+    lad = sorted(nm["ladder"], key=lambda r: r["k"])
+    B = sorted(fl["budgets"], key=lambda r: r["k"])
+    assert [r["k"] for r in lad] == [r["k"] for r in B], "numbers and float files cover different budgets"
+    col = lambda c: {"level": c["level_at"], "floats": [[f["manhole"], f["height_mm"], f["above_design_normal_mm"]] for f in c["floats"]],
+                     "worst": c["worst"], "average": c["average"], "warned": c["warned"], "cost": c["cost"], "unseen": c["unseen_weather"]}
+    return {"ladder": [r["chosen"] for r in lad], "worst": [r["worst"] for r in lad], "average": [r["average"] for r in lad],
+            "warned": [r["warned_target"] for r in lad], "unseen": [r["level"]["unseen_weather"] for r in B],
+            "warnTotal": nm["warn_universe"]["target"], "targets": nm["targets"], "price": nm["price"], "margin": fl["scope"]["float_margin_mm"],
+            "float": [{"budget": r["budget"], **{c: col(r[c]) for c in ("level", "float", "mix")}} for r in B]}
 
 
 def compare(nm, old, ctx):
@@ -290,8 +343,9 @@ def compare(nm, old, ctx):
 
 
 # ------------------------------------------------------------------------------------------------ build
-def build(numbers, regions, handpicked=HANDPICKED):
-    nm, reg = json.load(open(numbers, encoding="utf-8")), read_js(regions)
+def build(numbers, regions, handpicked=HANDPICKED, floats=FLOAT):
+    nm, reg, fl = json.load(open(numbers, encoding="utf-8")), read_js(regions), json.load(open(floats, encoding="utf-8"))
+    assert fl["scope"]["targets"] == nm["targets"], f"{floats} is for other regions: rerun sim4_float.py after sim4_numbers.py"
     lad1 = next(r for r in nm["ladder"] if r["k"] == 1)
     seed_k = next(f["1.0"] for f in nm["fewest"] if f["scope"] == "Design wet only")
     overlay = [r for r in reg["regions"] if r.get("overlay")]
@@ -299,14 +353,14 @@ def build(numbers, regions, handpicked=HANDPICKED):
            "nwet": len(nm["universe"]), "pipes": 890, "manholes": len(read_js(os.path.join(ROOT, "simulation3", "data", "growth.js"))["chambers"]),
            "draws": 5000, "anchor": round(reg["anchor"]), "bisection": any("bisection" in r or r.get("overlay") for r in reg["regions"]),
            "nparts": len(reg["regions"]) - len(overlay), "overlay": [f"{r['id']}, the {r['name'].split(' (')[0]}" for r in overlay],
-           "overlay_ids": [r["id"] for r in overlay],
+           "overlay_ids": [r["id"] for r in overlay], "float": fl,
            "handpicked": json.load(open(handpicked, encoding="utf-8")) if handpicked and os.path.exists(handpicked) else None}
     k0, rec = len(ctx["seed"]), nm["recommend"]
     out = {"design": DESIGN_TAG, "steps": steps(nm, reg, ctx),
            "popups": {str(k0): popups(nm, ctx, k0), str(rec): popups(nm, ctx, rec)},
            "triage": {i: v["action"] for i, v in nm["triage"].items()},
            "ladder": {str(k0): ctx["seed"], str(rec): next(r for r in nm["ladder"] if r["k"] == rec)["chosen"]},
-           "expert": expert(nm, reg, ctx), "stepCount": 6}
+           "expert": expert(nm, reg, ctx), "play": play(nm, fl), "stepCount": 6}
     return HEADER + "window.SIM4 = " + json.dumps(out, separators=(",", ":"), ensure_ascii=False) + ";\n"
 
 
@@ -316,9 +370,10 @@ def main():
     ap.add_argument("--numbers", default=NUMBERS, help="numbers.json (default simulation_src/results/sim4/numbers.json)")
     ap.add_argument("--regions", default=REGIONS, help="the regions file the page loads (default simulation4/data/regions.js)")
     ap.add_argument("--handpicked", default=HANDPICKED, help="the hand-picked regions' numbers, for the comparison (default results/sim4/numbers_handpicked.json; '' to leave it out)")
+    ap.add_argument("--float", default=FLOAT, dest="floats", help="sim4_float.py's float.json, the same regions as --numbers (default results/sim4/float.json)")
     ap.add_argument("--out", default=TARGET, help="the file to write or check (default simulation4/data/sim4.js)")
     args = ap.parse_args()
-    text = build(args.numbers, args.regions, args.handpicked)
+    text = build(args.numbers, args.regions, args.handpicked, args.floats)
     if args.check:
         same = open(args.out, encoding="utf-8").read() == text
         print(f"{os.path.relpath(args.out, ROOT)}: {'identical' if same else 'DIFFERENT'} to a rebuild")

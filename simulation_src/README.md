@@ -125,10 +125,17 @@ python tools/build_sim3_regions.py --partition bisection --out simulation4/data/
 cd simulation_src
 SIM35_TARGET=sim4 python sim35_capacity.py   # capacity bands on Sim 4's regions, results/sim4/capacity.json
 python sim4_numbers.py                        # results/sim4/numbers.json and numbers_report.txt
+python sim4_float.py                          # level or float for the same money: float.json, float_report.txt
 SIM35_TARGET=sim35 python sim4_numbers.py     # the same on the hand-picked regions: numbers_handpicked.json
+SIM35_TARGET=sim35 python sim4_float.py       # and float_handpicked.json
 cd ..
 python tools/build_sim4_web.py                # simulation4/data/sim4.js; --check compares instead
 ```
+
+The page's Expert panel has Play, Tables and Limits. Play scores any weather case, region, share of homes and
+budget in the browser from the regions file's rows, with the rules of `sim4_numbers.py` and `sim4_float.py`; on the
+story's selection it lands on their figures for all 8 budgets, floats and free mix included. `float_handpicked.json`
+matches the team's published float run on every score; one free-mix set at $150k swaps a level sensor for a tie.
 
 The story's Explore button opens `simulation4/explore.html`: Simulation 3.5's full view on the same
 regions. Its data needs the rest of the Sim 3.5 analysis on Sim 4's regions, then its own builder:

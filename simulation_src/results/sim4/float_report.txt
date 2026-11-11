@@ -1,0 +1,14 @@
+=== Level against float for the same money: target regions, up to 100%, 7 wet cases, 10 mm rule, float margin 25 mm, prices $25,000 and $1,000 (assumed)
+    budget              level (the list)                   floats only                      free mix
+    25,000       0%/ 53% w 8 u 55% 1L+0F    0%/ 35% w 4 u  0% 0L+15F -3      12%/ 42% w 4 u 34% 1L+0F
+    50,000       0%/ 72% w11 u 71% 2L+0F    0%/ 35% w 4 u  0% 0L+15F -2      43%/ 62% w 7 u 39% 2L+0F
+    75,000      44%/ 86% w11 u 71% 3L+0F    0%/ 35% w 4 u  0% 0L+15F -22      62%/ 79% w10 u 55% 2L+6F
+   100,000      69%/ 92% w11 u 76% 4L+0F    0%/ 35% w 4 u  0% 0L+15F -22      81%/ 91% w10 u 71% 4L+0F
+   125,000      81%/ 94% w11 u 77% 5L+0F    0%/ 35% w 4 u  0% 0L+15F -22      88%/ 94% w11 u 76% 5L+0F
+   150,000      88%/ 96% w11 u 78% 6L+0F    0%/ 35% w 4 u  0% 0L+15F -22      94%/ 96% w11 u 78% 6L+0F
+   175,000      94%/ 97% w11 u 78% 7L+0F    0%/ 35% w 4 u  0% 0L+15F -22      94%/ 97% w11 u 79% 7L+0F
+   200,000      94%/ 98% w11 u 79% 8L+0F    0%/ 35% w 4 u  0% 0L+15F -22      94%/ 98% w11 u 79% 8L+0F
+  (worst/average of the 7 wet cases; w = overloads warned of, of 11; u = unseen weather, runs pooled)
+
+  Floats only, at $200,000: 15 floats bought (the solver buys only what adds something). Wet cases where no float sees any run: ['Design wet + age-weighted I&I']. Per case: {'Design wet': 0.1875, 'Beyond design': 0.5263, 'Severe': 0.5, 'Design wet + age-weighted I&I': 0.0, 'Design wet + outside inflow x1.5': 0.5, 'Beyond design + age-weighted I&I': 0.4444, 'Beyond design + outside inflow x1.5': 0.3125}
+  Wet cases in which a chosen float is already tripped before any growth: [0, 1, 2, 3, 4, 5]
