@@ -1,0 +1,98 @@
+Check passed: fullness 1 matches Sim 3's surcharge flags on all 8 baselines.
+
+New homes before the path passes 0.7 of bore (>N = not reached by the top of the ladder, 300%)
+case                                       R1     R2     R3     R4     R5     R6     R7     R8     R9
+Dry                                      >162   >146   >163   >161   >119   >180   >165   >213    946
+Design wet                                 57   >146      8     56   >119   >180     17   >213    679
+Beyond design                              44    104     12   >161   >119   >180   >165   >213  >1455
+Severe                                     22     51   >163   >161   >119   >180   >165   >213   1103
+Design wet + age-weighted I&I              26   >146    104     26   >119   >180   >165   >213    976
+Design wet + outside inflow x1.5           42   >146     20     39   >119   >180     18   >213    719
+Beyond design + age-weighted I&I           91     24     90    150   >119   >180   >165   >213  >1455
+Beyond design + outside inflow x1.5      >162   >146   >163     48   >119    128   >165   >213  >1455
+2041 share (100% build-out)                54     49     54     54     40     60     55     71    485
+
+Manholes on the path already past 0.7 before any growth / manholes with buffer
+Dry                                     0/67   0/56   0/76   0/69   0/43   0/57   0/75   0/66   0/30 
+Design wet                             12/55   2/54   9/67  12/57   0/43   1/56  13/62   3/63   8/22 
+Beyond design                          41/26  28/28  47/29  53/16   3/40  14/43  65/10  22/44  26/4  
+Severe                                 45/22  30/26  52/24  59/10   5/38  18/39  67/8   22/44  26/4  
+Design wet + age-weighted I&I          11/56   2/54   9/67  11/58   0/43   1/56  13/62   3/63   8/22 
+Design wet + outside inflow x1.5       22/45   5/51  21/55  22/47   0/43   2/55  26/49   6/60  11/19 
+Beyond design + age-weighted I&I       40/27  27/29  47/29  51/18   3/40  14/43  65/10  22/44  26/4  
+Beyond design + outside inflow x1.5    44/23  30/26  51/25  57/12   3/40  14/43  66/9   22/44  26/4  
+
+Design wet: sensitivity to the limit, and the manhole that gets there first
+  limit 0.5: R1 >162 (-)  R2 >146 (-)  R3 123 (MH4450391)  R4 >161 (-)  R5 >119 (-)  R6 >180 (-)  R7 >165 (-)  R8 >213 (-)  R9 >1455 (-)
+  limit 0.6: R1 10 (MH4450581)  R2 135 (MH1624138)  R3 12 (MH4450581)  R4 10 (MH4450581)  R5 >119 (-)  R6 135 (MH1624138)  R7 14 (MH4450581)  R8 >213 (-)  R9 167 (MH1624138)
+  limit 0.7: R1 57 (MH4450581)  R2 >146 (-)  R3 8 (MH4450531)  R4 56 (MH4450581)  R5 >119 (-)  R6 >180 (-)  R7 17 (MH4450531)  R8 >213 (-)  R9 679 (MH4454116)
+  limit 1.0: R1 >162 (-)  R2 >146 (-)  R3 58 (MH4450531)  R4 >161 (-)  R5 >119 (-)  R6 >180 (-)  R7 128 (MH4450531)  R8 >213 (-)  R9 >1455 (-)
+
+Is the first manhole stable? Distinct first manholes for each area across the wet cases at 0.7:
+  R1: reached in 6 of 7 wet cases; MH4428268 x1, MH4429411 x1, MH4449785 x1, MH4450581 x1, MH4447394 x1, MH4428636 x1
+  R2: reached in 3 of 7 wet cases; MH4453850 x1, MH4453788 x1, MH4451287 x1
+  R3: reached in 5 of 7 wet cases; MH4429527 x2, MH4450531 x2, MH4450137 x1
+  R4: reached in 5 of 7 wet cases; MH4428583 x1, MH4428836 x1, MH4449785 x1, MH4450581 x1, MH4448853 x1
+  R5: reached in 0 of 7 wet cases; 
+  R6: reached in 1 of 7 wet cases; MH4454629 x1
+  R7: reached in 2 of 7 wet cases; MH4450531 x1, MH4452809 x1
+  R8: reached in 0 of 7 wet cases; 
+  R9: reached in 4 of 7 wet cases; MH4454116 x2, MH4451870 x1, MH1631514 x1
+
+Reading between steps: with an interior step left out, the figure moves by a median of 0% (worst per figure), up to 25%; 69 figures.
+
+Areas reaching the limit within their own 2041 share (100% build-out), of 8:
+  limit 0.5: Dry=0  Design wet=0  Beyond design=3  Severe=1  Design wet+=0  Design wet+=1  Beyond design+=0  Beyond design+=1
+  limit 0.6: Dry=0  Design wet=5  Beyond design=1  Severe=1  Design wet+=3  Design wet+=3  Beyond design+=0  Beyond design+=1
+  limit 0.7: Dry=0  Design wet=2  Beyond design=2  Severe=1  Design wet+=2  Design wet+=4  Beyond design+=1  Beyond design+=1
+  limit 1.0: Dry=0  Design wet=0  Beyond design=2  Severe=2  Design wet+=0  Design wet+=3  Beyond design+=0  Beyond design+=1
+
+=== REPORTED OUTPUT. Baseline error 0.05 of bore, 400 draws. Band: runs out within the 2041 share in at least 80% of draws, room left in at most 20%.
+
+Band at limit 0.7, every case
+case                                      R1    R2    R3    R4    R5    R6    R7    R8    R9
+Dry                                      unc  room   unc   unc  room  room  room  room   unc
+Design wet                               unc  room   OUT   unc  room  room   OUT  room   unc
+Beyond design                            OUT   unc   OUT  over  room  room  over  over  over
+Severe                                   OUT  over  over  over  room  over  over  over  over
+Design wet + age-weighted I&I            unc  room  room   unc  room  room  room  room   unc
+Design wet + outside inflow x1.5         OUT  room   OUT   OUT  room  room   OUT  room   unc
+Beyond design + age-weighted I&I        over   unc  over  over  room  room  over  over  over
+Beyond design + outside inflow x1.5     over   unc  over   unc  room  room  over  over  over
+
+Design wet, per area, limit 0.7: share, homes to first pipe (10th to 90th), mm per 100 homes, band, path already over
+  R1: share 54; 12 to 78; 63 mm; uncertain (p 0.65); already over 18%
+  R2: share 49; 53 to >146; 4 mm; room left (p 0.10); already over 4%
+  R3: share 54; 2 to 59; 91 mm; runs out (p 0.88); already over 12%
+  R4: share 54; 15 to 79; 65 mm; uncertain (p 0.61); already over 17%
+  R5: share 40; >119; 5 mm; room left (p 0.00); already over 0%
+  R6: share 60; >180; 2 mm; room left (p 0.03); already over 2%
+  R7: share 55; 6 to 71; 43 mm; runs out (p 0.86); already over 17%
+  R8: share 71; >213; 2 mm; room left (p 0.00); already over 4%
+  R9: share 485; 90 to 1271; 7 mm; uncertain (p 0.43); already over 27%
+
+Does the band survive the choice of limit? Design wet:
+  limit 0.5: R1 unc R2 over R3 unc R4 over R5 room R6 room R7 over R8 over R9 unc
+  limit 0.6: R1 unc R2 room R3 unc R4 unc R5 room R6 unc R7 unc R8 room R9 OUT
+  limit 0.7: R1 unc R2 room R3 OUT R4 unc R5 room R6 room R7 OUT R8 room R9 unc
+
+How far does each area's band hold across the wet cases, limit 0.7 (runs out / uncertain / room left / already over, of 7):
+  R1: 3 / 2 / 0 / 2
+  R2: 0 / 3 / 3 / 1
+  R3: 3 / 0 / 1 / 3
+  R4: 1 / 3 / 0 / 3
+  R5: 0 / 0 / 7 / 0
+  R6: 0 / 0 / 6 / 1
+  R7: 2 / 0 / 1 / 4
+  R8: 0 / 0 / 3 / 4
+  R9: 0 / 3 / 0 / 4
+
+Separately, whole suburb at once (Sim 3-e's runs, not yet part of Sim 3.5): 485 homes = 100%
+  Dry                                    limit 0.7: 388 homes (MH4452189); already over 0 of 328
+  Design wet                             limit 0.7: 23 homes (MH4450531); already over 15 of 328
+  Beyond design                          limit 0.7: 46 homes (MH4429527); already over 121 of 328
+  Severe                                 limit 0.7: 166 homes (MH4428268); already over 144 of 328
+  Design wet + age-weighted I&I          limit 0.7: 99 homes (MH4449785); already over 14 of 328
+  Design wet + outside inflow x1.5       limit 0.7: 29 homes (MH4452809); already over 37 of 328
+  Beyond design + age-weighted I&I       limit 0.7: 58 homes (MH4453850); already over 117 of 328
+  Beyond design + outside inflow x1.5    limit 0.7: 199 homes (MH4428583); already over 134 of 328

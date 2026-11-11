@@ -15,7 +15,7 @@ import json, os, statistics
 import numpy as np
 import sim35_capacity as C
 
-reg, geo = C.read_js(os.path.join(C.DATA, "regions.js")), C.read_js(os.path.join(C.DATA, "catchment.js"))
+reg, geo = C.read_js(C.REGIONS), C.read_js(os.path.join(C.DATA, "catchment.js"))
 ch = C.chamber_names(); gm = C.geometry(geo, ch); down = C.downstream(geo, ch)
 tags = [c["tag"] for c in reg["cases"]]; label = {c["tag"]: c["label"] for c in reg["cases"]}
 regions = reg["regions"]; ids = [r["id"] for r in regions]

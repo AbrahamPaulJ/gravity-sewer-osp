@@ -25,6 +25,7 @@
     "observability": true,
     "sim1": false,
     "sim2": false,
+    "sim4": true,
     "sim35": true,
     "coverage": true,
     "sim3": true,
@@ -130,6 +131,14 @@
       "ladder": [0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0],
       "_ladder": "Build-out fractions of the nominal growth. 1.0 is the whole 20-year projection landing in the region; 3.0 is a stress step. Dwellings arrive over 3 to 5 years (28 Sep 2026), so the ladder reads as time as well as size.",
       "rise_floor_mm": 0.5,
+      "partition": "listed",
+      "_partition": "Allowed: \"listed\" | \"bisection\". listed: the hand-picked regions in list below (results/sim3/regions), published by Simulation 3 and 3.5. bisection: Kim et al. (2022, J. Environ. Manage. 320:115806) spatial bisection, set under bisection (results/sim3/regions_bisection), published by Simulation 4 and run with --partition bisection. Preview without running: python sim3_regions.py --plan --partition bisection. sim3_analysis.py reads the partition named here unless given --partition.",
+      "bisection": {
+        "levels": 3,
+        "weight": "dwellings",
+        "corridor": true,
+        "_note": "Rounds of splitting: every part is split once per round, so 3 rounds give 8 regions. Each cut is the pipe, found by scanning every pipe in the part, whose upstream side and downstream remainder differ least in weight. Kim et al. balance building footprint area and allow population; 'dwellings' (connected properties, the model's population proxy) is used because a region's infill growth is set from it, so every region gets about the same growth; 'length' (pipe length) is the alternative. corridor true adds the Walkerville Terrace corridor as one more, overlapping scenario."
+      },
       "list": [
         { "id": "R1", "name": "Upper main line, north-east: the 71 manholes above MH4450193", "exit_pipe": 4433721 },
         { "id": "R2", "name": "East branch joining the trunk at pipe 4433482", "exit_pipe": 4433482 },

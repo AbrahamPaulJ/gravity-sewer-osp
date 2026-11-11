@@ -144,12 +144,20 @@ def main():
     import sim3_regions
     net3, probe3, pipes3 = sim3_regions._domain()
     regs = sim3_regions.regions(net3, probe3, pipes3)
-    allp = [i for r in regs for i in r["pipes"]]
+    allp = [i for r in regs if not r.get("overlay") for i in r["pipes"]]
     check("regions: disjoint and together exactly the domain's pipes",
           len(allp) == len(set(allp)) == len(pipes3), (len(allp), len(set(allp)), len(pipes3)))
     r1 = next(r for r in regs if r["id"] == "R1")
-    check("regions: R1 is the 71-manhole segment above MH4450193",
-          r1["n_manholes"] == 71 and 4450193 in r1["manholes"], r1["n_manholes"])
+    if sim3_regions.PARTITION == "listed":
+        check("regions: R1 is the 71-manhole segment above MH4450193",
+              r1["n_manholes"] == 71 and 4450193 in r1["manholes"], r1["n_manholes"])
+    # The bisection partition (Kim et al. 2022): 2^levels disjoint parts covering the domain,
+    # each a tree cut (upstream of its exit pipe, or the outlet side), no part empty.
+    bis = [r for r in sim3_regions.regions(net3, probe3, pipes3, partition="bisection") if not r.get("overlay")]
+    bp = [i for r in bis for i in r["pipes"]]
+    check("regions (bisection): 2^levels non-empty parts, disjoint, exactly the domain's pipes",
+          len(bis) == 2 ** int(sim3_regions.BCFG.get("levels", 3)) and all(r["pipes"] for r in bis)
+          and len(bp) == len(set(bp)) == len(pipes3), (len(bis), len(bp), len(set(bp)), len(pipes3)))
     g = sim3_regions.growth_nodes(r1, 0.5, net3)
     check("regions: a 50% step spreads exactly half the nominal growth over the region's loaded nodes",
           abs(sum(g.values()) - 0.5 * r1["nominal_dwellings"]) < 1e-6 and len(g) > 20

@@ -9,6 +9,8 @@ they were run on and every run's output, so each result can be reproduced or che
 | Simulation 2, growth (superseded) | `catchment.py`, `growth_grid.py` | `python growth_grid.py` |
 | Simulation 2.5, growth and sensor placement | `sim25.py`, `sim25_grid.py` | see below |
 | Simulation 3, area growth on settled runs | `sim3_regions.py`, `sim3_analysis.py`, `sim25_grid.py` | see below |
+| Simulation 3.5, warning, room for homes, level or float | `sim35_*.py`, on Simulation 3's runs | see below |
+| Simulation 4, Simulation 3.5 on equal-home regions | `sim3_regions.py --partition bisection`, `sim35_*.py` | see below |
 
 ## Setup
 
@@ -58,8 +60,19 @@ python sim3_analysis.py --risk-only                    # the optional risk-weigh
 ```
 
 Outputs land in `results/sim3/regions/`: one folder per case with `summary.json`, plus
-`analysis.json` and `report.md`. The exact placement needs PuLP with the HiGHS solver
-(`highspy`); without HiGHS it falls back to PuLP's bundled CBC.
+`analysis.json` and `report.md`.
+
+These are the hand-picked regions of 21 Oct 2026 (`simulation.regions.list`, partition `listed`,
+the default in `config.js`). Simulation 4 uses the equal-home regions instead; see below. Rebuild
+the Sim 3 page's data from the repository root:
+
+```
+python tools/build_sim3_regions.py            # simulation3/data/regions.js
+python tools/build_sim3_regions.py --check    # rebuild in memory and compare
+```
+
+The exact placement needs PuLP with the HiGHS solver (`highspy`); without HiGHS it falls back to
+PuLP's bundled CBC.
 
 Greenfield (new dwellings at one manhole, the Sim 2.5 grid re-run on the gate):
 
@@ -71,6 +84,49 @@ python sim25_grid.py --cases all --only ii0.25 --sizes 80,150,700 --workers 6 # 
 Outputs land in `results/sim25/grid_whole/`, one folder per case. On the development machine
 a whole-area run takes about 20 s; the infill sweep took a few hours on 6 workers, Severe
 greenfield about 4 hours. Use `--resume` after an interruption.
+
+## Simulation 3.5
+
+Runs no SWMM: `sim35_capacity.py`, `sim35_capacity_check.py`, `sim35_mix.py`, `sim35_float_check.py`,
+`sim35_coverage.py` and `sim35_greenfield_curve.py` re-read the Sim 3 page's
+`simulation3/data/regions.js` and write `results/sim35/`. The page's data file
+(`simulation35/data/sim35.js`) was built by a builder that is not in the repository; its warn sets
+came from the method now in `sim35_warn.py`, which reproduces them exactly when run unset.
+
+## Simulation 4
+
+Simulation 3.5's analysis on new regions: the spatial bisection method of Kim et al. (2022,
+J. Environ. Manage. 320:115806). Each round cuts every part at the pipe whose upstream side and
+downstream remainder hold the most nearly equal number of existing dwellings; 3 rounds give 8
+regions, plus the Walkerville Terrace corridor as a ninth, overlapping scenario
+(`simulation.regions.bisection` in `config.js`). The page has its own regions file and results, so
+Simulations 3 and 3.5 are unchanged.
+
+SWMM runs (on an Apple-silicon Mac the 504-run sweep took 45 min on 9 workers), from `simulation_src/`:
+
+```
+python sim3_regions.py --plan --partition bisection                  # the regions, nothing run
+python sim3_regions.py --cases all --partition bisection --workers 9 # results/sim3/regions_bisection/
+python sim3_analysis.py --partition bisection                        # its analysis.json and report.md
+```
+
+Then, from the repository root, the regions file, the Sim 3.5 analysis for Simulation 4 (no SWMM, a
+few minutes) and the page's data:
+
+```
+python tools/build_sim3_regions.py --partition bisection --out simulation4/data/regions.js
+cd simulation_src && export SIM35_TARGET=sim4
+python sim35_capacity.py && python sim35_capacity_check.py && python sim35_mix.py
+python sim35_warn.py && python sim35_float_check.py && python sim35_coverage.py
+unset SIM35_TARGET && cd ..
+python tools/build_sim4_web.py            # simulation4/data/sim4.js; --check compares instead
+```
+
+`SIM35_TARGET=sim4` makes the Sim 3.5 scripts read `simulation4/data/regions.js` and write
+`results/sim4/`. The page's Findings, Assumptions and Limits text is written by the builder with
+every number and region list read from the results. The greenfield curve is shared with Sim 3.5,
+since no region changes it. `mix.json` can differ from run to run where the solver has equally good
+answers (same scores, different float counts).
 
 ## Rebuild the Sim 2.5 browser page
 
