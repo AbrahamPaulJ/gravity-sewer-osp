@@ -22,7 +22,7 @@
 window.Sim35UI = (function () {
   const $ = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
-  const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&lt;" }[c] || c));
+  const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] || c));
   const pct = x => Math.round(x * 100) + "%";
   const row2 = (k, v) => '<div class="fact"><span>' + esc(k) + "</span><span>" + v + "</span></div>";
 
@@ -951,6 +951,8 @@ window.Sim35UI = (function () {
         continue;
       }
       closeT();
+      // A line that is already HTML (the page's own text, e.g. the assumptions' <h3> and <p>) is kept as it is.
+      if (/^<\/?(h[1-6]|p|div|ul|ol|li|table|thead|tbody|tr|th|td|br|hr)\b[^>]*>/i.test(line)) { out.push(line); continue; }
       const h = line.match(/^(#{1,4})\s+(.*)$/);
       if (h) out.push("<h" + h[1].length + ">" + inline(h[2]) + "</h" + h[1].length + ">");
       else if (/^[-*]\s+/.test(line)) out.push("<li>" + inline(line.replace(/^[-*]\s+/, "")) + "</li>");

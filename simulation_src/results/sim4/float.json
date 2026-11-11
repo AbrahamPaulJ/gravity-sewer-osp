@@ -2,9 +2,10 @@
  "scope": {
   "targets": [
    "R1",
-   "R2",
+   "R3",
    "R4",
-   "R8"
+   "R7",
+   "R9"
   ],
   "up_to": 1.0,
   "rule_mm": 10,
@@ -13,7 +14,7 @@
    "level": 25000,
    "float": 1000
   },
-  "warn_total": 12
+  "warn_total": 11
  },
  "budgets": [
   {
@@ -21,36 +22,36 @@
    "budget": 25000,
    "level": {
     "level_at": [
-     "MH4450581"
+     "MH4450531"
     ],
     "floats": [],
     "level": 1,
     "float": 0,
     "cost": 25000,
     "per_case": {
-     "Design wet": 0.9167,
-     "Beyond design": 0.6875,
-     "Severe": 0.0,
+     "Design wet": 1.0,
+     "Beyond design": 0.7895,
+     "Severe": 0.1875,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.8,
-     "Beyond design + age-weighted I&I": 0.7143,
-     "Beyond design + outside inflow x1.5": 0.1667
+     "Design wet + outside inflow x1.5": 0.85,
+     "Beyond design + age-weighted I&I": 0.7222,
+     "Beyond design + outside inflow x1.5": 0.1875
     },
     "worst": 0.0,
-    "average": 0.4693,
-    "warned": 9,
+    "average": 0.5338,
+    "warned": 8,
     "unseen_weather": [
-     36,
-     92
+     66,
+     119
     ],
     "unseen_by_case": {
-     "Design wet": 0.0,
-     "Beyond design": 0.6875,
-     "Severe": 0.0,
+     "Design wet": 0.9375,
+     "Beyond design": 0.7895,
+     "Severe": 0.1875,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.8,
-     "Beyond design + age-weighted I&I": 0.7143,
-     "Beyond design + outside inflow x1.5": 0.25
+     "Design wet + outside inflow x1.5": 0.85,
+     "Beyond design + age-weighted I&I": 0.7222,
+     "Beyond design + outside inflow x1.5": 0.1875
     }
    },
    "float": {
@@ -70,8 +71,14 @@
      },
      {
       "manhole": "MH4429411",
-      "height_mm": 45.0,
-      "above_design_normal_mm": 36.0,
+      "height_mm": 250,
+      "above_design_normal_mm": 241,
+      "tripped_before_growth": 2
+     },
+     {
+      "manhole": "MH4429499",
+      "height_mm": 2150,
+      "above_design_normal_mm": 2062,
       "tripped_before_growth": 3
      },
      {
@@ -123,6 +130,12 @@
       "tripped_before_growth": 5
      },
      {
+      "manhole": "MH4451945",
+      "height_mm": 135.0,
+      "above_design_normal_mm": 68.0,
+      "tripped_before_growth": 1
+     },
+     {
       "manhole": "MH4456553",
       "height_mm": 950,
       "above_design_normal_mm": 691,
@@ -136,25 +149,25 @@
      }
     ],
     "level": 0,
-    "float": 13,
-    "cost": 13000,
+    "float": 15,
+    "cost": 15000,
     "per_case": {
-     "Design wet": 0.4167,
-     "Beyond design": 0.5625,
-     "Severe": 0.6154,
+     "Design wet": 0.1875,
+     "Beyond design": 0.5263,
+     "Severe": 0.5,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.5333,
-     "Beyond design + age-weighted I&I": 0.5714,
-     "Beyond design + outside inflow x1.5": 0.3333
+     "Design wet + outside inflow x1.5": 0.5,
+     "Beyond design + age-weighted I&I": 0.4444,
+     "Beyond design + outside inflow x1.5": 0.3125
     },
     "worst": 0.0,
-    "average": 0.4332,
-    "warned": 6,
-    "pruned": 5,
+    "average": 0.353,
+    "warned": 4,
+    "pruned": 3,
     "status": 0,
     "unseen_weather": [
      0,
-     92
+     119
     ],
     "unseen_by_case": {
      "Design wet": 0.0,
@@ -168,38 +181,38 @@
    },
    "mix": {
     "level_at": [
-     "MH4452527"
+     "MH4452189"
     ],
     "floats": [],
     "level": 1,
     "float": 0,
     "cost": 25000,
     "per_case": {
-     "Design wet": 0.25,
-     "Beyond design": 0.5625,
-     "Severe": 0.2308,
-     "Design wet + age-weighted I&I": 0.3,
-     "Design wet + outside inflow x1.5": 0.4667,
-     "Beyond design + age-weighted I&I": 0.5714,
-     "Beyond design + outside inflow x1.5": 0.25
+     "Design wet": 0.4375,
+     "Beyond design": 0.6842,
+     "Severe": 0.125,
+     "Design wet + age-weighted I&I": 0.4286,
+     "Design wet + outside inflow x1.5": 0.55,
+     "Beyond design + age-weighted I&I": 0.5556,
+     "Beyond design + outside inflow x1.5": 0.125
     },
-    "worst": 0.2308,
-    "average": 0.3759,
-    "warned": 5,
+    "worst": 0.125,
+    "average": 0.4151,
+    "warned": 4,
     "pruned": 0,
     "status": 0,
     "unseen_weather": [
-     33,
-     92
+     40,
+     119
     ],
     "unseen_by_case": {
-     "Design wet": 0.25,
-     "Beyond design": 0.5625,
-     "Severe": 0.2308,
+     "Design wet": 0.125,
+     "Beyond design": 0.6842,
+     "Severe": 0.125,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.4667,
-     "Beyond design + age-weighted I&I": 0.5714,
-     "Beyond design + outside inflow x1.5": 0.25
+     "Design wet + outside inflow x1.5": 0.55,
+     "Beyond design + age-weighted I&I": 0.5556,
+     "Beyond design + outside inflow x1.5": 0.125
     }
    }
   },
@@ -208,8 +221,8 @@
    "budget": 50000,
    "level": {
     "level_at": [
-     "MH4450531",
-     "MH4450581"
+     "MH4448345",
+     "MH4450531"
     ],
     "floats": [],
     "level": 2,
@@ -217,28 +230,28 @@
     "cost": 50000,
     "per_case": {
      "Design wet": 1.0,
-     "Beyond design": 0.75,
-     "Severe": 0.2308,
+     "Beyond design": 0.9474,
+     "Severe": 0.4375,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.7857,
-     "Beyond design + outside inflow x1.5": 0.4167
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.625
     },
     "worst": 0.0,
-    "average": 0.5785,
-    "warned": 9,
+    "average": 0.7157,
+    "warned": 11,
     "unseen_weather": [
-     54,
-     92
+     85,
+     119
     ],
     "unseen_by_case": {
-     "Design wet": 0.8333,
-     "Beyond design": 0.75,
-     "Severe": 0.2308,
+     "Design wet": 0.9375,
+     "Beyond design": 0.9474,
+     "Severe": 0.4375,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.7857,
-     "Beyond design + outside inflow x1.5": 0.4167
+     "Design wet + outside inflow x1.5": 0.85,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.625
     }
    },
    "float": {
@@ -258,8 +271,14 @@
      },
      {
       "manhole": "MH4429411",
-      "height_mm": 45.0,
-      "above_design_normal_mm": 36.0,
+      "height_mm": 250,
+      "above_design_normal_mm": 241,
+      "tripped_before_growth": 2
+     },
+     {
+      "manhole": "MH4429499",
+      "height_mm": 2150,
+      "above_design_normal_mm": 2062,
       "tripped_before_growth": 3
      },
      {
@@ -311,6 +330,12 @@
       "tripped_before_growth": 5
      },
      {
+      "manhole": "MH4451945",
+      "height_mm": 135.0,
+      "above_design_normal_mm": 68.0,
+      "tripped_before_growth": 1
+     },
+     {
       "manhole": "MH4456553",
       "height_mm": 950,
       "above_design_normal_mm": 691,
@@ -324,25 +349,25 @@
      }
     ],
     "level": 0,
-    "float": 13,
-    "cost": 13000,
+    "float": 15,
+    "cost": 15000,
     "per_case": {
-     "Design wet": 0.4167,
-     "Beyond design": 0.5625,
-     "Severe": 0.6154,
+     "Design wet": 0.1875,
+     "Beyond design": 0.5263,
+     "Severe": 0.5,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.5333,
-     "Beyond design + age-weighted I&I": 0.5714,
-     "Beyond design + outside inflow x1.5": 0.3333
+     "Design wet + outside inflow x1.5": 0.5,
+     "Beyond design + age-weighted I&I": 0.4444,
+     "Beyond design + outside inflow x1.5": 0.3125
     },
     "worst": 0.0,
-    "average": 0.4332,
-    "warned": 6,
-    "pruned": 4,
+    "average": 0.353,
+    "warned": 4,
+    "pruned": 2,
     "status": 0,
     "unseen_weather": [
      0,
-     92
+     119
     ],
     "unseen_by_case": {
      "Design wet": 0.0,
@@ -356,7 +381,7 @@
    },
    "mix": {
     "level_at": [
-     "MH4428636",
+     "MH4449882",
      "MH4452189"
     ],
     "floats": [],
@@ -364,30 +389,30 @@
     "float": 0,
     "cost": 50000,
     "per_case": {
-     "Design wet": 0.5833,
-     "Beyond design": 0.6875,
-     "Severe": 0.5385,
-     "Design wet + age-weighted I&I": 0.7,
-     "Design wet + outside inflow x1.5": 0.5333,
-     "Beyond design + age-weighted I&I": 0.6429,
-     "Beyond design + outside inflow x1.5": 0.5833
+     "Design wet": 0.4375,
+     "Beyond design": 0.9474,
+     "Severe": 0.4375,
+     "Design wet + age-weighted I&I": 0.4286,
+     "Design wet + outside inflow x1.5": 0.55,
+     "Beyond design + age-weighted I&I": 0.9444,
+     "Beyond design + outside inflow x1.5": 0.5625
     },
-    "worst": 0.5333,
-    "average": 0.6098,
-    "warned": 8,
+    "worst": 0.4286,
+    "average": 0.6154,
+    "warned": 7,
     "pruned": 0,
     "status": 0,
     "unseen_weather": [
-     41,
-     92
+     47,
+     119
     ],
     "unseen_by_case": {
-     "Design wet": 0.5833,
-     "Beyond design": 0.6875,
-     "Severe": 0.4615,
+     "Design wet": 0.4375,
+     "Beyond design": 0.7368,
+     "Severe": 0.3125,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.5333,
-     "Beyond design + age-weighted I&I": 0.6429,
+     "Design wet + outside inflow x1.5": 0.55,
+     "Beyond design + age-weighted I&I": 0.5556,
      "Beyond design + outside inflow x1.5": 0.0
     }
    }
@@ -397,8 +422,8 @@
    "budget": 75000,
    "level": {
     "level_at": [
+     "MH4448345",
      "MH4450531",
-     "MH4450581",
      "MH4450922"
     ],
     "floats": [],
@@ -407,28 +432,28 @@
     "cost": 75000,
     "per_case": {
      "Design wet": 1.0,
-     "Beyond design": 0.75,
-     "Severe": 0.2308,
+     "Beyond design": 0.9474,
+     "Severe": 0.4375,
      "Design wet + age-weighted I&I": 1.0,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.7857,
-     "Beyond design + outside inflow x1.5": 0.4167
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.625
     },
-    "worst": 0.2308,
-    "average": 0.7214,
-    "warned": 9,
+    "worst": 0.4375,
+    "average": 0.8586,
+    "warned": 11,
     "unseen_weather": [
-     55,
-     92
+     85,
+     119
     ],
     "unseen_by_case": {
-     "Design wet": 0.8333,
-     "Beyond design": 0.75,
-     "Severe": 0.2308,
+     "Design wet": 0.9375,
+     "Beyond design": 0.9474,
+     "Severe": 0.4375,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.8571,
-     "Beyond design + outside inflow x1.5": 0.4167
+     "Design wet + outside inflow x1.5": 0.85,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.625
     }
    },
    "float": {
@@ -448,8 +473,14 @@
      },
      {
       "manhole": "MH4429411",
-      "height_mm": 45.0,
-      "above_design_normal_mm": 36.0,
+      "height_mm": 250,
+      "above_design_normal_mm": 241,
+      "tripped_before_growth": 2
+     },
+     {
+      "manhole": "MH4429499",
+      "height_mm": 2150,
+      "above_design_normal_mm": 2062,
       "tripped_before_growth": 3
      },
      {
@@ -501,6 +532,12 @@
       "tripped_before_growth": 5
      },
      {
+      "manhole": "MH4451945",
+      "height_mm": 135.0,
+      "above_design_normal_mm": 68.0,
+      "tripped_before_growth": 1
+     },
+     {
       "manhole": "MH4456553",
       "height_mm": 950,
       "above_design_normal_mm": 691,
@@ -514,25 +551,25 @@
      }
     ],
     "level": 0,
-    "float": 13,
-    "cost": 13000,
+    "float": 15,
+    "cost": 15000,
     "per_case": {
-     "Design wet": 0.4167,
-     "Beyond design": 0.5625,
-     "Severe": 0.6154,
+     "Design wet": 0.1875,
+     "Beyond design": 0.5263,
+     "Severe": 0.5,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.5333,
-     "Beyond design + age-weighted I&I": 0.5714,
-     "Beyond design + outside inflow x1.5": 0.3333
+     "Design wet + outside inflow x1.5": 0.5,
+     "Beyond design + age-weighted I&I": 0.4444,
+     "Beyond design + outside inflow x1.5": 0.3125
     },
     "worst": 0.0,
-    "average": 0.4332,
-    "warned": 6,
-    "pruned": 14,
+    "average": 0.353,
+    "warned": 4,
+    "pruned": 22,
     "status": 0,
     "unseen_weather": [
      0,
-     92
+     119
     ],
     "unseen_by_case": {
      "Design wet": 0.0,
@@ -547,39 +584,75 @@
    "mix": {
     "level_at": [
      "MH4428636",
-     "MH4450531",
-     "MH4452189"
+     "MH4450922"
     ],
-    "floats": [],
-    "level": 3,
-    "float": 0,
-    "cost": 75000,
+    "floats": [
+     {
+      "manhole": "MH4429411",
+      "height_mm": 250,
+      "above_design_normal_mm": 241,
+      "tripped_before_growth": 2
+     },
+     {
+      "manhole": "MH4429499",
+      "height_mm": 2150,
+      "above_design_normal_mm": 2062,
+      "tripped_before_growth": 3
+     },
+     {
+      "manhole": "MH4446824",
+      "height_mm": 650,
+      "above_design_normal_mm": 613,
+      "tripped_before_growth": 0
+     },
+     {
+      "manhole": "MH4451945",
+      "height_mm": 135.0,
+      "above_design_normal_mm": 68.0,
+      "tripped_before_growth": 1
+     },
+     {
+      "manhole": "MH4456553",
+      "height_mm": 950,
+      "above_design_normal_mm": 691,
+      "tripped_before_growth": 0
+     },
+     {
+      "manhole": "MH5241467",
+      "height_mm": 1150,
+      "above_design_normal_mm": 1126,
+      "tripped_before_growth": 1
+     }
+    ],
+    "level": 2,
+    "float": 6,
+    "cost": 56000,
     "per_case": {
-     "Design wet": 0.9167,
-     "Beyond design": 0.75,
-     "Severe": 0.7692,
-     "Design wet + age-weighted I&I": 0.7,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.7857,
-     "Beyond design + outside inflow x1.5": 0.8333
+     "Design wet": 0.9375,
+     "Beyond design": 0.7895,
+     "Severe": 0.625,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 0.8,
+     "Beyond design + age-weighted I&I": 0.7778,
+     "Beyond design + outside inflow x1.5": 0.625
     },
-    "worst": 0.7,
-    "average": 0.8031,
+    "worst": 0.625,
+    "average": 0.7935,
     "warned": 10,
     "pruned": 0,
     "status": 0,
     "unseen_weather": [
-     62,
-     92
+     66,
+     119
     ],
     "unseen_by_case": {
-     "Design wet": 0.5833,
-     "Beyond design": 0.75,
-     "Severe": 0.6154,
-     "Design wet + age-weighted I&I": 0.1,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.7857,
-     "Beyond design + outside inflow x1.5": 0.8333
+     "Design wet": 0.875,
+     "Beyond design": 0.7368,
+     "Severe": 0.5625,
+     "Design wet + age-weighted I&I": 0.0714,
+     "Design wet + outside inflow x1.5": 0.8,
+     "Beyond design + age-weighted I&I": 0.6667,
+     "Beyond design + outside inflow x1.5": 0.0
     }
    }
   },
@@ -590,230 +663,36 @@
     "level_at": [
      "MH4448345",
      "MH4450531",
-     "MH4450581",
-     "MH4450922"
-    ],
-    "floats": [],
-    "level": 4,
-    "float": 0,
-    "cost": 100000,
-    "per_case": {
-     "Design wet": 1.0,
-     "Beyond design": 0.8125,
-     "Severe": 0.5385,
-     "Design wet + age-weighted I&I": 1.0,
-     "Design wet + outside inflow x1.5": 1.0,
-     "Beyond design + age-weighted I&I": 0.8571,
-     "Beyond design + outside inflow x1.5": 0.5833
-    },
-    "worst": 0.5385,
-    "average": 0.8273,
-    "warned": 12,
-    "unseen_weather": [
-     62,
-     92
-    ],
-    "unseen_by_case": {
-     "Design wet": 0.8333,
-     "Beyond design": 0.8125,
-     "Severe": 0.5385,
-     "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.8571,
-     "Beyond design + outside inflow x1.5": 0.5833
-    }
-   },
-   "float": {
-    "level_at": [],
-    "floats": [
-     {
-      "manhole": "MH4428268",
-      "height_mm": 90.0,
-      "above_design_normal_mm": 53.0,
-      "tripped_before_growth": 0
-     },
-     {
-      "manhole": "MH4429268",
-      "height_mm": 143.0,
-      "above_design_normal_mm": 133.0,
-      "tripped_before_growth": 3
-     },
-     {
-      "manhole": "MH4429411",
-      "height_mm": 45.0,
-      "above_design_normal_mm": 36.0,
-      "tripped_before_growth": 3
-     },
-     {
-      "manhole": "MH4429527",
-      "height_mm": 120.0,
-      "above_design_normal_mm": 102.0,
-      "tripped_before_growth": 2
-     },
-     {
-      "manhole": "MH4446824",
-      "height_mm": 650,
-      "above_design_normal_mm": 613,
-      "tripped_before_growth": 0
-     },
-     {
-      "manhole": "MH4448419",
-      "height_mm": 325,
-      "above_design_normal_mm": 177,
-      "tripped_before_growth": 4
-     },
-     {
-      "manhole": "MH4448762",
-      "height_mm": 1150,
-      "above_design_normal_mm": 1120,
-      "tripped_before_growth": 3
-     },
-     {
-      "manhole": "MH4449503",
-      "height_mm": 250,
-      "above_design_normal_mm": 227,
-      "tripped_before_growth": 1
-     },
-     {
-      "manhole": "MH4449977",
-      "height_mm": 150.0,
-      "above_design_normal_mm": 130.0,
-      "tripped_before_growth": 2
-     },
-     {
-      "manhole": "MH4450137",
-      "height_mm": 120.0,
-      "above_design_normal_mm": 74.0,
-      "tripped_before_growth": 4
-     },
-     {
-      "manhole": "MH4450531",
-      "height_mm": 135.0,
-      "above_design_normal_mm": 37.0,
-      "tripped_before_growth": 5
-     },
-     {
-      "manhole": "MH4456553",
-      "height_mm": 950,
-      "above_design_normal_mm": 691,
-      "tripped_before_growth": 0
-     },
-     {
-      "manhole": "MH5241467",
-      "height_mm": 1150,
-      "above_design_normal_mm": 1126,
-      "tripped_before_growth": 1
-     }
-    ],
-    "level": 0,
-    "float": 13,
-    "cost": 13000,
-    "per_case": {
-     "Design wet": 0.4167,
-     "Beyond design": 0.5625,
-     "Severe": 0.6154,
-     "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.5333,
-     "Beyond design + age-weighted I&I": 0.5714,
-     "Beyond design + outside inflow x1.5": 0.3333
-    },
-    "worst": 0.0,
-    "average": 0.4332,
-    "warned": 6,
-    "pruned": 30,
-    "status": 0,
-    "unseen_weather": [
-     0,
-     92
-    ],
-    "unseen_by_case": {
-     "Design wet": 0.0,
-     "Beyond design": 0.0,
-     "Severe": 0.0,
-     "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.0,
-     "Beyond design + age-weighted I&I": 0.0,
-     "Beyond design + outside inflow x1.5": 0.0
-    }
-   },
-   "mix": {
-    "level_at": [
-     "MH4429013",
-     "MH4450391",
-     "MH4450922",
-     "MH4454116"
-    ],
-    "floats": [],
-    "level": 4,
-    "float": 0,
-    "cost": 100000,
-    "per_case": {
-     "Design wet": 0.8333,
-     "Beyond design": 0.8125,
-     "Severe": 0.9231,
-     "Design wet + age-weighted I&I": 1.0,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.9286,
-     "Beyond design + outside inflow x1.5": 0.9167
-    },
-    "worst": 0.8125,
-    "average": 0.8973,
-    "warned": 11,
-    "pruned": 0,
-    "status": 0,
-    "unseen_weather": [
-     67,
-     92
-    ],
-    "unseen_by_case": {
-     "Design wet": 0.8333,
-     "Beyond design": 0.8125,
-     "Severe": 0.6923,
-     "Design wet + age-weighted I&I": 0.1,
-     "Design wet + outside inflow x1.5": 0.7333,
-     "Beyond design + age-weighted I&I": 0.8571,
-     "Beyond design + outside inflow x1.5": 0.9167
-    }
-   }
-  },
-  {
-   "k": 5,
-   "budget": 125000,
-   "level": {
-    "level_at": [
-     "MH4448345",
-     "MH4450531",
-     "MH4450581",
      "MH4450922",
      "MH4452994"
     ],
     "floats": [],
-    "level": 5,
+    "level": 4,
     "float": 0,
-    "cost": 125000,
+    "cost": 100000,
     "per_case": {
      "Design wet": 1.0,
-     "Beyond design": 0.8125,
-     "Severe": 0.8462,
+     "Beyond design": 0.9474,
+     "Severe": 0.6875,
      "Design wet + age-weighted I&I": 1.0,
      "Design wet + outside inflow x1.5": 1.0,
-     "Beyond design + age-weighted I&I": 0.8571,
-     "Beyond design + outside inflow x1.5": 0.8333
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.8125
     },
-    "worst": 0.8125,
-    "average": 0.907,
-    "warned": 12,
+    "worst": 0.6875,
+    "average": 0.9211,
+    "warned": 11,
     "unseen_weather": [
-     68,
-     92
+     91,
+     119
     ],
     "unseen_by_case": {
-     "Design wet": 0.8333,
-     "Beyond design": 0.8125,
-     "Severe": 0.8462,
+     "Design wet": 0.9375,
+     "Beyond design": 0.9474,
+     "Severe": 0.6875,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.8571,
+     "Design wet + outside inflow x1.5": 0.85,
+     "Beyond design + age-weighted I&I": 1.0,
      "Beyond design + outside inflow x1.5": 0.75
     }
    },
@@ -834,8 +713,14 @@
      },
      {
       "manhole": "MH4429411",
-      "height_mm": 45.0,
-      "above_design_normal_mm": 36.0,
+      "height_mm": 250,
+      "above_design_normal_mm": 241,
+      "tripped_before_growth": 2
+     },
+     {
+      "manhole": "MH4429499",
+      "height_mm": 2150,
+      "above_design_normal_mm": 2062,
       "tripped_before_growth": 3
      },
      {
@@ -887,6 +772,12 @@
       "tripped_before_growth": 5
      },
      {
+      "manhole": "MH4451945",
+      "height_mm": 135.0,
+      "above_design_normal_mm": 68.0,
+      "tripped_before_growth": 1
+     },
+     {
       "manhole": "MH4456553",
       "height_mm": 950,
       "above_design_normal_mm": 691,
@@ -900,25 +791,25 @@
      }
     ],
     "level": 0,
-    "float": 13,
-    "cost": 13000,
+    "float": 15,
+    "cost": 15000,
     "per_case": {
-     "Design wet": 0.4167,
-     "Beyond design": 0.5625,
-     "Severe": 0.6154,
+     "Design wet": 0.1875,
+     "Beyond design": 0.5263,
+     "Severe": 0.5,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.5333,
-     "Beyond design + age-weighted I&I": 0.5714,
-     "Beyond design + outside inflow x1.5": 0.3333
+     "Design wet + outside inflow x1.5": 0.5,
+     "Beyond design + age-weighted I&I": 0.4444,
+     "Beyond design + outside inflow x1.5": 0.3125
     },
     "worst": 0.0,
-    "average": 0.4332,
-    "warned": 6,
-    "pruned": 30,
+    "average": 0.353,
+    "warned": 4,
+    "pruned": 22,
     "status": 0,
     "unseen_weather": [
      0,
-     92
+     119
     ],
     "unseen_by_case": {
      "Design wet": 0.0,
@@ -932,9 +823,215 @@
    },
    "mix": {
     "level_at": [
-     "MH4429013",
+     "MH4447394",
      "MH4450391",
-     "MH4450581",
+     "MH4450922",
+     "MH4454376"
+    ],
+    "floats": [],
+    "level": 4,
+    "float": 0,
+    "cost": 100000,
+    "per_case": {
+     "Design wet": 0.9375,
+     "Beyond design": 0.9474,
+     "Severe": 0.8125,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 0.85,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.8125
+    },
+    "worst": 0.8125,
+    "average": 0.9086,
+    "warned": 10,
+    "pruned": 0,
+    "status": 0,
+    "unseen_weather": [
+     85,
+     119
+    ],
+    "unseen_by_case": {
+     "Design wet": 0.875,
+     "Beyond design": 0.9474,
+     "Severe": 0.6875,
+     "Design wet + age-weighted I&I": 0.0,
+     "Design wet + outside inflow x1.5": 0.8,
+     "Beyond design + age-weighted I&I": 0.7222,
+     "Beyond design + outside inflow x1.5": 0.8125
+    }
+   }
+  },
+  {
+   "k": 5,
+   "budget": 125000,
+   "level": {
+    "level_at": [
+     "MH4428268",
+     "MH4448345",
+     "MH4450531",
+     "MH4450922",
+     "MH4452994"
+    ],
+    "floats": [],
+    "level": 5,
+    "float": 0,
+    "cost": 125000,
+    "per_case": {
+     "Design wet": 1.0,
+     "Beyond design": 0.9474,
+     "Severe": 0.8125,
+     "Design wet + age-weighted I&I": 1.0,
+     "Design wet + outside inflow x1.5": 1.0,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.8125
+    },
+    "worst": 0.8125,
+    "average": 0.9389,
+    "warned": 11,
+    "unseen_weather": [
+     92,
+     119
+    ],
+    "unseen_by_case": {
+     "Design wet": 0.9375,
+     "Beyond design": 0.9474,
+     "Severe": 0.75,
+     "Design wet + age-weighted I&I": 0.0,
+     "Design wet + outside inflow x1.5": 0.85,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.75
+    }
+   },
+   "float": {
+    "level_at": [],
+    "floats": [
+     {
+      "manhole": "MH4428268",
+      "height_mm": 90.0,
+      "above_design_normal_mm": 53.0,
+      "tripped_before_growth": 0
+     },
+     {
+      "manhole": "MH4429268",
+      "height_mm": 143.0,
+      "above_design_normal_mm": 133.0,
+      "tripped_before_growth": 3
+     },
+     {
+      "manhole": "MH4429411",
+      "height_mm": 250,
+      "above_design_normal_mm": 241,
+      "tripped_before_growth": 2
+     },
+     {
+      "manhole": "MH4429499",
+      "height_mm": 2150,
+      "above_design_normal_mm": 2062,
+      "tripped_before_growth": 3
+     },
+     {
+      "manhole": "MH4429527",
+      "height_mm": 120.0,
+      "above_design_normal_mm": 102.0,
+      "tripped_before_growth": 2
+     },
+     {
+      "manhole": "MH4446824",
+      "height_mm": 650,
+      "above_design_normal_mm": 613,
+      "tripped_before_growth": 0
+     },
+     {
+      "manhole": "MH4448419",
+      "height_mm": 325,
+      "above_design_normal_mm": 177,
+      "tripped_before_growth": 4
+     },
+     {
+      "manhole": "MH4448762",
+      "height_mm": 1150,
+      "above_design_normal_mm": 1120,
+      "tripped_before_growth": 3
+     },
+     {
+      "manhole": "MH4449503",
+      "height_mm": 250,
+      "above_design_normal_mm": 227,
+      "tripped_before_growth": 1
+     },
+     {
+      "manhole": "MH4449977",
+      "height_mm": 150.0,
+      "above_design_normal_mm": 130.0,
+      "tripped_before_growth": 2
+     },
+     {
+      "manhole": "MH4450137",
+      "height_mm": 120.0,
+      "above_design_normal_mm": 74.0,
+      "tripped_before_growth": 4
+     },
+     {
+      "manhole": "MH4450531",
+      "height_mm": 135.0,
+      "above_design_normal_mm": 37.0,
+      "tripped_before_growth": 5
+     },
+     {
+      "manhole": "MH4451945",
+      "height_mm": 135.0,
+      "above_design_normal_mm": 68.0,
+      "tripped_before_growth": 1
+     },
+     {
+      "manhole": "MH4456553",
+      "height_mm": 950,
+      "above_design_normal_mm": 691,
+      "tripped_before_growth": 0
+     },
+     {
+      "manhole": "MH5241467",
+      "height_mm": 1150,
+      "above_design_normal_mm": 1126,
+      "tripped_before_growth": 1
+     }
+    ],
+    "level": 0,
+    "float": 15,
+    "cost": 15000,
+    "per_case": {
+     "Design wet": 0.1875,
+     "Beyond design": 0.5263,
+     "Severe": 0.5,
+     "Design wet + age-weighted I&I": 0.0,
+     "Design wet + outside inflow x1.5": 0.5,
+     "Beyond design + age-weighted I&I": 0.4444,
+     "Beyond design + outside inflow x1.5": 0.3125
+    },
+    "worst": 0.0,
+    "average": 0.353,
+    "warned": 4,
+    "pruned": 22,
+    "status": 0,
+    "unseen_weather": [
+     0,
+     119
+    ],
+    "unseen_by_case": {
+     "Design wet": 0.0,
+     "Beyond design": 0.0,
+     "Severe": 0.0,
+     "Design wet + age-weighted I&I": 0.0,
+     "Design wet + outside inflow x1.5": 0.0,
+     "Beyond design + age-weighted I&I": 0.0,
+     "Beyond design + outside inflow x1.5": 0.0
+    }
+   },
+   "mix": {
+    "level_at": [
+     "MH4428268",
+     "MH4448345",
+     "MH4449796",
      "MH4450922",
      "MH4454116"
     ],
@@ -943,31 +1040,31 @@
     "float": 0,
     "cost": 125000,
     "per_case": {
-     "Design wet": 0.9167,
-     "Beyond design": 0.875,
-     "Severe": 0.9231,
+     "Design wet": 0.9375,
+     "Beyond design": 0.9474,
+     "Severe": 0.875,
      "Design wet + age-weighted I&I": 1.0,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.9286,
-     "Beyond design + outside inflow x1.5": 0.9167
+     "Design wet + outside inflow x1.5": 0.95,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.875
     },
-    "worst": 0.8667,
-    "average": 0.9181,
+    "worst": 0.875,
+    "average": 0.9407,
     "warned": 11,
     "pruned": 0,
     "status": 0,
     "unseen_weather": [
-     69,
-     92
+     90,
+     119
     ],
     "unseen_by_case": {
-     "Design wet": 0.8333,
-     "Beyond design": 0.8125,
-     "Severe": 0.7692,
-     "Design wet + age-weighted I&I": 0.1,
+     "Design wet": 0.875,
+     "Beyond design": 0.9474,
+     "Severe": 0.6875,
+     "Design wet + age-weighted I&I": 0.0,
      "Design wet + outside inflow x1.5": 0.8,
-     "Beyond design + age-weighted I&I": 0.8571,
-     "Beyond design + outside inflow x1.5": 0.9167
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.8125
     }
    }
   },
@@ -976,10 +1073,10 @@
    "budget": 150000,
    "level": {
     "level_at": [
-     "MH4429013",
+     "MH4428268",
      "MH4448345",
+     "MH4448474",
      "MH4450531",
-     "MH4450581",
      "MH4450922",
      "MH4452994"
     ],
@@ -989,28 +1086,28 @@
     "cost": 150000,
     "per_case": {
      "Design wet": 1.0,
-     "Beyond design": 0.875,
-     "Severe": 0.8462,
+     "Beyond design": 0.9474,
+     "Severe": 0.875,
      "Design wet + age-weighted I&I": 1.0,
      "Design wet + outside inflow x1.5": 1.0,
-     "Beyond design + age-weighted I&I": 0.9286,
-     "Beyond design + outside inflow x1.5": 0.9167
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.875
     },
-    "worst": 0.8462,
-    "average": 0.9381,
-    "warned": 12,
+    "worst": 0.875,
+    "average": 0.9568,
+    "warned": 11,
     "unseen_weather": [
-     70,
-     92
+     93,
+     119
     ],
     "unseen_by_case": {
-     "Design wet": 0.8333,
-     "Beyond design": 0.8125,
-     "Severe": 0.8462,
+     "Design wet": 0.9375,
+     "Beyond design": 0.9474,
+     "Severe": 0.8125,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.9286,
-     "Beyond design + outside inflow x1.5": 0.8333
+     "Design wet + outside inflow x1.5": 0.85,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.75
     }
    },
    "float": {
@@ -1030,8 +1127,14 @@
      },
      {
       "manhole": "MH4429411",
-      "height_mm": 45.0,
-      "above_design_normal_mm": 36.0,
+      "height_mm": 250,
+      "above_design_normal_mm": 241,
+      "tripped_before_growth": 2
+     },
+     {
+      "manhole": "MH4429499",
+      "height_mm": 2150,
+      "above_design_normal_mm": 2062,
       "tripped_before_growth": 3
      },
      {
@@ -1083,6 +1186,12 @@
       "tripped_before_growth": 5
      },
      {
+      "manhole": "MH4451945",
+      "height_mm": 135.0,
+      "above_design_normal_mm": 68.0,
+      "tripped_before_growth": 1
+     },
+     {
       "manhole": "MH4456553",
       "height_mm": 950,
       "above_design_normal_mm": 691,
@@ -1096,25 +1205,25 @@
      }
     ],
     "level": 0,
-    "float": 13,
-    "cost": 13000,
+    "float": 15,
+    "cost": 15000,
     "per_case": {
-     "Design wet": 0.4167,
-     "Beyond design": 0.5625,
-     "Severe": 0.6154,
+     "Design wet": 0.1875,
+     "Beyond design": 0.5263,
+     "Severe": 0.5,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.5333,
-     "Beyond design + age-weighted I&I": 0.5714,
-     "Beyond design + outside inflow x1.5": 0.3333
+     "Design wet + outside inflow x1.5": 0.5,
+     "Beyond design + age-weighted I&I": 0.4444,
+     "Beyond design + outside inflow x1.5": 0.3125
     },
     "worst": 0.0,
-    "average": 0.4332,
-    "warned": 6,
-    "pruned": 30,
+    "average": 0.353,
+    "warned": 4,
+    "pruned": 22,
     "status": 0,
     "unseen_weather": [
      0,
-     92
+     119
     ],
     "unseen_by_case": {
      "Design wet": 0.0,
@@ -1128,43 +1237,43 @@
    },
    "mix": {
     "level_at": [
-     "MH4429013",
+     "MH4428268",
+     "MH4428920",
+     "MH4448345",
      "MH4449796",
-     "MH4449913",
-     "MH4450531",
      "MH4450922",
-     "MH4454376"
+     "MH4454116"
     ],
     "floats": [],
     "level": 6,
     "float": 0,
     "cost": 150000,
     "per_case": {
-     "Design wet": 0.9167,
-     "Beyond design": 0.875,
-     "Severe": 0.9231,
+     "Design wet": 0.9375,
+     "Beyond design": 0.9474,
+     "Severe": 0.9375,
      "Design wet + age-weighted I&I": 1.0,
-     "Design wet + outside inflow x1.5": 0.9333,
+     "Design wet + outside inflow x1.5": 0.95,
      "Beyond design + age-weighted I&I": 1.0,
-     "Beyond design + outside inflow x1.5": 1.0
+     "Beyond design + outside inflow x1.5": 0.9375
     },
-    "worst": 0.875,
-    "average": 0.9497,
+    "worst": 0.9375,
+    "average": 0.9586,
     "warned": 11,
     "pruned": 0,
     "status": 0,
     "unseen_weather": [
-     70,
-     92
+     93,
+     119
     ],
     "unseen_by_case": {
-     "Design wet": 0.8333,
-     "Beyond design": 0.875,
-     "Severe": 0.7692,
-     "Design wet + age-weighted I&I": 0.1,
+     "Design wet": 0.875,
+     "Beyond design": 0.9474,
+     "Severe": 0.75,
+     "Design wet + age-weighted I&I": 0.0714,
      "Design wet + outside inflow x1.5": 0.8,
-     "Beyond design + age-weighted I&I": 0.8571,
-     "Beyond design + outside inflow x1.5": 0.9167
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.875
     }
    }
   },
@@ -1173,11 +1282,11 @@
    "budget": 175000,
    "level": {
     "level_at": [
-     "MH4429013",
+     "MH4428268",
+     "MH4428920",
      "MH4448345",
      "MH4448474",
      "MH4450531",
-     "MH4450581",
      "MH4450922",
      "MH4452994"
     ],
@@ -1187,28 +1296,28 @@
     "cost": 175000,
     "per_case": {
      "Design wet": 1.0,
-     "Beyond design": 0.875,
-     "Severe": 0.9231,
+     "Beyond design": 0.9474,
+     "Severe": 0.9375,
      "Design wet + age-weighted I&I": 1.0,
      "Design wet + outside inflow x1.5": 1.0,
-     "Beyond design + age-weighted I&I": 0.9286,
-     "Beyond design + outside inflow x1.5": 1.0
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.9375
     },
-    "worst": 0.875,
-    "average": 0.9609,
-    "warned": 12,
+    "worst": 0.9375,
+    "average": 0.9746,
+    "warned": 11,
     "unseen_weather": [
-     71,
-     92
+     93,
+     119
     ],
     "unseen_by_case": {
-     "Design wet": 0.8333,
-     "Beyond design": 0.875,
-     "Severe": 0.8462,
+     "Design wet": 0.9375,
+     "Beyond design": 0.9474,
+     "Severe": 0.8125,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.9286,
-     "Beyond design + outside inflow x1.5": 0.8333
+     "Design wet + outside inflow x1.5": 0.85,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.75
     }
    },
    "float": {
@@ -1228,8 +1337,14 @@
      },
      {
       "manhole": "MH4429411",
-      "height_mm": 45.0,
-      "above_design_normal_mm": 36.0,
+      "height_mm": 250,
+      "above_design_normal_mm": 241,
+      "tripped_before_growth": 2
+     },
+     {
+      "manhole": "MH4429499",
+      "height_mm": 2150,
+      "above_design_normal_mm": 2062,
       "tripped_before_growth": 3
      },
      {
@@ -1281,6 +1396,12 @@
       "tripped_before_growth": 5
      },
      {
+      "manhole": "MH4451945",
+      "height_mm": 135.0,
+      "above_design_normal_mm": 68.0,
+      "tripped_before_growth": 1
+     },
+     {
       "manhole": "MH4456553",
       "height_mm": 950,
       "above_design_normal_mm": 691,
@@ -1294,25 +1415,25 @@
      }
     ],
     "level": 0,
-    "float": 13,
-    "cost": 13000,
+    "float": 15,
+    "cost": 15000,
     "per_case": {
-     "Design wet": 0.4167,
-     "Beyond design": 0.5625,
-     "Severe": 0.6154,
+     "Design wet": 0.1875,
+     "Beyond design": 0.5263,
+     "Severe": 0.5,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.5333,
-     "Beyond design + age-weighted I&I": 0.5714,
-     "Beyond design + outside inflow x1.5": 0.3333
+     "Design wet + outside inflow x1.5": 0.5,
+     "Beyond design + age-weighted I&I": 0.4444,
+     "Beyond design + outside inflow x1.5": 0.3125
     },
     "worst": 0.0,
-    "average": 0.4332,
-    "warned": 6,
-    "pruned": 30,
+    "average": 0.353,
+    "warned": 4,
+    "pruned": 22,
     "status": 0,
     "unseen_weather": [
      0,
-     92
+     119
     ],
     "unseen_by_case": {
      "Design wet": 0.0,
@@ -1326,11 +1447,11 @@
    },
    "mix": {
     "level_at": [
-     "MH4429013",
-     "MH4446883",
-     "MH4448419",
+     "MH4428268",
+     "MH4428920",
+     "MH4448345",
      "MH4449796",
-     "MH4450531",
+     "MH4449882",
      "MH4450922",
      "MH4454116"
     ],
@@ -1339,31 +1460,31 @@
     "float": 0,
     "cost": 175000,
     "per_case": {
-     "Design wet": 0.9167,
-     "Beyond design": 0.9375,
-     "Severe": 0.9231,
+     "Design wet": 0.9375,
+     "Beyond design": 0.9474,
+     "Severe": 1.0,
      "Design wet + age-weighted I&I": 1.0,
-     "Design wet + outside inflow x1.5": 1.0,
+     "Design wet + outside inflow x1.5": 0.95,
      "Beyond design + age-weighted I&I": 1.0,
-     "Beyond design + outside inflow x1.5": 1.0
+     "Beyond design + outside inflow x1.5": 0.9375
     },
-    "worst": 0.9167,
-    "average": 0.9682,
-    "warned": 12,
+    "worst": 0.9375,
+    "average": 0.9675,
+    "warned": 11,
     "pruned": 0,
     "status": 0,
     "unseen_weather": [
-     73,
-     92
+     94,
+     119
     ],
     "unseen_by_case": {
-     "Design wet": 0.8333,
-     "Beyond design": 0.875,
-     "Severe": 0.8462,
-     "Design wet + age-weighted I&I": 0.1,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.9286,
-     "Beyond design + outside inflow x1.5": 0.9167
+     "Design wet": 0.875,
+     "Beyond design": 0.9474,
+     "Severe": 0.75,
+     "Design wet + age-weighted I&I": 0.0714,
+     "Design wet + outside inflow x1.5": 0.85,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.875
     }
    }
   },
@@ -1372,12 +1493,12 @@
    "budget": 200000,
    "level": {
     "level_at": [
-     "MH4429013",
-     "MH4429179",
+     "MH4428268",
+     "MH4428920",
      "MH4448345",
      "MH4448474",
+     "MH4449704",
      "MH4450531",
-     "MH4450581",
      "MH4450922",
      "MH4452994"
     ],
@@ -1387,28 +1508,28 @@
     "cost": 200000,
     "per_case": {
      "Design wet": 1.0,
-     "Beyond design": 0.9375,
-     "Severe": 0.9231,
+     "Beyond design": 0.9474,
+     "Severe": 1.0,
      "Design wet + age-weighted I&I": 1.0,
      "Design wet + outside inflow x1.5": 1.0,
      "Beyond design + age-weighted I&I": 1.0,
-     "Beyond design + outside inflow x1.5": 1.0
+     "Beyond design + outside inflow x1.5": 0.9375
     },
-    "worst": 0.9231,
-    "average": 0.9801,
-    "warned": 12,
+    "worst": 0.9375,
+    "average": 0.9836,
+    "warned": 11,
     "unseen_weather": [
-     72,
-     92
+     94,
+     119
     ],
     "unseen_by_case": {
-     "Design wet": 0.8333,
-     "Beyond design": 0.875,
-     "Severe": 0.9231,
+     "Design wet": 0.9375,
+     "Beyond design": 0.9474,
+     "Severe": 0.8125,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.9286,
-     "Beyond design + outside inflow x1.5": 0.8333
+     "Design wet + outside inflow x1.5": 0.85,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.8125
     }
    },
    "float": {
@@ -1428,8 +1549,14 @@
      },
      {
       "manhole": "MH4429411",
-      "height_mm": 45.0,
-      "above_design_normal_mm": 36.0,
+      "height_mm": 250,
+      "above_design_normal_mm": 241,
+      "tripped_before_growth": 2
+     },
+     {
+      "manhole": "MH4429499",
+      "height_mm": 2150,
+      "above_design_normal_mm": 2062,
       "tripped_before_growth": 3
      },
      {
@@ -1481,6 +1608,12 @@
       "tripped_before_growth": 5
      },
      {
+      "manhole": "MH4451945",
+      "height_mm": 135.0,
+      "above_design_normal_mm": 68.0,
+      "tripped_before_growth": 1
+     },
+     {
       "manhole": "MH4456553",
       "height_mm": 950,
       "above_design_normal_mm": 691,
@@ -1494,25 +1627,25 @@
      }
     ],
     "level": 0,
-    "float": 13,
-    "cost": 13000,
+    "float": 15,
+    "cost": 15000,
     "per_case": {
-     "Design wet": 0.4167,
-     "Beyond design": 0.5625,
-     "Severe": 0.6154,
+     "Design wet": 0.1875,
+     "Beyond design": 0.5263,
+     "Severe": 0.5,
      "Design wet + age-weighted I&I": 0.0,
-     "Design wet + outside inflow x1.5": 0.5333,
-     "Beyond design + age-weighted I&I": 0.5714,
-     "Beyond design + outside inflow x1.5": 0.3333
+     "Design wet + outside inflow x1.5": 0.5,
+     "Beyond design + age-weighted I&I": 0.4444,
+     "Beyond design + outside inflow x1.5": 0.3125
     },
     "worst": 0.0,
-    "average": 0.4332,
-    "warned": 6,
-    "pruned": 30,
+    "average": 0.353,
+    "warned": 4,
+    "pruned": 22,
     "status": 0,
     "unseen_weather": [
      0,
-     92
+     119
     ],
     "unseen_by_case": {
      "Design wet": 0.0,
@@ -1526,14 +1659,14 @@
    },
    "mix": {
     "level_at": [
-     "MH4429013",
-     "MH4446883",
-     "MH4448419",
+     "MH4428636",
+     "MH4428920",
+     "MH4448345",
      "MH4449796",
+     "MH4449882",
      "MH4450531",
-     "MH4450581",
      "MH4450922",
-     "MH4454116"
+     "MH4454376"
     ],
     "floats": [],
     "level": 8,
@@ -1541,30 +1674,30 @@
     "cost": 200000,
     "per_case": {
      "Design wet": 1.0,
-     "Beyond design": 0.9375,
-     "Severe": 0.9231,
+     "Beyond design": 0.9474,
+     "Severe": 0.9375,
      "Design wet + age-weighted I&I": 1.0,
      "Design wet + outside inflow x1.5": 1.0,
      "Beyond design + age-weighted I&I": 1.0,
      "Beyond design + outside inflow x1.5": 1.0
     },
-    "worst": 0.9231,
-    "average": 0.9801,
-    "warned": 12,
+    "worst": 0.9375,
+    "average": 0.9836,
+    "warned": 11,
     "pruned": 0,
     "status": 0,
     "unseen_weather": [
-     73,
-     92
+     94,
+     119
     ],
     "unseen_by_case": {
-     "Design wet": 0.8333,
-     "Beyond design": 0.875,
-     "Severe": 0.8462,
-     "Design wet + age-weighted I&I": 0.1,
-     "Design wet + outside inflow x1.5": 0.8667,
-     "Beyond design + age-weighted I&I": 0.9286,
-     "Beyond design + outside inflow x1.5": 0.9167
+     "Design wet": 0.875,
+     "Beyond design": 0.9474,
+     "Severe": 0.75,
+     "Design wet + age-weighted I&I": 0.0714,
+     "Design wet + outside inflow x1.5": 0.85,
+     "Beyond design + age-weighted I&I": 1.0,
+     "Beyond design + outside inflow x1.5": 0.875
     }
    }
   }

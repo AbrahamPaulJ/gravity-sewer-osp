@@ -20,6 +20,19 @@ which locations should be monitored. This module does that:
     runs     whole domain, every candidate manhole watched, each run ended by the
              convergence gate (sim25.SETTLE) with its length and drift recorded.
 
+Two ways to draw the regions (config.js simulation.regions.partition):
+    listed     the hand-picked tributaries, remainder and corridor in regions.list (21 Oct 2026).
+    bisection  the spatial bisection method of Kim et al. (2022, J. Environ. Manage. 320:115806,
+               doi:10.1016/j.jenvman.2022.115806). Start from the whole domain; choose, by
+               scanning every pipe in it, the cut whose upstream part and downstream remainder
+               differ least in the balanced quantity; split both parts again; stop after
+               `levels` rounds (2^levels regions). Kim et al. balance building footprint area and
+               allow population instead; we balance existing dwellings, the population proxy the
+               model already carries and the quantity a region's infill growth is set from, so
+               every region gets the same nominal growth. The corridor can be kept as an extra,
+               overlapping scenario (it is a planning area, not a part of the tree). Results go to
+               results/sim3/regions_bisection, so the listed runs are kept.
+
 Rows carry, per region and step: the depth rise at every candidate, which manholes newly
 alarm, surcharge or spill, what each pump station pumps (the SCADA indicator), and the
 run's provenance. The build-out fraction at which a candidate first sees the region is
@@ -31,6 +44,7 @@ Usage:
     python sim3_regions.py --cases nominal --workers 6  # the weather sweep
     python sim3_regions.py --cases all --resume --workers 6
     python sim3_regions.py --cases nominal --regions R1,R2 --steps 0.5,1.0   # a quick look
+    python sim3_regions.py --plan --partition bisection  # preview the bisection regions
 """
 import argparse, functools, json, os, shutil, sys, time
 from concurrent.futures import ProcessPoolExecutor
@@ -41,8 +55,17 @@ import sim25
 import sim25_grid
 from sim25 import Case, Sim25Model
 
-OUT = os.path.join(model.RESULTS, "sim3", "regions")
 RCFG = sim25.CFG["simulation"].get("regions") or {}
+PARTITIONS = ("listed", "bisection")
+PARTITION = RCFG.get("partition", "listed")
+BCFG = RCFG.get("bisection") or {}
+
+
+def out_dir(partition):
+    return os.path.join(model.RESULTS, "sim3", "regions" if partition == "listed" else "regions_bisection")
+
+
+OUT = out_dir(PARTITION)
 ANCHOR = float(RCFG.get("anchor_dwellings", 485))
 COUNCIL_CONNECTIONS = float(RCFG.get("council_connections", 2851))
 LADDER = [float(x) for x in RCFG.get("ladder", [0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0])]
@@ -57,14 +80,18 @@ def _domain():
     return net, probe, probe._pipe_ids - probe._exits
 
 
-def regions(net=None, probe=None, pipes=None):
-    """config.js's regions resolved into disjoint pipe sets, in the listed order.
-
-    Each entry: id, name, exit_pipe, pipes (network pipe ids), manholes (published ids),
-    n_manholes, dwellings (connected properties counted on its pipes), length_m,
-    nominal_dwellings (its 100% growth), weights (pipe id -> share of new dwellings)."""
+def regions(net=None, probe=None, pipes=None, partition=None):
+    """The regions under `partition` (default config.js's): listed or bisection."""
+    partition = partition or PARTITION
+    if partition not in PARTITIONS:
+        raise ValueError(f"config.js regions.partition: {partition!r}, expected one of {PARTITIONS}")
     if net is None:
         net, probe, pipes = _domain()
+    return _listed(net, probe, pipes) if partition == "listed" else _bisection(net, probe, pipes)
+
+
+def _upstream_fn(net, pipes):
+    """upstream(node) -> frozenset of domain pipes draining to it (relief loops counted once)."""
     ins = {}
     for i in pipes:
         ins.setdefault(net.pipes[i].down, []).append(i)
@@ -77,7 +104,87 @@ def regions(net=None, probe=None, pipes=None):
             s.add(i)
             s |= upstream(net.pipes[i].up)
         return frozenset(s)
+    return upstream
 
+
+def _corridor(r, pipes, net, claimed=frozenset()):
+    share = sim25_grid.corridor_nodes()          # node -> share by pipe length
+    members = {i for i in pipes if net.pipes[i].up in share} - claimed
+    weights = {i: share[net.pipes[i].up] for i in members}
+    tot = sum(weights.values()) or 1.0
+    return members, {i: w / tot for i, w in weights.items()}, float(r.get("nominal_dwellings", ANCHOR))
+
+
+def _bisection(net, probe, pipes):
+    """Kim et al. (2022)'s spatial bisection, balancing existing dwellings (see the docstring).
+
+    Every part is split once per round. A cut at pipe c takes c and every part pipe draining to
+    it; the rest of the part is the downstream remainder. The cut minimises the difference
+    between the two sides' weights; ties go to the lower asset id, so the result is repeatable."""
+    levels = int(BCFG.get("levels", 3))
+    weight = BCFG.get("weight", "dwellings")
+    if weight not in ("dwellings", "length"):
+        raise ValueError(f"config.js regions.bisection.weight: {weight!r}, expected dwellings or length")
+    wt = {i: float(net.pipes[i].dwellings if weight == "dwellings" else net.pipes[i].length) for i in pipes}
+    upstream = _upstream_fn(net, pipes)
+    chamber_nodes = set(probe.chambers.values())
+
+    def split(part):
+        tot = sum(wt[i] for i in part)
+        best = None
+        for c in part:
+            up = ({c} | upstream(net.pipes[c].up)) & part
+            if len(up) == len(part):
+                continue
+            w = sum(wt[i] for i in up)
+            key = (abs(2 * w - tot), net.pipes[c].asset_id)
+            if best is None or key < best[0]:
+                best = (key, c, up)
+        if best is None:
+            return None
+        return best[1], best[2], part - best[2]
+
+    # Each part: (pipes, exit pipe or None for the part that reaches the outlet, path of U/D steps)
+    parts = [(frozenset(pipes), None, "")]
+    for _ in range(levels):
+        nxt = []
+        for p, ex, path in parts:
+            s = split(p)
+            if s is None:
+                nxt.append((p, ex, path))
+                continue
+            c, up, down = s
+            nxt += [(frozenset(up), c, path + "U"), (frozenset(down), ex, path + "D")]
+        parts = nxt
+    # Outlet-side parts last, then by size, so ids read upstream to downstream.
+    parts.sort(key=lambda x: (x[2].count("D"), x[2]))
+    target = sum(wt.values()) / len(parts)
+    out = []
+    for k, (p, ex, path) in enumerate(parts, 1):
+        where = f"drains to pipe {net.pipes[ex].asset_id}" if ex is not None else "reaches the outlet"
+        r = {"id": f"R{k}", "name": f"Equal-dwelling region {k} of {len(parts)}: {where}",
+             "exit_pipe": net.pipes[ex].asset_id if ex is not None else "outlet"}
+        reg = _region(r, p, None, None, net, chamber_nodes)
+        reg["bisection"] = {"path": path, "weight": weight,
+                            "balance": round(sum(wt[i] for i in p) / target, 3) if target else None}
+        out.append(reg)
+    if BCFG.get("corridor", True):
+        r = {"id": f"R{len(parts) + 1}", "name": "Walkerville Terrace corridor (overlaps the regions above)",
+             "exit_pipe": "corridor"}
+        members, weights, nominal = _corridor(r, pipes, net)
+        reg = _region(r, members, weights, nominal, net, chamber_nodes)
+        reg["overlay"] = True
+        out.append(reg)
+    return out
+
+
+def _listed(net, probe, pipes):
+    """config.js's regions resolved into disjoint pipe sets, in the listed order.
+
+    Each entry: id, name, exit_pipe, pipes (network pipe ids), manholes (published ids),
+    n_manholes, dwellings (connected properties counted on its pipes), length_m,
+    nominal_dwellings (its 100% growth), weights (pipe id -> share of new dwellings)."""
+    upstream = _upstream_fn(net, pipes)
     by_asset = {net.pipes[i].asset_id: i for i in pipes}
     chamber_nodes = set(probe.chambers.values())
     claimed, out, remainder = set(), [], None
@@ -87,12 +194,7 @@ def regions(net=None, probe=None, pipes=None):
             remainder = r
             continue
         if key == "corridor":
-            share = sim25_grid.corridor_nodes()          # node -> share by pipe length
-            members = {i for i in pipes if net.pipes[i].up in share} - claimed
-            weights = {i: share[net.pipes[i].up] for i in members}
-            tot = sum(weights.values()) or 1.0
-            weights = {i: w / tot for i, w in weights.items()}
-            nominal = float(r.get("nominal_dwellings", ANCHOR))
+            members, weights, nominal = _corridor(r, pipes, net, claimed)
         else:
             if key not in by_asset:
                 raise ValueError(f"config.js regions: exit_pipe {key} ({r['id']}) is not a pipe in the model domain")
@@ -217,15 +319,20 @@ def describe(regs, path):
 
 
 def main():
+    global PARTITION, OUT
     ap = argparse.ArgumentParser()
     ap.add_argument("--cases", default="nominal", choices=["nominal", "all"])
     ap.add_argument("--regions", help="comma-separated region ids, default all")
     ap.add_argument("--steps", help="comma-separated build-out fractions, default the ladder")
+    ap.add_argument("--partition", choices=PARTITIONS,
+                    help=f"override config.js regions.partition (now {PARTITION}) for this run")
     ap.add_argument("--plan", action="store_true")
     ap.add_argument("--describe", action="store_true", help="write regions.json and stop")
     ap.add_argument("--resume", action="store_true", help="skip cases whose summary.json exists")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     args = ap.parse_args()
+    if args.partition:
+        PARTITION, OUT = args.partition, out_dir(args.partition)
 
     net, probe, pipes = _domain()
     regs = regions(net, probe, pipes)
@@ -239,11 +346,13 @@ def main():
     cs = sim25_grid.cases(args.cases)
 
     print(f"study area {sim25.STUDY_AREA}: {len(probe.candidates)} candidate manholes; "
-          f"anchor {ANCHOR:g} dwellings over {COUNCIL_CONNECTIONS:g} connections")
-    print(f"{'id':4} {'manholes':>8} {'dwellings':>9} {'length m':>8} {'100% growth':>11}  name")
+          f"anchor {ANCHOR:g} dwellings over {COUNCIL_CONNECTIONS:g} connections; "
+          f"partition {PARTITION}, results in {os.path.relpath(OUT, model.RESULTS)}")
+    print(f"{'id':4} {'manholes':>8} {'dwellings':>9} {'balance':>7} {'length m':>8} {'100% growth':>11}  name")
     for r in regs:
-        print(f"{r['id']:4} {r['n_manholes']:>8} {r['dwellings']:>9} {r['length_m']:>8} "
-              f"{r['nominal_dwellings']:>11g}  {r['name']}")
+        bal = (r.get("bisection") or {}).get("balance")
+        print(f"{r['id']:4} {r['n_manholes']:>8} {r['dwellings']:>9} {'' if bal is None else f'{bal:.2f}':>7} "
+              f"{r['length_m']:>8} {r['nominal_dwellings']:>11g}  {r['name']}")
     per_case = 1 + len(regs) * len(steps)
     print(f"{len(cs)} cases x {per_case} whole-domain runs = {len(cs) * per_case}, about "
           f"{len(cs) * per_case * 70 / args.workers / 60:.0f} min on {args.workers} workers "

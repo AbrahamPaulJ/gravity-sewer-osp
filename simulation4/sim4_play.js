@@ -209,7 +209,7 @@ const Sim4Play = (() => {
     const name = nd.name, set = shown(), i = ix(name);
     const lv = set.names.indexOf(name), fl = set.floats.findIndex(f => f[0] === name);
     const ri = Sim4.regionOf(name);
-    let html = `<b>${esc(name)}</b><p>${ri == null ? "Not in a region." : `In ${esc(S().regions[ri].id)}: ${esc(action(ri))}.`}</p>`;
+    let html = `<b>${esc(name)}</b><p>${ri == null ? "Not in a region." : `In ${esc(S().regions[ri].id)}: ${esc(action(ri))}.`}${esc(Sim4.overlayNote(name))}</p>`;
     if (lv >= 0) html += `<p>Level sensor S${lv + 1} of this set.</p>`;
     if (fl >= 0) html += `<p>Float F${fl + 1}: ${set.floats[fl][1]} mm deep, ${set.floats[fl][2]} mm above its normal design wet level.</p>`;
     if (i != null) {

@@ -13,7 +13,9 @@ Each is scored on the runs it was chosen on (worst and average of the 7 wet case
 weather: chosen without one wet case, scored on that case, runs pooled over the 7. The level column's unseen weather is
 numbers.json's (the same search without the case), so it matches the rest of Sim 4.
 
-    python sim4_float.py      # writes results/sim4/float.json and float_report.txt, under a minute
+    python sim4_float.py                       # writes results/sim4/float.json and float_report.txt, under a minute
+    SIM35_TARGET=sim35 python sim4_float.py    # the same on the hand-picked regions: float_handpicked.json, from
+                                               # numbers_handpicked.json (run sim4_numbers.py that way first)
 """
 import json, os, time
 
@@ -22,6 +24,7 @@ import sim4_numbers as N
 M = N.M
 n, ch, wet, lab, lad = M.n, M.ch, M.wet, M.label, N.lad
 OUT = N.OUT
+STEM = "float_handpicked" if N.LISTED else "float"      # beside sim4_numbers.py's numbers.json or numbers_handpicked.json
 KMAX = N.KMAX
 lines = []
 
@@ -34,10 +37,10 @@ def say(*a):
 
 def main():
     t0 = time.time()
-    X = json.load(open(os.path.join(OUT, "numbers.json"), encoding="utf-8"))
+    X = json.load(open(os.path.join(OUT, N.STEM + ".json"), encoding="utf-8"))
     tri = N.triage()
     T = {M.rid.index(i) for i, v in tri.items() if v["action"] != "leave"}
-    assert sorted(M.rid[r] for r in T) == X["targets"], "targets moved since numbers.json: rerun sim4_numbers.py first"
+    assert sorted(M.rid[r] for r in T) == X["targets"], f"targets moved since {N.STEM}.json: rerun sim4_numbers.py first"
     d_keep = lambda sc: sc["r"] in T and lad[sc["s"]] <= 1.0
     w_keep = lambda sc: sc["r"] in T and lad[sc["s"] + 1] <= 1.0
     Det, War = M.Problem("detect", 10, M.MARGIN), M.Problem("warn", 10, M.MARGIN)
@@ -119,9 +122,9 @@ def main():
     say(f"  Wet cases in which a chosen float is already tripped before any growth: {tripped}")
     payload = {"scope": {"targets": X["targets"], "up_to": 1.0, "rule_mm": 10, "float_margin_mm": M.MARGIN, "price": M.PRICE, "warn_total": n_warn},
                "budgets": rows}
-    with open(os.path.join(OUT, "float.json"), "w", encoding="utf-8", newline="\n") as f:
+    with open(os.path.join(OUT, STEM + ".json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(payload, f, indent=1)
-    with open(os.path.join(OUT, "float_report.txt"), "w", encoding="utf-8", newline="\n") as f:
+    with open(os.path.join(OUT, STEM + "_report.txt"), "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
     say(f"\ndone in {time.time() - t0:.0f} s")
 

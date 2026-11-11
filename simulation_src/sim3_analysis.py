@@ -430,10 +430,13 @@ def write_report(an, path):
             f"{rid} {v['rise_mm']:.0f} mm at MH{v['best_candidate']}, days " + "/".join(
                 f"{v['days'][s] if v['days'][s] is not None else 'never'}" for s in v["days"])
             for rid, v in per.items() if v["best_candidate"]))
+    # The listed regions' wording is kept as published (R7 is their remainder); other partitions get a general one.
+    served = ("serve part of R7 only", "the other regions'") if OUT == sim3_regions.out_dir("listed") else \
+             ("serve only a small part of the suburb", "other regions'")
     L += ["", "## Pump stations: what SCADA would show at 100% build-out", "",
           "Only regions that drain through a pump station move its flow. In this network the two pump "
-          "stations serve part of R7 only; in the 0.25 and 0.40 cases P4433449 also receives trunk overflow "
-          "through the relief route, so fractions of a percent there are the other regions' overflow, not "
+          f"stations {served[0]}; in the 0.25 and 0.40 cases P4433449 also receives trunk overflow "
+          f"through the relief route, so fractions of a percent there are {served[1]} overflow, not "
           "their sewage. A pump change below about 1% is inside SCADA flow-meter noise.", ""]
     for tag, per in an["pump_indicator"].items():
         L.append(f"- **{tag}**: " + "; ".join(
@@ -483,7 +486,11 @@ def add_risk(an, cases, args):
 
 
 def main():
+    global OUT
     ap = argparse.ArgumentParser()
+    ap.add_argument("--partition", choices=sim3_regions.PARTITIONS,
+                    help=f"which region runs to read (default config.js regions.partition, now {sim3_regions.PARTITION}); "
+                         "bisection is Simulation 4's equal-home regions")
     ap.add_argument("--max-sensors", type=int, default=sim25.CFG["simulation"].get("max_sensors", 10))
     ap.add_argument("--sigma", default="10,20,40", help="assumed day-to-day level noise, mm")
     ap.add_argument("--loo-k", type=int, default=4, help="sensor count for leave-one-case-out")
@@ -492,6 +499,8 @@ def main():
                     help="keep the existing analysis.json and (re)compute only the risk-weighted option")
     ap.add_argument("--risk-rules", default="rise10,rise25,alarm", help="rules given the risk-weighted option")
     args = ap.parse_args()
+    if args.partition:
+        OUT = sim3_regions.out_dir(args.partition)
     cases = load_cases()
     if not cases:
         raise SystemExit("no cases run yet")
