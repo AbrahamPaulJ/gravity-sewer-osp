@@ -148,8 +148,9 @@ unset SIM35_TARGET && cd ..
 python tools/build_sim4_explore.py            # simulation4/data/explore.js; --check compares instead
 ```
 
-Its sensor sets use Simulation 3.5's methods over every region and the stress steps, so they differ
-from the story's five, which are chosen only for the regions to monitor or watch.
+Its sensors default to the story's own list (`simulation4/data/sim4.js`), scored over every region and
+the stress steps; Simulation 3.5's methods stay as comparisons. Its Room for homes tab is Sim 3.5's
+configurable one (`simulation35/room_calc.js`); `node tools/check_room_calc.js --sim4` checks it on these regions.
 
 `SIM35_TARGET=sim4` makes the Sim 3.5 scripts read `simulation4/data/regions.js` and write
 `results/sim4/`; `sim4_numbers.py` sets it for itself. Unset, those scripts are Simulation 3.5 as

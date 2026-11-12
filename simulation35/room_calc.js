@@ -160,7 +160,8 @@
     const anchor = o.projection === "medium" ? T.medium : T.high;
     let share100;
     if (key === "suburb") {
-      const domain = reg.regions.reduce((a, r) => a + r.dwellings, 0);
+      // An overlapping region (Sim 4's corridor) repeats homes already in the others, so it is left out of the total.
+      const domain = reg.regions.filter(r => !r.overlay).reduce((a, r) => a + r.dwellings, 0);
       share100 = reg.anchor * domain / reg.councilConnections;
     } else share100 = table(o.tag, key).share;
     const perYear = share100 * anchor / reg.anchor / span;

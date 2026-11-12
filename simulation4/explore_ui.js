@@ -125,7 +125,7 @@ window.Sim35UI = (function () {
     region: 0, step: 4,                 // infill: region index, ladder index (100%)
     site: null, add: 3,                 // greenfield: chamber index, growth size index
     caseTag: null,                      // the uncertainty case, by tag (shared by the families)
-    rule: "r10", k: 5, method: "warn", obj: "worst",
+    rule: "r10", k: 5, method: "story", obj: "worst",
     showSensors: true, showHeat: false, showPumps: false, showConn: false,
     hover: null, pick: null,            // hovered / clicked manhole NAME for the right panel
     legend: false,                      // the colour key, off until asked for
@@ -199,9 +199,82 @@ window.Sim35UI = (function () {
       "Chosen without the part tested: <b>" + e.plausible_unseen_weather + " of " + W.plausible_total + "</b> on unseen weather, <b>" + e.plausible_unseen_region + " of " + W.plausible_total + "</b> on an unseen region. " +
       "They also see " + pct(e.detect_worst) + " of detectable growth in the worst wet case.</p>";
   }
+  /* Sim 4's list: the story's nested sensors (data/sim4.js, play.ladder), the default here so that the explorer and the
+     story recommend the same manholes. Scored here the way the exact and greedy sets are, over every region, case and
+     build-out step (the stress steps too), so its shares are lower than the story's, which counts only the regions to
+     monitor or watch up to the 2041 homes. The other methods stay as comparisons. */
+  const STORY = () => (((window.SIM4 || {}).play || {}).ladder) || [];
+  const storyMax = () => STORY().length || 8;
+  const storyChosen = k => (STORY()[Math.min(k, storyMax()) - 1] || []).map(n => idxOfName[n]).filter(i => i !== undefined);
+  const _story = {};
+  const remember = (key, f) => (key in _story ? _story[key] : (_story[key] = f()));
+  const summary = (per, cases) => (per.length ? { worst: Math.min(...per), average: per.reduce((a, b) => a + b, 0) / per.length, cases } : { worst: null, average: null, cases });
+  // Share of the detectable infill runs (a run some manhole sees) the set sees, per case: the exact optimum's own score.
+  function infillScore(set, rule) {
+    const per = [], cases = [];
+    S().cases.forEach(c => {
+      const det = (S().rows[c.tag] || []).map(r => seers(r, rule)).filter(x => x.length);
+      if (!det.length) return;
+      const seen = det.filter(x => x.some(i => set.has(i))).length;
+      per.push(seen / det.length);
+      cases.push({ label: c.label, wet: c.ii > 0, seen, of: det.length });
+    });
+    return summary(per, cases);
+  }
+  // Share of the detectable new-estate runs (every size at every manhole) the set sees, per case: the greedy order's own score.
+  function oneScore(set, rule) {
+    const per = [];
+    R().cases.forEach((c, ci) => {
+      const det = R().cells.filter(x => x.case === ci && x.rule === rule).flatMap(x => x.rows).filter(r => r.tip.length);
+      if (det.length) per.push(det.filter(r => r.tip.some(i => set.has(i))).length / det.length);
+    });
+    return summary(per);
+  }
+  // Overloads by 100% build-out that the set warns of, over every case, counted as the Warn before surcharge sets are:
+  // a region whose first new surcharge comes after the first step and by 100%, with growth some manhole sees the step before.
+  function storyWarn(set, rule) {
+    let warned = 0, total = 0;
+    const lad = S().ladder;
+    S().cases.forEach(c => {
+      const rows = S().rows[c.tag] || [];
+      S().regions.forEach((reg, ri) => {
+        const rr = rows.filter(x => x.r === ri).sort((a, b) => a.s - b.s);
+        const first = rr.findIndex(x => x.sur.length || x.spill.length);
+        if (first < 1 || lad[first] > 1 || !rr[first - 1].rise.some(x => x[1] >= 10)) return;
+        total++;
+        const fire = rr.findIndex(x => seers(x, rule).some(i => set.has(i)));
+        if (fire >= 0 && fire < first) warned++;
+      });
+    });
+    return { warned, total };
+  }
+  const storyCurve = (fam, rule) => remember("curve|" + fam + "|" + rule, () => STORY().map((_, j) => {
+    const set = new Set(storyChosen(j + 1));
+    return fam === "one" ? oneScore(set, rule) : infillScore(set, rule);
+  }));
+  function storyPlacement(fam) {
+    const k = Math.min(st.k, storyMax()), chosen = storyChosen(k), c = storyCurve(fam, st.rule)[k - 1] || {};
+    return { chosen, worst: c.worst, average: c.average, cases: c.cases, story: fam === "one" ? null : remember("warn|" + st.rule + "|" + k, () => storyWarn(new Set(chosen), st.rule)) };
+  }
+  // The story scores only the wet cases. When a dry case is the worst here, say so, with the wet cases' own worst and average.
+  function wetNote(pl) {
+    const cs = pl.cases || [], wet = cs.filter(c => c.wet);
+    if (!cs.length || wet.length === cs.length || !wet.length) return "";
+    const low = cs.reduce((a, c) => (c.seen / c.of < a.seen / a.of ? c : a), cs[0]);
+    if (low.wet) return "";
+    const ws = wet.map(c => c.seen / c.of), wl = wet.reduce((a, c) => (c.seen / c.of < a.seen / a.of ? c : a), wet[0]);
+    return "<p style='margin:0 0 8px'>The worst case here is <b>" + esc(low.label) + "</b>, " + low.seen + " of " + low.of + " runs, which the story leaves out: it scores the " + wet.length +
+      " wet cases. Over those the worst is <b>" + pct(Math.min(...ws)) + "</b> (" + esc(wl.label) + ") and the average <b>" + pct(ws.reduce((a, b) => a + b, 0) / ws.length) + "</b>.</p>";
+  }
+  function storySentence(pl) {
+    const w = pl.story, n = pl.chosen.length;
+    return wetNote(pl) + (w && w.total ? "<p style='margin:0 0 8px'>They warn of <b>" + w.warned + " of " + w.total + "</b> overloads by 100% build-out, before the first surcharge, over all " + S().cases.length + " cases.</p>" : "") +
+      "<p class='quiet' style='margin:0 0 8px'>These are the story's " + (n === 1 ? "first sensor" : "first " + n + " sensors") + ", in its order. The story counts only the regions to monitor or watch, up to the 2041 homes; here every region and the stress steps count, so the shares are lower.</p>";
+  }
   function infillPlacement() {
     const rr = S().rules[st.rule];
     if (!rr) return { chosen: [], worst: null, average: null, curve: [] };
+    if (st.method === "story") return storyPlacement("infill");
     if (st.method === "warn" && WARN(st.rule)) {
       const e = WARN(st.rule).sets[st.k - 1];
       return { chosen: e.chosen.slice(), worst: e.detect_worst, average: e.detect_average, warn: e };
@@ -260,6 +333,7 @@ window.Sim35UI = (function () {
     return out;
   }
   function onePlacement() {
+    if (st.method === "story") return storyPlacement("one");
     // The greenfield grid publishes greedy only (nested, by objective). The exact solver has
     // run on the infill family; for greenfield the greedy set stands in and the note says so.
     const pl = R().sensors[st.rule][st.obj];
@@ -488,7 +562,8 @@ window.Sim35UI = (function () {
     $("#kBig").textContent = st.k + " sensor" + (st.k === 1 ? "" : "s");
     const pl = placement();
     $("#kHint").textContent = pl.warn ? "warn of " + pl.warn.plausible_warned + " of " + WARN(st.rule).plausible_total + " overloads by 100% build-out" : pl.worst != null ? "catch " + pct(pl.worst) + " of detectable growth, worst case" : "";
-    $("#kInfo").dataset.tip = pl.warn ? WARN_TIP : "The best set of this many level sensors, chosen once for the worst of all " + famCases().length + " weather and leakage cases. " +
+    $("#kInfo").dataset.tip = pl.warn ? WARN_TIP : st.method === "story" ? "The story's first " + st.k + " sensor" + (st.k === 1 ? "" : "s") + ", in its order (Sim 4's list, up to " + storyMax() + "). " +
+      "A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth. The percentage is the share of the detectable growth, every region at every build-out step, that the set notices." : "The best set of this many level sensors, chosen once for the worst of all " + famCases().length + " weather and leakage cases. " +
       "A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth. " +
       "Detectable growth means the scenarios that at least one manhole anywhere would see; the percentage is the share of those that this set notices." +
       (st.fam === "one" ? " For a new estate the set is built one sensor at a time (greedy); the infill set is the exact optimum." : " Each size is solved on its own, so the set for one more sensor need not contain this one.");
@@ -526,7 +601,11 @@ window.Sim35UI = (function () {
   }
   function renderKnobs() {
     $("#methWarn").hidden = !WARN(st.rule) || st.fam === "one";
-    if (!WARN(st.rule) && st.method === "warn") st.method = "exact";
+    $("#methExact").hidden = st.fam === "one";
+    if (!WARN(st.rule) && st.method === "warn") st.method = "story";
+    const kMax = st.method === "story" ? storyMax() : (R().maxSensors || 10);
+    $("#kRange").max = String(kMax);
+    if (st.k > kMax) st.k = kMax;
     const ci = caseIndex(), c = curCase();
     $$("#viewKnob button").forEach(b => b.classList.toggle("on", b.dataset.v === st.view));
     $$("#famKnob button").forEach(b => b.classList.toggle("on", b.dataset.f === st.fam));
@@ -560,18 +639,22 @@ window.Sim35UI = (function () {
         " today. 25% is roughly the first year or two; 300% is a stress test. The growth is added all at once to today's network, with no pipe upgrades; " +
         "in reality the dwellings arrive over three to five years, which is why the time-to-notice figures matter as much as the millimetres.";
     }
-    $("#objKnob").style.display = st.fam !== "one" && st.method !== "greedy" ? "none" : "";
-    $("#methKnob").style.display = st.fam === "one" ? "none" : "";      // the greenfield grid publishes greedy only, so there is nothing to choose
+    $("#objKnob").style.display = st.method !== "greedy" ? "none" : "";
+    $("#methKnob").style.display = "";      // greenfield: Sim 4's list, or the greenfield grid's greedy order
     $("#methNote").hidden = st.fam !== "one";
     const hasRisk = st.fam !== "one" && !!((S().rules[st.rule] || {}).risk);
     $("#methRisk").hidden = !hasRisk;
-    if (!hasRisk && st.method === "risk") st.method = "exact";
-    const methText = st.fam !== "one"
-      ? (st.method === "warn" ? "Warn before surcharge: the best set of this size for warning at least one build-out step before the first new surcharge, worst of the 7 wet cases." : st.method === "exact" ? "Exact: the best set of this size, solved exactly over all cases for the worst case (PuLP + HiGHS). The recommendation."
+    if (!hasRisk && st.method === "risk") st.method = "story";
+    const methText = st.method === "story"
+      ? (st.fam !== "one"
+        ? "Sim 4's list: the story's sensors, in the story's order. The recommendation. Chosen in Sim 4 for the regions to monitor or watch, up to the 2041 homes; scored here over every region, case and build-out step, stress steps included. The other methods are comparisons."
+        : "Sim 4's list: the story's sensors, chosen for infill growth, scored here on a new estate joining at one manhole. Greedy is the greenfield grid's own order, as a comparison.")
+      : st.fam !== "one"
+      ? (st.method === "warn" ? "Warn before surcharge: the best set of this size for warning at least one build-out step before the first new surcharge, worst of the 7 wet cases." : st.method === "exact" ? "Exact: the best set of this size, solved exactly over all cases for the worst case (PuLP + HiGHS). A comparison: the recommendation is Sim 4's list."
          : st.method === "risk" ? "Risk-weighted: a severity x occurrence score of the kind Kimbrough (2019) uses, with this page's own scales. Severity is homes draining through the manhole where it bites; occurrence is how far it pushes that manhole towards 0.7 of its bore. The set that notices the most risk, solved exactly. A comparison, not the recommendation: it pulls sensors towards trunk mains already near capacity."
                                : "Greedy: each sensor is the best addition to the ones before it. Up to 10 points below the exact optimum at the same size.")
       : "The greenfield grid publishes the greedy order only; the exact solver has run on the infill family.";
-    const objText = st.fam !== "one" && st.method !== "greedy" ? "" : (st.obj === "worst"
+    const objText = st.method !== "greedy" ? "" : (st.obj === "worst"
       ? " Best worst case: each sensor added is the one that most raises the worst of the cases, so whatever the unknowns turn out to be at least this much is caught."
       : " Best average: each sensor added is the one that most raises the average over the cases; catches more on average, but can leave one case poorly covered.");
     $("#sensInfo").dataset.tip = methText + objText + " Detectable growth: scenarios that at least one manhole sees. This scores whether a sensor would notice growth, not whether it watches a choke point; the choke points are under No growth.";
@@ -583,7 +666,7 @@ window.Sim35UI = (function () {
     document.body.classList.toggle("expert", v === "expert");
     if (v === "simple") {
       st.rule = "r10"; st.showHeat = false; $("#toggleHeat").classList.remove("primary");
-      if (st.method === "risk") st.method = "exact";
+      st.method = "story";                // the simple view shows the recommendation: the story's list
       if (wxOf() !== "dry" && wxOf() !== "wet") setWeather("wet"); else if (!/^(Dry|Design wet)$/.test(curCase().label)) setWeather(wxOf());
     }
     repaint();
@@ -592,7 +675,7 @@ window.Sim35UI = (function () {
   function setFamily(f) {
     st.fam = f; st.pick = null; st.hover = null;
     if (f === "one" && (st.method === "exact" || st.method === "warn")) st.method = "greedy";
-    if (f !== "one" && st.method === "greedy" && !st.pickedGreedy) st.method = "warn";
+    if (f !== "one" && st.method === "greedy" && !st.pickedGreedy) st.method = "story";
     buildCaseKnobs();
     repaint();           // the camera stays where the reader left it
   }
@@ -892,14 +975,14 @@ window.Sim35UI = (function () {
         "</table>";
     }
     const warnLead = pl.warn ? warnSentence(pl) : "";
-    $("#sensorList").innerHTML = (pl.warn ? warnLead : lead) + cards + extra;
+    $("#sensorList").innerHTML = (pl.warn ? warnLead : lead + (st.method === "story" ? storySentence(pl) : "")) + cards + extra;
     if (st.view === "simple") {
       const tip = pl.warn ? WARN_TIP : "Detectable growth: the scenarios (every region at every build-out, or every estate size at every manhole) that at least one manhole anywhere would see. " +
         "The worst case is the lowest share over all " + famCases().length + " weather and leakage cases; the set is chosen to make that worst case as high as possible. " +
         "Each card names the regions this sensor is the first to notice, and how many manholes and homes drain past it.";
       $("#rightSensors").innerHTML = "<h4 style='margin-top:0'>Where to put " + k + " sensor" + (k === 1 ? "" : "s") + ' <i class="info-i left" data-tip="' + esc(tip) + '">i</i></h4>' +
         (pl.warn ? warnLead : pl.worst != null ? "<p style='margin:0 0 8px;color:var(--dim)'>Together they notice <b>" + pct(pl.worst) + "</b> of detectable " + (isIn ? "infill" : "greenfield") + " growth in the worst case.</p>" : "") +
-        cards + "<p class='quiet'>Click a pin or any manhole for its details.</p>";
+        (st.method === "story" ? storySentence(pl) : "") + cards + "<p class='quiet'>Click a pin or any manhole for its details.</p>";
     }
   }
   function renderCurve() {
@@ -913,13 +996,15 @@ window.Sim35UI = (function () {
       series = [{ name: "Exact, worst case", col: "var(--worst)", v: ex.map(e => e.worst) },
                 { name: "Exact, average", col: "var(--mean)", v: ex.map(e => e.average) },
                 { name: "Greedy, worst case", col: "var(--greedy)", v: gr.map(c => c.worst), dash: true }];
+      if (st.method === "story") series.push({ name: "Sim 4's list, worst case", col: "var(--selset)", v: storyCurve("infill", st.rule).map(c => c.worst) });
       if (st.method === "warn" && WARN(st.rule)) series.push({ name: "Warn before surcharge, worst case", col: "var(--selset)", v: WARN(st.rule).sets.map(e => e.detect_worst) });
       if (st.method === "risk" && rr.risk && rr.risk.compare) series.push({ name: "Risk-weighted, worst case", col: "var(--selset)", v: rr.risk.compare.slice().sort((a, b) => a.k - b.k).map(c => c.risk_set.plain) });
       note = "Selected set: " + methodName() + ".";
     } else {
       const pl = R().sensors[st.rule][st.obj];
       series = [{ name: "Greedy, worst case", col: "var(--worst)", v: pl.worst }, { name: "Greedy, average", col: "var(--mean)", v: pl.mean }];
-      note = "Greedy: each sensor is the one that most raises the " + (st.obj === "worst" ? "worst case" : "average") + ". Greenfield publishes greedy only.";
+      if (st.method === "story") series.push({ name: "Sim 4's list, worst case", col: "var(--selset)", v: storyCurve("one", st.rule).map(c => c.worst) });
+      note = st.method === "story" ? "Selected set: Sim 4's list, against the greenfield grid's greedy order." : "Greedy: each sensor is the one that most raises the " + (st.obj === "worst" ? "worst case" : "average") + ". Greenfield publishes greedy only.";
     }
     series = series.filter(s => s.v && s.v.length);
     if (!series.length) { el.innerHTML = ""; return; }
@@ -1111,7 +1196,7 @@ window.Sim35UI = (function () {
     $("#modalClose").onclick = () => { $("#modal").hidden = true; };
   }
   /* ------------------------------------------------------------------ the Results panel */
-  const RES = { tab: "warn", tag: null, limit: "0.7", rule: "r10", score: "detect", pL: null, pF: null };
+  const RES = { tab: "warn", tag: null, rule: "r10", score: "detect", pL: null, pF: null };
   const usd = v => "$" + Math.round(v).toLocaleString("en-AU");
   const seg = (name, cur, opts) => '<div class="knob resknob" data-res="' + name + '">' + opts.map(([v, t]) =>
     '<button data-v="' + v + '"' + (String(v) === String(cur) ? ' class="on"' : "") + ">" + esc(t) + "</button>").join("") + "</div>";
@@ -1120,7 +1205,7 @@ window.Sim35UI = (function () {
   const RULE_OPTS = [["r10", "10 mm rule"], ["r25", "25 mm rule"]];
   const info = t => ' <i class="info-i left" data-tip="' + esc(t) + '">i</i>';
   // Where a tab's numbers come from, beside the table. The text is in the data, written by the builder.
-  const sources = key => "<div class='src'><b>Where these numbers come from</b>" + window.SIM4_EXPLORE.sources[key].map(([tag, t]) =>
+  const sources = (key, extra) => "<div class='src'><b>Where these numbers come from</b>" + window.SIM4_EXPLORE.sources[key].concat(extra || []).map(([tag, t]) =>
     "<div><span class='srctag'>" + esc(tag) + "</span> " + esc(t) + "</div>").join("") + "</div>";
   const say = html => "<p class='say'>" + html + "</p>";
   const head = (t, sub) => esc(t) + "<span class='thsub'>" + esc(sub) + "</span>";
@@ -1128,7 +1213,9 @@ window.Sim35UI = (function () {
   const caseLabel = () => (S().cases.find(c => c.tag === RES.tag) || {}).label || "";
 
   function ladderTab() {
-    const X = window.SIM4_EXPLORE, rule = RES.rule === "r25" ? "r25" : "r10", W = X.warn[rule], e = W.sets[st.k - 1], set = new Set(e.chosen), lad = S().ladder;
+    const X = window.SIM4_EXPLORE, rule = RES.rule === "r25" ? "r25" : "r10", W = X.warn[rule], lad = S().ladder;
+    const useStory = st.method === "story", kk = useStory ? Math.min(st.k, storyMax()) : st.k, e = W.sets[kk - 1];
+    const set = new Set(useStory ? storyChosen(kk) : e.chosen), sw = useStory ? storyWarn(set, rule) : null;
     const rows = S().rows[RES.tag] || [];
     let body = "";
     const tally = { warned: [], missed: [], stress: 0 };
@@ -1153,7 +1240,7 @@ window.Sim35UI = (function () {
       body += "<tr" + (first < 0 ? ' class="dimrow"' : "") + '><th title="' + esc(reg.name) + '">' + esc(reg.id) + "</th>" + cells + "<td class='lnote'>" + esc(note) + "</td></tr>";
     });
     const nOver = tally.warned.length + tally.missed.length;
-    const line = "In " + esc(caseLabel()) + ", with " + st.k + " sensors at the " + W.R + " mm rule: " + (nOver
+    const line = "In " + esc(caseLabel()) + ", with " + (useStory ? "the story's first " + kk : kk) + " sensors at the " + W.R + " mm rule: " + (nOver
       ? (nOver === 1 ? "the one region that overloads by 100% build-out " + (tally.warned.length ? "<b>gets a warning first</b>" : "<b>gets no warning first</b>") : "<b>" + tally.warned.length + " of " + nOver + "</b> regions that overload by 100% build-out get a warning first") + (nOver > 1 && tally.missed.length ? " (no warning: " + listAnd(tally.missed) + ")" : "") + "."
       : "no region overloads by 100% build-out.") + (tally.stress ? " " + tally.stress + " more overload only in the stress steps." : "");
     return "<p class='q'>Does a sensor respond before the first manhole newly surcharges?" + info("Each row is one region's build-out, in the weather chosen. A tick means a chosen sensor has responded with no surcharge yet: that is a warning. A cross means a manhole has newly surcharged. Ticks must come before crosses. Hover any cell for the detail.") + "</p>" +
@@ -1161,32 +1248,59 @@ window.Sim35UI = (function () {
       "<div class='resctl'>" + caseSelect() + seg("rule", rule, RULE_OPTS) + seg("k", st.k, [[3, "3 sensors"], [5, "5 sensors"], [8, "8 sensors"]]) + "</div>" +
       "<div class='tscroll'><table class='ladder'><thead><tr><th>Region</th>" + lad.map(f => "<th>" + Math.round(f * 100) + "%</th>").join("") + "<th class='lnote'>Reading</th></tr></thead><tbody>" + body + "</tbody></table></div>" +
       "<p class='quiet'>Blue \u2713: responded, no surcharge yet. Red \u2715: newly surcharged, no response. Purple \u2715: newly surcharged, responded too late. 100% is the region's 2041 share; 150% and 300% are stress steps.</p>" +
-      "<div class='kpis'><div><b>" + e.plausible_warned + " of " + W.plausible_total + "</b>overloads by 100% build-out warned, on the runs the sensors were chosen on</div><div><b>" + e.plausible_unseen_weather + " of " + W.plausible_total + "</b>on unseen weather: chosen without that weather case</div><div><b>" + e.plausible_unseen_region + " of " + W.plausible_total + "</b>on an unseen region: chosen without that region</div><div><b>" + e.warned + " of " + W.total + "</b>on the runs chosen on, adding the 150% and 300% stress steps</div></div>" +
+      (useStory
+        ? "<div class='kpis'><div><b>" + sw.warned + " of " + sw.total + "</b>overloads by 100% build-out warned, over all " + S().cases.length + " cases (Sim 4's list)</div><div><b>Not held out</b>Sim 4's list was chosen in the story, on its regions to monitor or watch, so it has no held-out figure here; the story gives its own</div></div>"
+        : "<div class='kpis'><div><b>" + e.plausible_warned + " of " + W.plausible_total + "</b>overloads by 100% build-out warned, on the runs the sensors were chosen on</div><div><b>" + e.plausible_unseen_weather + " of " + W.plausible_total + "</b>on unseen weather: chosen without that weather case</div><div><b>" + e.plausible_unseen_region + " of " + W.plausible_total + "</b>on an unseen region: chosen without that region</div><div><b>" + e.warned + " of " + W.total + "</b>on the runs chosen on, adding the 150% and 300% stress steps</div></div>") +
       sources("warn");
   }
 
   const BAND_ICON = { "runs out": ["bo", "\u25CF"], "uncertain": ["bu", "\u25D0"], "room left": ["br", "\u25CB"], "already over": ["bg", "\u25A0"] };
   const BAND_LABEL = { "runs out": "Likely to reach the limit", "uncertain": "Could go either way", "room left": "Room left", "already over": "Already past the limit" };
-  function roomRow(id, name, e, L) {
-    const x = e[L], ic = BAND_ICON[x.band], top = "over " + Math.round(e.top_homes);
-    const a = x.homes_p10 == null ? top : String(x.homes_p10), b = x.homes_p90 == null ? top : String(x.homes_p90);
+  /* Room for homes is recalculated in the browser (room_calc.js), so the limit, the load of each new home and
+     the timing are the reader's to change. ROOM holds those settings; it starts from config.js's defaults. */
+  const ROOM = {};
+  const roomSet = () => { if (!ROOM.ready) Object.assign(ROOM, window.ROOM_CALC.defaults(), { ready: true }); return ROOM; };
+  const ROOM_PUBLISHED = { limit: 0.7, projection: "high", from: 2021 };   // what the published Sim 3.5 table was worked out at
+  const ROOM_FIELDS = { people: [0.5, 10], litres: [20, 1000], peak: [1, 6], from: [2000, 2100], lag: [0, 20] };
+  function roomRow(id, name, x, lag) {
+    const ic = BAND_ICON[x.band], over = "over " + Math.round(x.top_homes), yr = Math.floor;
+    const a = x.homes_p10 == null ? over : String(Math.round(x.homes_p10)), b = x.homes_p90 == null ? over : String(Math.round(x.homes_p90));
+    const ya = x.year_p10 == null ? "after " + yr(x.year_top) : String(yr(x.year_p10)), yb = x.year_p90 == null ? "after " + yr(x.year_top) : String(yr(x.year_p90));
+    const by = x.year_p10 == null ? "after " + (yr(x.year_top) - lag) : yr(x.year_p10) - lag <= roomSet().from ? "<b class='bad'>now</b>" : "by " + (yr(x.year_p10) - lag);
     return "<tr><th title='" + esc(name) + "'>" + esc(id) + "</th><td><span class='" + ic[0] + "'>" + ic[1] + "</span> " + esc(BAND_LABEL[x.band]) +
-      "</td><td class='r'>" + (a === b ? a : a + " to " + b) + " <span class='quiet'>(" + Math.round(e.share_100) + " expected)</span></td><td class='r'>" + e.rise_mm_per_100_homes.toFixed(0) + " mm</td><td class='r'>" + Math.round(x.already_over * 100) + "%</td></tr>";
+      "</td><td class='r'>" + (a === b ? a : a + " to " + b) + " <span class='quiet'>(" + Math.round(x.expected) + " expected)</span></td><td class='r'>" + (ya === yb ? ya : ya + " to " + yb) +
+      "</td><td class='r'>" + by + "</td><td class='r'>" + x.rise_mm_per_100_homes.toFixed(0) + " mm</td><td class='r'>" + Math.round(x.already_over * 100) + "%</td></tr>";
   }
   function roomTab() {
-    const C = window.SIM4_EXPLORE.capacity, L = RES.limit, areas = C.areas[RES.tag] || {};
-    const rows = S().regions.map(r => areas[r.id] ? roomRow(r.id, r.name, areas[r.id], L) : "").join("");
-    const sub_ = C.suburb[RES.tag] ? roomRow("Whole suburb", "485 homes across every region at once (Sim 3-e's 56 runs)", C.suburb[RES.tag], L) : "";
-    const inBand = b => S().regions.filter(r => areas[r.id] && areas[r.id][L].band === b).map(r => r.id);
+    const o = Object.assign({}, roomSet(), { tag: RES.tag }), RC = window.ROOM_CALC, T = window.SIM35_ROOM.timing;
+    const res = {};
+    S().regions.forEach(r => { res[r.id] = RC.row(r.id, o); });
+    const sub = RC.row("suburb", o);
+    const L = o.limit.toFixed(2), ld = RC.load(o), end = T.years[1];
+    const rows = S().regions.map(r => roomRow(r.id, r.name, res[r.id], o.lag)).join("");
+    const sub_ = sub ? roomRow("Whole suburb", "Growth in every region at once: Sim 3-e's 56 runs. Its share is the modelled area's 2,565 of the council's 2,851 connections, " + Math.round(sub.share100) + " homes by " + end + " in the high case.", sub, o.lag) : "";
+    const inBand = b => S().regions.filter(r => res[r.id].band === b).map(r => r.id);
     const part = (b, t) => inBand(b).length ? listAnd(inBand(b)) + " " + t : null;
-    const line = "In " + esc(caseLabel()) + ", with pipes limited to " + L + " of their height: " + [part("runs out", inBand("runs out").length > 1 ? "are likely to reach the limit before their 2041 homes arrive" : "is likely to reach the limit before its 2041 homes arrive"),
-      part("uncertain", "could go either way"), part("room left", inBand("room left").length > 1 ? "have room" : "has room"), part("already over", inBand("already over").length > 1 ? "are already past the limit along much of their path" : "is already past the limit along much of its path")].filter(Boolean).join("; ") + ".";
-    return "<p class='q'>How many new homes can each region take before growth uses up the buffer on its path?" + info("The path is the region's manholes and everything downstream. A manhole under the limit has buffer. The homes figure is when the first of them reaches the limit, re-read with each manhole's starting level shifted by an assumed error, because the model is uncalibrated: this is why it is a range. The limit is declared, not a standard.") + "</p>" +
+    const line = "In " + esc(caseLabel()) + ", with pipes limited to " + L + " of their height: " + [part("runs out", inBand("runs out").length > 1 ? "are likely to reach the limit before their " + end + " homes arrive" : "is likely to reach the limit before its " + end + " homes arrive"),
+      part("uncertain", "could go either way"), part("room left", inBand("room left").length > 1 ? "have room" : "has room"), part("already over", inBand("already over").length > 1 ? "are already past the limit along much of their path" : "is already past the limit along much of its path")].filter(Boolean).join("; ") + "." +
+      " Each new home adds <b>" + ld.lps.toFixed(4) + " L/s</b> at the peak hour" + (Math.abs(ld.ratio - 1) > 1e-9 ? " (" + ld.ratio.toFixed(2) + " times what the runs used)" : "") + "; homes are counted from " + o.from + ".";
+    const num = (k, label, step, unit) => "<label class='price'>" + esc(label) + "<input type='number' step='" + step + "' min='" + ROOM_FIELDS[k][0] + "' max='" + ROOM_FIELDS[k][1] + "' data-room='" + k + "' value='" + o[k] + "'>" + (unit ? " " + esc(unit) : "") + "</label>";
+    const isPub = o.limit === ROOM_PUBLISHED.limit && o.projection === "high" && o.from === ROOM_PUBLISHED.from && Math.abs(ld.ratio - 1) < 1e-9;
+    const settings = "<div class='roomset'>" +
+      "<div><span class='rshead'>Pipe limit" + info("The share of a pipe's height the water may reach before it counts as using up the buffer. Declared, not a standard: 0.7 after Kimbrough (2019), 0.6 about two thirds of full flow. The utility's own rating per pipe would replace it.") + "</span>" +
+      "<label class='rng'><input type='range' min='0.3' max='1' step='0.01' value='" + o.limit + "' data-room='limit'> <b id='roomLim'>" + L + "</b> of its height</label></div>" +
+      "<div><span class='rshead'>Each new home" + info("Changes the flow each NEW home adds. The runs added " + ld.base.toFixed(4) + " L/s per home; a run only sees the flow, so N homes at r times that flow raise the water as N x r homes did, and the homes figures are re-read as the runs' homes divided by r. Existing homes, leakage and outside inflow stay as modelled: changing those needs new SWMM runs.") + "</span>" +
+      num("people", "People", "0.1") + num("litres", "Litres a day each", "10") + num("peak", "Peak factor", "0.1") + "</div>" +
+      "<div><span class='rshead'>Timing" + info("Homes become years at the projection's rate: a region gains its 100% share over " + T.years[0] + " to " + end + " and keeps the same rate after. 'Counted from' is the year the network data stands for; homes built before it are already in the model. Approvals to review is the earliest year the limit could be reached, less the time from approval to connection.") + "</span>" +
+      "<label class='price'>Projection<select class='roomsel' data-room='projection'><option value='high'" + (o.projection === "high" ? " selected" : "") + ">High (" + T.high + " by " + end + ")</option><option value='medium'" + (o.projection === "medium" ? " selected" : "") + ">Medium (" + T.medium + " by " + end + ")</option></select></label>" +
+      num("from", "Counted from", "1") + num("lag", "Approval to connection", "1", "years") + "</div>" +
+      "<div class='knob rsbtns'><button data-room-reset='default' title='The defaults in config.js'>Reset</button><button data-room-reset='published'" + (isPub ? " class='on'" : "") + " title='Limit 0.7, high case, counted from 2021, the runs&apos; load: the settings the published Sim 3.5 table used'>Published settings</button></div></div>";
+    return "<p class='q'>How many new homes can each region take before growth uses up the buffer on its path, and when?" + info("The path is the region's manholes and everything downstream. A manhole under the limit has buffer. The homes figure is when the first of them reaches the limit, re-read with each manhole's starting level shifted by an assumed error, because the model is uncalibrated: this is why it is a range. The limit is declared, not a standard.") + "</p>" +
       say(line) +
-      "<div class='resctl'>" + caseSelect() + seg("limit", L, C.limits.map(v => [v, "limit " + v])) + "</div>" +
-      "<div class='tscroll'><table class='rtab'><thead><tr><th>Region</th><th>" + head("Outlook for its 2041 homes", "does growth use up the buffer?") + info("Likely to reach the limit: within the homes expected by 2041, in at least 80% of draws. Room left: in at most 20%. Already past the limit: no new pipe passes it, but 25% or more of the path is past it before growth. Otherwise, could go either way.") + "</th><th class='r'>" + head("New homes before a pipe reaches the limit", "range, with homes expected by 2041") + info("10th to 90th percentile of the draws: when the first pipe on the path with any buffer left reaches the limit.") + "</th><th class='r'>" + head("Water rise per 100 new homes", "largest rise on the path") + info("The largest rise on the path, at 100% build-out. Steady as growth builds in a given weather, but it changes with the weather. The utility's real buffer on that pipe divided by this gives homes for that pipe; other pipes rise less, so they would take more homes.") + "</th><th class='r'>" + head("Path already past the limit", "share of the path, before growth") + "</th></tr></thead><tbody>" + rows + sub_ + "</tbody></table></div>" +
-      "<p class='quiet'>Whole suburb: Sim 3-e's 56 runs, growth everywhere at once.</p>" +
-      sources("room");
+      "<div class='resctl'>" + caseSelect() + "</div>" + settings +
+      "<div class='tscroll'><table class='rtab'><thead><tr><th>Region</th><th>" + head("Outlook by " + end, "does growth use up the buffer?") + info("Likely to reach the limit: within the homes expected by " + end + ", in at least 80% of draws. Room left: in at most 20%. Already past the limit: no new pipe passes it, but 25% or more of the path is past it before growth. Otherwise, could go either way.") + "</th><th class='r'>" + head("New homes before a pipe reaches the limit", "range, with homes expected by " + end) + info("10th to 90th percentile of the draws: when the first pipe on the path with any buffer left reaches the limit.") + "</th><th class='r'>" + head("Year it is reached", "range, at the projection's rate") + info("The homes range turned into years at this region's share of the projection, counted from " + o.from + ". 'After' means not reached by the top of the runs (300% build-out).") + "</th><th class='r'>" + head("Approvals to review", o.lag + " years before the earliest year") + info("The earliest year in the range less the time from approval to connection: approvals after this would connect after the limit could be reached. 'Now' means that year has passed.") + "</th><th class='r'>" + head("Water rise per 100 new homes", "largest rise on the path") + info("The largest rise on the path, at 100% build-out, at the load per new home set above. Steady as growth builds in a given weather, but it changes with the weather.") + "</th><th class='r'>" + head("Path already past the limit", "share of the path, before growth") + "</th></tr></thead><tbody>" + rows + sub_ + "</tbody></table></div>" +
+      "<p class='quiet'>Worked out in your browser from Sim 3's saved runs, with the same steps as sim35_capacity.py: with no starting-level error it gives the script's figures exactly, and with the error, the same bands up to the random draws (a probability near the 20% or 80% cut-off can land either side). The published table used the Published settings. Whole suburb: Sim 3-e's 56 runs, growth everywhere at once.</p>" +
+      sources("room", [["Settings", "Load per new home: config.js loads (2.3 people, ABS 2021; 200 L a day, Barwon Water / WSAA; peak factor 2.0). Projection: PlanSA Local Area Population Projections 2021 to 2041, Walkerville, high 485 and medium 390. Approval to connection about 4 years: the network operator, 28 Sep 2026. Counted from 2026: assumed, the year of the network data."]]);
   }
 
   function floatTab() {
@@ -1236,7 +1350,7 @@ window.Sim35UI = (function () {
   const COV_SEQ = ["#184f95", "#3987e5", "#9ec5f4"], COV_LEVEL = "#3987e5", COV_FLOAT = "#c98500";
   const COV_MISS = "#e7edf7", COV_NONE = "#3a4350", COV_DIM = "#262d38";
   const coverOn = () => st.coverView && st.fam !== "none";
-  const methodName = () => st.fam === "one" ? "Greedy" : { warn: "Warn before surcharge", exact: "Exact optimum", greedy: "Greedy", risk: "Risk-weighted" }[st.method] || "";
+  const methodName = () => st.method === "story" ? "Sim 4's list" : st.fam === "one" ? "Greedy" : { warn: "Warn before surcharge", exact: "Exact optimum", greedy: "Greedy", risk: "Risk-weighted" }[st.method] || "";
   // One unit per region (infill) or per manhole the estate could join at (greenfield): who sees growth there.
   function coverData() {
     const pl = placement(), placed = pl.chosen, units = [];
@@ -1480,6 +1594,27 @@ window.Sim35UI = (function () {
     });
     box.querySelectorAll("select.ressel").forEach(s => { s.onchange = () => { RES[s.dataset.res] = s.value; renderResults(); }; });
     box.querySelectorAll("input[data-price]").forEach(i => { i.onchange = () => { RES[i.dataset.price] = Math.max(1, +i.value || 1); renderResults(); }; });
+    // Room for homes settings. The slider shows its value while dragging and recalculates on release.
+    box.querySelectorAll("input[data-room]").forEach(i => {
+      const k = i.dataset.room;
+      if (k === "limit") {
+        i.oninput = () => { $("#roomLim").textContent = (+i.value).toFixed(2); };
+        i.onchange = () => { roomSet().limit = +i.value; renderResults(); };
+        return;
+      }
+      i.onchange = () => {
+        const [lo, hi] = ROOM_FIELDS[k], v = +i.value;
+        if (Number.isFinite(v) && i.value !== "") roomSet()[k] = Math.min(hi, Math.max(lo, k === "from" || k === "lag" ? Math.round(v) : v));
+        renderResults();
+      };
+    });
+    box.querySelectorAll("select[data-room]").forEach(s => { s.onchange = () => { roomSet()[s.dataset.room] = s.value; renderResults(); }; });
+    box.querySelectorAll("button[data-room-reset]").forEach(b => {
+      b.onclick = () => {
+        Object.assign(roomSet(), window.ROOM_CALC.defaults(), b.dataset.roomReset === "published" ? ROOM_PUBLISHED : {});
+        renderResults();
+      };
+    });
   }
   function showResults() {
     const c = S().cases.find(x => x.tag === (curCase() || {}).tag);
@@ -1607,7 +1742,7 @@ window.Sim35UI = (function () {
     if (hp.get("case")) st.caseTag = hp.get("case");
     if (hp.get("rule") && ruleOf(hp.get("rule"))) st.rule = hp.get("rule");
     if (hp.get("k")) st.k = Math.max(1, Math.min(10, +hp.get("k") || st.k));
-    if (["greedy", "risk", "exact"].includes(hp.get("method"))) st.method = hp.get("method");
+    if (["story", "warn", "greedy", "risk", "exact"].includes(hp.get("method"))) st.method = hp.get("method");
     if (hp.get("site") != null && names()[+hp.get("site")]) st.site = +hp.get("site");
     if (st.fam === "one" && (st.method === "exact" || st.method === "warn")) st.method = "greedy";
     if (st.view === "simple") st.rule = "r10";

@@ -153,7 +153,7 @@ def findings(f):
                else "So both results hold up" if weather_holds else "So the result depends on the clearance")
     return f"""# Simulation 4 explorer: Sim 3.5's questions on Sim 4's regions
 
-Sim 4's story gives the short answer; this explorer asks Sim 3.5's three questions again on the same regions, with every weather case, rule and placement method. Its sensor sets come from Sim 3.5's methods over every region and the stress steps, so they differ from the story's five, which are chosen only for the regions to monitor or watch, up to the 2041 homes. The suburb is cut into {f['n_parts']} regions holding near-equal numbers of existing homes, by the spatial bisection of Kim et al. (2022){', plus ' + listing([r['name'].split(' (')[0] for r in f['overlay']]) + ' as an overlapping extra region' if f['overlay'] else ''}, and each was run in SWMM on Sim 3's settled model. Everything is uncalibrated: a guide to where to look first, not a measurement. The other tabs hold the tables.
+Sim 4's story gives the short answer; this explorer asks Sim 3.5's three questions again on the same regions, with every weather case, rule and placement method. Its sensors are the story's own list by default, scored here over every region and the stress steps, so the shares are lower than the story's, which counts only the regions to monitor or watch, up to the 2041 homes. Sim 3.5's methods (warn before surcharge, exact, greedy, risk-weighted) stay as comparisons. The suburb is cut into {f['n_parts']} regions holding near-equal numbers of existing homes, by the spatial bisection of Kim et al. (2022){', plus ' + listing([r['name'].split(' (')[0] for r in f['overlay']]) + ' as an overlapping extra region' if f['overlay'] else ''}, and each was run in SWMM on Sim 3's settled model. Everything is uncalibrated: a guide to where to look first, not a measurement. The other tabs hold the tables.
 
 ## 1. The score: warning before surcharge
 
@@ -229,7 +229,7 @@ Everything in the register below still applies. Sim 3.5 and 4 add these, all ass
 
 
 ABOUT = ("Simulation 4's explorer asks Simulation 3.5's questions on Sim 4's regions: eight holding near-equal numbers of existing homes, "
-         "cut by spatial bisection (Kim et al. 2022), plus the Walkerville Terrace corridor. Its sensor sets use Sim 3.5's methods, so they differ from the story's. It asks whether sensors warn "
+         "cut by spatial bisection (Kim et al. 2022), plus the Walkerville Terrace corridor. Its sensors are the story's list, with Sim 3.5's methods as comparisons. It asks whether sensors warn "
          "before a surcharge, how much room each region has, and whether floats can replace level sensors. Open Results in the top row.")
 RUNS = "Settled EPA SWMM runs of Sim 3's model on the equal-home regions, uncalibrated: no field levels were available."
 

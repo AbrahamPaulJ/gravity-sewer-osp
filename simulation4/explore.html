@@ -368,6 +368,12 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .resknob button{padding:5px 10px; white-space:nowrap}
 .ressel{background:var(--panel2,#16233a); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font:inherit; font-size:12.5px; max-width:100%}
 .price{font-size:12px; color:var(--dim)} .price input{width:78px; margin-left:4px; background:transparent; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:4px 6px; font:inherit}
+.roomset{display:flex; flex-wrap:wrap; gap:8px 18px; align-items:flex-end; margin:0 0 12px; padding:8px 10px; border:1px solid var(--line); border-radius:8px}
+.roomset>div{display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center}
+.roomset .rshead{display:block; width:100%; font-size:11.5px; color:var(--ink); font-weight:600}
+.roomset .price input{width:62px} .roomset .roomsel{margin-left:4px; background:transparent; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:3px 4px; font:inherit}
+.roomset .rng{font-size:12px; color:var(--dim); display:flex; align-items:center; gap:6px} .roomset .rng input{width:150px}
+.roomset .rsbtns{width:auto; margin:0 0 0 auto} .roomset .rsbtns button{flex:0 0 auto; padding:5px 10px}
 .tscroll{overflow-x:auto}
 .covknob button{padding:5px 8px; white-space:nowrap}
 .covstats{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:0 0 10px; font-size:11px; color:var(--dim)}
@@ -499,14 +505,15 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   <div id="sensorBox">
     <h4>Sensors, chosen once across all <span id="nCases">8</span> cases <i class="info-i" id="sensInfo" data-tip="">i</i></h4>
     <div class="knob x" id="methKnob">
+      <button data-m="story" title="The story's sensors, in its order: the recommendation, so this page and the story name the same manholes">Sim 4's list</button>
       <button data-m="warn" id="methWarn" title="The best set of this size for warning at least one build-out step before the first new surcharge">Warn before surcharge</button>
-      <button data-m="exact" title="The best set of this size, solved exactly (integer program)">Exact optimum</button>
+      <button data-m="exact" id="methExact" title="The best set of this size, solved exactly (integer program)">Exact optimum</button>
       <button data-m="greedy" title="One sensor at a time, each the best addition to the ones before">Greedy, one at a time</button>
       <button data-m="risk" id="methRisk" hidden title="Every scenario weighted by severity x occurrence (Kimbrough 2019): the share of total risk noticed, not the share of scenarios">Risk-weighted</button>
     </div>
     <label class="fld" for="kRange">Number of sensors: <b id="kVal"></b></label>
     <input type="range" id="kRange" min="1" max="10" step="1">
-    <p class="x quiet" id="methNote" hidden>Greedy only: each sensor is the best addition to the ones before. The exact solver has run on infill growth only.</p>
+    <p class="x quiet" id="methNote" hidden>A new estate: Sim 4's list, or the greenfield grid's greedy order as a comparison. The exact solver has run on infill growth only.</p>
     <div class="knob x" id="objKnob">
       <button data-o="worst" title="Each sensor is the one that most raises the WORST case">Best worst case</button>
       <button data-o="mean" title="Each sensor is the one that most raises the AVERAGE over the cases">Best average</button>
@@ -622,8 +629,11 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 <script src="../simulation35/growth_3d.js?v=3"></script>
 <script src="../simulation3/osp_core.js?v=9"></script>
 <script src="../simulation3/placement.js?v=9"></script>
-<script src="data/explore.js?v=3"></script>
-<script src="explore_ui.js?v=2"></script>
+<script src="data/explore.js?v=4"></script>
+<script src="data/sim4.js?v=5"></script>
+<script src="../simulation35/data/room.js?v=1"></script>
+<script src="../simulation35/room_calc.js?v=2"></script>
+<script src="explore_ui.js?v=3"></script>
 <script type="module">
   Sim35UI.init();
 </script>
