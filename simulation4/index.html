@@ -43,28 +43,48 @@ body{background:var(--bg); color:var(--ink); font:14px/1.5 system-ui,-apple-syst
 .labels .lbl.region{color:#04140a; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px;
   transform:translate(-50%,-50%); text-shadow:none; box-shadow:0 0 0 2px #0d1117; opacity:.95}
 
-/* The one card */
-#card{position:fixed; top:16px; left:50%; transform:translate(-50%,0); width:min(620px, calc(100vw - 32px)); z-index:10;
-  background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 18px 12px; backdrop-filter:blur(6px)}
+/* The one card: wide and flat, so it covers as little of the map as it can. The header row (step, title, Back and Next,
+   Hide) is all that stays when the reader folds it; the map shifts down by half the card's height so it centres in the
+   space below (sim4_story.js sets --map-shift). The right 196px are kept clear for Explore and Expert. */
+#card{--cw:min(900px, calc(100vw - 212px)); position:fixed; top:16px; width:var(--cw); z-index:10;
+  left:clamp(16px, calc((100vw - var(--cw)) / 2), calc(100vw - 196px - var(--cw)));
+  background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:9px 12px 10px 16px; backdrop-filter:blur(6px);
+  container-type:inline-size}
 #card.in{animation:rise .32s ease-out}
-@keyframes rise{from{opacity:.25; transform:translate(-50%,-6px)} to{opacity:1; transform:translate(-50%,0)}}
-#stepN{color:var(--faint); font-size:12px}
-#stepTitle{margin:0 0 4px; font-size:19px; font-weight:650; line-height:1.25}
-#stepBody{margin:0; font-size:15px; line-height:1.45; color:var(--ink)}
-#legendRow{display:flex; align-items:center; gap:10px; margin-top:8px}
-#legendRow:has(#legend:empty):has(#btnRegions[hidden]){display:none}
-#legend{display:flex; flex-wrap:wrap; gap:4px 14px; flex:1; font-size:12px; color:var(--dim)}
-#btnRegions{flex:none; font-size:12px; padding:2px 10px; color:var(--dim)}
-#btnRegions[aria-pressed="true"]{background:#0e4f6e; border-color:#16709b; color:var(--ink)}
-#legend span{display:inline-flex; align-items:center; gap:6px}
-#legend i{width:10px; height:10px; border-radius:50%; flex:none}
-#sliderRow{margin-top:10px}
-#sliderRow input{width:100%; accent-color:#fff176; margin:0}
-#homesOut{display:block; font-size:12.5px; color:var(--dim)}
-#nav{display:flex; align-items:center; gap:10px; margin-top:10px}
-#dots{display:flex; gap:6px; flex:1}
+@keyframes rise{from{opacity:.25; transform:translateY(-6px)} to{opacity:1; transform:none}}
+#cardHead{display:flex; align-items:center; gap:6px 12px}
+#stepN{flex:none; color:var(--faint); font-size:12px; white-space:nowrap}
+#stepTitle{flex:1 1 auto; min-width:0; margin:0; font-size:19px; font-weight:650; line-height:1.25}
+#nav{flex:none; display:flex; align-items:center; gap:8px}
+#nav button{padding:4px 14px}
+#dots{display:flex; gap:6px; margin-right:6px}
 #dots i{width:8px; height:8px; border-radius:50%; background:var(--line)}
 #dots i.on{background:var(--accent)}
+#btnFold{flex:none; display:inline-flex; align-items:center; gap:5px; font-size:12.5px; padding:4px 9px; color:var(--dim); background:transparent}
+#btnFold:hover{color:var(--ink)}
+#btnFold svg{width:12px; height:12px; transition:transform .2s}
+#btnFold[aria-expanded="false"] svg{transform:rotate(180deg)}
+#cardMore{margin-top:5px; padding-right:4px}
+#stepBody{margin:0; font-size:15px; line-height:1.42; color:var(--ink)}
+/* Slider, its label, the legend and the Regions button share one row, and wrap only when there is no room. */
+#controls{display:flex; flex-wrap:wrap; align-items:center; gap:6px 20px; margin-top:7px}
+#controls:has(#sliderRow[hidden]):has(#legend:empty):has(#btnRegions[hidden]){display:none}
+#sliderRow{flex:1 1 330px; display:flex; align-items:center; gap:10px; min-width:0}
+#sliderRow input{flex:1 1 120px; min-width:100px; accent-color:#fff176; margin:0}
+#homesOut{flex:none; font-size:12.5px; color:var(--dim); white-space:nowrap}
+#legendRow{flex:1 1 auto; display:flex; align-items:center; gap:10px}
+#legendRow:has(#legend:empty):has(#btnRegions[hidden]){display:none}
+#legend{display:flex; flex-wrap:wrap; gap:4px 12px; flex:1; font-size:12px; color:var(--dim)}
+#btnRegions{flex:none; margin-left:auto; font-size:12px; padding:2px 10px; color:var(--dim)}
+#btnRegions[aria-pressed="true"]{background:#0e4f6e; border-color:#16709b; color:var(--ink)}
+#legend span{display:inline-flex; align-items:center; gap:6px; white-space:nowrap}
+#legend i{width:10px; height:10px; border-radius:50%; flex:none}
+/* A narrower card drops the dots (the step number says the same), then puts the title on its own line. */
+@container (max-width:780px){#dots{display:none}}
+@container (max-width:600px){#cardHead{flex-wrap:wrap} #stepTitle{order:5; flex-basis:100%} #stepN{flex:1}}
+#stage{transform:translateY(var(--map-shift, 0px))}
+body[data-ready] #stage{transition:transform .3s ease}
+body.expert-on #stage{transform:none}
 button{font:inherit; color:var(--ink); background:#1b2b47; border:1px solid var(--line); border-radius:8px; padding:6px 16px; cursor:pointer}
 button:hover:not(:disabled){border-color:var(--accent)}
 button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
@@ -128,29 +148,36 @@ body.expert-on #btnExplore{display:none}     /* Expert takes the map over, and i
 #expert table{border-collapse:collapse; width:100%; font-size:12.5px; margin-top:4px}
 #expert th{color:var(--faint); text-align:left; font-weight:600; border-bottom:1px solid var(--line); padding:4px 8px 4px 0; vertical-align:bottom}
 #expert td{border-bottom:1px solid #1a2840; padding:4px 8px 4px 0; vertical-align:top}
-@media (prefers-reduced-motion:reduce){#card.in{animation:none}}
-@media (max-width:640px){#stepBody{font-size:14px} #stepTitle{font-size:17px} #btnExpert{top:auto; bottom:16px} #btnExplore{top:auto; bottom:16px} #pop{width:min(310px, calc(100vw - 24px))}}
+@media (prefers-reduced-motion:reduce){#card.in{animation:none} body[data-ready] #stage{transition:none} #btnFold svg{transition:none}}
+@media (max-width:640px){#card{--cw:calc(100vw - 16px); left:8px; top:8px; padding:8px 10px 9px 12px} #stepBody{font-size:14px} #stepTitle{font-size:17px} #btnExpert{top:auto; bottom:16px} #btnExplore{top:auto; bottom:16px} #pop{width:min(310px, calc(100vw - 24px))}}
 </style>
 </head>
 <body>
 <div id="stage" aria-label="Map of the sewer network"></div>
 
 <section id="card" aria-live="polite">
-  <div id="stepN"></div>
-  <h1 id="stepTitle"></h1>
-  <p id="stepBody"></p>
-  <div id="sliderRow" hidden>
-    <input id="homes" type="range" min="0" max="5" step="1" value="5" aria-label="Share of each region's 2041 homes">
-    <output id="homesOut" for="homes"></output>
+  <div id="cardHead">
+    <div id="stepN"></div>
+    <h1 id="stepTitle"></h1>
+    <div id="nav">
+      <div id="dots" aria-hidden="true"></div>
+      <button id="back" type="button">Back</button>
+      <button id="next" type="button">Next</button>
+    </div>
+    <button id="btnFold" type="button" aria-expanded="true" aria-controls="cardMore" aria-label="Hide step details" title="Hide the step's text and controls, to see more of the map"><span>Hide</span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 8l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
-  <div id="legendRow">
-    <div id="legend"></div>
-    <button id="btnRegions" type="button" aria-pressed="false" title="Show each region in its own colour, without the surcharge colours" hidden>Regions</button>
-  </div>
-  <div id="nav">
-    <div id="dots" aria-hidden="true"></div>
-    <button id="back" type="button">Back</button>
-    <button id="next" type="button">Next</button>
+  <div id="cardMore">
+    <p id="stepBody"></p>
+    <div id="controls">
+      <div id="sliderRow" hidden>
+        <input id="homes" type="range" min="0" max="5" step="1" value="5" aria-label="Share of each region's 2041 homes">
+        <output id="homesOut" for="homes"></output>
+      </div>
+      <div id="legendRow">
+        <div id="legend"></div>
+        <button id="btnRegions" type="button" aria-pressed="false" title="Show each region in its own colour, without the surcharge colours" hidden>Regions</button>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -203,7 +230,7 @@ body.expert-on #btnExplore{display:none}     /* Expert takes the map over, and i
 <script src="../simulation3/data/index.js?v=9"></script>
 <script src="../simulation35/growth_3d.js?v=3"></script>
 <script src="data/sim4.js?v=6"></script>
-<script src="sim4_story.js?v=4"></script>
+<script src="sim4_story.js?v=5"></script>
 <script src="sim4_play.js?v=3"></script>
 <script type="module">
   Sim4.init();
