@@ -83,8 +83,14 @@ def steps(nm, reg, ctx):
     flat = [r["id"] for r in reg["regions"] if rises.get(r["id"], 0) < 10]
     nsur = len({i for x in rows for i in x["sur"]})
     nspill = len({i for x in rows for i in x["spill"]})
-    s3 = (f"Each region is built out on its own. {listing(up)} rise 10 mm or more; {listing(flat)} do not. "
-          if up and flat else f"Each region is built out on its own. {'Every region rises' if up else 'No region rises'} 10 mm or more. ")
+    # A region does not rise: its homes raise the water in some manhole, often outside it, where its flow joins the main.
+    # Say "downstream" only when, for some region that rises, its biggest rise is outside its own manholes.
+    own = {r["id"]: set(r["manholes"]) for r in reg["regions"]}
+    top_at = {reg["regions"][x["r"]]["id"]: max(x["rise"], key=lambda v: v[1])[0] for x in rows if x["rise"]}
+    down = [r for r in up if top_at.get(r) is not None and top_at[r] not in own[r]]
+    where = ", often downstream where their flow joins the main" if down else ""
+    s3 = (f"Each region's 2041 homes are added on their own. {listing(up)} raise the water 10 mm or more in at least one manhole{where}; {listing(flat)} do not. "
+          if up and flat else f"Each region's 2041 homes are added on their own. {'Every region raises' if up else 'No region raises'} the water 10 mm or more in any manhole{where}. ")
     s3 += ("At full build-out, no manhole newly surcharges and " if not nsur else
            f"At full build-out, {nsur} manhole{'' if nsur == 1 else 's'} newly surcharge{'s' if nsur == 1 else ''} and ")
     s3 += "none spills." if not nspill else f"{nspill} spill{'s' if nspill == 1 else ''}."

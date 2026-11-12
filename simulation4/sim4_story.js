@@ -11,8 +11,13 @@ const Sim4 = (() => {
     was: ["#ffa500", "Surcharged before growth"], rise: ["#fff176", "Rises 10 mm or more"], tip: ["#ff2d55", "Newly surcharged"],
     monitor: [ACTION_COL.monitor, "Monitor"], watch: [ACTION_COL.watch, "Watch"], leave: [ACTION_COL.leave, "Leave"], sensor: ["#2ef56b", "Sensor"],
   };
+  // Step 3's "Regions" view: every region in its own colour, the same colours by id as the Explore page (explore_ui.js).
+  const REGION_COLS = { R1: "#3987e5", R2: "#d95926", R3: "#008300", R4: "#e87ba4", R5: "#199e70", R6: "#39c5cf", R7: "#b08457", R8: "#9085e9", R9: "#c9d1d9" };
+  const regionCol = ri => REGION_COLS[S().regions[ri].id] || "#5b6470";
   const SWEEP_MS = 3200;
-  const st = { i: 0, level: 5, pick: null, sweep: null, popAt: null, popSide: "right", expert: false };
+  // regions: the Regions view is on (step 3 only; off again on leaving the step or reloading).
+  // onMap: the legend keys whose colour the map shows right now, so the legend lists only those.
+  const st = { i: 0, level: 5, pick: null, sweep: null, popAt: null, popSide: "right", expert: false, regions: false, onMap: new Set() };
 
   /* The region each map point is painted in: the same rule as Sim 3.5, so regions look the same on both pages. */
   let _paint = null;
@@ -72,18 +77,28 @@ const Sim4 = (() => {
         x.sur.forEach(i => { named[nameOf(i)] = "tip"; });
         spills = spills.concat(x.spill.map(nameOf));
         const top = Math.max(0, ...x.rise.map(([, mm]) => mm));
-        labels[x.r] = { names: [regionPaint().labelAt[x.r]], text: `${S().regions[x.r].id} +${Math.round(top)} mm`, col: top >= 10 ? "#fff176" : "#8b949e" };
+        labels[x.r] = { names: [regionPaint().labelAt[x.r]], text: `${S().regions[x.r].id}: up to +${Math.round(top)} mm`, col: top >= 10 ? "#fff176" : "#8b949e" };
       });
     }
     return { named, labels, spills };
   }
-  function regionTints() {
-    const rp = regionPaint(), tints = {};
-    rp.of.forEach((ri, a) => { if (ri >= 0) tints[G().nodes[a].name] = ACTION_COL[D().triage[S().regions[ri].id]]; });
+  // The region each map point is drawn in, by name.
+  let _at = null;
+  function regionAt() {
+    if (_at) return _at;
+    const rp = regionPaint(), at = {};
+    rp.of.forEach((ri, a) => { if (ri >= 0) at[G().nodes[a].name] = ri; });
     // The corridor is drawn over the regions it crosses when it needs looking at; left alone, it shows through.
-    rp.overlayOf.forEach((ri, a) => { if (ri >= 0 && D().triage[S().regions[ri].id] !== "leave") tints[G().nodes[a].name] = ACTION_COL[D().triage[S().regions[ri].id]]; });
+    rp.overlayOf.forEach((ri, a) => { if (ri >= 0 && D().triage[S().regions[ri].id] !== "leave") at[G().nodes[a].name] = ri; });
+    return (_at = at);
+  }
+  // Tints by region: the action colours by default, or any colour per region index.
+  function regionTints(colOf = ri => ACTION_COL[D().triage[S().regions[ri].id]]) {
+    const at = regionAt(), tints = {};
+    for (const nm in at) tints[nm] = colOf(at[nm]);
     return tints;
   }
+  const regionsShown = () => new Set(Object.values(regionAt()));
   const actionLabels = () => S().regions.map((r, ri) => {
     const a = D().triage[r.id];
     return { names: [regionPaint().labelAt[ri]], text: a === "leave" ? r.id : `${r.id} ${a[0].toUpperCase()}${a.slice(1)}`, col: a === "leave" ? "#8b949e" : ACTION_COL[a] };
@@ -102,6 +117,11 @@ const Sim4 = (() => {
       const named = {}; base.surcharged.forEach(i => { named[nameOf(i)] = "was"; });
       Growth3D.setRegionTints(null); Growth3D.paint(named, null, [], null);
       Growth3D.setRegionLabels([]); Growth3D.setSpills(base.spilled.map(nameOf), []);
+    } else if (s.map === "growth" && st.regions) {
+      // The Regions view: each region in its own colour and nothing else, so no surcharge, rise or spill colours.
+      Growth3D.setRegionTints(regionTints(regionCol)); Growth3D.paint({}, null, [], null);
+      Growth3D.setRegionLabels(S().regions.map((r, ri) => ({ names: [regionPaint().labelAt[ri]], text: r.id, col: regionCol(ri) })));
+      Growth3D.setSpills([], []);
     } else if (s.map === "growth") {
       const g = growthState(st.level);
       Growth3D.setRegionTints(null); Growth3D.paint(g.named, null, [], null);
@@ -112,6 +132,33 @@ const Sim4 = (() => {
       Growth3D.setRegionLabels(actionLabels()); Growth3D.setSpills([], []);
     }
     Growth3D.setCoverSelect(st.pick && sensorNames().includes(st.pick) ? st.pick : null, []);
+    st.onMap = onMap();
+    renderLegend();
+  }
+  // What the map shows for the step as painted, in legend keys: a region view gives region indices.
+  function onMap() {
+    const s = step(), keys = new Set();
+    if (s.map === "base") { if (S().base[D().design].surcharged.length) keys.add("was"); }
+    else if (s.map === "growth" && st.regions) regionsShown().forEach(ri => keys.add(ri));
+    else if (s.map === "growth") Object.values(growthState(st.level).named).forEach(k => keys.add(k));
+    else if (s.map !== "plain") {
+      if (sensorNames().length) keys.add("sensor");
+      regionsShown().forEach(ri => keys.add(D().triage[S().regions[ri].id]));
+    }
+    return keys;
+  }
+  // The legend lists only the colours on the map now: a step's list is the most it can show.
+  function renderLegend() {
+    const s = step(), regionView = s.map === "growth" && st.regions;
+    const items = regionView
+      ? S().regions.map((r, ri) => ri).filter(ri => st.onMap.has(ri))
+          .sort((a, b) => String(S().regions[a].id).localeCompare(String(S().regions[b].id), undefined, { numeric: true }))
+          .map(ri => [regionCol(ri), S().regions[ri].id])
+      : (s.legend || []).filter(k => st.onMap.has(k)).map(k => LEGEND[k]);
+    $("#legend").innerHTML = items.map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join("");
+    const b = $("#btnRegions");
+    b.hidden = s.map !== "growth";
+    b.setAttribute("aria-pressed", String(regionView));
   }
   function renderLevel() {
     const lv = LEVELS(), v = st.level === 0 ? 0 : lv[st.level - 1].v;
@@ -124,7 +171,6 @@ const Sim4 = (() => {
     $("#stepTitle").textContent = s.title;
     $("#stepBody").textContent = s.body;
     $("#sliderRow").hidden = !s.slider;
-    $("#legend").innerHTML = (s.legend || []).map(k => `<span><i style="background:${LEGEND[k][0]}"></i>${LEGEND[k][1]}</span>`).join("");
     $("#back").disabled = st.i === 0;
     $("#next").disabled = st.i === total - 1;
     $("#dots").innerHTML = Array.from({ length: D().stepCount }, (_, a) => `<i class="${a + 1 === s.n ? "on" : ""}"></i>`).join("");
@@ -144,7 +190,9 @@ const Sim4 = (() => {
   }
   function go(i, push = true) {
     stopSweep(); hidePop();
-    st.i = Math.max(0, Math.min(D().steps.length - 1, i));
+    const to = Math.max(0, Math.min(D().steps.length - 1, i));
+    if (to !== st.i) st.regions = false;     // the Regions view belongs to the step it was turned on in
+    st.i = to;
     renderCard();
     st.level = 5; renderLevel(); paintMap();
     if (step().slider) sweep();
@@ -255,6 +303,7 @@ const Sim4 = (() => {
     $("#homes").onkeydown = stopSweep;
     $("#homes").oninput = e => { stopSweep(); hidePop(); st.level = +e.target.value; renderLevel(); paintMap(); };
     $("#btnExpert").onclick = () => toggleExpert();
+    $("#btnRegions").onclick = () => { hidePop(); st.regions = !st.regions; paintMap(); };
     $("#expertClose").onclick = () => toggleExpert(false);
     addEventListener("keydown", e => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
@@ -266,5 +315,5 @@ const Sim4 = (() => {
     addEventListener("resize", () => Growth3D.resize($("#stage")));
   }
   return { init, state: st, step, levels: LEVELS, sensors: sensorNames, growthState, regionPaint, regionTints, actionLabels, regionOf, overlayNote,
-           openPop, hidePop, esc, ACTION_COL, LEGEND, toggleExpert };
+           openPop, hidePop, esc, ACTION_COL, LEGEND, REGION_COLS, toggleExpert };
 })();
