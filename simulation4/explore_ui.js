@@ -126,6 +126,7 @@ window.Sim35UI = (function () {
     site: null, add: 3,                 // greenfield: chamber index, growth size index
     caseTag: null,                      // the uncertainty case, by tag (shared by the families)
     rule: "r10", k: 5, method: "story", obj: "worst",
+    scope: "story",                     // the test sets are scored on: the story's (default) or the broader one (TEST_NOTE)
     showSensors: true, showHeat: false, showPumps: false, showConn: false,
     hover: null, pick: null,            // hovered / clicked manhole NAME for the right panel
     legend: false,                      // the colour key, off until asked for
@@ -199,21 +200,43 @@ window.Sim35UI = (function () {
       "Chosen without the part tested: <b>" + e.plausible_unseen_weather + " of " + W.plausible_total + "</b> on unseen weather, <b>" + e.plausible_unseen_region + " of " + W.plausible_total + "</b> on an unseen region. " +
       "They also see " + pct(e.detect_worst) + " of detectable growth in the worst wet case.</p>";
   }
-  /* Sim 4's list: the story's nested sensors (data/sim4.js, play.ladder), the default here so that the explorer and the
-     story recommend the same manholes. Scored here the way the exact and greedy sets are, over every region, case and
-     build-out step (the stress steps too), so its shares are lower than the story's, which counts only the regions to
-     monitor or watch up to the 2041 homes. The other methods stay as comparisons. */
-  const STORY = () => (((window.SIM4 || {}).play || {}).ladder) || [];
+  /* Sim 4's list: the story's nested sensors (data/sim4.js, explore.ladder), the default here so that the explorer and
+     the story recommend the same manholes. The other methods stay as comparisons.
+     The test every infill set is scored on (st.scope):
+       story  the default, the story's own test: the 7 wet cases, the regions it monitors or watches (explore.targets),
+              build-out up to 100% (the 2041 homes). A run counts as detectable when any manhole rises 10 mm, whatever
+              the rule, and a warning is a response at the step before the first new surcharge, both as in
+              sim4_numbers.py, so the story's five land on its figures exactly.
+       broad  Sim 3.5's test, broader than the story: adds Dry, the regions the story leaves, and the 150% and 300%
+              stress steps; detectable means some manhole sees the run under the rule.
+     Exact, greedy, warn-before-surcharge and risk-weighted sets were solved on the broad test (regions.js, warn.json).
+     On the story's test they are scored afresh, and only the exact optimum at 10 mm is that test's own (explore.exact,
+     from sim4_numbers.py). The panel says which. */
+  const X4 = () => (window.SIM4 || {}).explore || {};
+  const STORY = () => X4().ladder || (((window.SIM4 || {}).play || {}).ladder) || [];
+  const storyScope = () => st.scope !== "broad";
+  const TEST_NOTE = {
+    story: "The story's test: the 7 wet cases, the regions to monitor or watch, build-out up to 100% (the 2041 homes).",
+    broad: "The broader test, wider than the story's: it adds Dry, the regions the story leaves, and the 150% and 300% stress steps, so its shares are lower.",
+  };
+  let _tgt = null;
+  const targetIdx = () => _tgt || (_tgt = new Set(S().regions.map((r, i) => ((X4().targets || []).includes(r.id) ? i : -1)).filter(i => i >= 0)));
+  const scopeCases = sc => (sc === "broad" ? S().cases : S().cases.filter(c => c.ii > 0));
+  const scopeRows = (tag, sc) => { const rows = S().rows[tag] || []; return sc === "broad" ? rows : rows.filter(r => targetIdx().has(r.r) && S().ladder[r.s] <= 1 + 1e-9); };
+  // The detectable runs of one case on a test, each as the manholes that see it under the rule.
+  const detRuns = (tag, rule, sc) => sc === "broad"
+    ? scopeRows(tag, sc).map(r => seers(r, rule)).filter(x => x.length)
+    : scopeRows(tag, sc).filter(r => r.rise.some(x => x[1] >= 10)).map(r => seers(r, rule));
   const storyMax = () => STORY().length || 8;
   const storyChosen = k => (STORY()[Math.min(k, storyMax()) - 1] || []).map(n => idxOfName[n]).filter(i => i !== undefined);
   const _story = {};
   const remember = (key, f) => (key in _story ? _story[key] : (_story[key] = f()));
   const summary = (per, cases) => (per.length ? { worst: Math.min(...per), average: per.reduce((a, b) => a + b, 0) / per.length, cases } : { worst: null, average: null, cases });
   // Share of the detectable infill runs (a run some manhole sees) the set sees, per case: the exact optimum's own score.
-  function infillScore(set, rule) {
+  function infillScore(set, rule, sc = st.scope) {
     const per = [], cases = [];
-    S().cases.forEach(c => {
-      const det = (S().rows[c.tag] || []).map(r => seers(r, rule)).filter(x => x.length);
+    scopeCases(sc).forEach(c => {
+      const det = detRuns(c.tag, rule, sc);
       if (!det.length) return;
       const seen = det.filter(x => x.some(i => set.has(i))).length;
       per.push(seen / det.length);
@@ -230,32 +253,45 @@ window.Sim35UI = (function () {
     });
     return summary(per);
   }
-  // Overloads by 100% build-out that the set warns of, over every case, counted as the Warn before surcharge sets are:
-  // a region whose first new surcharge comes after the first step and by 100%, with growth some manhole sees the step before.
-  function storyWarn(set, rule) {
+  // Overloads by 100% build-out that the set warns of: a region whose first new surcharge comes after the first step and
+  // by 100%, with growth some manhole sees (10 mm) the step before. On the broad test, every case and region, warned when
+  // a sensor responds at any step before the surcharge, as the Warn before surcharge sets are counted; on the story's,
+  // the wet cases and target regions, warned when a sensor responds at the step before, as sim4_numbers.py counts.
+  function storyWarn(set, rule, sc = st.scope) {
     let warned = 0, total = 0;
     const lad = S().ladder;
-    S().cases.forEach(c => {
+    scopeCases(sc).forEach(c => {
       const rows = S().rows[c.tag] || [];
       S().regions.forEach((reg, ri) => {
+        if (sc !== "broad" && !targetIdx().has(ri)) return;
         const rr = rows.filter(x => x.r === ri).sort((a, b) => a.s - b.s);
         const first = rr.findIndex(x => x.sur.length || x.spill.length);
         if (first < 1 || lad[first] > 1 || !rr[first - 1].rise.some(x => x[1] >= 10)) return;
         total++;
-        const fire = rr.findIndex(x => seers(x, rule).some(i => set.has(i)));
-        if (fire >= 0 && fire < first) warned++;
+        if (sc === "broad") {
+          const fire = rr.findIndex(x => seers(x, rule).some(i => set.has(i)));
+          if (fire >= 0 && fire < first) warned++;
+        } else if (seers(rr[first - 1], rule).some(i => set.has(i))) warned++;
       });
     });
     return { warned, total };
   }
-  const storyCurve = (fam, rule) => remember("curve|" + fam + "|" + rule, () => STORY().map((_, j) => {
+  const storyCurve = (fam, rule, sc = st.scope) => remember("curve|" + fam + "|" + rule + "|" + (fam === "one" ? "" : sc), () => STORY().map((_, j) => {
     const set = new Set(storyChosen(j + 1));
-    return fam === "one" ? oneScore(set, rule) : infillScore(set, rule);
+    return fam === "one" ? oneScore(set, rule) : infillScore(set, rule, sc);
   }));
   function storyPlacement(fam) {
     const k = Math.min(st.k, storyMax()), chosen = storyChosen(k), c = storyCurve(fam, st.rule)[k - 1] || {};
-    return { chosen, worst: c.worst, average: c.average, cases: c.cases, story: fam === "one" ? null : remember("warn|" + st.rule + "|" + k, () => storyWarn(new Set(chosen), st.rule)) };
+    return { chosen, worst: c.worst, average: c.average, cases: c.cases, chosenOn: "story",
+             story: fam === "one" ? null : remember("warn|" + st.rule + "|" + k + "|" + st.scope, () => storyWarn(new Set(chosen), st.rule)) };
   }
+  // A set chosen elsewhere, scored on the story's test, remembered by its manholes.
+  const scoreOn = (chosen, rule) => remember("set|" + rule + "|" + st.scope + "|" + chosen.join(","), () => {
+    const set = new Set(chosen), s = infillScore(set, rule);
+    return { worst: s.worst, average: s.average, cases: s.cases, story: storyWarn(set, rule) };
+  });
+  // The story test's own exact optimum at k, as chamber indices, where sim4_numbers.py solved it (10 mm, up to 8).
+  const storyExact = k => (st.rule === "r10" && (X4().exact || [])[k - 1]) ? X4().exact[k - 1].map(n => idxOfName[n]).filter(i => i !== undefined) : null;
   // The story scores only the wet cases. When a dry case is the worst here, say so, with the wet cases' own worst and average.
   function wetNote(pl) {
     const cs = pl.cases || [], wet = cs.filter(c => c.wet);
@@ -267,14 +303,26 @@ window.Sim35UI = (function () {
       " wet cases. Over those the worst is <b>" + pct(Math.min(...ws)) + "</b> (" + esc(wl.label) + ") and the average <b>" + pct(ws.reduce((a, b) => a + b, 0) / ws.length) + "</b>.</p>";
   }
   function storySentence(pl) {
-    const w = pl.story, n = pl.chosen.length;
-    return wetNote(pl) + (w && w.total ? "<p style='margin:0 0 8px'>They warn of <b>" + w.warned + " of " + w.total + "</b> overloads by 100% build-out, before the first surcharge, over all " + S().cases.length + " cases.</p>" : "") +
-      "<p class='quiet' style='margin:0 0 8px'>These are the story's " + (n === 1 ? "first sensor" : "first " + n + " sensors") + ", in its order. The story counts only the regions to monitor or watch, up to the 2041 homes; here every region and the stress steps count, so the shares are lower.</p>";
+    const w = pl.story, n = pl.chosen.length, story = storyScope();
+    const where = story ? "over the " + scopeCases("story").length + " wet cases in the regions to monitor or watch" : "over all " + S().cases.length + " cases and every region";
+    const who = st.method === "story" ? "These are the story's " + (n === 1 ? "first sensor" : "first " + n + " sensors") + ", in its order. "
+      : pl.chosenOn === "story" ? "This is the exact optimum on the story's own test. "
+      : story ? "This set was chosen on the broader test and is scored here on the story's. " : "";
+    return (story ? "" : wetNote(pl)) + (w && w.total ? "<p style='margin:0 0 8px'>They warn of <b>" + w.warned + " of " + w.total + "</b> overloads by 100% build-out, before the first surcharge, " + where + ".</p>" : "") +
+      "<p class='quiet' style='margin:0 0 8px' id='scopeSay'>" + who + "Scored on " + (story ? TEST_NOTE.story.charAt(0).toLowerCase() + TEST_NOTE.story.slice(1) : TEST_NOTE.broad.charAt(0).toLowerCase() + TEST_NOTE.broad.slice(1)) + "</p>";
   }
   function infillPlacement() {
     const rr = S().rules[st.rule];
     if (!rr) return { chosen: [], worst: null, average: null, curve: [] };
     if (st.method === "story") return storyPlacement("infill");
+    const pl = broadPlacement(rr);
+    if (!storyScope()) return pl;
+    // The story's test: the exact optimum at 10 mm is that test's own; every other set is the broad test's, scored afresh.
+    const own = st.method === "exact" ? storyExact(st.k) : null, chosen = own || pl.chosen, s = scoreOn(chosen, st.rule);
+    return { chosen, worst: s.worst, average: s.average, cases: s.cases, story: s.story, chosenOn: own ? "story" : "broad", compare: pl.compare, status: own ? 0 : pl.status };
+  }
+  // The comparison methods as solved, on the broad test.
+  function broadPlacement(rr) {
     if (st.method === "warn" && WARN(st.rule)) {
       const e = WARN(st.rule).sets[st.k - 1];
       return { chosen: e.chosen.slice(), worst: e.detect_worst, average: e.detect_average, warn: e };
@@ -290,17 +338,17 @@ window.Sim35UI = (function () {
       return { chosen: e.chosen.slice(), worst: e.worst, average: e.average, status: e.status, riskWorst: c && c.plain_set ? c.plain_set.risk : null, compare: c };
     }
     const c = rr.greedy.curve[Math.min(st.k, rr.greedy.curve.length) - 1] || {};
-    return { chosen: rr.greedy.chosen.slice(0, st.k), worst: c.worst, average: c.average };
+    return { chosen: rr.greedy.chosen.slice(0, st.k), worst: c.worst, average: c.average, chosenOn: "broad" };
   }
   // Each candidate's own coverage of the infill scenarios (worst and mean over cases), for the
   // heatmap and the cards. Computed once per rule from the same rows the map paints.
   const _heatInfill = {};
   function infillHeat() {
-    if (_heatInfill[st.rule]) return _heatInfill[st.rule];
+    const key = st.rule + "|" + st.scope;
+    if (_heatInfill[key]) return _heatInfill[key];
     const n = names().length, per = [];
-    S().cases.forEach(c => {
-      const rows = S().rows[c.tag] || [];
-      const det = rows.map(r => new Set(seers(r, st.rule))).filter(s => s.size);
+    scopeCases(st.scope).forEach(c => {
+      const det = detRuns(c.tag, st.rule, st.scope).map(x => new Set(x));
       if (!det.length) return;
       const f = new Array(n).fill(0);
       det.forEach(s => s.forEach(i => { f[i]++; }));
@@ -312,7 +360,7 @@ window.Sim35UI = (function () {
       worst.push(v.length ? Math.min(...v) : 0);
       mean.push(v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0);
     }
-    return (_heatInfill[st.rule] = { worst, mean });
+    return (_heatInfill[key] = { worst, mean });
   }
 
   /* ------------------------------------------------------------ greenfield */
@@ -475,7 +523,6 @@ window.Sim35UI = (function () {
     const cs = famCases();
     $("#iiKnob").innerHTML = cs.map((c, i) => "<button data-i=" + JSON.stringify(String(i)) + " title=" + JSON.stringify(c.note || "") + ">" +
       esc(c.label) + '<span class="knobNum">' + c.ii.toFixed(2) + " L/s/100m" + (c.settled === false ? ", 480 min" : "") + "</span></button>").join("");
-    $("#nCases").textContent = cs.length;
   }
   // The simple strip's "where": the regions, then greenfield, then no growth.
   function buildStrip() {
@@ -563,7 +610,10 @@ window.Sim35UI = (function () {
     const pl = placement();
     $("#kHint").textContent = pl.warn ? "warn of " + pl.warn.plausible_warned + " of " + WARN(st.rule).plausible_total + " overloads by 100% build-out" : pl.worst != null ? "catch " + pct(pl.worst) + " of detectable growth, worst case" : "";
     $("#kInfo").dataset.tip = pl.warn ? WARN_TIP : st.method === "story" ? "The story's first " + st.k + " sensor" + (st.k === 1 ? "" : "s") + ", in its order (Sim 4's list, up to " + storyMax() + "). " +
-      "A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth. The percentage is the share of the detectable growth, every region at every build-out step, that the set notices." : "The best set of this many level sensors, chosen once for the worst of all " + famCases().length + " weather and leakage cases. " +
+      "A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth. The percentage is the share of the detectable growth the set notices, on " +
+      (st.fam === "one" ? "the greenfield grid." : storyScope() ? TEST_NOTE.story.charAt(0).toLowerCase() + TEST_NOTE.story.slice(1) : TEST_NOTE.broad.charAt(0).toLowerCase() + TEST_NOTE.broad.slice(1))
+      : st.fam !== "one" && storyScope() ? "This many level sensors, by the method chosen, scored on " + TEST_NOTE.story.charAt(0).toLowerCase() + TEST_NOTE.story.slice(1) +
+      " A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth; the percentage is the share of the detectable growth the set notices." : "The best set of this many level sensors, chosen once for the worst of all " + famCases().length + " weather and leakage cases. " +
       "A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth. " +
       "Detectable growth means the scenarios that at least one manhole anywhere would see; the percentage is the share of those that this set notices." +
       (st.fam === "one" ? " For a new estate the set is built one sensor at a time (greedy); the infill set is the exact optimum." : " Each size is solved on its own, so the set for one more sensor need not contain this one.");
@@ -593,6 +643,7 @@ window.Sim35UI = (function () {
       regionOrder().filter(isOverlay).map(i => '<span class="quiet">' + esc(S().regions[i].id + ", " + shortName(S().regions[i]).replace(/ \(.*\)$/, "")) + ", overlaps the regions above, so it is not shaded.</span>").join("");
     on("#addKnob", b => { st.add = +b.dataset.i; repaint(); });
     on("#methKnob", b => { st.method = b.dataset.m; st.pickedGreedy = b.dataset.m === "greedy"; repaint(); });
+    on("#scopeKnob", b => { st.scope = b.dataset.s === "broad" ? "broad" : "story"; repaint(); });
     on("#objKnob", b => { st.obj = b.dataset.o; repaint(); });
     $("#region").onchange = () => { st.region = +$("#region").value; st.pick = null; repaint(); };
     $("#stepRange").oninput = () => { st.step = +$("#stepRange").value; repaint(); };
@@ -603,6 +654,11 @@ window.Sim35UI = (function () {
     $("#methWarn").hidden = !WARN(st.rule) || st.fam === "one";
     $("#methExact").hidden = st.fam === "one";
     if (!WARN(st.rule) && st.method === "warn") st.method = "story";
+    // Which test the sets are scored on: infill only (greenfield scores on its own grid).
+    $("#scopeBox").hidden = st.fam !== "infill";
+    $$("#scopeKnob button").forEach(b => b.classList.toggle("on", b.dataset.s === st.scope));
+    $("#scopeNote").textContent = TEST_NOTE[storyScope() ? "story" : "broad"];
+    $("#sensHead").textContent = st.fam === "infill" ? (storyScope() ? "Sensors, scored on the story's test" : "Sensors, scored on the broader test") : "Sensors, chosen once across all " + famCases().length + " cases";
     const kMax = st.method === "story" ? storyMax() : (R().maxSensors || 10);
     $("#kRange").max = String(kMax);
     if (st.k > kMax) st.k = kMax;
@@ -647,17 +703,20 @@ window.Sim35UI = (function () {
     if (!hasRisk && st.method === "risk") st.method = "story";
     const methText = st.method === "story"
       ? (st.fam !== "one"
-        ? "Sim 4's list: the story's sensors, in the story's order. The recommendation. Chosen in Sim 4 for the regions to monitor or watch, up to the 2041 homes; scored here over every region, case and build-out step, stress steps included. The other methods are comparisons."
+        ? "Sim 4's list: the story's sensors, in the story's order. The recommendation. Chosen in Sim 4 for the regions to monitor or watch, up to the 2041 homes, and scored here on " + (storyScope() ? "that same test" : "the broader test, which adds Dry, the regions the story leaves and the stress steps") + ". The other methods are comparisons."
         : "Sim 4's list: the story's sensors, chosen for infill growth, scored here on a new estate joining at one manhole. Greedy is the greenfield grid's own order, as a comparison.")
       : st.fam !== "one"
-      ? (st.method === "warn" ? "Warn before surcharge: the best set of this size for warning at least one build-out step before the first new surcharge, worst of the 7 wet cases." : st.method === "exact" ? "Exact: the best set of this size, solved exactly over all cases for the worst case (PuLP + HiGHS). A comparison: the recommendation is Sim 4's list."
+      ? (st.method === "warn" ? "Warn before surcharge: the best set of this size for warning at least one build-out step before the first new surcharge, worst of the 7 wet cases." : st.method === "exact" ? (storyScope() && storyExact(st.k)
+           ? "Exact: the best set of this size on the story's own test, solved exactly for the worst case (sim4_numbers.py, HiGHS). A comparison: the recommendation is Sim 4's list, which is nested and keeps step 5a's sensor."
+           : "Exact: the best set of this size, solved exactly over all cases for the worst case (PuLP + HiGHS). A comparison: the recommendation is Sim 4's list.")
          : st.method === "risk" ? "Risk-weighted: a severity x occurrence score of the kind Kimbrough (2019) uses, with this page's own scales. Severity is homes draining through the manhole where it bites; occurrence is how far it pushes that manhole towards 0.7 of its bore. The set that notices the most risk, solved exactly. A comparison, not the recommendation: it pulls sensors towards trunk mains already near capacity."
                                : "Greedy: each sensor is the best addition to the ones before it. Up to 10 points below the exact optimum at the same size.")
       : "The greenfield grid publishes the greedy order only; the exact solver has run on the infill family.";
     const objText = st.method !== "greedy" ? "" : (st.obj === "worst"
       ? " Best worst case: each sensor added is the one that most raises the worst of the cases, so whatever the unknowns turn out to be at least this much is caught."
       : " Best average: each sensor added is the one that most raises the average over the cases; catches more on average, but can leave one case poorly covered.");
-    $("#sensInfo").dataset.tip = methText + objText + " Detectable growth: scenarios that at least one manhole sees. This scores whether a sensor would notice growth, not whether it watches a choke point; the choke points are under No growth.";
+    const scopeText = st.fam === "infill" && st.method !== "story" ? (storyScope() ? (storyExact(st.k) && st.method === "exact" ? "" : " Chosen on the broader test, scored here on the story's.") : " Scored on the broader test.") : "";
+    $("#sensInfo").dataset.tip = methText + objText + scopeText + " Detectable growth: scenarios that at least one manhole sees. This scores whether a sensor would notice growth, not whether it watches a choke point; the choke points are under No growth.";
   }
 
   function setView(v) {
@@ -963,33 +1022,48 @@ window.Sim35UI = (function () {
     let extra = "";
     if (isIn && st.view === "expert" && pl.compare && pl.compare.plain_set) {
       const c = pl.compare, hi = ' class="hi"';
-      extra += "<h4>Plain against risk-weighted, " + k + " sensors <i class='info-i left' data-tip='Worst case over the cases, each set scored both ways. Risk weight = severity x occurrence per scenario, the kind of score Kimbrough (2019) uses; the scales are this page&#39;s own. The current scenario&#39;s weight is in the region card.'>i</i></h4><table class='sm'><tr><th>Set</th><th>Plain coverage</th><th>Risk-weighted</th></tr>" +
+      extra += "<h4>Plain against risk-weighted, " + k + " sensors" + (storyScope() ? ", broader test" : "") + " <i class='info-i left' data-tip='Worst case over the cases, each set scored both ways. Risk weight = severity x occurrence per scenario, the kind of score Kimbrough (2019) uses; the scales are this page&#39;s own. The current scenario&#39;s weight is in the region card.'>i</i></h4><table class='sm'><tr><th>Set</th><th>Plain coverage</th><th>Risk-weighted</th></tr>" +
         "<tr><td>Exact (plain)</td><td" + (st.method !== "risk" ? hi : "") + ">" + pct(c.plain_set.plain) + "</td><td>" + pct(c.plain_set.risk) + "</td></tr>" +
         "<tr><td>Risk-weighted</td><td>" + pct(c.risk_set.plain) + "</td><td" + (st.method === "risk" ? hi : "") + ">" + pct(c.risk_set.risk) + "</td></tr></table>" +
         "<p class='quiet'>The two sets share " + c.shared + " of " + k + " manholes.</p>";
     }
     if (isIn && st.view === "expert" && rr.loo && Object.keys(rr.loo).length) {
       const n0 = Object.values(rr.loo)[0].chosen.length;
-      extra = "<h4>Leave one case out (" + n0 + " sensors) <i class='info-i left' data-tip='Sensors chosen on the other cases, scored on the one held out: how much the recommendation depends on any single assumption about the weather.'>i</i></h4><table class='sm'><tr><th>Held out</th><th>Score on it</th></tr>" +
+      extra = "<h4>Leave one case out (" + n0 + " sensors" + (storyScope() ? ", broader test" : "") + ") <i class='info-i left' data-tip='Sensors chosen on the other cases, scored on the one held out: how much the recommendation depends on any single assumption about the weather.'>i</i></h4><table class='sm'><tr><th>Held out</th><th>Score on it</th></tr>" +
         S().cases.map(c => rr.loo[c.tag] ? "<tr><td>" + esc(c.label) + "</td><td" + (rr.loo[c.tag].score < 0.5 ? ' class="hi"' : "") + ">" + pct(rr.loo[c.tag].score) + "</td></tr>" : "").join("") +
         "</table>";
     }
     const warnLead = pl.warn ? warnSentence(pl) : "";
-    $("#sensorList").innerHTML = (pl.warn ? warnLead : lead + (st.method === "story" ? storySentence(pl) : "")) + cards + extra;
+    const showScope = isIn && (st.method === "story" || storyScope());
+    $("#sensorList").innerHTML = (pl.warn ? warnLead + (storyScope() ? "" : "<p class='quiet' style='margin:0 0 8px' id='scopeSay'>Scored on " + TEST_NOTE.broad.charAt(0).toLowerCase() + TEST_NOTE.broad.slice(1) + "</p>") : lead + (showScope ? storySentence(pl) : "")) + cards + extra;
     if (st.view === "simple") {
       const tip = pl.warn ? WARN_TIP : "Detectable growth: the scenarios (every region at every build-out, or every estate size at every manhole) that at least one manhole anywhere would see. " +
         "The worst case is the lowest share over all " + famCases().length + " weather and leakage cases; the set is chosen to make that worst case as high as possible. " +
         "Each card names the regions this sensor is the first to notice, and how many manholes and homes drain past it.";
       $("#rightSensors").innerHTML = "<h4 style='margin-top:0'>Where to put " + k + " sensor" + (k === 1 ? "" : "s") + ' <i class="info-i left" data-tip="' + esc(tip) + '">i</i></h4>' +
         (pl.warn ? warnLead : pl.worst != null ? "<p style='margin:0 0 8px;color:var(--dim)'>Together they notice <b>" + pct(pl.worst) + "</b> of detectable " + (isIn ? "infill" : "greenfield") + " growth in the worst case.</p>" : "") +
-        (st.method === "story" ? storySentence(pl) : "") + cards + "<p class='quiet'>Click a pin or any manhole for its details.</p>";
+        (showScope ? storySentence(pl) : "") + cards + "<p class='quiet'>Click a pin or any manhole for its details.</p>";
     }
   }
   function renderCurve() {
     const el = $("#curve");
     if (st.view !== "expert") { el.innerHTML = ""; return; }
     let series = [], note = "";
-    if (st.fam !== "one") {
+    if (st.fam !== "one" && storyScope()) {
+      // On the story's test every curve is scored here; the exact sets are that test's own at 10 mm, the broad test's otherwise.
+      const rr = S().rules[st.rule];
+      if (!rr) { el.innerHTML = ""; return; }
+      const ownEx = st.rule === "r10" && (X4().exact || []).length;
+      const exSets = ownEx ? X4().exact.map((_, j) => storyExact(j + 1)) : (rr.exact || []).map(e => e.chosen);
+      const exS = exSets.map(c => scoreOn(c, st.rule)), grS = (rr.greedy.curve || []).map((_, j) => scoreOn(rr.greedy.chosen.slice(0, j + 1), st.rule));
+      series = [{ name: "Exact, worst case", col: "var(--worst)", v: exS.map(e => e.worst) },
+                { name: "Exact, average", col: "var(--mean)", v: exS.map(e => e.average) },
+                { name: "Greedy, worst case", col: "var(--greedy)", v: grS.map(c => c.worst), dash: true }];
+      if (st.method === "story") series.push({ name: "Sim 4's list, worst case", col: "var(--selset)", v: storyCurve("infill", st.rule).map(c => c.worst) });
+      if (st.method === "warn" && WARN(st.rule)) series.push({ name: "Warn before surcharge, worst case", col: "var(--selset)", v: WARN(st.rule).sets.map(e => scoreOn(e.chosen, st.rule).worst) });
+      if (st.method === "risk" && rr.risk && rr.risk.exact) series.push({ name: "Risk-weighted, worst case", col: "var(--selset)", v: rr.risk.exact.slice().sort((a, b) => a.k - b.k).map(e => scoreOn(e.chosen, st.rule).worst) });
+      note = "Selected set: " + methodName() + ". Every curve scored on the story's test" + (ownEx ? "; the exact sets are its own, the greedy ones the broader test's." : "; the exact and greedy sets were solved on the broader test.");
+    } else if (st.fam !== "one") {
       const rr = S().rules[st.rule];
       if (!rr) { el.innerHTML = ""; return; }
       const ex = rr.exact || [], gr = rr.greedy.curve || [];
@@ -999,7 +1073,7 @@ window.Sim35UI = (function () {
       if (st.method === "story") series.push({ name: "Sim 4's list, worst case", col: "var(--selset)", v: storyCurve("infill", st.rule).map(c => c.worst) });
       if (st.method === "warn" && WARN(st.rule)) series.push({ name: "Warn before surcharge, worst case", col: "var(--selset)", v: WARN(st.rule).sets.map(e => e.detect_worst) });
       if (st.method === "risk" && rr.risk && rr.risk.compare) series.push({ name: "Risk-weighted, worst case", col: "var(--selset)", v: rr.risk.compare.slice().sort((a, b) => a.k - b.k).map(c => c.risk_set.plain) });
-      note = "Selected set: " + methodName() + ".";
+      note = "Selected set: " + methodName() + ". Scored on the broader test.";
     } else {
       const pl = R().sensors[st.rule][st.obj];
       series = [{ name: "Greedy, worst case", col: "var(--worst)", v: pl.worst }, { name: "Greedy, average", col: "var(--mean)", v: pl.mean }];
@@ -1215,7 +1289,7 @@ window.Sim35UI = (function () {
   function ladderTab() {
     const X = window.SIM4_EXPLORE, rule = RES.rule === "r25" ? "r25" : "r10", W = X.warn[rule], lad = S().ladder;
     const useStory = st.method === "story", kk = useStory ? Math.min(st.k, storyMax()) : st.k, e = W.sets[kk - 1];
-    const set = new Set(useStory ? storyChosen(kk) : e.chosen), sw = useStory ? storyWarn(set, rule) : null;
+    const set = new Set(useStory ? storyChosen(kk) : e.chosen), sw = useStory ? storyWarn(set, rule, "broad") : null;
     const rows = S().rows[RES.tag] || [];
     let body = "";
     const tally = { warned: [], missed: [], stress: 0 };
@@ -1249,7 +1323,7 @@ window.Sim35UI = (function () {
       "<div class='tscroll'><table class='ladder'><thead><tr><th>Region</th>" + lad.map(f => "<th>" + Math.round(f * 100) + "%</th>").join("") + "<th class='lnote'>Reading</th></tr></thead><tbody>" + body + "</tbody></table></div>" +
       "<p class='quiet'>Blue \u2713: responded, no surcharge yet. Red \u2715: newly surcharged, no response. Purple \u2715: newly surcharged, responded too late. 100% is the region's 2041 share; 150% and 300% are stress steps.</p>" +
       (useStory
-        ? "<div class='kpis'><div><b>" + sw.warned + " of " + sw.total + "</b>overloads by 100% build-out warned, over all " + S().cases.length + " cases (Sim 4's list)</div><div><b>Not held out</b>Sim 4's list was chosen in the story, on its regions to monitor or watch, so it has no held-out figure here; the story gives its own</div></div>"
+        ? "<div class='kpis'><div><b>" + sw.warned + " of " + sw.total + "</b>overloads by 100% build-out warned, over all " + S().cases.length + " cases and every region, the broader test (Sim 4's list)</div><div><b>Not held out</b>Sim 4's list was chosen in the story, on its regions to monitor or watch, so it has no held-out figure here; the story gives its own</div></div>"
         : "<div class='kpis'><div><b>" + e.plausible_warned + " of " + W.plausible_total + "</b>overloads by 100% build-out warned, on the runs the sensors were chosen on</div><div><b>" + e.plausible_unseen_weather + " of " + W.plausible_total + "</b>on unseen weather: chosen without that weather case</div><div><b>" + e.plausible_unseen_region + " of " + W.plausible_total + "</b>on an unseen region: chosen without that region</div><div><b>" + e.warned + " of " + W.total + "</b>on the runs chosen on, adding the 150% and 300% stress steps</div></div>") +
       sources("warn");
   }
@@ -1300,7 +1374,7 @@ window.Sim35UI = (function () {
       "<div class='resctl'>" + caseSelect() + "</div>" + settings +
       "<div class='tscroll'><table class='rtab'><thead><tr><th>Region</th><th>" + head("Outlook by " + end, "does growth use up the buffer?") + info("Likely to reach the limit: within the homes expected by " + end + ", in at least 80% of draws. Room left: in at most 20%. Already past the limit: no new pipe passes it, but 25% or more of the path is past it before growth. Otherwise, could go either way.") + "</th><th class='r'>" + head("New homes before a pipe reaches the limit", "range, with homes expected by " + end) + info("10th to 90th percentile of the draws: when the first pipe on the path with any buffer left reaches the limit.") + "</th><th class='r'>" + head("Year it is reached", "range, at the projection's rate") + info("The homes range turned into years at this region's share of the projection, counted from " + o.from + ". 'After' means not reached by the top of the runs (300% build-out).") + "</th><th class='r'>" + head("Approvals to review", o.lag + " years before the earliest year") + info("The earliest year in the range less the time from approval to connection: approvals after this would connect after the limit could be reached. 'Now' means that year has passed.") + "</th><th class='r'>" + head("Water rise per 100 new homes", "largest rise on the path") + info("The largest rise on the path, at 100% build-out, at the load per new home set above. Steady as growth builds in a given weather, but it changes with the weather.") + "</th><th class='r'>" + head("Path already past the limit", "share of the path, before growth") + "</th></tr></thead><tbody>" + rows + sub_ + "</tbody></table></div>" +
       "<p class='quiet'>Worked out in your browser from Sim 3's saved runs, with the same steps as sim35_capacity.py: with no starting-level error it gives the script's figures exactly, and with the error, the same bands up to the random draws (a probability near the 20% or 80% cut-off can land either side). The published table used the Published settings. Whole suburb: Sim 3-e's 56 runs, growth everywhere at once.</p>" +
-      sources("room", [["Settings", "Load per new home: config.js loads (2.3 people, ABS 2021; 200 L a day, Barwon Water / WSAA; peak factor 2.0). Projection: PlanSA Local Area Population Projections 2021 to 2041, Walkerville, high 485 and medium 390. Approval to connection about 4 years: the network operator, 28 Sep 2026. Counted from 2026: assumed, the year of the network data."]]);
+      sources("room", [["Settings", "Load per new home: config.js loads (2.3 people, ABS 2021; 200 L a day, Barwon Water / WSAA; peak factor 2.0). Projection: PlanSA Local Area Population Projections 2021 to 2041, Walkerville, high 485 and medium 390. Approval to connection about 4 years: team assumption. Counted from 2026: assumed, the year of the network data."]]);
   }
 
   function floatTab() {
@@ -1703,7 +1777,7 @@ window.Sim35UI = (function () {
      itself; this carries what it cannot see (a manhole picked on the map, a dropdown option,
      the Pumps toggle, whose "Highlight" title it reads as a private action, a popup closed
      with Esc) and gives a viewer who joins late the presenter's whole view. */
-  const LIVE = ["region", "step", "site", "add", "caseTag", "rule", "k", "method", "obj", "pickedGreedy", "pick"];
+  const LIVE = ["region", "step", "site", "add", "caseTag", "rule", "k", "method", "obj", "pickedGreedy", "pick", "scope"];
   const LIVE_TOGGLES = { showSensors: "#toggleSensors", showHeat: "#toggleHeat", showPumps: "#togglePumps",
                          showConn: "#toggleConn", legend: "#toggleLegend", areasView: "#toggleAreas", coverView: "#toggleCover" };
   const docOpen = () => $("#modal").hidden ? null : $("#modalBox .docbody > .lead") ? "ref" : $("#modalBox").classList.contains("wide") ? "qa" : "about";
@@ -1743,6 +1817,7 @@ window.Sim35UI = (function () {
     if (hp.get("rule") && ruleOf(hp.get("rule"))) st.rule = hp.get("rule");
     if (hp.get("k")) st.k = Math.max(1, Math.min(10, +hp.get("k") || st.k));
     if (["story", "warn", "greedy", "risk", "exact"].includes(hp.get("method"))) st.method = hp.get("method");
+    if (hp.get("test") === "broad") st.scope = "broad";       // #test=broad: the broader test; the story's is the default
     if (hp.get("site") != null && names()[+hp.get("site")]) st.site = +hp.get("site");
     if (st.fam === "one" && (st.method === "exact" || st.method === "warn")) st.method = "greedy";
     if (st.view === "simple") st.rule = "r10";
@@ -1860,5 +1935,5 @@ window.Sim35UI = (function () {
       window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); e.preventDefault();
     };
   }
-  return { init, state: st, repaint };
+  return { init, state: st, repaint, placement, infillScore, storyWarn };
 })();

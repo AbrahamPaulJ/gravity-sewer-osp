@@ -18,7 +18,8 @@ const Sim4 = (() => {
   // regions: the Regions view is on (step 3 only; off again on leaving the step or reloading).
   // onMap: the legend keys whose colour the map shows right now, so the legend lists only those.
   // folded: the reader has folded the card to its header row; it stays folded across steps until they open it again.
-  const st = { i: 0, level: 5, pick: null, sweep: null, popAt: null, popSide: "right", expert: false, regions: false, onMap: new Set(), folded: false };
+  // notes: the "Behind this step" fold is open; closed by default, it stays as the reader left it across steps.
+  const st = { i: 0, level: 5, pick: null, sweep: null, popAt: null, popSide: "right", regions: false, onMap: new Set(), folded: false, notes: false };
 
   /* The region each map point is painted in: the same rule as Sim 3.5, so regions look the same on both pages. */
   let _paint = null;
@@ -175,7 +176,30 @@ const Sim4 = (() => {
     $("#back").disabled = st.i === 0;
     $("#next").disabled = st.i === total - 1;
     $("#dots").innerHTML = Array.from({ length: D().stepCount }, (_, a) => `<i class="${a + 1 === s.n ? "on" : ""}"></i>`).join("");
+    renderNotes();
     const c = $("#card"); c.classList.remove("in"); void c.offsetWidth; c.classList.add("in");
+    c.scrollTop = 0;
+  }
+  /* "Behind this step": Assumes, Source, Limit and Next, the tables behind the step in a second fold, and the link to
+     the redo guide. Built by tools/build_sim4_web.py from numbers.json; the text is escaped here, the tables are the builder's. */
+  const ROWS = [["assumes", "Assumes"], ["source", "Source"], ["limit", "Limit"], ["next", "Next"]];
+  function renderNotes() {
+    const n = step().notes, box = $("#notes");
+    if (!n) { $("#notesBar").hidden = true; box.hidden = true; return; }
+    $("#notesBar").hidden = false;
+    const figs = (n.figures || []).map(f => `<div class="fig"><h3>${esc(f.title)}</h3>${f.intro ? `<p>${esc(f.intro)}</p>` : ""}<div class="tscroll">${f.table}</div></div>`).join("");
+    box.innerHTML = `<dl>${ROWS.map(([k, h]) => `<dt>${h}</dt><dd>${esc(n[k])}</dd>`).join("")}</dl>` +
+      (figs ? `<details id="figs"><summary>Figures behind this step</summary>${figs}</details>` : "") +
+      `<a class="redo" href="redo.html#${n.redo}">How to redo this for another suburb</a>`;
+    setNotes(st.notes);
+  }
+  function setNotes(on) {
+    st.notes = on;
+    $("#notes").hidden = !on;
+    $("#btnNotes").setAttribute("aria-expanded", String(on));
+    $("#btnNotes").title = on ? "Hide what sits behind this step" : "What this step assumes, its sources, its limits and what comes next";
+    if (!on) $("#notes").scrollTop = 0;
+    placeMap();
   }
   // Folding the card hides the body, slider and legend, and keeps the step, the title and Back and Next.
   function setFold(on) {
@@ -191,9 +215,12 @@ const Sim4 = (() => {
   }
   // The map moves down by half the card's height, so it centres in the space below the card at the same scale.
   // A shift, not a smaller canvas: the stage keeps its size, so nothing is resized and the reader's view is kept.
+  // An open "Behind this step" fold is read and closed again, so it lies over the map rather than moving it.
   function placeMap() {
-    const c = $("#card"), below = c.hidden ? 0 : c.offsetTop + c.offsetHeight;
-    document.documentElement.style.setProperty("--map-shift", Math.round(below / 2) + "px");
+    const c = $("#card"), n = $("#notes");
+    const natural = c.scrollHeight + c.offsetHeight - c.clientHeight - (n.hidden ? 0 : n.offsetHeight + 6);     // the card's height with the fold shut
+    const below = c.hidden ? 0 : c.offsetTop + Math.min(c.offsetHeight, natural);
+    document.documentElement.style.setProperty("--map-shift", Math.max(0, Math.round(below / 2)) + "px");
   }
   function stopSweep() { if (st.sweep) { cancelAnimationFrame(st.sweep); st.sweep = null; } }
   function sweep() {
@@ -229,7 +256,7 @@ const Sim4 = (() => {
   // The corridor overlaps the eight regions: " Also on the corridor, R9: watch." for a manhole on it, else "".
   const overlayNote = name => { const oi = regionPaint().overlayOf[G().nodes.findIndex(n => n.name === name)];
     return oi >= 0 ? ` Also on the corridor, ${S().regions[oi].id}: ${D().triage[S().regions[oi].id]}.` : ""; };
-  // Opens the popup at a manhole; the playground uses it too, with its own words and its own sensors to keep clear of.
+  // Opens the popup at a manhole, with its words and the sensors to keep clear of.
   function openPop(name, html, sel, avoid) {
     st.pick = name;
     const box = $("#pop");
@@ -257,13 +284,12 @@ const Sim4 = (() => {
     y = Math.max(m, Math.min(innerHeight - h - m, y));
     return { x, y, w, h };
   }
-  // The first side that hides neither the manhole, another sensor, the step card nor the Expert panel. Chosen once per popup,
-  // so it never jumps.
+  // The first side that hides neither the manhole, another sensor nor the step card. Chosen once per popup, so it never jumps.
   function popSide(name, avoid) {
     const at = Growth3D.screenOf(name), box = $("#pop");
     if (!at) return "right";
     const w = box.offsetWidth, h = box.offsetHeight;
-    const blocks = ["#card", "#expert"].map(s => $(s)).filter(el => !el.hidden).map(el => el.getBoundingClientRect());
+    const blocks = ["#card"].map(s => $(s)).filter(el => !el.hidden).map(el => el.getBoundingClientRect());
     const hides = (r, p, pad = 14) => p.x > r.x - pad && p.x < r.x + r.w + pad && p.y > r.y - pad && p.y < r.y + r.h + pad;
     const others = avoid.filter(n => n !== name).map(n => Growth3D.screenOf(n)).filter(Boolean);
     const free = side => {
@@ -273,7 +299,40 @@ const Sim4 = (() => {
     };
     return ["right", "left", "below", "above"].find(free) || "right";
   }
+  /* Labels that would sit on each other (two sensors on neighbouring manholes, a sensor under a region's label) are
+     pushed apart, every frame, from where the map puts them: a region label gives way more than a sensor's, so each
+     sensor's label stays near the top of its own stalk. Worked out afresh from the map's positions each time, so it never
+     drifts, and applied with the CSS translate property, which the map code never sets. */
+  function declutter() {
+    const els = [...document.querySelectorAll(".labels .lbl.sensor, .labels .lbl.region")].filter(e => e.style.display !== "none" && e.isConnected);
+    const B = els.map(el => {
+      const r = el.getBoundingClientRect(), o = el._off || [0, 0];
+      return { el, x: r.left - o[0], y: r.top - o[1], w: r.width, h: r.height, dx: 0, dy: 0, sensor: el.classList.contains("sensor") };
+    }).filter(b => b.w > 0);
+    const pad = 3;
+    for (let it = 0; it < 24; it++) {
+      let moved = false;
+      for (let a = 0; a < B.length; a++) for (let b = a + 1; b < B.length; b++) {
+        const A = B[a], C = B[b];
+        const ax = A.x + A.dx, ay = A.y + A.dy, cx = C.x + C.dx, cy = C.y + C.dy;
+        const ox = Math.min(ax + A.w, cx + C.w) - Math.max(ax, cx) + pad, oy = Math.min(ay + A.h, cy + C.h) - Math.max(ay, cy) + pad;
+        if (ox <= 0 || oy <= 0) continue;
+        moved = true;
+        const wa = A.sensor === C.sensor ? 0.5 : A.sensor ? 0.2 : 0.8;     // the share of the push that A takes
+        // Along the smaller overlap; a dead heat goes by list order, so the answer is the same every frame.
+        const ca = [ax + A.w / 2, ay + A.h / 2], cc = [cx + C.w / 2, cy + C.h / 2];
+        if (ox < oy) { const s = ca[0] < cc[0] || ca[0] === cc[0] ? -1 : 1; A.dx += s * ox * wa; C.dx -= s * ox * (1 - wa); }
+        else { const s = ca[1] < cc[1] || ca[1] === cc[1] ? -1 : 1; A.dy += s * oy * wa; C.dy -= s * oy * (1 - wa); }
+      }
+      if (!moved) break;
+    }
+    B.forEach(b => {
+      const o = [Math.round(b.dx), Math.round(b.dy)], p = b.el._off || [0, 0];
+      if (o[0] !== p[0] || o[1] !== p[1]) { b.el._off = o; b.el.style.translate = o[0] || o[1] ? `${o[0]}px ${o[1]}px` : ""; }
+    });
+  }
   function placePop() {
+    declutter();
     if (st.popAt) {
       const at = Growth3D.screenOf(st.popAt), box = $("#pop");
       if (at) {
@@ -286,33 +345,17 @@ const Sim4 = (() => {
   }
 
   /* ---------------------------------------------------------- start */
-  // Expert takes the map over while it is open (the playground paints it); closing gives the step back.
-  function toggleExpert(on, pane) {
-    stopSweep(); hidePop();
-    st.expert = on == null ? !st.expert : on;
-    $("#expert").hidden = !st.expert;
-    $("#card").hidden = st.expert;
-    placeMap();
-    $("#btnExpert").setAttribute("aria-expanded", String(st.expert));
-    $("#btnExpert").textContent = st.expert ? "Close Expert" : "Expert";
-    if (st.expert) Sim4Play.open(pane || Sim4Play.pane());
-    else { Sim4Play.close(); paintMap(); history.replaceState(null, "", "#step=" + step().id); }
-  }
   function init() {
-    $("#expertTables").innerHTML = D().expert.tables;
-    $("#expertLimits").innerHTML = D().expert.limits;
     Growth3D.build($("#stage"), nd => {
-      if (st.expert) { Sim4Play.pick(nd); return; }
       if (!nd) { hidePop(); paintMap(); return; }
       showPop(nd.name);
     }, nd => { $("#stage").style.cursor = nd ? "pointer" : ""; }).then(() => {
       Growth3D.frame(null);
       const want = (location.hash.match(/step=([0-9a-z]+)/) || [])[1];
       const at = D().steps.findIndex(s => s.id === want);
-      Sim4Play.init();
+      if (/(^|[#&])notes=1/.test(location.hash)) st.notes = true;
       go(at < 0 ? 0 : at, false);
-      const ex = (location.hash.match(/expert=(play|tables|limits)/) || [])[1];
-      if (ex) { Sim4Play.fromHash(location.hash); toggleExpert(true, ex); }
+      if (/(^|[#&])figs=1/.test(location.hash) && $("#figs")) $("#figs").open = true;
       placePop();
       document.body.dataset.ready = "1";
     });
@@ -322,20 +365,20 @@ const Sim4 = (() => {
     $("#homes").onpointerdown = stopSweep;
     $("#homes").onkeydown = stopSweep;
     $("#homes").oninput = e => { stopSweep(); hidePop(); st.level = +e.target.value; renderLevel(); paintMap(); };
-    $("#btnExpert").onclick = () => toggleExpert();
     $("#btnRegions").onclick = () => { hidePop(); st.regions = !st.regions; paintMap(); };
     $("#btnFold").onclick = () => setFold(!st.folded);
+    $("#btnNotes").onclick = () => setNotes(!st.notes);
     if (window.ResizeObserver) new ResizeObserver(placeMap).observe($("#card"));
-    $("#expertClose").onclick = () => toggleExpert(false);
     addEventListener("keydown", e => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
-      if (st.expert && e.key !== "Escape") return;
+      // Inside the fold the arrow keys scroll its tables, so they do not change step there.
+      if (e.target.closest && e.target.closest("#notes") && e.key !== "Escape") return;
       if (e.key === "ArrowRight" || e.key === "PageDown") go(st.i + 1);
       else if (e.key === "ArrowLeft" || e.key === "PageUp") go(st.i - 1);
-      else if (e.key === "Escape") { if (st.expert) toggleExpert(false); else { hidePop(); paintMap(); } }
+      else if (e.key === "Escape") { hidePop(); paintMap(); }
     });
     addEventListener("resize", () => { Growth3D.resize($("#stage")); placeMap(); });
   }
   return { init, state: st, step, levels: LEVELS, sensors: sensorNames, growthState, regionPaint, regionTints, actionLabels, regionOf, overlayNote,
-           openPop, hidePop, esc, ACTION_COL, LEGEND, REGION_COLS, toggleExpert, setFold };
+           openPop, hidePop, esc, ACTION_COL, LEGEND, REGION_COLS, setFold, setNotes, declutter };
 })();

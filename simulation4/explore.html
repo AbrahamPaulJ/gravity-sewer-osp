@@ -503,7 +503,15 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   <div id="baseNote"></div>
 
   <div id="sensorBox">
-    <h4>Sensors, chosen once across all <span id="nCases">8</span> cases <i class="info-i" id="sensInfo" data-tip="">i</i></h4>
+    <h4><span id="sensHead">Sensors, scored on the story's test</span> <i class="info-i" id="sensInfo" data-tip="">i</i></h4>
+    <div id="scopeBox">
+      <label class="fld">Scored on <i class="info-i" data-tip="The story's test is the default: the 7 wet cases, the regions the story monitors or watches, and build-out up to 100% (the 2041 homes). On it, the story's five sensors score as the story says. The broader test is wider than the story: it adds Dry, the regions the story leaves, and the 150% and 300% stress steps, so every set's shares are lower there. Exact, greedy and the other comparison sets were solved on the broader test; on the story's test they are scored afresh, except the exact optimum at the 10 mm rule, which is the story test's own.">i</i></label>
+      <div class="knob" id="scopeKnob">
+        <button data-s="story" title="The 7 wet cases, the regions to monitor or watch, build-out up to 100%">The story's test</button>
+        <button data-s="broad" title="Broader than the story: adds Dry, the regions it leaves, and the 150% and 300% stress steps">Broader test</button>
+      </div>
+      <p class="quiet" id="scopeNote"></p>
+    </div>
     <div class="knob x" id="methKnob">
       <button data-m="story" title="The story's sensors, in its order: the recommendation, so this page and the story name the same manholes">Sim 4's list</button>
       <button data-m="warn" id="methWarn" title="The best set of this size for warning at least one build-out step before the first new surcharge">Warn before surcharge</button>
@@ -629,11 +637,11 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 <script src="../simulation35/growth_3d.js?v=3"></script>
 <script src="../simulation3/osp_core.js?v=9"></script>
 <script src="../simulation3/placement.js?v=9"></script>
-<script src="data/explore.js?v=4"></script>
-<script src="data/sim4.js?v=6"></script>
+<script src="data/explore.js?v=5"></script>
+<script src="data/sim4.js?v=7"></script>
 <script src="../simulation35/data/room.js?v=1"></script>
 <script src="../simulation35/room_calc.js?v=2"></script>
-<script src="explore_ui.js?v=3"></script>
+<script src="explore_ui.js?v=5"></script>
 <script type="module">
   Sim35UI.init();
 </script>
