@@ -210,11 +210,11 @@ console.log("placement methods on Sim 2.5 (simulation25/placement.js)");
   if (fs.existsSync(data("growth.js"))) {
     const saved = global.window;
     global.window = {};
-    for (const f of ["catchment.js", "growth.js"]) {
+    for (const f of ["catchment.js", "growth.js", ...(fs.existsSync(data("proof.js")) ? ["proof.js"] : [])]) {
       delete require.cache[require.resolve(data(f))];
       require(data(f));
     }
-    const g = window.GROWTH_GEOM, R = window.GROWTH_RUNS;
+    const g = window.GROWTH_GEOM, R = window.GROWTH_RUNS, proof = window.SIM25_PROOF;
     global.window = saved;
     const PL = require(path.join(ROOT, "simulation25/placement.js"));
     let diff = 0;
@@ -227,12 +227,19 @@ console.log("placement methods on Sim 2.5 (simulation25/placement.js)");
       }
     }
     check("its scoring reproduces the builder's published coverage", diff < 1e-4, true);
-    const ctx = PL.context(g, R, C);
-    const bad = PL.METHODS.slice(1).filter(([id]) => {
+    const ctx = PL.context(g, R, C, proof);
+    const bad = PL.METHODS.filter(([id]) => id !== "swmm" && (id !== "proven" || proof)).filter(([id]) => {
       const p = PL.place(id, ctx, "r25", "worst");
       return !p.sets.every((s, k) => s.length === k + 1 && s.every(i => i >= 0 && i < R.chambers.length));
     }).map(([id]) => id);
     check("every method gives k manholes for k = 1..maxSensors", bad, []);
+    if (proof) {
+      const proven = PL.place("proven", ctx, "r25", "worst");
+      check("proven r25/worst coverage at k=5", proven.worst[4], x => Math.abs(x - 0.6132) <= 0.001);
+      check("proven r25/worst coverage at k=10", proven.worst[9], x => Math.abs(x - 0.7474) <= 0.001);
+    }
+    check("published greedy r25/worst coverage at k=5", R.sensors.r25.worst.worst[4],
+      x => Math.abs(x - 0.5825) <= 0.001);
     /* Overflow: a manhole spilling before growth cannot also be "newly" spilling, and every
        index must be a real manhole. */
     if (R.spill) {
@@ -241,6 +248,38 @@ console.log("placement methods on Sim 2.5 (simulation25/placement.js)");
         .filter(([site, list]) => !okIdx(site) || !list.every(okIdx) || list.some(i => R.baseSpilled[k].includes(i))));
       check("newly overflowing manholes are real, and never ones spilling before growth", badSpill.length, 0);
       check("one pre-growth spill list per case", R.baseSpilled.length === R.cases.length && R.spill.length === R.cases.length, true);
+    }
+  }
+}
+
+/* The Sim 2.5 Explore page (explore.html) runs only in a browser, so these check what can go
+   wrong without one: a missing file, a lost link from the Workbench, words that should never
+   reach the page, and the plan it shows drifting from the proof the Workbench uses. */
+console.log("Explore page on Sim 2.5 (simulation25/explore.html)");
+{
+  const fs = require("fs");
+  const dir = path.join(ROOT, "simulation25"), page = path.join(dir, "explore.html");
+  if (fs.existsSync(page)) {
+    const html = fs.readFileSync(page, "utf8");
+    const refs = [...html.matchAll(/(?:src|href)="([^"#:]+?)(?:\?[^"]*)?"/g)].map(m => m[1]);
+    check("every local file the page loads exists", refs.filter(r => !fs.existsSync(path.join(dir, r))), []);
+    const scripts = [...html.matchAll(/<script src="([^"?]+)/g)].map(m => m[1]);
+    check("loads the data, the proof and the shared scoring before its own script",
+      ["data/catchment.js", "data/growth.js", "data/proof.js", "placement.js", "explore/explore.js"].every((f, i, a) =>
+        scripts.includes(f) && (i === 0 || scripts.indexOf(a[i - 1]) < scripts.indexOf(f))), true);
+    check("the Workbench links to it", /href="explore\.html"/.test(fs.readFileSync(path.join(dir, "index.html"), "utf8")), true);
+    const text = ["explore.html", "explore/explore.js", "explore/explore.css"].map(f => fs.readFileSync(path.join(dir, f), "utf8")).join("\n");
+    check("no words about its audience or about being simplified", text.match(/\b(client|friendly|simplif\w*|kids)\b/gi), null);
+    check("no pipe slope or grade", /slope|gradient/i.test(fs.readFileSync(path.join(dir, "explore/explore.js"), "utf8")), false);
+    const pf = path.join(dir, "data/proof.js");
+    if (fs.existsSync(pf)) {
+      const saved = global.window; global.window = {};
+      delete require.cache[require.resolve(pf)]; require(pf);
+      const proof = window.SIM25_PROOF.rules.r25.worst; global.window = saved;
+      // explore.js: recommended(k) is the proof's own set below the first phase, the phased plan from it on
+      const first = proof.plan.phase1.length;
+      check("its first phase is the proven set of the same size",
+        JSON.stringify([...proof.plan.order.slice(0, first)].sort((a, b) => a - b)) === JSON.stringify([...proof.sets[first - 1]].sort((a, b) => a - b)), true);
     }
   }
 }

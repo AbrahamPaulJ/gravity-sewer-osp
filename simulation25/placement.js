@@ -3,10 +3,11 @@
 
    The sandbox's algorithms (osp_core.js) do not use SWMM: they rank manholes by the network's
    shape, or by a flood-fill model of where a blockage would be visible. Sim 2.5's own greedy
-   is the one method here that reads the SWMM growth runs directly. So every method proposes
-   sensors its own way, and every proposal is then SCORED THE SAME WAY: the share of the
-   growth scenarios SWMM solved, in each case, that at least one chosen sensor sees under the
-   selected detection rule. That makes the menu a fair comparison, not just a list.
+   and the proven plan (exact optima built offline by tools/prove_sim25.py) read the SWMM
+   growth runs directly. So every method proposes sensors its own way, and every proposal is
+   then SCORED THE SAME WAY: the share of the growth scenarios SWMM solved, in each case, that
+   at least one chosen sensor sees under the selected detection rule. That makes the menu a
+   fair comparison, not just a list.
 
    The score is the builder's own (tools/build_sim25_web.py, placement): the same scenarios,
    the same exclusion of scenarios nothing sees and of cases with none. tools/test_sandbox.js
@@ -22,7 +23,12 @@
 
   // id, menu label, what it does. "swmm" is Sim 2.5's own and is published, not computed here.
   const METHODS = [
-    ["swmm", "Greedy on the SWMM growth runs",
+    ["proven", "Proven best (exact optimum)",
+     "The recommended plan: for each number of sensors, the set that is " +
+     "mathematically best for the objective below, found by an exact integer program over " +
+     "every combination (built offline by prove_sim25.py and checked as proven optimal). " +
+     "Chosen and scored on the same runs, so it is in-sample, like the greedy."],
+    ["swmm", "One at a time (greedy)",
      "Sim 2.5's own: each sensor added is the manhole that most raises the objective below, " +
      "judged directly on which manholes saw growth in SWMM. Chosen and scored on the same " +
      "runs, so its figure is in-sample: an upper bound for growth it was not shown."],
@@ -39,7 +45,7 @@
      "The manholes the most flow paths pass through. Does not use SWMM."],
     ["outdeg", "Highest out-degree", "The manholes with the most pipes leaving. Does not use SWMM."],
     ["indeg", "Highest in-degree", "The manholes where the most pipes join. Does not use SWMM."],
-    ["random", "Random (best of 20 on this score)",
+    ["random", "Best of 20 random picks",
      "Twenty random sets at each size, keeping the one that scores best on the SWMM growth " +
      "runs. Picked on the score it is shown with, so it sits well above a typical random " +
      "set: at 3 sensors, 25 mm rule, a typical random set catches about 2% worst case and " +
@@ -113,6 +119,15 @@
     const ranked = score => prefixes(toCh(C.topBy(G, K, i => score[i])));
     let sets, nested = true;
     switch (method) {
+      case "proven": {
+        const proof = ctx.proof !== undefined ? ctx.proof
+          : (typeof window !== "undefined" && window.SIM25_PROOF);
+        const data = proof && proof.rules && proof.rules[rule] && proof.rules[rule][obj];
+        if (!data) throw new Error("proven plan not built for rule " + rule + ": run tools/prove_sim25.py");
+        sets = data.sets.map(s => s.slice());
+        nested = false;
+        break;
+      }
       case "celf": sets = prefixes(toCh(C.greedy(G, K, "nodes"))); break;
       case "upstream": sets = ranked(C.upstreamSize(G, null)); break;
       case "between": sets = ranked(C.betweenness(G, null)); break;
@@ -153,13 +168,30 @@
   }
 
   /* Everything that depends only on the network and data, built once per page. */
-  function context(g, R, C) {
+  function context(g, R, C, proof) {
     const G = graphFrom(g, C);
     const at = {};
     R.chambers.forEach((name, i) => { at[name] = i; });
     const chamberOfNode = g.nodes.map(v => (v.name in at ? at[v.name] : -1));
-    return { C, G, R, chamberOfNode, K: R.maxSensors };
+    return { C, G, R, chamberOfNode, K: R.maxSensors, proof };
   }
 
-  return { METHODS, context, place, scenarios, cover };
+  /* The recommended phased plan, scored by the same coverage loop as every method. */
+  function plan(ctx, rule, obj) {
+    const proof = ctx.proof !== undefined ? ctx.proof
+      : (typeof window !== "undefined" && window.SIM25_PROOF);
+    const data = proof && proof.rules && proof.rules[rule] && proof.rules[rule][obj];
+    if (!data || !data.plan) return null;
+    const phase1 = data.plan.phase1.slice(), phase2 = data.plan.phase2.slice();
+    const order = data.plan.order.slice(), pool = scenarios(ctx.R, rule);
+    const worst = [], mean = [];
+    for (let k = phase1.length; k <= ctx.K; k++) {
+      const f = cover(pool, order.slice(0, k));
+      worst.push(worstOf(f));
+      mean.push(meanOf(f));
+    }
+    return { phase1, phase2, order, worst, mean, heldOut: data.held_out };
+  }
+
+  return { METHODS, context, place, scenarios, cover, plan };
 });
