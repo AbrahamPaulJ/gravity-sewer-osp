@@ -65,6 +65,7 @@ footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);
   <span id="liveSlot" aria-hidden="true"></span>
   <nav class="tabs" id="tabs">
     <button data-tab="overview" class="on">Overview</button>
+    <button data-tab="demo">Product demo</button>
     <button data-tab="sandbox">Sandbox</button>
     <button data-tab="anatomy">What a maintenance hole is</button>
     <button data-tab="observability">Why observability is limited</button>
@@ -94,6 +95,13 @@ become overflows. There are far more chambers than sensors, so the question is w
 This is a working tool for exploring that, running on a real network rather than a synthetic one.</p>
 
 <div class="cards">
+  <a class="card big" href="#demo" data-tab="demo">
+    <span class="tag">Start here</span>
+    <h3>Product demo: from the problem to a sensor plan you can re-run</h3>
+    <p>One map and four chapters. The problem and the network data. How we simulated growth and what the runs show. Seven
+    placement methods compared, a cross-check against basic hydraulics, and which sensors to use. Then re-run the method yourself
+    and see where the research goes next. Built on Simulation 4. Uncalibrated: a guide to where to look first.</p>
+  </a>
   <a class="card big" href="#sandbox" data-tab="sandbox">
     <span class="tag">Interactive</span>
     <h3>OSP Sandbox</h3>
@@ -255,6 +263,7 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
      document across a normal reload of this page, so a visitor who saw an earlier
      version keeps seeing it after a deploy. Changing the number is what forces the
      refetch. Bump it whenever an embedded page changes. -->
+<div class="pane" id="pane-demo" hidden><iframe data-src="demo/index.html?v=3" title="Product demo: the problem, the data, the method, the results and what comes next"></iframe></div>
 <div class="pane" id="pane-sandbox" hidden><iframe data-src="osp_sandbox.html?v=34#sandbox" title="OSP Sandbox"></iframe></div>
 <div class="pane" id="pane-anatomy" hidden><iframe data-src="manhole_anatomy.html?v=32" title="What a maintenance hole is"></iframe></div>
 <div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html?v=32" title="Why observability is limited"></iframe></div>
@@ -273,7 +282,7 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 <!-- config.js holds the project's settings; its "pages" section decides which pages this site offers. It carries its own cache key for
      the same reason the iframes do: it is a script, and a browser will reuse the copy
      it has. Bump it when the config changes. -->
-<script src="config.js?v=42"></script>
+<script src="config.js?v=43"></script>
 <script>
 // Drop the pages config.js turns off (keys starting "_" are notes), before anything is wired up. Removing the button
 // is what makes a deep link to a hidden page fall back to the overview: showTab looks
