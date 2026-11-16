@@ -300,29 +300,55 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
   });
 })((window.OSP_CONFIG || {}).pages || {});
 
+// A page inside a tab has its own link: #sim4/story opens Sim 4's story, #sim4/explore its Explore view.
+// The address bar follows the frame as it moves between them, so the link copied is the view on screen.
+var SUBPAGES = { sim4: { story: 'simulation4/index.html?v=8', explore: 'simulation4/explore.html' } };
+function subOf(tab, frame){
+  var subs = SUBPAGES[tab]; if (!subs) return null;
+  try {
+    var file = frame.contentWindow.location.pathname.split('/').pop() || 'index.html';
+    for (var k in subs) if (subs[k].split('?')[0].split('/').pop() === file) return k;
+  } catch (e) {}
+  return null;
+}
+function hashFor(tab){
+  var f = document.querySelector('#pane-'+tab+' iframe'), s = f && SUBPAGES[tab] && subOf(tab, f);
+  return s ? tab+'/'+s : tab;
+}
 function showTab(name){
-  var btn = document.querySelector('#tabs button[data-tab="'+name+'"]');
+  var parts = String(name).split('/'), tab = parts[0], sub = parts[1];
+  var btn = document.querySelector('#tabs button[data-tab="'+tab+'"]');
   if (!btn) return false;
   document.querySelectorAll('#tabs button').forEach(function(b){ b.classList.remove('on'); });
   btn.classList.add('on');
   document.querySelectorAll('.pane').forEach(function(p){ p.hidden = true; });
-  var pane = document.getElementById('pane-'+name);
+  var pane = document.getElementById('pane-'+tab);
   pane.hidden = false;
-  var frame = pane.querySelector('iframe[data-src]');
-  if (frame) { frame.src = frame.dataset.src; frame.removeAttribute('data-src'); }
+  var frame = pane.querySelector('iframe');
+  var want = sub && SUBPAGES[tab] && SUBPAGES[tab][sub];
+  if (frame && SUBPAGES[tab] && !frame.dataset.subWired) {
+    frame.dataset.subWired = '1';
+    frame.addEventListener('load', function(){
+      var s = subOf(tab, frame);
+      if (s && !pane.hidden && location.hash !== '#'+tab+'/'+s) history.replaceState(null, '', '#'+tab+'/'+s);
+    });
+  }
+  if (want && frame && frame.hasAttribute('data-src')) { frame.src = want; frame.removeAttribute('data-src'); }
+  else if (want && frame && subOf(tab, frame) !== sub) { frame.src = want; }
+  else if (frame && frame.hasAttribute('data-src')) { frame.src = frame.dataset.src; frame.removeAttribute('data-src'); }
   return true;
 }
 document.querySelectorAll('#tabs button').forEach(function(b){
   b.addEventListener('click', function(){
     showTab(b.dataset.tab);
-    history.replaceState(null, '', '#'+b.dataset.tab);
+    history.replaceState(null, '', '#'+hashFor(b.dataset.tab));
   });
 });
 document.querySelectorAll('a[data-tab]').forEach(function(a){
   a.addEventListener('click', function(e){
     e.preventDefault();
     showTab(a.dataset.tab);
-    history.replaceState(null, '', '#'+a.dataset.tab);
+    history.replaceState(null, '', '#'+hashFor(a.dataset.tab));
   });
 });
 if (location.hash.length > 1 && showTab(location.hash.slice(1))) {
