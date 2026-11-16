@@ -10,12 +10,53 @@
 const App = (() => {
   const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
   const G = () => window.GROWTH_GEOM, R = () => window.GROWTH_RUNS, S = () => window.SIM3_REGIONS, D = () => window.SIM4, C = () => window.DEMO_COMPARE;
-  const COL = {
-    pipe: "#34445f", home: "#2a3650", was: "#ffa500", rise: "#fff176", tip: "#ff2d55", spill: "#ff3df5",
-    monitor: "#ff5c7a", watch: "#ffa500", leave: "#3b4b68", sensor: "#2ef56b", accent: "#38bdf8", failed: "#6f81a3", sim4: "#7dd8ff",
+  // Map palettes, one per theme, matching the CSS tokens in index.html. Colours carry meaning (see demo/DESIGN.md):
+  // sensor = the plan's sites only; monitor/tip = overload; watch/was = caution; neutral numbers are ink.
+  const THEMES = {
+    paper: {
+      label: "Paper", pipe: "#b9aa90", home: "#ddd1bb", homeHi: "#8f8270", bg: "#fbf6ee", hi: "#16130f", hover: "#6e675d",
+      was: "#c27a2c", tip: "#7a2a1d", spill: "#6b2f8a", monitor: "#b8523b", watch: "#c27a2c", leave: "#cfc5b0", sensor: "#2d6a6e", accent: "#2c6f86", failed: "#968d80", sim4: "#2c7f95",
+      corridor: "#8f8270", orange: "#c27a2c", yellow: "#a8741f", blue: "#5f9690", lightblue: "#a9c7bf", pink: "#a8577e", clay: "#b5763c", purple: "#6c5a9e", cover: "#2c7f95", grey: "#d3c7b1",
+      dimPipe: "#e4d8c4", nullPipe: "#d8ccb6", barOff: "#e4d8c4", barBase: "#9a8d78", cutBg: "#efe3cf", cutLine: "#94866e", lid: "#36332e", levelAvg: "#5f9690", floatAvg: "#d39a45",
+      rise: ["#ecd39a", "#d39a45", "#b8523b", "#6e2417"],
+      seq: ["#e6d7b6", "#d6bd86", "#c9a05a", "#c27a2c", "#b8523b", "#8a3424", "#5b1f16"],
+      heat: ["#e6d2a2", "#d39a45", "#b8523b", "#5b1f16"],
+      regions: { R1: "#2f6f8f", R2: "#b8523b", R3: "#557f3a", R4: "#a8577e", R5: "#2d8a73", R6: "#3c8f9e", R7: "#8a6a3b", R8: "#6c5a9e", R9: "#7a6e5c" },
+    },
+    night: {
+      label: "Night", pipe: "#34445f", home: "#2a3650", homeHi: "#7f93b8", bg: "#0b1220", hi: "#ffffff", hover: "#a9b8d4",
+      was: "#ffa500", tip: "#ff2d55", spill: "#ff3df5", monitor: "#ff5c7a", watch: "#ffa500", leave: "#3b4b68", sensor: "#2ef56b", accent: "#38bdf8", failed: "#6f81a3", sim4: "#7dd8ff",
+      corridor: "#c9d1d9", orange: "#ff9f43", yellow: "#ffd166", blue: "#4f86c6", lightblue: "#9fd3ff", pink: "#e87ba4", clay: "#d9a066", purple: "#b38cff", cover: "#39c5cf", grey: "#4a5568",
+      dimPipe: "#253148", nullPipe: "#444c5c", barOff: "#2a3a58", barBase: "#3c5a85", cutBg: "#1a2436", cutLine: "#4a5b7a", lid: "#a9b8d4", levelAvg: "#1f9e4c", floatAvg: "#b36a20",
+      rise: ["#2c4f80", "#4f86c6", "#9fd3ff", "#fff176"],
+      seq: ["#2c4f80", "#4f86c6", "#9fd3ff", "#ffd166", "#ff9f43", "#ff5c7a", "#ff3df5"],
+      heat: ["#1f4f8f", "#3fa0d8", "#ffd166", "#ff9f43"],
+      regions: { R1: "#3987e5", R2: "#d95926", R3: "#20a320", R4: "#e87ba4", R5: "#199e70", R6: "#39c5cf", R7: "#b08457", R8: "#9085e9", R9: "#c9d1d9" },
+    },
+    clear: {
+      label: "Clear", pipe: "#a3afbf", home: "#e3e8ef", homeHi: "#64748b", bg: "#ffffff", hi: "#0f172a", hover: "#475569",
+      was: "#b45309", tip: "#be123c", spill: "#7e22ce", monitor: "#be123c", watch: "#d97706", leave: "#cbd5e1", sensor: "#047857", accent: "#0369a1", failed: "#94a3b8", sim4: "#0284c7",
+      corridor: "#64748b", orange: "#ea580c", yellow: "#ca8a04", blue: "#2563eb", lightblue: "#93c5fd", pink: "#db2777", clay: "#a16207", purple: "#7c3aed", cover: "#0891b2", grey: "#cbd5e1",
+      dimPipe: "#e2e8f0", nullPipe: "#cbd5e1", barOff: "#e2e8f0", barBase: "#64748b", cutBg: "#f1f5f9", cutLine: "#64748b", lid: "#334155", levelAvg: "#059669", floatAvg: "#d97706",
+      rise: ["#bfdbfe", "#60a5fa", "#2563eb", "#1e3a8a"],
+      seq: ["#dbeafe", "#93c5fd", "#60a5fa", "#2563eb", "#1d4ed8", "#be123c", "#7e22ce"],
+      heat: ["#bfdbfe", "#3b82f6", "#f59e0b", "#b91c1c"],
+      regions: { R1: "#2563eb", R2: "#ea580c", R3: "#4d7c0f", R4: "#db2777", R5: "#0d9488", R6: "#0891b2", R7: "#a16207", R8: "#7c3aed", R9: "#64748b" },
+    },
   };
-  const SEQ = ["#2c4f80", "#4f86c6", "#9fd3ff", "#ffd166", "#ff9f43", "#ff5c7a", "#ff3df5"];
-  const REGION_COLS = { R1: "#3987e5", R2: "#d95926", R3: "#20a320", R4: "#e87ba4", R5: "#199e70", R6: "#39c5cf", R7: "#b08457", R8: "#9085e9", R9: "#c9d1d9" };
+  let PAL = THEMES.paper;
+  const COL = new Proxy({}, { get: (_, k) => k === "rise" ? PAL.rise[3] : PAL[k] });
+  const SEQ = new Proxy([], { get: (_, k) => PAL.seq[k] });
+  const REGION_COLS = new Proxy({}, { get: (_, k) => PAL.regions[k] });
+  // A ramp for "how often" maps, without the sensor colour in it.
+  function heat(t) {
+    const st = PAL.heat, x = Math.max(0, Math.min(1, t)) * (st.length - 1), i = Math.min(st.length - 2, Math.floor(x)), f = x - i;
+    const c = h => [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16)), a = c(st[i]), b = c(st[i + 1]);
+    return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * f)).join(",")})`;
+  }
+  const rgba = (hex, a) => `rgba(${[1, 3, 5].map(k => parseInt(hex.slice(k, k + 2), 16)).join(",")},${a})`;
+  const store = (k, v) => { try { v == null ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch (e) {} };
+  const stored = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   // [id, short name, title], grouped in chapters
   const CHAPTERS = [
     ["Problem", [["setting", "Setting", "Growth uses up the pipes"], ["network", "Network", "What we know about the network"]]],
@@ -327,13 +368,13 @@ const App = (() => {
     const wscale = Math.min(2.2, Math.sqrt(view.k));
     for (let p = 0; p < g.nPipes; p++) { const [col, w] = L.pipe ? L.pipe(p) : [COL.pipe, 1]; line(c, p, col, w * wscale); }
     if (L.overlayPipe) { c.setLineDash([6, 5]); for (let p = 0; p < g.nPipes; p++) if (inOverlay(p)) { const v = L.overlayPipe(p); if (v) line(c, p, v[0], v[1] * wscale); } c.setLineDash([]); }
-    if (st.selPipe !== null && L.pickPipe) line(c, st.selPipe, "#ffffff", 5 * wscale);
-    if (st.hoverPipe !== null && L.pickPipe) line(c, st.hoverPipe, "#a9b8d4", 4 * wscale);
-    const rs = Math.min(1.8, Math.sqrt(view.k));
+    if (st.selPipe !== null && L.pickPipe) line(c, st.selPipe, PAL.hi, 5 * wscale);
+    if (st.hoverPipe !== null && L.pickPipe) line(c, st.hoverPipe, PAL.hover, 4 * wscale);
+    const rs = Math.min(1.8, Math.sqrt(view.k)) * (document.documentElement.classList.contains("present") ? 1.3 : 1);
     if (L.node) chNode.forEach((a, i) => { const v = L.node(i); if (v) mark(c, g.nodes[a], v, rs); });
-    if (st.sel !== null) mark(c, g.nodes[chNode[st.sel]], { ring: "#ffffff", r: 9 }, rs);
-    if (st.hover !== null && st.hover !== st.sel) mark(c, g.nodes[chNode[st.hover]], { ring: "#a9b8d4", r: 8 }, rs);
-    const labels = (L.labels || []).map(l => { const nd = g.nodes[l.node], [x, y] = P(nd.x, nd.y); return { ...l, x, y }; });
+    if (st.sel !== null) mark(c, g.nodes[chNode[st.sel]], { ring: PAL.hi, r: 9 }, rs);
+    if (st.hover !== null && st.hover !== st.sel) mark(c, g.nodes[chNode[st.hover]], { ring: PAL.hover, r: 8 }, rs);
+    const labels = [...(L.labels || []), ...(L.callout && L.callout.i != null ? [{ node: chNode[L.callout.i], text: L.callout.text, cls: "callout" }] : [])].map(l => { const nd = g.nodes[l.node], [x, y] = P(nd.x, nd.y); return { ...l, x, y }; });
     $("#labels").innerHTML = labels.map(l => `<span class="lbl ${l.cls || ""}" style="left:${l.x}px;top:${l.y}px;${l.bg ? `background:${l.bg}` : ""}">${l.text}</span>`).join("");
     $("#legend").innerHTML = (L.legend || []).map(([c2, t, shape]) => `<span><i class="${shape || ""}" style="${shape === "ring" ? `border-color:${c2}` : shape === "line" ? `background:${c2}` : `background:${c2}`}"></i>${t}</span>`).join("") + (L.scale || "");
     $("#legend").hidden = !(L.legend || []).length && !L.scale;
@@ -345,20 +386,20 @@ const App = (() => {
   }
   function mark(c, nd, v, rs) {
     const [x, y] = P(nd.x, nd.y), r = (v.r || 4) * rs;
-    if (v.fill) { c.fillStyle = v.fill; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.strokeStyle = "#0b1220"; c.lineWidth = 1.2; c.stroke(); }
+    if (v.fill) { c.fillStyle = v.fill; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.strokeStyle = PAL.bg; c.lineWidth = 1.2; c.stroke(); }
     if (v.ring) { c.strokeStyle = v.ring; c.lineWidth = v.rw || 2.2; c.beginPath(); c.arc(x, y, r + (v.fill ? 3 : 0), 0, 7); c.stroke(); }
   }
   const regionLabels = (colour) => S().regions.map((r, ri) => ({ node: paint.centre[ri], text: regionLabel(ri), cls: "region", bg: colour(ri) }));
   const sensorLabels = (set, cls = "sensor") => set.map((i, j) => ({ node: chNode[i], text: String(j + 1), cls }));
   const triagePipe = (dim = false) => p => { const ri = pipeRegion(p); const t = ri >= 0 && D().triage[regionId(ri)]; return t && t !== "leave" ? [COL[t] + (dim ? "88" : ""), 2.2] : [COL.pipe, 1.1]; };
   function riseColour(mm) {
-    if (mm >= 10) return COL.rise;
-    if (mm >= 5) return "#9fd3ff";
-    if (mm >= 2) return "#4f86c6";
-    if (mm >= 0.5) return "#2c4f80";
+    if (mm >= 10) return PAL.rise[3];
+    if (mm >= 5) return PAL.rise[2];
+    if (mm >= 2) return PAL.rise[1];
+    if (mm >= 0.5) return PAL.rise[0];
     return null;
   }
-  const riseScale = `<div class="scale"><b>Rise in water level</b><span><i style="background:#2c4f80"></i>0.5–2 mm</span><span><i style="background:#4f86c6"></i>2–5</span><span><i style="background:#9fd3ff"></i>5–10</span><span><i style="background:${COL.rise}"></i>10 mm +: noticeable</span></div>`;
+  const riseScale = () => `<div class="scale"><b>Rise in water level</b><span><i style="background:${PAL.rise[0]}"></i>0.5–2 mm</span><span><i style="background:${PAL.rise[1]}"></i>2–5</span><span><i style="background:${PAL.rise[2]}"></i>5–10</span><span><i style="background:${PAL.rise[3]}"></i>10 mm +: noticeable</span></div>`;
 
   // ------------------------------------------------------------------ tooltips and cards
   const matName = m => ({ VC: "clay", PVCU: "PVC", RC: "concrete" }[m] || m);
@@ -399,11 +440,12 @@ const App = (() => {
     return `<svg class="bars" viewBox="0 0 ${w} ${items.length * (Hh + gap)}" width="100%">${rows}</svg>`;
   }
   function lineChart(points, o = {}) {
-    const w = 300, h = 120, l = 34, b = 22, maxY = Math.max(o.rule * 1.4 || 12, ...points.map(p => p.y)) * 1.1;
-    const X = k => l + (w - l - 8) * (points.length < 2 ? 0 : k / (points.length - 1)), Y = v => h - b - (h - b - 8) * v / maxY;
+    const w = 300, h = 130, l = 40, b = 22, maxY = Math.max(o.rule * 1.4 || 12, ...points.map(p => p.y)) * 1.1;
+    const X = k => l + (w - l - 24) * (points.length < 2 ? 0 : k / (points.length - 1)), Y = v => h - b - (h - b - 12) * v / maxY;
+    const yt = [0, maxY / 2, maxY / 1.1].map(v => `<text x="${l - 6}" y="${Y(v) + 3}" text-anchor="end" class="ax">${Math.round(v)}</text><line x1="${l}" x2="${w - 16}" y1="${Y(v)}" y2="${Y(v)}" class="grid"/>`).join("");
     const path = points.map((p, k) => `${k ? "L" : "M"}${X(k).toFixed(1)},${Y(p.y).toFixed(1)}`).join("");
-    return `<svg class="line" viewBox="0 0 ${w} ${h}" width="100%">
-      ${o.rule ? `<line x1="${l}" x2="${w - 8}" y1="${Y(o.rule)}" y2="${Y(o.rule)}" class="rule"/><text x="${w - 8}" y="${Y(o.rule) - 4}" text-anchor="end" class="ax">${o.rule} ${o.unit || "mm"}</text>` : ""}
+    return `<svg class="line" viewBox="0 0 ${w} ${h}" width="100%">${yt}
+      ${o.rule ? `<line x1="${l}" x2="${w - 16}" y1="${Y(o.rule)}" y2="${Y(o.rule)}" class="rule"/><text x="${w - 16}" y="${Y(o.rule) - 4}" text-anchor="end" class="ax">${o.rule} ${o.unit || "mm"}</text>` : ""}
       <path d="${path}" class="ln"/>${points.map((p, k) => `<circle cx="${X(k)}" cy="${Y(p.y)}" r="3.5" class="pt ${p.cls || ""}"><title>${p.x}: ${o.fmt ? o.fmt(p.y) : p.y.toFixed(1) + " mm"}</title></circle>`).join("")}
       ${points.map((p, k) => `<text x="${X(k)}" y="${h - 6}" text-anchor="middle" class="ax">${p.x}</text>`).join("")}
       <text x="4" y="12" class="ax">${o.unit || "mm"}</text></svg>`;
@@ -444,7 +486,7 @@ const App = (() => {
     const split = top + (bottom - top) * 0.36;
     const y = mm => mm <= zone ? bottom - (bottom - split) * mm / zone : split - (split - top) * Math.min(1, (mm - zone) / Math.max(1, depth - zone));
     const sx0 = 130, sx1 = 210, px0 = 20, px1 = 310, lid = y(depth), wTop = y(Math.min(o.water, depth)), bTop = y(Math.min(o.base, depth));
-    const lines = [[0.7 * o.dia, "0.7 of pipe: limit", "#ffd166"], [o.dia, "pipe top: surcharge above", "#ff9f43"]];
+    const lines = [[0.7 * o.dia, "0.7 of pipe: limit", PAL.yellow], [o.dia, "pipe top: surcharge above", PAL.orange]];
     const sensor = SENSOR_TYPES.find(t => t.id === o.sensor);
     let sm = "";
     if (sensor) {
@@ -453,18 +495,18 @@ const App = (() => {
     }
     const over = o.water >= depth;
     return `<svg class="cut" viewBox="0 0 ${W} ${Hc}" width="100%" role="img" aria-label="${o.title || "Manhole cutaway"}">
-      <rect x="0" y="${lid}" width="${W}" height="${Hc - lid}" fill="#1a2436"/>
-      <rect x="${sx0}" y="${lid}" width="${sx1 - sx0}" height="${bottom - lid}" fill="#0b1220" stroke="#4a5b7a"/>
-      <rect x="${px0}" y="${y(o.dia)}" width="${px1 - px0}" height="${bottom - y(o.dia)}" fill="#0b1220" stroke="#4a5b7a"/>
+      <rect x="0" y="${lid}" width="${W}" height="${Hc - lid}" fill="${PAL.cutBg}"/>
+      <rect x="${sx0}" y="${lid}" width="${sx1 - sx0}" height="${bottom - lid}" fill="${PAL.bg}" stroke="${PAL.cutLine}"/>
+      <rect x="${px0}" y="${y(o.dia)}" width="${px1 - px0}" height="${bottom - y(o.dia)}" fill="${PAL.bg}" stroke="${PAL.cutLine}"/>
       <rect x="${px0}" y="${Math.max(y(o.dia), wTop)}" width="${px1 - px0}" height="${bottom - Math.max(y(o.dia), wTop)}" class="water"/>
       ${o.water > o.dia ? `<rect x="${sx0}" y="${wTop}" width="${sx1 - sx0}" height="${y(o.dia) - wTop}" class="water"/>` : ""}
       ${over ? `<ellipse cx="${(sx0 + sx1) / 2}" cy="${lid - 6}" rx="70" ry="8" class="water spill"/>` : ""}
       <line x1="${px0}" x2="${px1}" y1="${bTop}" y2="${bTop}" class="base"/>
       ${lines.map(([mm, t, c]) => `<line x1="${px0}" x2="${px1}" y1="${y(mm)}" y2="${y(mm)}" stroke="${c}" stroke-dasharray="5 4"/><text x="${px1}" y="${y(mm) - 3}" text-anchor="end" class="ax" fill="${c}">${t}</text>`).join("")}
-      <rect x="${sx0 - 8}" y="${lid - 5}" width="${sx1 - sx0 + 16}" height="5" fill="#a9b8d4"/><text x="${sx1 + 12}" y="${lid + 2}" class="ax">lid: overflow (${o.depthM.toFixed(1)} m up)</text>
+      <rect x="${sx0 - 8}" y="${lid - 5}" width="${sx1 - sx0 + 16}" height="5" fill="${PAL.lid}"/><text x="${px0}" y="${lid - 9}" class="ax">Lid: overflow · ${o.depthM.toFixed(1)} m up</text>
       <text x="${px0}" y="${split - 4}" class="ax">↕ shaft not to scale</text>
       ${sm}
-      <text x="${px0}" y="${Hc - 6}" class="ax">water ${Math.round(o.water)} mm above the pipe floor · before growth ${Math.round(o.base)} mm (dotted)</text></svg>`;
+      <text x="${px0}" y="${Hc - 6}" class="ax">Water ${Math.round(o.water)} mm deep · before growth ${Math.round(o.base)} mm (dotted)</text></svg>`;
   }
   const stat = (v, l, cls = "") => `<div class="stat ${cls}"><b>${v}</b><span>${l}</span></div>`;
   const chips = (items, on, attr) => `<div class="chips">${items.map(([k, t, c]) => `<button type="button" data-${attr}="${k}" class="${on(k) ? "on" : ""}" ${c ? `style="--c:${c}"` : ""}>${t}</button>`).join("")}</div>`;
@@ -494,7 +536,8 @@ const App = (() => {
         pipe: p => pipeRegion(p) === s.r || (S().regions[s.r].overlay && inOverlay(p)) ? [REGION_COLS[regionId(s.r)] + "aa", 2.4] : [COL.pipe, 1.2],
         node: i => i === s.mh ? { fill: COL.accent, r: 7 } : row && row.sur.includes(i) ? { fill: COL.tip, r: 6 } : base.has(i) ? { ring: COL.was, r: 4.5 } : riseColour(rise.get(i) || 0) ? { fill: riseColour(rise.get(i)), r: 3 } : null,
         labels: [{ node: paint.centre[s.r], text: `${regionLabel(s.r)}: homes added here`, cls: "region", bg: REGION_COLS[regionId(s.r)] }],
-        legend: [[COL.accent, "The manhole in the cutaway (click another)"], [COL.was, "Surcharged before growth", "ring"], [COL.tip, "Newly surcharged"]], scale: riseScale,
+        legend: [[COL.accent, "The manhole in the cutaway (click another)"], [COL.was, "Surcharged before growth", "ring"], [COL.tip, "Newly surcharged"]], scale: riseScale(),
+        callout: (() => { const w = this.water(), f = manholeFacts(s.mh); return { i: s.mh, text: `Water ${Math.round(w.water)} mm deep in a ${f.dia || "?"} mm pipe` }; })(),
         tip: i => `Before growth ${Math.round(baseMm(s.tag, i))} mm deep${rise.get(i) ? ` · +${rise.get(i).toFixed(1)} mm with these homes` : ""}`,
       };
     },
@@ -542,7 +585,7 @@ const App = (() => {
     if (a.names) defs = Object.keys(a.names).map(k => ({ key: k, label: a.names[k], test: v => v === k }));
     else if (a.cats) defs = a.cats.map(([hi, l], k) => ({ key: String(k), label: l, test: v => v <= hi && (k === 0 || v > a.cats[k - 1][0]) }));
     else defs = a.edges.map((lo, k) => { const hi = a.edges[k + 1]; return { key: String(k), label: hi === undefined ? `${a.fmt(lo)}+` : `${a.fmt(lo)}–${a.fmt(hi)}`, test: v => v != null && v >= lo && (hi === undefined || v < hi) }; });
-    const colours = a.names ? ["#d9a066", "#7dd8ff", "#c9d1d9"] : SEQ.slice(0, defs.length);
+    const colours = a.names ? [PAL.clay, PAL.sim4, PAL.corridor] : SEQ.slice(0, defs.length);
     if (a.rev) colours.reverse();
     const of = vals.map(v => defs.findIndex(d => d.test(v)));
     return { defs: defs.map((d, k) => ({ ...d, colour: colours[k], n: of.filter(x => x === k).length })), of };
@@ -552,7 +595,7 @@ const App = (() => {
       const n = st.network, b = binsOf(n.by), on = n.bin;
       return {
         pickPipe: true,
-        pipe: p => { const k = b.of[p]; if (k < 0) return ["#444c5c", 1]; const d = b.defs[k], hit = on === null || d.key === on; return [hit ? d.colour : "#253148", hit ? (on === null ? 1.8 : 3) : 1]; },
+        pipe: p => { const k = b.of[p]; if (k < 0) return [PAL.nullPipe, 1]; const d = b.defs[k], hit = on === null || d.key === on; return [hit ? d.colour : PAL.dimPipe, hit ? (on === null ? 1.8 : 3) : 1]; },
         node: i => S().base[D().design].surcharged.includes(i) ? { ring: COL.was, r: 4.5 } : null,
         legend: [...b.defs.map(d => [d.colour, `${d.label} ${ATTRS[n.by].unit ? "" : ""}`]), [COL.was, "Surcharged before growth (model)", "ring"]],
         pipeTip: p => n.by === "util" ? `Flow / capacity ≈ ${pct(util(p, caseOf(D().design).ii))} on a design wet day` : "",
@@ -617,13 +660,13 @@ const App = (() => {
     ["5", "Evaluate by scenario coverage", "Score each placement by the share of growth scenarios it sees, in the worst and the average weather, and the overloads it warns of. Then stress it.", "compare", "alg"],
   ];
   const ALTERNATIVES = [
-    { id: "judgement", label: "Judgement or incident history", colour: "#ff9f43", note: "What utilities mostly do now: sites by experience or where problems were reported. Stand-in here: the manholes already worst today.",
+    { id: "judgement", label: "Judgement or incident history", get colour() { return PAL.orange; }, note: "What utilities mostly do now: sites by experience or where problems were reported. Stand-in here: the manholes already worst today.",
       marks: ["~", "✗", "~", "✗", "✓"], picks: () => { const t = D().design; return S().base[t].surcharged.slice().sort((a, b) => baseMm(t, b) / (G().dia[H.outPipe[b]] || 150) - baseMm(t, a) / (G().dia[H.outPipe[a]] || 150)).slice(0, 5); } },
-    { id: "desk", label: "Desk hydraulics (Manning)", colour: "#ffd166", note: "Flow against pipe capacity, pipe by pipe, no model runs. Cheap, but each pipe is judged alone.",
+    { id: "desk", label: "Desk hydraulics (Manning)", get colour() { return PAL.yellow; }, note: "Flow against pipe capacity, pipe by pipe, no model runs. Cheap, but each pipe is judged alone.",
       marks: ["✓", "~", "✗", "~", "✓"], picks: () => C().methods.hydraulic.sets[4] },
-    { id: "ml", label: "Learn from sensor data", colour: "#b38cff", note: "Train a model on years of level records. Not possible yet: there are no records, and the growth has not happened. Becomes possible after a pilot (Next research).",
+    { id: "ml", label: "Learn from sensor data", get colour() { return PAL.purple; }, note: "Train a model on years of level records. Not possible yet: there are no records, and the growth has not happened. Becomes possible after a pilot (Next research).",
       marks: ["✗", "✗", "✓", "~", "✗"], picks: () => null },
-    { id: "ours", label: "Simulation + search (ours)", colour: COL.sensor, note: "Many futures simulated on the whole network, then the sites that see most of them, chosen exactly.",
+    { id: "ours", label: "Simulation + search (ours)", get colour() { return COL.sensor; }, note: "Many futures simulated on the whole network, then the sites that see most of them, chosen exactly.",
       marks: ["✓", "✓", "✓", "✓", "✓"], picks: () => planIdx(5) },
   ];
   const CRITERIA = ["Works before any sensor exists", "Tests growth that has not happened", "Sees water backing up through the network", "Copes with unknown weather", "Gives a reason for each site"];
@@ -636,17 +679,17 @@ const App = (() => {
           labels: sensorLabels(set), legend: [[alt.colour, alt.label + (set.length ? ": its 5 sites" : ": no sites possible yet")], ...(alt.id !== "ours" ? [[COL.sensor, "Our recommended sites", "ring"]] : [])] };
       }
       const k = a.step, g = G(), set = planIdx(5);
-      if (k === "1") return { pipe: p => [g.dia[p] <= 150 ? "#4f86c6" : g.dia[p] <= 225 ? "#9fd3ff" : "#ffd166", 1 + g.dia[p] / 160], legend: [["#4f86c6", "150 mm pipes"], ["#9fd3ff", "225 mm"], ["#ffd166", "Larger mains"]] };
-      if (k === "2a") return { pipe: p => { const ri = pipeRegion(p); return ri >= 0 ? [REGION_COLS[regionId(ri)], 2.2] : [COL.pipe, 1]; }, overlayPipe: p => [REGION_COLS[regionId(paint.overlayOf[g.up[p]])], 4], labels: regionLabels(ri => REGION_COLS[regionId(ri)]), legend: [["#c9d1d9", "Infill regions, each grown on its own (the corridor overlaps, dashed)"]] };
-      if (k === "2b") { const mx = Math.max(...H.pH); return { homes: "#7f93b8", pickPipe: true, pipe: p => [`hsl(${210 - 170 * Math.sqrt(H.pH[p] / mx)},80%,${40 + 25 * Math.sqrt(H.pH[p] / mx)}%)`, 0.8 + 4 * Math.sqrt(H.pH[p] / mx)], legend: [["#7f93b8", "Homes connected"], ["hsl(210,80%,40%)", "Few homes upstream"], ["hsl(40,80%,65%)", `Many (up to ${Math.round(mx)})`]], pipeTip: p => `${Math.round(H.pH[p])} homes upstream` }; }
-      if (k === "2c") { const t = wetTags()[1], base = new Set(S().base[t].surcharged); return { pipe: p => [g.pyr[p] && g.pyr[p] < 1950 ? "#d9a066" : COL.pipe, g.pyr[p] && g.pyr[p] < 1950 ? 1.8 : 1], node: i => base.has(i) ? { ring: COL.was, r: 4.5 } : null, legend: [["#d9a066", "Pipes laid before 1950: leak more"], [COL.was, `Surcharged by infiltration alone, ${caseLabel(t)} (${base.size})`, "ring"]] }; }
+      if (k === "1") return { pipe: p => [g.dia[p] <= 150 ? PAL.blue : g.dia[p] <= 225 ? PAL.lightblue : PAL.yellow, 1 + g.dia[p] / 160], legend: [[PAL.blue, "150 mm pipes"], [PAL.lightblue, "225 mm"], [PAL.yellow, "Larger mains"]] };
+      if (k === "2a") return { pipe: p => { const ri = pipeRegion(p); return ri >= 0 ? [REGION_COLS[regionId(ri)], 2.2] : [COL.pipe, 1]; }, overlayPipe: p => [REGION_COLS[regionId(paint.overlayOf[g.up[p]])], 4], labels: regionLabels(ri => REGION_COLS[regionId(ri)]), legend: [[PAL.corridor, "Infill regions, each grown on its own (the corridor overlaps, dashed)"]] };
+      if (k === "2b") { const mx = Math.max(...H.pH); return { homes: PAL.homeHi, pickPipe: true, pipe: p => [heat(Math.sqrt(H.pH[p] / mx)), 0.8 + 4 * Math.sqrt(H.pH[p] / mx)], legend: [[PAL.homeHi, "Homes connected"], [heat(0), "Few homes upstream"], [heat(1), `Many (up to ${Math.round(mx)})`]], pipeTip: p => `${Math.round(H.pH[p])} homes upstream` }; }
+      if (k === "2c") { const t = wetTags()[1], base = new Set(S().base[t].surcharged); return { pipe: p => [g.pyr[p] && g.pyr[p] < 1950 ? PAL.clay : COL.pipe, g.pyr[p] && g.pyr[p] < 1950 ? 1.8 : 1], node: i => base.has(i) ? { ring: COL.was, r: 4.5 } : null, legend: [[PAL.clay, "Pipes laid before 1950: leak more"], [COL.was, `Surcharged by infiltration alone, ${caseLabel(t)} (${base.size})`, "ring"]] }; }
       if (k === "3") {
         const c = new Array(R().chambers.length).fill(0); wetTags().forEach(t => S().rows[t].forEach(x => { if (x.s <= FULL()) seenSet(x, 10).forEach(i => c[i]++); }));
         const max = Math.max(...c);
-        return { pipe: () => [COL.pipe, 1], node: i => c[i] ? { fill: `hsl(${200 - 150 * c[i] / max},90%,${45 + 20 * c[i] / max}%)`, r: 2.5 + 7 * Math.sqrt(c[i] / max) } : null, legend: [["hsl(200,90%,45%)", "Rises 10 mm in few runs"], ["hsl(50,90%,65%)", "In many runs"]], tip: i => `Rises 10 mm or more in ${c[i]} runs` };
+        return { pipe: () => [COL.pipe, 1], node: i => c[i] ? { fill: heat(c[i] / max), r: 2.5 + 7 * Math.sqrt(c[i] / max) } : null, legend: [[heat(0), "Rises 10 mm in few runs"], [heat(1), "In many runs"]], tip: i => `Rises 10 mm or more in ${c[i]} runs` };
       }
       if (k === "4") {
-        const ms = [["greedyAvg", "#ff9f43", "Greedy"], ["hydraulic", "#ffd166", "Desk heuristic: flow/capacity"], ["homes", "#e87ba4", "Desk heuristic: most homes upstream"]];
+        const ms = [["greedyAvg", PAL.orange, "Greedy"], ["hydraulic", PAL.yellow, "Desk heuristic: flow/capacity"], ["homes", PAL.pink, "Desk heuristic: most homes upstream"]];
         const of = i => ms.find(([id]) => C().methods[id].sets[4].includes(i));
         return { pipe: triagePipe(true), node: i => set.includes(i) ? { fill: COL.sensor, r: 7 } : of(i) ? { ring: of(i)[1], r: 6, rw: 2.6 } : null, labels: sensorLabels(set),
           legend: [[COL.sensor, "Exact search"], ...ms.map(([, c, l]) => [c, l, "ring"])], tip: i => [set.includes(i) ? "Exact search" : null, ...ms.filter(([id]) => C().methods[id].sets[4].includes(i)).map(m => m[2])].filter(Boolean).join(" · ") };
@@ -724,7 +767,7 @@ const App = (() => {
         },
         labels: [{ node: paint.centre[p.r], text: regionLabel(p.r) + (row ? ` +${Math.round(row.dw)} homes` : ""), cls: "region", bg: REGION_COLS[regionId(p.r)] }],
         legend: [[COL.was, "Surcharged before growth", "ring"], [COL.tip, "Newly surcharged"], [COL.spill, "Newly spilling"]],
-        scale: riseScale,
+        scale: riseScale(),
         tip: i => { const m = rise.get(i) || 0; return `${m ? `+${m.toFixed(1)} mm with these homes` : "No rise"}${base.has(i) ? " · surcharged before growth" : ""}${sur.has(i) ? " · newly surcharged" : ""}`; },
       };
     },
@@ -793,8 +836,9 @@ const App = (() => {
       const { c } = this.counts(), max = Math.max(1, ...c);
       return {
         pipe: () => [COL.pipe, 1],
-        node: i => c[i] ? { fill: `hsl(${200 - 150 * c[i] / max},90%,${45 + 20 * c[i] / max}%)`, r: 2.5 + 7 * Math.sqrt(c[i] / max) } : null,
-        legend: [["hsl(200,90%,45%)", "Responds in few runs"], ["hsl(50,90%,65%)", `Responds in many (up to ${max})`]],
+        node: i => c[i] ? { fill: heat(c[i] / max), r: 2.5 + 7 * Math.sqrt(c[i] / max) } : null,
+        legend: [[heat(0), "Responds in few runs"], [heat(1), `Responds in many (up to ${max})`]],
+        callout: { i: c.indexOf(max), text: `Responds in ${max} runs: the most of any manhole` },
         tip: i => `${MEASURES[st.insights.measure][0]} in ${c[i]} runs`,
       };
     },
@@ -805,7 +849,7 @@ const App = (() => {
       const byCase = allTags().map(t => { const set = new Set(); S().rows[t].forEach(x => { if (steps.has(x.s)) f(x).forEach(i => set.add(i)); }); return { t, n: set.size }; });
       const maxCase = Math.max(1, ...byCase.map(x => x.n));
       const byStep = stepsTo(3).map(s => { const set = new Set(); allTags().filter(t => q.cases.has(t)).forEach(t => S().rows[t].forEach(x => { if (x.s === s) f(x).forEach(i => set.add(i)); })); return { x: S().ladder[s] * 100 + "%", y: set.size }; });
-      const base = allTags().map(t => ({ label: caseShort(t), value: S().base[t].surcharged.length / 120, text: String(S().base[t].surcharged.length), colour: "#3c5a85" }));
+      const base = allTags().map(t => ({ label: caseShort(t), value: S().base[t].surcharged.length / 120, text: String(S().base[t].surcharged.length), get colour() { return PAL.barBase; } }));
       const sim4 = new Set(planIdx(5));
       return `
         <p class="lede">All the runs at once: which manholes respond, how often, and how that changes with the weather and with the number of homes.</p>
@@ -814,14 +858,14 @@ const App = (() => {
         <h3>Build-out included</h3>
         ${chips([[1, "Up to 2041 (100%)"], [3, "With stress tests (to 300%)"]], k => +k === q.max, "mx")}
         <h3>Weather included <small>(click a bar to switch it)</small></h3>
-        ${bars(byCase.map(x => ({ label: caseShort(x.t), value: x.n / maxCase, text: String(x.n), key: x.t, colour: q.cases.has(x.t) ? COL.accent : "#2a3a58", note: `${x.n} manholes respond in ${caseLabel(x.t)}` })), { clickable: true, labelWidth: 170 })}
+        ${bars(byCase.map(x => ({ label: caseShort(x.t), value: x.n / maxCase, text: String(x.n), key: x.t, colour: q.cases.has(x.t) ? COL.accent : PAL.barOff, note: `${x.n} manholes respond in ${caseLabel(x.t)}` })), { clickable: true, labelWidth: 200, width: 410 })}
         <div class="hint">Manholes that respond at least once, per weather case. Wetter days spread the response wider.</div>
         <div class="stats">${stat(responders, `of ${R().chambers.length} manholes respond at least once`)}${stat(runs, "runs counted")}</div>
         <h3>As homes are added <small>(weather above)</small></h3>
         ${lineChart(byStep, { unit: "manholes", fmt: v => v + " manholes" })}
         <h3>The most frequent responders <small>(click to find)</small></h3>
         <ol class="top">${top.map(([v, i]) => `<li><button type="button" class="link" data-find="${i}">${nameOf(i)}</button> <span class="dim">${v} runs${sim4.has(i) ? " · <b class='g'>recommended sensor</b>" : ""}</span></li>`).join("")}</ol>
-        ${fold("Before any growth, by weather", bars(base, { labelWidth: 170 }) + `<div class="hint">Manholes already surcharged with today's homes. Wet weather alone already matters.</div>`)}
+        ${fold("Before any growth, by weather", bars(base, { labelWidth: 200, width: 410 }) + `<div class="hint">Manholes already surcharged with today's homes. Wet weather alone already matters.</div>`)}
         ${nextBtn()}`;
     },
     wire() {
@@ -835,13 +879,13 @@ const App = (() => {
 
   // ------------------------------------------------------------------ 5 ALGORITHMS
   const METHODS = [
-    { id: "exact", label: "Best coverage (exact)", colour: COL.sensor, how: "For each number of sensors, the set that sees the most growth runs in the worst weather case, then on average, then warns of the most overloads, solved exactly over every manhole.", why: "The recommendation: no other set of that size covers more scenarios." },
-    { id: "sim4", label: "Nested list", colour: "#7dd8ff", how: "Start with the best sensor for a design wet day, then add, one at a time, the manhole that most lifts the worst weather case.", why: "Grows from 1 to 5 sensors without moving any, at a cost in the worst case (81% against 88% at 5)." },
-    { id: "greedyWorst", label: "Greedy: worst case", colour: "#b38cff", how: "From nothing, add the manhole that most lifts the worst weather case.", why: "Max–min: protects against the weather you did not plan for." },
-    { id: "greedyAvg", label: "Greedy: average", colour: "#ff9f43", how: "From nothing, add the manhole that most lifts the average over weather.", why: "Classic maximum coverage. Greedy is guaranteed at least 63% of the best possible (Nemhauser et al. 1978); here it ties with the exact set at 5." },
-    { id: "hydraulic", label: "Desk: flow/capacity", colour: "#ffd166", dash: true, how: "No model runs: the fullest pipes by Manning's equation, at least 150 m apart.", why: "What a desk study would choose. A baseline to beat." },
-    { id: "homes", label: "Desk: most homes upstream", colour: "#e87ba4", dash: true, how: "No model runs: the manholes draining the most homes, at least 150 m apart.", why: "The 'watch the trunk' rule of thumb." },
-    { id: "random", label: "Random sites", colour: "#6f81a3", dash: true, how: "Random manholes in the target regions, 500 draws.", why: "The floor any method must clear." },
+    { id: "exact", label: "Best coverage (exact)", get colour() { return COL.sensor; }, how: "For each number of sensors, the set that sees the most growth runs in the worst weather case, then on average, then warns of the most overloads, solved exactly over every manhole.", why: "The recommendation: no other set of that size covers more scenarios." },
+    { id: "sim4", label: "Nested list", get colour() { return PAL.sim4; }, how: "Start with the best sensor for a design wet day, then add, one at a time, the manhole that most lifts the worst weather case.", why: "Grows from 1 to 5 sensors without moving any, at a cost in the worst case (81% against 88% at 5)." },
+    { id: "greedyWorst", label: "Greedy: worst case", get colour() { return PAL.purple; }, how: "From nothing, add the manhole that most lifts the worst weather case.", why: "Max–min: protects against the weather you did not plan for." },
+    { id: "greedyAvg", label: "Greedy: average", get colour() { return PAL.orange; }, how: "From nothing, add the manhole that most lifts the average over weather.", why: "Classic maximum coverage. Greedy is guaranteed at least 63% of the best possible (Nemhauser et al. 1978); here it ties with the exact set at 5." },
+    { id: "hydraulic", label: "Desk: flow/capacity", get colour() { return PAL.yellow; }, dash: true, how: "No model runs: the fullest pipes by Manning's equation, at least 150 m apart.", why: "What a desk study would choose. A baseline to beat." },
+    { id: "homes", label: "Desk: most homes upstream", get colour() { return PAL.pink; }, dash: true, how: "No model runs: the manholes draining the most homes, at least 150 m apart.", why: "The 'watch the trunk' rule of thumb." },
+    { id: "random", label: "Random sites", get colour() { return PAL.failed; }, dash: true, how: "Random manholes in the target regions, 500 draws.", why: "The floor any method must clear." },
   ];
   const methodSets = (id, k) => id === "random" ? null : id === "exact" ? planIdx(k) : (C().methods[id].sets[k - 1] || []);
   const ALGORITHMS = {
@@ -851,9 +895,10 @@ const App = (() => {
         const g = this.gainMap(), max = Math.max(...g.filter(v => v != null)), next = g.indexOf(max);
         return {
           pipe: triagePipe(true),
-          node: i => set.slice(0, a.k - 1).includes(i) ? { fill: m.colour, r: 7 } : i === next ? { fill: "#ffffff", r: 7, ring: m.colour } : g[i] > 0 ? { fill: `hsl(${200 - 150 * g[i] / max},90%,${45 + 20 * g[i] / max}%)`, r: 2 + 6 * g[i] / max } : null,
+          node: i => set.slice(0, a.k - 1).includes(i) ? { fill: m.colour, r: 7 } : i === next ? { fill: PAL.hi, r: 7, ring: m.colour } : g[i] > 0 ? { fill: heat(g[i] / max), r: 2 + 6 * g[i] / max } : null,
           labels: sensorLabels(set.slice(0, a.k - 1)),
-          legend: [[m.colour, `Sensors 1 to ${a.k - 1}`], ["#ffffff", `Choice for sensor ${a.k}`], ["hsl(50,90%,65%)", "Adds a lot"], ["hsl(200,90%,45%)", "Adds a little"]],
+          legend: [[m.colour, `Sensors 1 to ${a.k - 1}`], [PAL.hi, `Choice for sensor ${a.k}`], [heat(1), "Adds a lot"], [heat(0), "Adds a little"]],
+          callout: { i: next, text: `Sensor ${a.k} goes here: it adds the most` },
           tip: i => g[i] != null ? `Would add ${(g[i] * 100).toFixed(1)} points` : "",
         };
       }
@@ -919,6 +964,8 @@ const App = (() => {
         node: i => set.includes(i) ? (c.failed.has(i) ? { fill: COL.failed, r: 7, ring: COL.tip } : { fill: m.colour, r: 7, ring: other && rec.has(i) ? COL.sensor : undefined }) : other && rec.has(i) ? { ring: COL.sensor, r: 6 } : null,
         labels: sensorLabels(set),
         legend: [[m.colour, `${m.label} (click a sensor to fail it)`], ...(other ? [[COL.sensor, "Recommended set", "ring"]] : []), [COL.failed, "Failed sensor"]],
+        callout: (() => { if (set.length < 2) return null; const o = { ...SIM4_TEST(), mm: c.mm }, f = set.map(i => score(set.filter(j => j !== i), o).worst), k = f.indexOf(Math.min(...f));
+          return { i: set[k], text: `If this one fails, the worst case drops to ${pct(f[k])}` }; })(),
         tip: i => set.includes(i) ? (c.failed.has(i) ? "Failed: click to restore" : "Click to make it fail") : "",
       };
     },
@@ -936,15 +983,15 @@ const App = (() => {
         ${chips(RULES.map(m => [m, `Seen at ${m} mm`]), k => +k === c.mm, "cmm")}
         <table class="cmp"><tr><th>Method</th><th title="Share of growth runs seen, averaged over the 7 wet cases">Avg</th><th title="The worst of the 7 wet cases">Worst</th><th title="Overloads with a sensor rising one step before the first new surcharge">Warned</th><th title="Each weather case scored with sensors chosen without it">Unseen</th><th title="Worst case after the most damaging single sensor failure">1 fails</th></tr>
           ${rows.map(r => `<tr data-row="${r.m.id}" class="${r.m.id === c.method ? "on" : ""}"><td><i class="sw" style="background:${r.m.colour}"></i>${r.m.label}</td>${cell(r, "avg", pct)}${cell(r, "worst", pct)}${cell(r, "warned", v => (Math.round(v * 10) / 10) + "/" + r.x.warnable)}${cell(r, "unseen", pct)}${cell(r, "fail", pct)}</tr>`).join("")}</table>
-        <div class="hint">Avg and Worst: share of growth runs seen, over the 7 wet cases. Unseen: on weather the sensors were not chosen for. 1 fails: worst case after the most damaging failure. Green: best in the column. Desk methods use no weather, so all weather is unseen to them. ${c.mm !== 10 ? "Random draws are scored at 10 mm only." : ""}</div>
+        <div class="hint">Avg and Worst: share of growth runs seen, over the 7 wet cases. Unseen: on weather the sensors were not chosen for. 1 fails: worst case after the most damaging failure. Bold: best in the column. Desk methods use no weather, so all weather is unseen to them. ${c.mm !== 10 ? "Random draws are scored at 10 mm only." : ""}</div>
         <h3>Worst case as sensors are added <small>(click a line)</small></h3>
         ${curves(series, { at: c.k })}
         <h3>Stress the selected plan <small>(click its sensors on the map)</small></h3>
         ${live ? `<div class="stats">${stat(pct(live.avg), "seen on average", c.failed.size ? "bad" : "")}${stat(pct(live.worst), "worst case", c.failed.size ? "bad" : "")}</div>
           <div class="hint">${c.failed.size ? `<b>${c.failed.size} failed.</b> <button type="button" class="link" id="cmRestore">Restore all</button>` : "In a real deployment, 62 of 82 level sensors stayed in service over about a year (Do et al. 2023)."}</div>
           <table class="matrix"><tr><th></th>${wet.map(t => `<th title="${caseLabel(t)}">${caseTiny(t)}</th>`).join("")}</tr>
-          ${alone.map((row, j) => `<tr><th>S${j + 1}</th>${row.map(x => `<td style="background:rgba(46,245,107,${(x.share * 0.85).toFixed(2)})" title="${x.hit} of ${x.n}">${Math.round(x.share * 100)}</td>`).join("")}</tr>`).join("")}</table>
-          <div class="hint">% of runs each sensor sees alone, per weather case. A column with one green cell rests on one site.</div>` : `<div class="card muted">Random has no single set to stress.</div>`}
+          ${alone.map((row, j) => `<tr><th>S${j + 1}</th>${row.map(x => `<td style="background:${rgba(PAL.sensor, (x.share * 0.85).toFixed(2))};${x.share > 0.5 ? `color:${PAL.bg}` : ""}" title="${x.hit} of ${x.n}">${Math.round(x.share * 100)}</td>`).join("")}</tr>`).join("")}</table>
+          <div class="hint">% of runs each sensor sees alone, per weather case. A column with one strong cell rests on one site.</div>` : `<div class="card muted">Random has no single set to stress.</div>`}
         ${fold("Read these carefully", `<ul class="plain"><li>Percentages count only growth that shows somewhere (≥ 10 mm at some manhole).</li><li>Many sets tie: read the plan as areas, not exact lids.</li><li>The best set changes with the count: going from 4 to 5 sensors moves some of them. The nested list never moves a sensor, but sees less in the worst case (81% against 88% at 5); it does slightly better on unseen weather (77% against 75%).</li><li>One site carries the worst case in both: if it fails, the worst case drops to 0%. Check that site first, or double it.</li><li>Costs are ${PRICE_NOTE}.</li></ul>`)}
         ${nextBtn()}`;
     },
@@ -971,6 +1018,13 @@ const App = (() => {
       const keep = xs.map((x, i) => x != null && x > 0 && ys[i] > 0.05);
       return { xs, ys, keep, rho: spearman(xs.filter((x, i) => keep[i]), ys.filter((y, i) => keep[i])) };
     },
+    // Manholes with a big simulated rise that the desk screen ranks low.
+    odd() {
+      const d = this.data(), pts = d.xs.map((x, i) => ({ x, y: d.ys[i], i })).filter(p => d.keep[p.i]);
+      const xs = pts.map(p => p.x).sort((a, b) => a - b), ys = pts.map(p => p.y).sort((a, b) => a - b);
+      const rank = v => Math.round(xs.filter(x => x < v).length / xs.length * 100), yr = v => ys.filter(y => y < v).length / ys.length;
+      return pts.filter(p => yr(p.y) > 0.8 && rank(p.x) < 30).sort((a, b) => b.y - a.y).slice(0, 4);
+    },
     layer() {
       const c = st.check, { xs, keep } = this.data(), sim4 = new Set(planIdx(5));
       const sorted = xs.filter((x, i) => keep[i]).sort((a, b) => a - b), q = v => sorted.findIndex(x => x >= v) / sorted.length;
@@ -979,6 +1033,7 @@ const App = (() => {
         node: i => sim4.has(i) ? { fill: COL.sensor, r: 7 } : keep[i] ? { fill: SEQ[Math.min(5, Math.floor(q(xs[i]) * 6))], r: 3.5 } : null,
         labels: sensorLabels(planIdx(5)),
         legend: [[SEQ[0], `Low ${SCREENS[c.screen].label.toLowerCase()}`], [SEQ[5], "High"], [COL.sensor, "Recommended sensor"]],
+        callout: (() => { const o = this.odd(); return o.length ? { i: o[0].i, text: `Rises ${o[0].y.toFixed(0)} mm, yet looks fine on the desk screen: water backs up from downstream` } : null; })(),
         tip: i => keep[i] ? `${SCREENS[c.screen].label}: ${SCREENS[c.screen].fmt(xs[i])}` : "",
       };
     },
@@ -988,7 +1043,7 @@ const App = (() => {
       const sorted = pts.map(p => p.x).sort((a, b) => a - b), rank = v => Math.round(sorted.filter(x => x < v).length / sorted.length * 100);
       // Where they disagree: big simulated rise, low screen value.
       const ysorted = pts.map(p => p.y).sort((a, b) => a - b), yr = v => ysorted.filter(x => x < v).length / ysorted.length;
-      const odd = pts.filter(p => yr(p.y) > 0.8 && rank(p.x) < 30).sort((a, b) => b.y - a.y).slice(0, 4);
+      const odd = this.odd();
       const r = d.rho.rho, word = r > 0.6 ? "strong" : r > 0.3 ? "moderate" : r > 0 ? "weak" : "no";
       return `
         <p class="lede">If the simulation is sound, simple hydraulics should point the same way. Compare a desk screen with the simulated rise at every manhole.</p>
@@ -1003,14 +1058,14 @@ const App = (() => {
         <h3>Where they disagree</h3>
         ${odd.length ? `<ul class="plain">${odd.map(p => `<li><button type="button" class="link" data-find="${p.i}">${nameOf(p.i)}</button> <span class="dim">rises ${p.y.toFixed(0)} mm, but sits at percentile ${rank(p.x)} on the screen</span></li>`).join("")}</ul>` : `<div class="hint">No big disagreements on this screen.</div>`}
         <div class="hint">These rise because water <b>backs up from downstream</b>, which a pipe-by-pipe screen cannot see. And ranking well is not placing well: "most homes upstream" ranks manholes much like the model does, yet as a placement it sees little (Compare), because the big trunks barely move when one region grows. That is why we simulate the whole network rather than only screening it.</div>
-        ${this.manning()}
+        ${fold("Manning check: any pipe, with extra homes and leakage", this.manning(), !!st.sel)}
         ${nextBtn()}`;
     },
     manning() {
       const c = st.check, i = st.sel ?? planIdx(5)[0], p = H.outPipe[i]; if (p == null) return "";
       const g = G(), now = util(p, c.ii), later = util(p, c.ii, c.extra);
       const bar = (v, l) => `<div class="gauge"><span style="width:${Math.min(100, v * 100)}%;background:${v >= 1 ? COL.tip : v >= 0.7 ? COL.watch : COL.accent}"></span><em>${l}: ${pct(v)}</em></div>`;
-      return `<h3>Manning check <small>(click any manhole)</small></h3><div class="card"><b>${nameOf(i)}</b> <span class="dim">pipe out: ${g.dia[p]} mm ${matName(g.pmat[p])} at ${g.pslope[p]}%, full capacity ${g.pcap[p].toFixed(1)} L/s, ${Math.round(H.pH[p])} homes upstream</span>
+      return `<div class="hint">Click any manhole on the map.</div><div class="card"><b>${nameOf(i)}</b> <span class="dim">pipe out: ${g.dia[p]} mm ${matName(g.pmat[p])} at ${g.pslope[p]}%, full capacity ${g.pcap[p].toFixed(1)} L/s, ${Math.round(H.pH[p])} homes upstream</span>
         <div class="sub">Extra homes upstream</div><div class="slider"><input id="ckX" type="range" min="0" max="600" step="10" value="${c.extra}"><span>+${c.extra}</span></div>
         <div class="sub">Leakage, L/s per 100 m</div><div class="slider"><input id="ckI" type="range" min="0" max="0.4" step="0.01" value="${c.ii}"><span>${c.ii.toFixed(2)}</span></div>
         ${bar(now, "Today")}${bar(later, "With the extra homes")}
@@ -1030,11 +1085,11 @@ const App = (() => {
 
   // ------------------------------------------------------------------ 8 SENSOR TYPES
   const SENSOR_TYPES = [
-    { id: "ultra", short: "Ultrasonic", name: "Ultrasonic level", colour: "#2ef56b", at: () => "lid", reads: "Distance down to the water, every few minutes", good: "Continuous level, no contact with sewage, battery and radio in one unit. Used at scale for blockages.", bad: "Must not be submerged; foam and ladders can confuse it.", fit: "Best fit: level is the direct sign of lost capacity.", cost: "$$" },
-    { id: "radar", short: "Radar", name: "Radar level", colour: "#7dd8ff", at: () => "lid", reads: "Distance down to the water", good: "Like ultrasonic but less affected by foam, temperature and condensation.", bad: "Dearer; same mounting limits.", fit: "Good fit where ultrasonic struggles.", cost: "$$$" },
-    { id: "pressure", short: "Pressure", name: "Submerged pressure level", colour: "#ffd166", at: () => 0, reads: "Depth from the weight of water above it", good: "Reads through surcharge, when the shaft fills.", bad: "Sits in the sewage: fouling, drift, more upkeep.", fit: "Useful where surcharge depth itself matters.", cost: "$$" },
-    { id: "float", short: "Float", name: "Float switch", colour: "#ff9f43", at: o => o.base + 25, reads: "On or off at one set height", good: "Cheap and simple.", bad: "Says nothing until the water reaches it: no trend, so no early warning of growth.", fit: "Weak fit: in Sim 4, floats see 0% on unseen weather.", cost: "$" },
-    { id: "flow", short: "Flow meter", name: "Area–velocity flow meter", colour: "#b38cff", inPipe: true, at: () => 0, reads: "Depth and speed in the pipe, so flow in L/s", good: "Measures load directly; the standard for flow surveys and model calibration.", bad: "Dear, needs a clean straight pipe, regular cleaning; usually short campaigns.", fit: "Best for calibrating the model, not for many sites.", cost: "$$$$" },
+    { id: "ultra", short: "Ultrasonic", name: "Ultrasonic level", get colour() { return PAL.sensor; }, at: () => "lid", reads: "Distance down to the water, every few minutes", good: "Continuous level, no contact with sewage, battery and radio in one unit. Used at scale for blockages.", bad: "Must not be submerged; foam and ladders can confuse it.", fit: "Best fit: level is the direct sign of lost capacity.", cost: "$$" },
+    { id: "radar", short: "Radar", name: "Radar level", get colour() { return PAL.sim4; }, at: () => "lid", reads: "Distance down to the water", good: "Like ultrasonic but less affected by foam, temperature and condensation.", bad: "Dearer; same mounting limits.", fit: "Good fit where ultrasonic struggles.", cost: "$$$" },
+    { id: "pressure", short: "Pressure", name: "Submerged pressure level", get colour() { return PAL.yellow; }, at: () => 0, reads: "Depth from the weight of water above it", good: "Reads through surcharge, when the shaft fills.", bad: "Sits in the sewage: fouling, drift, more upkeep.", fit: "Useful where surcharge depth itself matters.", cost: "$$" },
+    { id: "float", short: "Float", name: "Float switch", get colour() { return PAL.orange; }, at: o => o.base + 25, reads: "On or off at one set height", good: "Cheap and simple.", bad: "Says nothing until the water reaches it: no trend, so no early warning of growth.", fit: "Weak fit: in Sim 4, floats see 0% on unseen weather.", cost: "$" },
+    { id: "flow", short: "Flow meter", name: "Area–velocity flow meter", get colour() { return PAL.purple; }, inPipe: true, at: () => 0, reads: "Depth and speed in the pipe, so flow in L/s", good: "Measures load directly; the standard for flow surveys and model calibration.", bad: "Dear, needs a clean straight pipe, regular cleaning; usually short campaigns.", fit: "Best for calibrating the model, not for many sites.", cost: "$$$$" },
   ];
   const SENSORS = {
     // A recommended site whose water sits below the pipe top before growth, so the cutaway has room to show the rise.
@@ -1059,17 +1114,16 @@ const App = (() => {
         <table class="mini kv"><tr><th>Reads</th><td>${t.reads}</td></tr><tr><th>Good</th><td>${t.good}</td></tr><tr><th>Limits</th><td>${t.bad}</td></tr><tr><th>For growth</th><td><b>${t.fit}</b></td></tr><tr><th>Cost</th><td>${t.cost}</td></tr></table>
         <h3>Level sensors or floats, for the same money</h3>
         <div class="slider"><input id="snB" type="range" min="0" max="${budgets.length - 1}" value="${bi}" aria-label="Budget"><span>${br[0]}</span></div>
-        ${bars([{ label: "Level: worst case", value: lw, colour: COL.sensor }, { label: "Level: average", value: la, colour: "#1f9e4c" }, { label: "Floats: worst case", value: fw, colour: "#ff9f43" }, { label: "Floats: average", value: fa, colour: "#b36a20" }], { labelWidth: 150 })}
+        ${bars([{ label: "Level: worst case", value: lw, get colour() { return COL.sensor; } }, { label: "Level: average", value: la, get colour() { return PAL.levelAvg; } }, { label: "Floats: worst case", value: fw, get colour() { return PAL.orange; } }, { label: "Floats: average", value: fa, get colour() { return PAL.floatAvg; } }], { labelWidth: 150 })}
         <div class="hint">${br[3]} for floats. On weather not chosen for: level ${br[2]}, floats ${br[5]}. From Sim 4's level-or-float study (on its nested list), at ${PRICE_NOTE}.</div>
-        <h3>Who does this already</h3>
-        <ul class="lit">
+        ${fold("Who does this already", `<ul class="lit">
           <li><b>Sydney Water</b>: 8,000+ level sensors, 15,000 more planned; 300–370+ blockages caught before overflow.</li>
           <li><b>United Utilities</b> (UK): about 20,000 manhole level sensors; a pilot cut blockages by 80%.</li>
           <li><b>Yorkshire Water</b> (UK): 27,000 level monitors planned for 2025–30.</li>
           <li><b>South Bend</b> (US): about 150 wireless sensors driving real-time control; combined overflows down 70%, about US$500 m of building avoided.</li>
           <li><b>An Australian level-sensor trial</b>: 82 ultrasonic sensors, 62 still working after a year (Do et al. 2023).</li>
           <li><b>Kansas City</b> (US) updates its network model every year from monitoring; <b>Anne Arundel County</b> (US) lifted a building pause once measured peak flows replaced design assumptions.</li></ul>
-        <div class="hint">Most of these chose sites by judgement or incident history; none publish an optimisation method. Source: the team's grey-literature review. Mounting rules: CIWEM (2017).</div>
+        <div class="hint">Most of these chose sites by judgement or incident history; none publish an optimisation method. Source: the team's grey-literature review. Mounting rules: CIWEM (2017).</div>`)}
         ${nextBtn()}`;
     },
     wire() {
@@ -1091,8 +1145,8 @@ const App = (() => {
         pipe: p => { const ri = pipeRegion(p); return ri >= 0 && r.regions.has(ri) ? [REGION_COLS[regionId(ri)], 2.2] : [COL.pipe, 1]; },
         overlayPipe: p => r.regions.has(paint.overlayOf[G().up[p]]) ? [REGION_COLS[regionId(paint.overlayOf[G().up[p]])], 4] : null,
         node: i => set.includes(i) ? { fill: COL.sensor, r: 7, ring: sim4.has(i) ? COL.sim4 : undefined } : sim4.has(i) ? { ring: COL.sim4, r: 6 } : null,
-        labels: [...regionLabels(ri => r.regions.has(ri) ? REGION_COLS[regionId(ri)] : "#3b4b68"), ...sensorLabels(set)],
-        legend: [[COL.sensor, r.manual ? "Your sensor (click a manhole to add or remove)" : "Your sensor"], [COL.sim4, "In the recommended five", "ring"], ["#c9d1d9", "Coloured: regions you watch"]],
+        labels: [...regionLabels(ri => r.regions.has(ri) ? REGION_COLS[regionId(ri)] : PAL.leave), ...sensorLabels(set)],
+        legend: [[COL.sensor, r.manual ? "Your sensor (click a manhole to add or remove)" : "Your sensor"], [COL.sim4, "In the recommended five", "ring"], [PAL.corridor, "Coloured: regions you watch"]],
       };
     },
     panel() {
@@ -1114,7 +1168,7 @@ const App = (() => {
           <label class="tog"><input type="checkbox" id="rManual" ${r.manual ? "checked" : ""}> Place my own</label></div>
         ${sc ? `
           <div class="stats">${stat(pct(sc.avg), "seen on average")}${stat(pct(sc.worst), "worst case")}${stat(`${sc.warned} of ${sc.warnable}`, "overloads warned")}${stat(r.result && !r.manual && r.result.unseen != null ? pct(r.result.unseen) : "–", "on weather not chosen for")}</div>
-          ${bars(sc.per.map(c => ({ label: caseShort(c.tag), value: c.share, text: `${c.hit}/${c.n}`, colour: c.share >= 0.8 ? COL.sensor : c.share >= 0.5 ? COL.watch : COL.monitor })), { labelWidth: 170 })}
+          ${bars(sc.per.map(c => ({ label: caseShort(c.tag), value: c.share, text: `${c.hit}/${c.n}`, colour: c.share >= 0.8 ? COL.sensor : c.share >= 0.5 ? COL.watch : COL.monitor })), { labelWidth: 200, width: 410 })}
           <div class="hint">${overlap} of your ${set.length} are in the recommended five. ${!r.manual && r.result ? "Each sensor is the one that adds most, given those before it: fast, and usually close to the exact best (Compare). Many sets tie, so different sites can score the same." : ""}</div>`
           : `<div class="card muted">${r.manual ? "Click manholes on the map to place sensors." : "Press Place sensors."}</div>`}
         <h3>For another suburb</h3>
@@ -1174,9 +1228,9 @@ const App = (() => {
       const f = st.future, set = planIdx(f.vsK), v = this.virtual(set, f.r2), risk = f.risk ? f.risk.set : [];
       return {
         pipe: () => [COL.pipe, 1],
-        node: i => set.includes(i) ? { fill: COL.sensor, r: 7 } : risk.includes(i) ? { ring: "#ff9f43", r: 7, rw: 3 } : v.cover[i] == null ? null : v.cover[i] >= f.r2 ? { fill: "#39c5cf", r: 4 } : { fill: "#4a5568", r: 3 },
+        node: i => set.includes(i) ? { fill: COL.sensor, r: 7 } : risk.includes(i) ? { ring: PAL.orange, r: 7, rw: 3 } : v.cover[i] == null ? null : v.cover[i] >= f.r2 ? { fill: PAL.cover, r: 4 } : { fill: PAL.grey, r: 3 },
         labels: sensorLabels(set),
-        legend: [[COL.sensor, "Recommended sensors"], ["#39c5cf", "Responsive manhole a sensor can stand in for"], ["#4a5568", "Responsive, not covered"], ...(risk.length ? [["#ff9f43", "Risk-weighted choice", "ring"]] : [])],
+        legend: [[COL.sensor, "Recommended sensors"], [PAL.cover, "Responsive manhole a sensor can stand in for"], [PAL.grey, "Responsive, not covered"], ...(risk.length ? [[PAL.orange, "Risk-weighted choice", "ring"]] : [])],
         tip: i => v.cover[i] != null ? `Best r² with a sensor: ${v.cover[i].toFixed(2)}` : "",
       };
     },
@@ -1221,6 +1275,8 @@ const App = (() => {
         node: i => set.includes(i) ? { fill: COL.sensor, r: 7 } : null,
         labels: [...regionLabels(ri => COL[D().triage[regionId(ri)]]), ...sensorLabels(set)],
         legend: [[COL.monitor, "Monitor"], [COL.watch, "Watch"], [COL.leave, "Leave"], [COL.sensor, "Level sensor"]],
+        callout: (() => { if (set.length < 2) return null; const o = SIM4_TEST(), f = set.map(i => score(set.filter(j => j !== i), o).worst), k = f.indexOf(Math.min(...f));
+          return { i: set[k], text: `Sensor ${k + 1}: the plan rests on this site (without it, ${pct(f[k])} in the worst weather)` }; })(),
         tip: i => { const k = set.indexOf(i); if (k < 0) return ""; const w = sensorWhy(i, set, SIM4_TEST()); return `Sensor ${k + 1}: without it, worst case ${pct(w.full.worst)} → ${pct(w.without.worst)}`; },
       };
     },
@@ -1235,13 +1291,11 @@ const App = (() => {
         <div class="slider"><input id="coK" type="range" min="1" max="8" value="${k}" aria-label="Sensors"><span>${k} sensor${k === 1 ? "" : "s"} · ${money(k * PRICE)}</span></div>
         <div class="stats">${stat(pct(sc.avg), "of growth that shows, seen on average")}${stat(pct(sc.worst), "in the worst weather case")}${stat(`${sc.warned} of ${sc.warnable}`, "overloads warned a step ahead")}${stat(pct(unseen), "on weather not chosen for")}</div>
         <div class="hint">${k === 5 ? "<b>Five is where it levels off:</b> a sixth adds 6 points to the worst case; a seventh and eighth add none. " : ""}No set of this size covers more scenarios. It beats the desk methods and random sites, and a basic hydraulic screen agrees on where to look (Cross-check). ${k > 1 ? `Sensor ${weakest + 1} carries the worst case: if it fails, ${pct(fails[weakest])}.` : ""} Costs at ${PRICE_NOTE}.</div>
-        <h3>How sure we are</h3>
-        <table class="mini"><tr><th class="in">Firm</th><th class="out">Say carefully</th></tr>
+        ${fold("How sure we are", `<table class="mini"><tr><th class="in">Firm</th><th class="out">Say carefully</th></tr>
           <tr><td>Where growth shows, and which regions</td><td>Exact lids: many sites tie</td></tr>
           <tr><td>Five beat one when weather is unknown</td><td>Uncalibrated, steady-state model</td></tr>
-          <tr><td>Level beats floats for early warning</td><td>Timing and costs are assumed</td></tr></table>
-        <h3>What we need from you</h3>
-        <ul class="plain"><li>Level or flow records of a normal day, to tell which weather case is realistic: that decides how many sensors are needed.</li><li>Your pipe ratings and capacity limit.</li><li>Development approvals, year by year.</li></ul>
+          <tr><td>Level beats floats for early warning</td><td>Timing and costs are assumed</td></tr></table>`)}
+        ${fold("What we need from you", `<ul class="plain"><li>Level or flow records of a normal day, to tell which weather case is realistic: that decides how many sensors are needed.</li><li>Your pipe ratings and capacity limit.</li><li>Development approvals, year by year.</li></ul>`)}
         <h3>Next steps</h3>
         <ol class="redo"><li>Pilot <b>one level sensor</b> at Sensor 1, the site the worst case rests on, for a wet season.</li><li>Calibrate the model on what it records.</li><li>Re-run the placement on the calibrated runs before buying the rest.</li></ol>
         <div class="links"><a class="link" href="../simulation4/index.html" target="_blank" rel="noopener">Simulation 4, in full ↗</a> <a class="link" href="../simulation4/redo.html" target="_blank" rel="noopener">Redo guide ↗</a></div>
@@ -1249,6 +1303,25 @@ const App = (() => {
     },
     wire() { $("#coK").oninput = e => { st.conclude.k = +e.target.value; refresh(); }; },
   };
+
+  // The finding of each view, in one sentence, from live numbers. The view's name moves into the crumb.
+  const HEADLINES = {
+    setting: () => `Before any new home, a design wet day already surcharges ${S().base[D().design].surcharged.length} manholes; a wetter one, ${S().base[wetTags()[1]].surcharged.length}. Growth adds to that.`,
+    network: () => { const ii = caseOf(D().design).ii, n = Array.from({ length: G().nPipes }, (_, p) => util(p, ii)).filter(v => v >= 0.7).length; return `Small, mostly old pipes: ${n} of ${G().nPipes} already run above 70% of capacity on a wet day.`; },
+    approach: () => `We simulate ${S().regions.length * S().ladder.length * allTags().length} possible futures, then choose the 5 manholes that see the most of them.`,
+    simulate: () => "Each run grows one region in one kind of weather and records the water level at every manhole.",
+    insights: () => { const set = new Set(); allTags().forEach(t => S().rows[t].forEach(x => { if (x.s <= FULL()) seenSet(x, 10).forEach(i => set.add(i)); })); return `Growth shows at only ${set.size} of ${R().chambers.length} manholes, and wet weather spreads it wider.`; },
+    algorithms: () => `An exact search finds the 5 manholes that see the most growth in the worst weather: ${pct(score(planIdx(5), SIM4_TEST()).worst)}.`,
+    compare: () => { const o = SIM4_TEST(), desk = Math.max(...["hydraulic", "homes"].map(m => score(C().methods[m].sets[4], o).worst)); return `The recommended five see ${pct(score(planIdx(5), o).worst)} of growth in the worst weather; desk methods see ${pct(desk)} at most.`; },
+    check: () => { const tag = D().design, ii = caseOf(tag).ii, resp = responseAt(tag), xs = R().chambers.map((_, i) => SCREENS.util.v(i, ii, tag)), k = xs.map((x, i) => x != null && x > 0 && resp[i] > 0.05);
+      return `Basic hydraulics points the same way (ρ = ${spearman(xs.filter((x, i) => k[i]), resp.filter((y, i) => k[i])).rho.toFixed(2)}), except where water backs up from downstream.`; },
+    sensors: () => "Level sensors show the trend before an overflow; a float only says when the water reaches it.",
+    repeat: () => "The method carries over, not the list: re-run it with your own regions, weather and budget.",
+    future: () => "Next: weight sites by risk, and train a network model so a few sensors can stand in for many.",
+    conclude: () => `Five level sensors, placed from the simulation, see ${pct(score(planIdx(5), SIM4_TEST()).worst)} of growth even in the worst weather.`,
+  };
+  const headlineCache = {};
+  const headline = sec => headlineCache[sec] ??= HEADLINES[sec]();
 
   const HANDLERS = { setting: SETTING, network: NETWORK, approach: APPROACH, simulate: SIMULATE, insights: INSIGHTS, algorithms: ALGORITHMS, compare: COMPARE, check: CHECK, sensors: SENSORS, repeat: REPEAT, future: FUTURE, conclude: CONCLUDE };
   const layer = () => HANDLERS[st.sec].layer();
@@ -1264,8 +1337,9 @@ const App = (() => {
   // ------------------------------------------------------------------ page
   function renderPanel() {
     const h = HANDLERS[st.sec], sec = SECTIONS.find(s => s[0] === st.sec);
-    const scroll = $("#panel").scrollTop;
-    $("#panel").innerHTML = `<div class="crumb">${sec[3]} · ${SECTIONS.indexOf(sec) + 1} of ${SECTIONS.length}</div><h2>${sec[2]}</h2>` + h.panel();
+    const scroll = $("#panel").scrollTop, openFolds = new Set($$("#panel details.fold[open] > summary").map(x => x.textContent));
+    $("#panel").innerHTML = `<div class="inner"><div class="crumb">${sec[3]} · ${sec[1]} · ${SECTIONS.indexOf(sec) + 1} of ${SECTIONS.length}</div><h2 class="headline">${headline(st.sec)}</h2>` + h.panel() + "</div>";
+    $$("#panel details.fold > summary").forEach(x => { if (openFolds.has(x.textContent)) x.parentElement.open = true; }); // folds stay as the viewer left them
     $("#panel").scrollTop = scroll;
     h.wire && h.wire();
     on("[data-go]", "onclick", e => go(e.currentTarget.dataset.go));
@@ -1273,7 +1347,7 @@ const App = (() => {
   function refresh() { renderPanel(); draw(); }
   function go(sec, push = true) {
     Object.values(st).forEach(v => v && v.playing && stopPlay(v));
-    st.sec = sec; st.sel = null; st.selPipe = null;
+    st.sec = sec; st.sel = null; st.selPipe = null; $("#panel").innerHTML = "";
     view.k = 1; view.tx = 0; view.ty = 0; // each view opens on the whole network
     HANDLERS[sec].init && HANDLERS[sec].init();
     $$("#secs button").forEach(b => b.classList.toggle("on", b.dataset.sec === sec));
@@ -1282,17 +1356,33 @@ const App = (() => {
     refresh();
     if (push) history.replaceState(null, "", "#" + sec);
   }
+  function setTheme(name, redraw = true) {
+    PAL = THEMES[name] || THEMES.paper; document.documentElement.dataset.theme = name; store("demo-theme", name);
+    const pick = $("#themePick"); if (pick) pick.value = name;
+    if (redraw) refresh();
+  }
+  function togglePresent() {
+    const on = document.documentElement.classList.toggle("present"); store("demo-present", on ? "1" : "0");
+    $("#presentBtn").classList.toggle("on", on); fitView(); refresh();
+  }
   function step(d) { const k = SECTIONS.findIndex(s => s[0] === st.sec) + d; if (k >= 0 && k < SECTIONS.length) go(SECTIONS[k][0]); }
   function init() {
     prepare();
     let n = 0;
     $("#secs").innerHTML = CHAPTERS.map(([ch, v], c) => `<div class="ch" style="--n:${v.length}"><span>${c + 1} ${ch}</span><div>${v.map(([k, t]) => `<button type="button" data-sec="${k}"><i>${++n}</i>${t}</button>`).join("")}</div></div>`).join("");
-    $("#secs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) go(b.dataset.sec); });
+    $("#tools").insertAdjacentHTML("beforeend", `<div class="viewctl"><select id="themePick" aria-label="Theme" title="Theme (T)">${Object.entries(THEMES).map(([k, t]) => `<option value="${k}">${t.label}</option>`).join("")}</select><button type="button" id="presentBtn" class="wide" title="Presentation mode: larger text for screen sharing (P)">Present</button></div>`);
+    $("#secs").addEventListener("click", e => { const b = e.target.closest("button[data-sec]"); if (b) go(b.dataset.sec); });
+    $("#themePick").onchange = e => setTheme(e.target.value);
+    $("#presentBtn").onclick = togglePresent;
+    setTheme(document.documentElement.dataset.theme in THEMES ? document.documentElement.dataset.theme : "paper", false);
+    $("#presentBtn").classList.toggle("on", document.documentElement.classList.contains("present"));
     document.addEventListener("keydown", e => {
       if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
       if (e.key === "ArrowRight") step(1);
       if (e.key === "ArrowLeft") step(-1);
       if (e.key === "Escape") { st.sel = null; st.selPipe = null; refresh(); }
+      if (e.key === "p" || e.key === "P") togglePresent();
+      if (e.key === "t" || e.key === "T") { const k = Object.keys(THEMES); setTheme(k[(k.indexOf(document.documentElement.dataset.theme) + 1) % k.length]); }
     });
     fitView(); wireMap();
     const start = SECTIONS.find(s => "#" + s[0] === location.hash);
@@ -1303,5 +1393,5 @@ const App = (() => {
   // Where a manhole is on screen, for tests.
   function screenOf(name) { const nd = G().nodes[idx[name]], [x, y] = P(nd.x, nd.y), r = cv().getBoundingClientRect(); return { x: r.left + x, y: r.top + y }; }
   const toScreen = (x, y) => { const [a, b] = P(x, y), r = cv().getBoundingClientRect(); return { x: r.left + a, y: r.top + b }; };
-  return { init, prepare, go, st, toScreen, score, greedy, ladderIdx, planIdx, SIM4_TEST, unseenWeather, screenOf, chamberName: i => R().chambers[i], targetPool, screenRank, spearman, responseAt, SCREENS, util, H: () => H, SECTIONS };
+  return { init, prepare, go, st, toScreen, setTheme, togglePresent, THEMES, score, greedy, ladderIdx, planIdx, SIM4_TEST, unseenWeather, screenOf, chamberName: i => R().chambers[i], targetPool, screenRank, spearman, responseAt, SCREENS, util, H: () => H, SECTIONS };
 })();

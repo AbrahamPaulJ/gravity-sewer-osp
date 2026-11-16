@@ -44,7 +44,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   for (let i = 0; i < 80; i++) { await wait(250); if (await ev("document.body.dataset.ready")) break; }
   const fig = await ev(`(()=>{const o=App.SIM4_TEST();const a=App.score(App.ladderIdx(1),o),b=App.score(App.ladderIdx(5),o),c=App.score(App.ladderIdx(5),{...o,mm:25});return [a.worst,a.avg,a.warned,b.worst,b.avg,b.warned,b.warnable,c.worst,c.avg].map(x=>Math.round(x*100)/100)})()`);
   ok("engine reproduces Sim 4: 0%/53%, 8 warned; 81%/94%, 11 of 11; 25 mm 36%/45%", JSON.stringify(fig) === JSON.stringify([0, 0.53, 8, 0.81, 0.94, 11, 11, 0.36, 0.45]), JSON.stringify(fig));
-  ok("twelve views in four chapters", await ev(`document.querySelectorAll('#secs .ch').length===4 && document.querySelectorAll('#secs button').length===12`));
+  ok("twelve views in four chapters", await ev(`document.querySelectorAll('#secs .ch').length===4 && document.querySelectorAll('#secs button[data-sec]').length===12`));
 
   // 1 Setting
   ok("setting: a cutaway and a state badge", await ev(`!!document.querySelector('svg.cut') && !!document.querySelector('.badge')`));
@@ -110,7 +110,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   const rho = await ev(`parseFloat(document.querySelector('.stats .stat b').textContent.replace('ρ = ',''))`);
   ok("cross-check: flow/capacity agrees with the model (ρ > 0.5)", rho > 0.5, rho);
   ok("cross-check: scatter with the five sensors", await ev(`document.querySelectorAll('svg.scatter .dot.sensor').length===5`));
-  await input("#ckX", 300); await wait(200);
+  await click("details.fold:last-of-type summary"); await wait(150); await input("#ckX", 300); await wait(200);
   ok("cross-check: the Manning gauge responds to extra homes", /With the extra homes/.test(await panel()));
   await shot("07_check");
   // 8 Sensor types
@@ -136,6 +136,19 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await click('#secs button[data-sec="conclude"]'); await wait(300);
   const tc = await panel(); ok("conclusion: the recommended 5 figures (94% / 88% / 11 of 11 / 75%)", /94%/.test(tc) && /88%/.test(tc) && /11 of 11/.test(tc) && /75%/.test(tc), tc.slice(tc.indexOf("THE PLAN"), tc.indexOf("THE PLAN") + 300));
   await shot("11_conclude");
+  // Design: headlines, callouts, themes, presentation mode
+  let heads = true; for (const v of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${v}')`); await wait(120); heads = heads && await ev(`(()=>{const h=document.querySelector('#panel h2.headline');return !!h && h.textContent.length>30})()`); }
+  ok("every view opens with a headline finding", heads);
+  await ev(`(()=>{App.st.compare.method='exact';App.st.compare.failed.clear();App.go('compare')})()`); await wait(1200);
+  ok("compare: a callout marks the sensor the plan rests on", /worst case drops to 0%/.test(await ev(`(document.querySelector('.lbl.callout')||{}).textContent||''`)));
+  for (const t of ["night", "clear", "paper"]) { await ev(`App.setTheme('${t}')`); await wait(300); await shot("theme_" + t); }
+  ok("three themes switch without errors, and the map follows", await ev(`document.documentElement.dataset.theme==='paper' && getComputedStyle(document.body).backgroundColor!==''`));
+  const w0 = await ev(`document.querySelector('#panel').getBoundingClientRect().width`);
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "p", code: "KeyP", windowsVirtualKeyCode: 80 }); await wait(400);
+  ok("P turns on presentation mode: a wider, larger panel", await ev(`document.documentElement.classList.contains('present')`) && (await ev(`document.querySelector('#panel').getBoundingClientRect().width`)) > w0 + 80);
+  await shot("present_compare");
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "p", code: "KeyP", windowsVirtualKeyCode: 80 }); await wait(300);
+  await ev(`App.go('conclude')`); await wait(300);
   // Keys and names
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowLeft", code: "ArrowLeft", windowsVirtualKeyCode: 37 }); await wait(300);
   ok("← steps back a view", await ev(`App.st.sec==='future'`));
