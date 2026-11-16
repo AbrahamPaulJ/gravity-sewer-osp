@@ -44,7 +44,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   for (let i = 0; i < 80; i++) { await wait(250); if (await ev("document.body.dataset.ready")) break; }
   const fig = await ev(`(()=>{const o=App.SIM4_TEST();const a=App.score(App.ladderIdx(1),o),b=App.score(App.ladderIdx(5),o),c=App.score(App.ladderIdx(5),{...o,mm:25});return [a.worst,a.avg,a.warned,b.worst,b.avg,b.warned,b.warnable,c.worst,c.avg].map(x=>Math.round(x*100)/100)})()`);
   ok("engine reproduces Sim 4: 0%/53%, 8 warned; 81%/94%, 11 of 11; 25 mm 36%/45%", JSON.stringify(fig) === JSON.stringify([0, 0.53, 8, 0.81, 0.94, 11, 11, 0.36, 0.45]), JSON.stringify(fig));
-  ok("eleven views in four chapters", await ev(`document.querySelectorAll('#secs .ch').length===4 && document.querySelectorAll('#secs button').length===11`));
+  ok("twelve views in four chapters", await ev(`document.querySelectorAll('#secs .ch').length===4 && document.querySelectorAll('#secs button').length===12`));
 
   // 1 Setting
   ok("setting: a cutaway and a state badge", await ev(`!!document.querySelector('svg.cut') && !!document.querySelector('.badge')`));
@@ -61,6 +61,17 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await clickAt(pipeXY.x, pipeXY.y); await wait(250);
   const tn = await panel(); ok("network: clicking a pipe works Manning through", /Qfull|Q full|L\/s/.test(tn) && /of capacity/.test(tn), tn.slice(tn.indexOf("Click a pipe") - 10, tn.indexOf("Click a pipe") + 80));
   await shot("02_network");
+  // Approach, end to end
+  await click('#secs button[data-sec="approach"]'); await wait(300);
+  ok("approach: seven pipeline steps (step 2 in three parts) and four approaches", await ev(`document.querySelectorAll('.pipe6 button').length===7 && document.querySelectorAll('.pipe6 .nest button').length===3 && document.querySelectorAll('table.alts tr[data-alt]').length===4`));
+  ok("approach: ours scores 88% worst, the desk study 25%", await ev(`(()=>{const v=id=>document.querySelector('tr[data-alt="'+id+'"] td.num').textContent;return v('ours')==='88%'&&v('desk')==='25%'&&v('ml')==='–'})()`));
+  await click('[data-ap="3"]'); await wait(200);
+  ok("approach: a step shows its detail link", /In detail: What the runs show/.test(await panel()));
+  await click('tr[data-alt="judgement"]'); await wait(200);
+  ok("approach: clicking an approach maps its five sites", await ev(`/its 5 sites/.test(document.querySelector('#legend').textContent)`));
+  await shot("02b_approach");
+  await click('[data-ap="1"]'); await wait(150); await click('.card [data-go="network"]'); await wait(300);
+  ok("approach: the detail link opens that view", await ev(`App.st.sec==='network'`));
   // 3 Simulate
   await click('#secs button[data-sec="simulate"]'); await wait(300);
   ok("simulate: 504 simulated futures", /504/.test(await panel()));

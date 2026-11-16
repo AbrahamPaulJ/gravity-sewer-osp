@@ -19,7 +19,7 @@ const App = (() => {
   // [id, short name, title], grouped in chapters
   const CHAPTERS = [
     ["Problem", [["setting", "Setting", "Growth uses up the pipes"], ["network", "Network", "What we know about the network"]]],
-    ["Approach", [["simulate", "Simulate", "Simulate the growth"], ["insights", "What the runs show", "Where the water rises"], ["algorithms", "Place sensors", "Turning runs into sensor sites"]]],
+    ["Approach", [["approach", "End to end", "Our approach, end to end"], ["simulate", "Simulate", "Simulate the growth"], ["insights", "What the runs show", "Where the water rises"], ["algorithms", "Place sensors", "Turning runs into sensor sites"]]],
     ["Results", [["compare", "Compare", "How good is each placement?"], ["check", "Cross-check", "Does basic hydraulics agree?"], ["sensors", "Sensor types", "What to install"]]],
     ["Next", [["repeat", "Repeat", "Run the method yourself"], ["future", "Next research", "Where this goes next"], ["conclude", "Conclusion", "What we recommend"]]],
   ];
@@ -238,6 +238,7 @@ const App = (() => {
     sec: "setting", sel: null, selPipe: null, hover: null, hoverPipe: null,
     setting: { mh: null, tag: null, s: null, r: null },
     network: { by: "util", bin: null },
+    approach: { step: "1", alt: null },
     simulate: { stage: 1, r: null, s: null, tag: null, playing: null },
     insights: { measure: "r10", cases: null, max: 1 },
     algorithms: { method: "exact", k: 5, show: false },
@@ -602,11 +603,97 @@ const App = (() => {
     },
   };
 
+  // ------------------------------------------------------------------ APPROACH, END TO END
+  // The whole method on one page: the pipeline (each step linking to its own view), why we simulate rather than use
+  // the alternatives (each alternative's five sites mapped and scored on the same runs), and why it suits growth.
+  // [id, title, what it does, detail view, part]; step 2 is split into three parts.
+  const PIPELINE = [
+    ["1", "Build the network model", "Pipes, manholes, inverts, lids and connected homes from public layers, assembled into one hydraulic model.", "network", "sim"],
+    ["2a", "Where the homes go", "Infill: new homes spread through existing streets, region by region, in steps from 10% to 300% of the 2041 projection. Greenfield: a new estate joining at one manhole (explored in Simulation 4; the plan here rests on infill).", "simulate", "sim"],
+    ["2b", "What each home sends", "Sewage per home: 2.3 people × 200 L a day, peaking at twice the average, loaded where each home connects.", "simulate", "sim"],
+    ["2c", "How wet it is", "Infiltration that depends on the weather: 8 cases, from a dry day to severe leakage into old pipes, because the weather to plan for is unknown.", "simulate", "sim"],
+    ["3", "Simulate sewer levels", "PySWMM runs EPA SWMM 5 for every scenario until flows settle: 504 runs, each giving the water level at every manhole.", "insights", "sim"],
+    ["4", "Find the best sensor locations", "Search the simulated levels for the few manholes that see the most growth, solved exactly; greedy and desk heuristics for comparison.", "algorithms", "alg"],
+    ["5", "Evaluate by scenario coverage", "Score each placement by the share of growth scenarios it sees, in the worst and the average weather, and the overloads it warns of. Then stress it.", "compare", "alg"],
+  ];
+  const ALTERNATIVES = [
+    { id: "judgement", label: "Judgement or incident history", colour: "#ff9f43", note: "What utilities mostly do now: sites by experience or where problems were reported. Stand-in here: the manholes already worst today.",
+      marks: ["~", "✗", "~", "✗", "✓"], picks: () => { const t = D().design; return S().base[t].surcharged.slice().sort((a, b) => baseMm(t, b) / (G().dia[H.outPipe[b]] || 150) - baseMm(t, a) / (G().dia[H.outPipe[a]] || 150)).slice(0, 5); } },
+    { id: "desk", label: "Desk hydraulics (Manning)", colour: "#ffd166", note: "Flow against pipe capacity, pipe by pipe, no model runs. Cheap, but each pipe is judged alone.",
+      marks: ["✓", "~", "✗", "~", "✓"], picks: () => C().methods.hydraulic.sets[4] },
+    { id: "ml", label: "Learn from sensor data", colour: "#b38cff", note: "Train a model on years of level records. Not possible yet: there are no records, and the growth has not happened. Becomes possible after a pilot (Next research).",
+      marks: ["✗", "✗", "✓", "~", "✗"], picks: () => null },
+    { id: "ours", label: "Simulation + search (ours)", colour: COL.sensor, note: "Many futures simulated on the whole network, then the sites that see most of them, chosen exactly.",
+      marks: ["✓", "✓", "✓", "✓", "✓"], picks: () => planIdx(5) },
+  ];
+  const CRITERIA = ["Works before any sensor exists", "Tests growth that has not happened", "Sees water backing up through the network", "Copes with unknown weather", "Gives a reason for each site"];
+  const APPROACH = {
+    layer() {
+      const a = st.approach;
+      if (a.alt) {
+        const alt = ALTERNATIVES.find(x => x.id === a.alt), set = alt.picks() || [], rec = new Set(planIdx(5));
+        return { pipe: triagePipe(true), node: i => set.includes(i) ? { fill: alt.colour, r: 7, ring: alt.id !== "ours" && rec.has(i) ? COL.sensor : undefined } : alt.id !== "ours" && rec.has(i) ? { ring: COL.sensor, r: 6 } : null,
+          labels: sensorLabels(set), legend: [[alt.colour, alt.label + (set.length ? ": its 5 sites" : ": no sites possible yet")], ...(alt.id !== "ours" ? [[COL.sensor, "Our recommended sites", "ring"]] : [])] };
+      }
+      const k = a.step, g = G(), set = planIdx(5);
+      if (k === "1") return { pipe: p => [g.dia[p] <= 150 ? "#4f86c6" : g.dia[p] <= 225 ? "#9fd3ff" : "#ffd166", 1 + g.dia[p] / 160], legend: [["#4f86c6", "150 mm pipes"], ["#9fd3ff", "225 mm"], ["#ffd166", "Larger mains"]] };
+      if (k === "2a") return { pipe: p => { const ri = pipeRegion(p); return ri >= 0 ? [REGION_COLS[regionId(ri)], 2.2] : [COL.pipe, 1]; }, overlayPipe: p => [REGION_COLS[regionId(paint.overlayOf[g.up[p]])], 4], labels: regionLabels(ri => REGION_COLS[regionId(ri)]), legend: [["#c9d1d9", "Infill regions, each grown on its own (the corridor overlaps, dashed)"]] };
+      if (k === "2b") { const mx = Math.max(...H.pH); return { homes: "#7f93b8", pickPipe: true, pipe: p => [`hsl(${210 - 170 * Math.sqrt(H.pH[p] / mx)},80%,${40 + 25 * Math.sqrt(H.pH[p] / mx)}%)`, 0.8 + 4 * Math.sqrt(H.pH[p] / mx)], legend: [["#7f93b8", "Homes connected"], ["hsl(210,80%,40%)", "Few homes upstream"], ["hsl(40,80%,65%)", `Many (up to ${Math.round(mx)})`]], pipeTip: p => `${Math.round(H.pH[p])} homes upstream` }; }
+      if (k === "2c") { const t = wetTags()[1], base = new Set(S().base[t].surcharged); return { pipe: p => [g.pyr[p] && g.pyr[p] < 1950 ? "#d9a066" : COL.pipe, g.pyr[p] && g.pyr[p] < 1950 ? 1.8 : 1], node: i => base.has(i) ? { ring: COL.was, r: 4.5 } : null, legend: [["#d9a066", "Pipes laid before 1950: leak more"], [COL.was, `Surcharged by infiltration alone, ${caseLabel(t)} (${base.size})`, "ring"]] }; }
+      if (k === "3") {
+        const c = new Array(R().chambers.length).fill(0); wetTags().forEach(t => S().rows[t].forEach(x => { if (x.s <= FULL()) seenSet(x, 10).forEach(i => c[i]++); }));
+        const max = Math.max(...c);
+        return { pipe: () => [COL.pipe, 1], node: i => c[i] ? { fill: `hsl(${200 - 150 * c[i] / max},90%,${45 + 20 * c[i] / max}%)`, r: 2.5 + 7 * Math.sqrt(c[i] / max) } : null, legend: [["hsl(200,90%,45%)", "Rises 10 mm in few runs"], ["hsl(50,90%,65%)", "In many runs"]], tip: i => `Rises 10 mm or more in ${c[i]} runs` };
+      }
+      if (k === "4") {
+        const ms = [["greedyAvg", "#ff9f43", "Greedy"], ["hydraulic", "#ffd166", "Desk heuristic: flow/capacity"], ["homes", "#e87ba4", "Desk heuristic: most homes upstream"]];
+        const of = i => ms.find(([id]) => C().methods[id].sets[4].includes(i));
+        return { pipe: triagePipe(true), node: i => set.includes(i) ? { fill: COL.sensor, r: 7 } : of(i) ? { ring: of(i)[1], r: 6, rw: 2.6 } : null, labels: sensorLabels(set),
+          legend: [[COL.sensor, "Exact search"], ...ms.map(([, c, l]) => [c, l, "ring"])], tip: i => [set.includes(i) ? "Exact search" : null, ...ms.filter(([id]) => C().methods[id].sets[4].includes(i)).map(m => m[2])].filter(Boolean).join(" · ") };
+      }
+      const sc = score(set, SIM4_TEST()), per = new Map(set.map(i => [i, score([i], SIM4_TEST()).avg]));
+      return { pipe: triagePipe(true), node: i => set.includes(i) ? { fill: COL.sensor, r: 7 } : null, labels: sensorLabels(set), legend: [[COL.sensor, `Recommended: ${pct(sc.avg)} of scenarios seen on average, ${pct(sc.worst)} in the worst weather`], [COL.monitor, "Monitor region"], [COL.watch, "Watch region"]], tip: i => per.has(i) ? `Alone, this sensor sees ${pct(per.get(i))} of scenarios on average` : "" };
+    },
+    panel() {
+      const a = st.approach, o = SIM4_TEST(), step = PIPELINE.find(x => x[0] === a.step), target = SECTIONS.find(x => x[0] === step[3]);
+      const nRuns = S().regions.length * S().ladder.length * allTags().length, rec = score(planIdx(5), o);
+      const rows = ALTERNATIVES.map(x => { const set = x.picks(); return { x, sc: set ? score(set, o) : null }; });
+      const mark = m => `<td class="mk ${m === "✓" ? "y" : m === "✗" ? "n" : "p"}">${m}</td>`;
+      const alt = a.alt && ALTERNATIVES.find(x => x.id === a.alt);
+      return `
+        <p class="lede">Two parts. <b>Simulate</b> many possible futures on a model of the whole network, then <b>search</b> those runs for the few manholes that would see the most of them.</p>
+        <div class="pipe6">${(() => { const btn = ([id, t, , , part]) => `<button type="button" data-ap="${id}" class="${!a.alt && a.step === id ? "on" : ""} ${part}"><i>${id.length > 1 ? id.slice(1) : id}</i>${t}</button>`;
+          return btn(PIPELINE[0]) + `<div class="nest"><div class="nesth"><i>2</i>Design the simulation scenarios</div>${PIPELINE.slice(1, 4).map(btn).join("")}</div>` + PIPELINE.slice(4).map(btn).join(""); })()}</div>
+        <div class="pipekey"><span class="sim">Simulation (steps 1–3)</span><span class="alg">Algorithm and evaluation (steps 4–5)</span></div>
+        <div class="card"><b>${a.step}. ${step[1]}</b><div>${step[2]}</div><button type="button" class="link" data-go="${step[3]}">In detail: ${target[1]} →</button></div>
+        <div class="matrix3">${stat(nRuns, "simulated futures")}<i>→</i>${stat(R().chambers.length, "candidate manholes")}<i>→</i>${stat(5, "sensors", "big")}</div>
+        <h3>Why simulate? <small>(click an approach to map its five sites)</small></h3>
+        <table class="alts"><tr><th></th>${CRITERIA.map((c, k) => `<th title="${c}">${["Before sensors", "Future growth", "Backwater", "Unknown weather", "Reasons"][k]}</th>`).join("")}<th title="Worst weather case, 5 sites, on the same runs">Worst</th></tr>
+          ${rows.map(({ x, sc }) => `<tr data-alt="${x.id}" class="${a.alt === x.id ? "on" : ""}"><td><i class="sw" style="background:${x.colour}"></i>${x.label}</td>${x.marks.map(mark).join("")}<td class="num">${sc ? pct(sc.worst) : "–"}</td></tr>`).join("")}</table>
+        <div class="hint">${alt ? alt.note : "✓ yes · ~ partly · ✗ no. Worst: growth runs seen in the worst weather case by that approach's five sites, scored on the same runs."}</div>
+        <h3>Why it suits monitoring growth</h3>
+        <ul class="plain">
+          <li><b>Growth has not happened yet</b>, so there is nothing to measure or learn from. Simulation lets us add the 2041 homes now and watch where the water rises.</li>
+          <li><b>It finds where growth shows first.</b> Homes are added in steps, so the sites rise before a pipe overloads: ${rec.warned} of ${rec.warnable} overloads warned a step ahead.</li>
+          <li><b>It says which growth.</b> Each region is grown on its own, so each sensor's rise traces back to a region: monitor, watch or leave.</li>
+          <li><b>It plans for any weather:</b> chosen for the worst of ${o.cases.length} wet cases, ${pct(rec.worst)} seen there.</li>
+          <li><b>Level is the signal,</b> and a 10 mm rise is what a level sensor can pick up.</li>
+          <li><b>It can be re-run</b> as approvals come in, or for another suburb.</li></ul>
+        ${fold("What it costs us", `<ul class="plain"><li>The model is uncalibrated: it ranks where to look; it does not forecast levels.</li><li>Flows are steady, not storms.</li><li>Building the model and running 504 futures takes hours, once per suburb.</li></ul>`)}
+        ${nextBtn()}`;
+    },
+    wire() {
+      const a = st.approach;
+      on("[data-ap]", "onclick", e => { a.step = e.currentTarget.dataset.ap; a.alt = null; refresh(); });
+      on("[data-alt]", "onclick", e => { const id = e.currentTarget.dataset.alt; a.alt = a.alt === id ? null : id; refresh(); });
+    },
+  };
+
   // ------------------------------------------------------------------ 3 SIMULATE
   const STAGES = [
     ["Homes", "Each home: 2.3 people × 200 L a day, peaking at twice the average."],
     ["Flows", "Plus leakage into old pipes, set by the weather case."],
-    ["Model", "EPA SWMM 5 routes it through all 890 pipes, run to a steady state."],
+    ["Model", "PySWMM runs EPA SWMM 5 through all 890 pipes, until flows settle."],
     ["Levels", "The water level at every manhole, before and after each region's growth."],
     ["Sensors", "Search the runs for the few manholes that see the most growth."],
   ];
@@ -1163,7 +1250,7 @@ const App = (() => {
     wire() { $("#coK").oninput = e => { st.conclude.k = +e.target.value; refresh(); }; },
   };
 
-  const HANDLERS = { setting: SETTING, network: NETWORK, simulate: SIMULATE, insights: INSIGHTS, algorithms: ALGORITHMS, compare: COMPARE, check: CHECK, sensors: SENSORS, repeat: REPEAT, future: FUTURE, conclude: CONCLUDE };
+  const HANDLERS = { setting: SETTING, network: NETWORK, approach: APPROACH, simulate: SIMULATE, insights: INSIGHTS, algorithms: ALGORITHMS, compare: COMPARE, check: CHECK, sensors: SENSORS, repeat: REPEAT, future: FUTURE, conclude: CONCLUDE };
   const layer = () => HANDLERS[st.sec].layer();
 
   // ------------------------------------------------------------------ animation helpers

@@ -18,7 +18,8 @@ its own link (`demo/index.html#compare`). Each view opens on the whole network; 
 |---|---|---|---|---|
 | **1 Problem** | **Setting** | Drags "homes added" and picks the weather on a cutaway of a real manhole; switches what is in and out of scope | Water climbing past the 0.7 limit, the pipe top (surcharge) and the lid (overflow); the map of homes and of manholes already surcharged | Sim 4 runs; grey literature (capacity events carry most overflow volume) |
 | | **Network** | Colours the pipes by age, size, material, slope, depth, Manning capacity or flow/capacity today; clicks a histogram bar to light those pipes; clicks a pipe | The network as data: a histogram per attribute; a pipe card with Manning's equation worked through; what we have, what we assumed, what is missing | `catchment.js` (pcap is Manning full-pipe capacity, checked) |
-| **2 Approach** | **Simulate** | Steps through the two-part process (homes → flows → water levels → placement); picks a region, build-out and weather, or a scenario; clicks a manhole | The run matrix (9 regions × 7 steps × 8 weather = 504 runs); the weather cases; the rise at every manhole, new surcharges and spills | Sim 4 runs |
+| **2 Approach** | **End to end** | Clicks the pipeline: build the network model; design the simulation scenarios (where the homes go: infill or greenfield; what each home sends; how wet it is); simulate sewer levels (PySWMM); find the best sensor locations; evaluate by scenario coverage, each linking to its detail view; clicks an alternative approach | The whole method on one map; why simulate: judgement/incident history, desk hydraulics, learning from sensor data and ours, against five criteria, with each one's five sites mapped and scored (worst case 13% / 25% / not possible / 88%); why it suits growth monitoring | Engine, `compare.js` |
+| | **Simulate** | Steps through the two-part process (homes → flows → water levels → placement); picks a region, build-out and weather, or a scenario; clicks a manhole | The run matrix (9 regions × 7 steps × 8 weather = 504 runs); the weather cases; the rise at every manhole, new surcharges and spills | Sim 4 runs |
 | | **What the runs show** | Picks a measure (rise ≥ 10 mm, past the 0.7 limit, surcharged), filters weather and build-out, clicks a hotspot | Manholes sized by how often they respond; splits by weather and by build-out; a top-10 hotspot list | Sim 4 runs |
 | | **Placing sensors** | Picks a method; steps the greedy one sensor at a time | The candidate heat map ("what each manhole would add next"), why greedy, max–min, the nested ladder, the exact check and the baselines | Engine + `compare.js` |
 | **3 Results** | **Compare** | Picks the number of sensors; clicks a method; switches the rule (10/25/50 mm); fails sensors | One table, seven methods, six measures (average, worst case, overloads warned, unseen weather, after one failure, cost); curves by count; sites on the map | Engine + `compare.js` |
@@ -95,7 +96,7 @@ Approach: placement · Results (compare + cross-check + sensors) · Next (repeat
 ## To do
 
 1. Team review of wording, then a timed run-through on Teams.
-2. ~~Move the headless check into `tools/verify_demo.js`~~ done: `node tools/verify_demo.js [shots]`, 35 checks.
+2. ~~Move the headless check into `tools/verify_demo.js`~~ done: `node tools/verify_demo.js [shots]`, 40 checks.
 3. Investigate `MH4501866`.
 4. Optional:
    - a three-hint first-visit tour;

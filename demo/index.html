@@ -128,6 +128,26 @@ table.cmp tr[data-row]{cursor:pointer} table.cmp tr[data-row]:hover td{backgroun
 table.cmp tr.on td{background:#16294a} table.cmp td.best{color:var(--green);font-weight:700}
 table.cmp .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
 .links{display:flex;gap:16px;margin-top:10px}
+.pipe6{display:flex;flex-direction:column;gap:4px;margin:10px 0 4px}
+.pipe6 button{display:flex;align-items:center;gap:7px;text-align:left;font:600 12.5px/1.2 inherit;font-family:inherit;color:var(--dim);background:var(--panel);
+  border:1px solid var(--line);border-left:4px solid var(--k);border-radius:8px;padding:7px 9px;cursor:pointer}
+.pipe6 button.sim{--k:#38bdf8}.pipe6 button.alg{--k:#2ef56b}
+.pipe6 button i{font-style:normal;flex:0 0 20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--panel-2);font-size:11px}
+.pipe6 button.on{color:var(--ink);background:#13233c;border-color:var(--k)}.pipe6 button.on i{background:var(--k);color:#04140a}
+.pipe6 .nest{border:1px dashed var(--line);border-radius:9px;padding:6px;display:flex;flex-direction:column;gap:4px}
+.pipe6 .nesth{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--ink);padding:2px 3px 3px}
+.pipe6 .nesth i{font-style:normal;flex:0 0 20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#38bdf8;color:#04140a;font-size:11px}
+.pipe6 .nest button{margin-left:14px;font-weight:500}
+.pipekey{display:flex;gap:14px;font-size:11.5px;color:var(--faint);margin-bottom:6px}
+.pipekey span:before{content:"";display:inline-block;width:10px;height:3px;margin-right:5px;vertical-align:middle;background:var(--k)}
+.pipekey .sim{--k:#38bdf8}.pipekey .alg{--k:#2ef56b}
+table.alts{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0}
+table.alts th{color:var(--faint);font-weight:600;font-size:11px;padding:4px 2px;border-bottom:1px solid var(--line);text-align:center;cursor:help;line-height:1.15}
+table.alts td{padding:6px 3px;border-bottom:1px solid var(--line);text-align:center}
+table.alts td:first-child{text-align:left;font-size:12.5px} table.alts .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
+table.alts tr[data-alt]{cursor:pointer} table.alts tr[data-alt]:hover td{background:#13233c} table.alts tr.on td{background:#16294a}
+table.alts td.mk{font-weight:700;font-size:14px} table.alts td.y{color:var(--green)} table.alts td.n{color:var(--bad)} table.alts td.p{color:#ffd166}
+table.alts td.num{font-weight:700;color:var(--ink)}
 
 #mapwrap{grid-area:map;position:relative;overflow:hidden}
 #map{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
@@ -175,7 +195,7 @@ table.cmp .sw{display:inline-block;width:10px;height:10px;border-radius:2px;marg
 <script src="../simulation4/data/regions.js?v=1"></script>
 <script src="../simulation4/data/sim4.js?v=7"></script>
 <script src="data/compare.js?v=2"></script>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=6"></script>
 <script>App.init();</script>
 </body>
 </html>
