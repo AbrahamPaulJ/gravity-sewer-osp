@@ -138,9 +138,9 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await click('#secs button[data-sec="conclude"]'); await wait(300);
   const tc = await panel(); ok("conclusion: the recommended 5 figures (94% / 88% / 11 of 11 / 75%)", /94%/.test(tc) && /88%/.test(tc) && /11 of 11/.test(tc) && /75%/.test(tc), tc.slice(tc.indexOf("THE PLAN"), tc.indexOf("THE PLAN") + 300));
   await shot("11_conclude");
-  // Design: headlines, callouts, themes, presentation mode
-  let heads = true; for (const v of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${v}')`); await wait(120); heads = heads && await ev(`(()=>{const h=document.querySelector('#panel h2.headline');return !!h && h.textContent.length>30})()`); }
-  ok("every view opens with a headline finding", heads);
+  // Design: titles, callouts, themes, presentation mode
+  let heads = true; for (const v of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${v}')`); await wait(120); heads = heads && await ev(`(()=>{const h=document.querySelector('#panel h2.title');return !!h && h.textContent===App.SECTIONS.find(s=>s[0]==='${v}')[2]})()`); }
+  ok("every view opens with its own title", heads);
   await ev(`(()=>{App.st.compare.method='exact';App.st.compare.failed.clear();App.go('compare')})()`); await wait(1200);
   ok("compare: a callout marks the sensor the plan rests on", /worst case drops to 0%/.test(await ev(`(document.querySelector('.lbl.callout')||{}).textContent||''`)));
   for (const t of ["night", "clear", "paper"]) { await ev(`App.setTheme('${t}')`); await wait(300); await shot("theme_" + t); }
@@ -159,11 +159,11 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
     await ev(`App.go('${v}')`); await wait(v === "compare" || v === "check" || v === "future" ? 900 : 250);
     const txt = await ev(`[...document.querySelectorAll('#panel, #legend, #read, #labels .callout')].map(e=>e.innerText).join(' ')`);
     const m = JARGON.exec(txt); if (m) { plainOk = false; plainBad += `${v}: "${txt.slice(Math.max(0, m.index - 40), m.index + 40)}" `; }
-    plainHeads = plainHeads && await ev(`!!document.querySelector('#panel h2.headline') && !document.querySelector('#read').hidden`);
+    plainHeads = plainHeads && await ev(`!!document.querySelector('#panel h2.title') && !document.querySelector('#read').hidden`);
     await shot("simple_" + v);
   }
   ok("Simple: no jargon on any page (panel, legend, map notes, callouts)", plainOk, plainBad);
-  ok("Simple: every page has a headline and a 'how to read the map' note", plainHeads);
+  ok("Simple: every page has its title and a 'how to read the map' note", plainHeads);
   await ev(`App.go('setting')`); await wait(250);
   ok("Simple: the first page has the road analogy and the five words", /roads for wastewater/.test(await panel()) && await ev(`document.querySelectorAll('.words > div').length===5`));
   await ev(`App.go('algorithms')`); await wait(250);

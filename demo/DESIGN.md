@@ -16,7 +16,7 @@ The short version: **one map, one finding per page, controls that prove it, and 
 
 ## 2. Story structure
 
-- **A martini glass** (Segel & Heer 2010). A narrow, guided path first: the chapter bar, Next buttons and headlines,
+- **A martini glass** (Segel & Heer 2010). A narrow, guided path first: the chapter bar, Next buttons and page titles,
   in a fixed order (Problem → Approach → Results → Next). Then a wide body to explore on each page.
   - Every page opens in a state that already shows the point. Exploring is optional; the point is never hidden
     behind a control.
@@ -29,8 +29,8 @@ The short version: **one map, one finding per page, controls that prove it, and 
 
 | Part | Rule |
 |---|---|
-| **Crumb** | `Chapter · Page · n of N`. Where am I, and how far is left (Nielsen: visibility of status). |
-| **Headline** | One sentence stating the **finding**, with a live number where there is one. "The recommended five see 88% of growth in the worst weather", not "Comparing placements". |
+| **Crumb** | `Chapter · n of N`. Where am I, and how far is left (Nielsen: visibility of status). |
+| **Title** | A short name for the page, in plain words ("How good is each placement?", "What to install"). Not a generated finding sentence: the team found those hard to read as titles. The finding goes in the first lines of the page. |
 | **Lede** | At most two sentences: what the reader can do here. |
 | **Controls** | Chips, sliders, one select. Every control changes the map or a number at once; no Apply buttons, except for slow searches. |
 | **Readouts** | At most four stat tiles, then one chart. |
@@ -87,11 +87,11 @@ sets it for a link.
 - **Presentation mode** (`P`, or Present in the map tools) scales the panel, legend, map labels and markers by 1.3, and the
   chapter bar by 1.15, for a Teams share. Teams compresses shared screens (reportedly to 1080p at most), and Microsoft
   advises large, high-contrast text. Present from a 1920×1080 window, full screen.
-- One font per theme. The sizes in use: headline 21, body 14.5, controls 13, hints 13, axes 10.5.
+- One font per theme. The sizes in use: title 21, body 14.5, controls 13, hints 13, axes 10.5.
 
 ## 8. Writing
 
-- **Headline = finding.** One sentence, plain words, a number if there is one.
+- **Title = what the page is about**, a few plain words. The finding, with its number, opens the page body.
 - No client, suburb or street names anywhere on the page: the repository is public (checked by `tools/verify_demo.js`).
 - Say what the reader can do ("click a sensor to fail it"), not what the page "shows".
 - Model results are labelled as such: "Uncalibrated model: a guide to where to look first" stays on every page.
@@ -99,12 +99,12 @@ sets it for a link.
 
 ## 9. Checklist for a new page
 
-1. Write the headline first: what is the one finding?
+1. Name the page, then write its one finding as the first line of the body.
 2. Pick the default state that shows it, and the one callout that points at it.
 3. Add only the controls that let a reader test that finding.
 4. Count visible words (≤ ~120) and check it fits one screen at 1920×1080; fold the rest.
 5. Use colour roles only; check every theme (`T`) and presentation mode (`P`).
-6. Add the page's checks to `tools/verify_demo.js` (it loads, its headline exists, its main interaction works).
+6. Add the page's checks to `tools/verify_demo.js` (it loads, its title is shown, its main interaction works).
 7. Try it on someone outside the team with a small task, before it reaches the client.
 
 ## 10. Writing for non-technical readers: the Simple reading level
@@ -124,7 +124,7 @@ Why two levels: guidance that helps beginners slows experts down (the expertise 
 | 5 | Walk through one example | Worked-example effect (Sweller) | One future followed through the demo: R3's 2041 homes on a very wet day |
 | 6 | Counts, not percentages; show them as icons | Natural frequencies (Gigerenzer & Hoffrage 1995); icon arrays (Galesic et al. 2009) | "14 of 16 futures", drawn as 16 dots |
 | 7 | Put numbers in familiar terms | Barrio, Goldstein & Hofman 2016 | 1 cm is about a fingernail's width; a 150 mm pipe is about a side plate |
-| 8 | The headline states the message; people remember the headline | Borkin et al. 2015; Kong et al. 2018, 2019 | Headline-first pages. A headline never claims more than the chart shows |
+| 8 | The headline states the message; people remember the headline | Borkin et al. 2015; Kong et al. 2018, 2019 | Each page states its finding in its first lines (titles stay short names, at the team's request). It never claims more than the chart shows |
 | 9 | Novices look at what stands out, not at what matters | Hegarty, Canham & Fabrikant 2010 | A "How to read the map" note on the map; one callout; the Homes layer off by default; no street basemap |
 | 10 | Labels next to what they describe; nothing extra | Spatial contiguity (Ginns 2006 meta-analysis); coherence (Mayer) | Notes and callouts on the map, fewer controls in Simple |
 | 11 | Give a frame for an unfamiliar chart | Lee et al. 2016 | Unfamiliar charts (scatter, comparison table, sensor grid) stay in Detailed |
@@ -160,7 +160,7 @@ Done in this draft:
   one future followed through, everyday comparisons, "How to read the map" notes, and a jargon check in the tests.
 - Three themes with one palette system (`THEMES` in app.js, CSS tokens in index.html).
 - Presentation mode.
-- A headline finding on every page.
+- Short page titles, as in the original demo (the generated finding headlines were dropped at the team's request).
 - One callout per page on six pages.
 - Secondary content folded, and folds stay open.
 - Numbers in ink, the sensor colour only for sensors, heat ramps without it.

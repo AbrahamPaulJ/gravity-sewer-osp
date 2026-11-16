@@ -280,20 +280,6 @@
   };
 
   const x = () => facts();
-  const headlines = {
-    setting: () => `On a wet day, ${x().base} manholes already back up; on a very wet day, ${x().baseWet}. New homes add more water.`,
-    network: () => `About ${(_.G().plen.reduce((t, v) => t + v, 0) / 1000).toFixed(0)} km of mostly small, old pipes serve ${S().councilConnections.toLocaleString("en-AU")} homes.`,
-    approach: () => "We tried 504 possible futures on a computer model, then picked the 5 manholes that notice the most of them.",
-    simulate: () => "Pick where new homes go and how wet it is, and watch the water rise.",
-    insights: () => { const set = new Set(); allTags().forEach(t => S().rows[t].forEach(r => { if (r.s <= FULL()) _.seenSet(r, 10).forEach(i => set.add(i)); })); return `Only ${set.size} of ${_.R().chambers.length} manholes ever notice the new homes, so where you measure matters.`; },
-    algorithms: () => `With 5 well-placed sensors, ${x().hard.hit} of ${x().n} futures are noticed even in the hardest weather.`,
-    compare: () => `Our 5 sensors notice ${x().hard.hit} of ${x().n} futures in the hardest weather; a desk study's 5 notice ${x().desk}.`,
-    check: () => "Simple pipe maths points to the same places, except where water queues back from a full pipe below.",
-    sensors: () => "Water-level sensors show the rise coming; a float switch only says when it is already full.",
-    repeat: () => "The method works for any suburb; the list of sites does not.",
-    future: () => "Next: check the model with real readings, and put sensors where a spill would hurt most.",
-    conclude: () => `Five water-level sensors, about ${money(5 * _.PRICE)}, would notice ${x().hard.hit} of ${x().n} futures even in the hardest weather.`,
-  };
   const read = {
     setting: "Coloured pipes: the area getting new homes. Rings: manholes already backing up on this day. The blue dot is the manhole in the drawing; click any other.",
     network: "Each line is a pipe, coloured by what you picked. Rings: manholes already backing up on a wet day.",
@@ -308,5 +294,5 @@
     future: "Light-blue dots: manholes our 5 sensors could stand in for. Grey: not yet.",
     conclude: "Numbered dots: the 5 sensors. Pipe colour: monitor, keep an eye on, or room to spare.",
   };
-  App.registerPlain({ pages, headlines, read, words: WORDS });
+  App.registerPlain({ pages, read, words: WORDS });
 })();

@@ -49,7 +49,7 @@ const App = (() => {
   // "detailed" is the full engineering view. simple.js registers the plain pages; a view without one falls back.
   let MODE = "simple";
   const isSimple = () => MODE === "simple";
-  const PLAIN = { pages: {}, headlines: {}, read: {}, words: [] };
+  const PLAIN = { pages: {}, read: {}, words: [] };
   const plain = t => !isSimple() || t == null ? t : PLAIN.words.reduce((x, [re, to]) => x.replace(re, to), String(t));
   const COL = new Proxy({}, { get: (_, k) => k === "rise" ? PAL.rise[3] : PAL[k] });
   const SEQ = new Proxy([], { get: (_, k) => PAL.seq[k] });
@@ -1313,24 +1313,6 @@ const App = (() => {
     wire() { $("#coK").oninput = e => { st.conclude.k = +e.target.value; refresh(); }; },
   };
 
-  // The finding of each view, in one sentence, from live numbers. The view's name moves into the crumb.
-  const HEADLINES = {
-    setting: () => `Before any new home, a design wet day already surcharges ${S().base[D().design].surcharged.length} manholes; a wetter one, ${S().base[wetTags()[1]].surcharged.length}. Growth adds to that.`,
-    network: () => { const ii = caseOf(D().design).ii, n = Array.from({ length: G().nPipes }, (_, p) => util(p, ii)).filter(v => v >= 0.7).length; return `Small, mostly old pipes: ${n} of ${G().nPipes} already run above 70% of capacity on a wet day.`; },
-    approach: () => `We simulate ${S().regions.length * S().ladder.length * allTags().length} possible futures, then choose the 5 manholes that see the most of them.`,
-    simulate: () => "Each run grows one region in one kind of weather and records the water level at every manhole.",
-    insights: () => { const set = new Set(); allTags().forEach(t => S().rows[t].forEach(x => { if (x.s <= FULL()) seenSet(x, 10).forEach(i => set.add(i)); })); return `Growth shows at only ${set.size} of ${R().chambers.length} manholes, and wet weather spreads it wider.`; },
-    algorithms: () => `An exact search finds the 5 manholes that see the most growth in the worst weather: ${pct(score(planIdx(5), SIM4_TEST()).worst)}.`,
-    compare: () => { const o = SIM4_TEST(), desk = Math.max(...["hydraulic", "homes"].map(m => score(C().methods[m].sets[4], o).worst)); return `The recommended five see ${pct(score(planIdx(5), o).worst)} of growth in the worst weather; desk methods see ${pct(desk)} at most.`; },
-    check: () => { const tag = D().design, ii = caseOf(tag).ii, resp = responseAt(tag), xs = R().chambers.map((_, i) => SCREENS.util.v(i, ii, tag)), k = xs.map((x, i) => x != null && x > 0 && resp[i] > 0.05);
-      return `Basic hydraulics points the same way (ρ = ${spearman(xs.filter((x, i) => k[i]), resp.filter((y, i) => k[i])).rho.toFixed(2)}), except where water backs up from downstream.`; },
-    sensors: () => "Level sensors show the trend before an overflow; a float only says when the water reaches it.",
-    repeat: () => "The method carries over, not the list: re-run it with your own regions, weather and budget.",
-    future: () => "Next: weight sites by risk, and train a network model so a few sensors can stand in for many.",
-    conclude: () => `Five level sensors, placed from the simulation, see ${pct(score(planIdx(5), SIM4_TEST()).worst)} of growth even in the worst weather.`,
-  };
-  const headlineCache = {};
-  const headline = sec => { const k = MODE + sec, f = (isSimple() && PLAIN.headlines[sec]) || HEADLINES[sec]; return headlineCache[k] ??= f(); };
 
   const HANDLERS = { setting: SETTING, network: NETWORK, approach: APPROACH, simulate: SIMULATE, insights: INSIGHTS, algorithms: ALGORITHMS, compare: COMPARE, check: CHECK, sensors: SENSORS, repeat: REPEAT, future: FUTURE, conclude: CONCLUDE };
   const layer = () => { const pg = isSimple() && PLAIN.pages[st.sec]; return pg && pg.layer ? pg.layer() : HANDLERS[st.sec].layer(); };
@@ -1348,7 +1330,7 @@ const App = (() => {
     const h = HANDLERS[st.sec], sec = SECTIONS.find(s => s[0] === st.sec);
     const scroll = $("#panel").scrollTop, openFolds = new Set($$("#panel details.fold[open] > summary").map(x => x.textContent));
     const pg = isSimple() && PLAIN.pages[st.sec];
-    $("#panel").innerHTML = `<div class="inner"><div class="crumb">${sec[3]} · ${sec[1]} · ${SECTIONS.indexOf(sec) + 1} of ${SECTIONS.length}</div><h2 class="headline">${headline(st.sec)}</h2>` + (pg ? pg.panel() : h.panel()) + "</div>";
+    $("#panel").innerHTML = `<div class="inner"><div class="crumb">${sec[3]} · ${SECTIONS.indexOf(sec) + 1} of ${SECTIONS.length}</div><h2 class="title">${sec[2]}</h2>` + (pg ? pg.panel() : h.panel()) + "</div>";
     $$("#panel details.fold > summary").forEach(x => { if (openFolds.has(x.textContent)) x.parentElement.open = true; }); // folds stay as the viewer left them
     $("#panel").scrollTop = scroll;
     if (pg) pg.wire && pg.wire(); else h.wire && h.wire();
@@ -1417,6 +1399,6 @@ const App = (() => {
     regionLabel, rowAt, riseAt, baseMm, stepLabel, table, trow, tcol, seenSet, score, SIM4_TEST, planIdx, ladderIdx, H: () => H, util, SCREENS, responseAt, spearman, st,
     focus, manholeFacts, bars, lineChart, cutaway, stat, chips, fold, nextBtn, on, refresh, draw, go, HANDLERS, ALTERNATIVES, PIPELINE, SENSOR_TYPES, METHODS, methodSets,
     triagePipe, sensorLabels, regionLabels, REGION_COLS, riseColour, riseScale, sensorWhy, stopPlay, play, PRICE, SECTIONS, setMode, isSimple };
-  const registerPlain = o => { Object.assign(PLAIN.pages, o.pages || {}); Object.assign(PLAIN.headlines, o.headlines || {}); Object.assign(PLAIN.read, o.read || {}); PLAIN.words.push(...(o.words || [])); };
+  const registerPlain = o => { Object.assign(PLAIN.pages, o.pages || {}); Object.assign(PLAIN.read, o.read || {}); PLAIN.words.push(...(o.words || [])); };
   return { _, registerPlain, setMode, isSimple: () => isSimple(), init, prepare, go, st, toScreen, setTheme, togglePresent, THEMES, score, greedy, ladderIdx, planIdx, SIM4_TEST, unseenWeather, screenOf, chamberName: i => R().chambers[i], targetPool, screenRank, spearman, responseAt, SCREENS, util, H: () => H, SECTIONS };
 })();
