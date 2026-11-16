@@ -45,6 +45,12 @@ const App = (() => {
     },
   };
   let PAL = THEMES.paper;
+  // Two reading levels. "simple" (default) is for non-technical readers: plain words, fewer controls, counts as dots.
+  // "detailed" is the full engineering view. simple.js registers the plain pages; a view without one falls back.
+  let MODE = "simple";
+  const isSimple = () => MODE === "simple";
+  const PLAIN = { pages: {}, headlines: {}, read: {}, words: [] };
+  const plain = t => !isSimple() || t == null ? t : PLAIN.words.reduce((x, [re, to]) => x.replace(re, to), String(t));
   const COL = new Proxy({}, { get: (_, k) => k === "rise" ? PAL.rise[3] : PAL[k] });
   const SEQ = new Proxy([], { get: (_, k) => PAL.seq[k] });
   const REGION_COLS = new Proxy({}, { get: (_, k) => PAL.regions[k] });
@@ -374,9 +380,11 @@ const App = (() => {
     if (L.node) chNode.forEach((a, i) => { const v = L.node(i); if (v) mark(c, g.nodes[a], v, rs); });
     if (st.sel !== null) mark(c, g.nodes[chNode[st.sel]], { ring: PAL.hi, r: 9 }, rs);
     if (st.hover !== null && st.hover !== st.sel) mark(c, g.nodes[chNode[st.hover]], { ring: PAL.hover, r: 8 }, rs);
-    const labels = [...(L.labels || []), ...(L.callout && L.callout.i != null ? [{ node: chNode[L.callout.i], text: L.callout.text, cls: "callout" }] : [])].map(l => { const nd = g.nodes[l.node], [x, y] = P(nd.x, nd.y); return { ...l, x, y }; });
+    const labels = [...(L.labels || []), ...(L.callout && L.callout.i != null ? [{ node: chNode[L.callout.i], text: plain(L.callout.text), cls: "callout" }] : [])].map(l => { const nd = g.nodes[l.node], [x, y] = P(nd.x, nd.y); return { ...l, x, y }; });
     $("#labels").innerHTML = labels.map(l => `<span class="lbl ${l.cls || ""}" style="left:${l.x}px;top:${l.y}px;${l.bg ? `background:${l.bg}` : ""}">${l.text}</span>`).join("");
-    $("#legend").innerHTML = (L.legend || []).map(([c2, t, shape]) => `<span><i class="${shape || ""}" style="${shape === "ring" ? `border-color:${c2}` : shape === "line" ? `background:${c2}` : `background:${c2}`}"></i>${t}</span>`).join("") + (L.scale || "");
+    $("#legend").innerHTML = (L.legend || []).map(([c2, t, shape]) => `<span><i class="${shape || ""}" style="${shape === "ring" ? `border-color:${c2}` : shape === "line" ? `background:${c2}` : `background:${c2}`}"></i>${plain(t)}</span>`).join("") + plain(L.scale || "");
+    const read = (isSimple() && PLAIN.read[st.sec]) || L.read; $("#read").innerHTML = read ? `<b>How to read the map</b> ${typeof read === "function" ? read() : read}` : ""; $("#read").hidden = !read;
+    $("#status").textContent = isSimple() ? "Model results, not yet checked against real readings · Drag to move, scroll to zoom" : "Uncalibrated model: a guide to where to look first · Drag to move, scroll to zoom";
     $("#legend").hidden = !(L.legend || []).length && !L.scale;
   }
   function line(c, p, col, w) {
@@ -409,7 +417,7 @@ const App = (() => {
   }
   function placeTip(t, x, y) { t.hidden = false; const W = window.innerWidth; t.style.left = Math.min(W - 330, x + 14) + "px"; t.style.top = (y + 14) + "px"; }
   function showTip(i, x, y) {
-    const t = $("#tip"), f = manholeFacts(i), extra = layer().tip ? layer().tip(i) : "";
+    const t = $("#tip"), f = manholeFacts(i), extra = plain(layer().tip ? layer().tip(i) : "");
     t.innerHTML = `<b>${f.name}</b><span>${f.regs.length ? "Region " + list(f.regs) : "No region"} · ${f.nd.depth != null ? f.nd.depth.toFixed(1) + " m deep" : ""}${f.dia ? ` · ${f.dia} mm ${f.mat} pipe out${f.pyr ? `, laid ${f.pyr}` : ""}` : ""}</span>${extra ? `<em>${extra}</em>` : ""}`;
     placeTip(t, x, y);
   }
@@ -420,7 +428,8 @@ const App = (() => {
   }
   function onMapClick(i) {
     const sec = HANDLERS[st.sec];
-    if (sec.click && sec.click(i) === true) return;
+    const pg = isSimple() && PLAIN.pages[st.sec];
+    if (pg && pg.click) { if (pg.click(i) === true) return; } else if (sec.click && sec.click(i) === true) return;
     st.sel = i; st.selPipe = null; refresh();
   }
   function onPipeClick(p) { st.selPipe = p; st.sel = null; refresh(); }
@@ -486,7 +495,7 @@ const App = (() => {
     const split = top + (bottom - top) * 0.36;
     const y = mm => mm <= zone ? bottom - (bottom - split) * mm / zone : split - (split - top) * Math.min(1, (mm - zone) / Math.max(1, depth - zone));
     const sx0 = 130, sx1 = 210, px0 = 20, px1 = 310, lid = y(depth), wTop = y(Math.min(o.water, depth)), bTop = y(Math.min(o.base, depth));
-    const lines = [[0.7 * o.dia, "0.7 of pipe: limit", PAL.yellow], [o.dia, "pipe top: surcharge above", PAL.orange]];
+    const lines = isSimple() ? [[0.7 * o.dia, "design limit", PAL.yellow], [o.dia, "pipe full: backs up above here", PAL.orange]] : [[0.7 * o.dia, "0.7 of pipe: limit", PAL.yellow], [o.dia, "pipe top: surcharge above", PAL.orange]];
     const sensor = SENSOR_TYPES.find(t => t.id === o.sensor);
     let sm = "";
     if (sensor) {
@@ -503,10 +512,10 @@ const App = (() => {
       ${over ? `<ellipse cx="${(sx0 + sx1) / 2}" cy="${lid - 6}" rx="70" ry="8" class="water spill"/>` : ""}
       <line x1="${px0}" x2="${px1}" y1="${bTop}" y2="${bTop}" class="base"/>
       ${lines.map(([mm, t, c]) => `<line x1="${px0}" x2="${px1}" y1="${y(mm)}" y2="${y(mm)}" stroke="${c}" stroke-dasharray="5 4"/><text x="${px1}" y="${y(mm) - 3}" text-anchor="end" class="ax" fill="${c}">${t}</text>`).join("")}
-      <rect x="${sx0 - 8}" y="${lid - 5}" width="${sx1 - sx0 + 16}" height="5" fill="${PAL.lid}"/><text x="${px0}" y="${lid - 9}" class="ax">Lid: overflow · ${o.depthM.toFixed(1)} m up</text>
+      <rect x="${sx0 - 8}" y="${lid - 5}" width="${sx1 - sx0 + 16}" height="5" fill="${PAL.lid}"/><text x="${W - 6}" y="${lid - 9}" text-anchor="end" class="ax">${isSimple() ? "Lid: spills out" : "Lid: overflow"} · ${o.depthM.toFixed(1)} m up</text>
       <text x="${px0}" y="${split - 4}" class="ax">↕ shaft not to scale</text>
       ${sm}
-      <text x="${px0}" y="${Hc - 6}" class="ax">Water ${Math.round(o.water)} mm deep · before growth ${Math.round(o.base)} mm (dotted)</text></svg>`;
+      <text x="${px0}" y="${Hc - 6}" class="ax">Water ${Math.round(o.water)} mm deep · ${isSimple() ? "before the new homes" : "before growth"} ${Math.round(o.base)} mm (dotted)</text></svg>`;
   }
   const stat = (v, l, cls = "") => `<div class="stat ${cls}"><b>${v}</b><span>${l}</span></div>`;
   const chips = (items, on, attr) => `<div class="chips">${items.map(([k, t, c]) => `<button type="button" data-${attr}="${k}" class="${on(k) ? "on" : ""}" ${c ? `style="--c:${c}"` : ""}>${t}</button>`).join("")}</div>`;
@@ -1321,10 +1330,10 @@ const App = (() => {
     conclude: () => `Five level sensors, placed from the simulation, see ${pct(score(planIdx(5), SIM4_TEST()).worst)} of growth even in the worst weather.`,
   };
   const headlineCache = {};
-  const headline = sec => headlineCache[sec] ??= HEADLINES[sec]();
+  const headline = sec => { const k = MODE + sec, f = (isSimple() && PLAIN.headlines[sec]) || HEADLINES[sec]; return headlineCache[k] ??= f(); };
 
   const HANDLERS = { setting: SETTING, network: NETWORK, approach: APPROACH, simulate: SIMULATE, insights: INSIGHTS, algorithms: ALGORITHMS, compare: COMPARE, check: CHECK, sensors: SENSORS, repeat: REPEAT, future: FUTURE, conclude: CONCLUDE };
-  const layer = () => HANDLERS[st.sec].layer();
+  const layer = () => { const pg = isSimple() && PLAIN.pages[st.sec]; return pg && pg.layer ? pg.layer() : HANDLERS[st.sec].layer(); };
 
   // ------------------------------------------------------------------ animation helpers
   function play(o, stepFn, ms = 700) {
@@ -1338,11 +1347,13 @@ const App = (() => {
   function renderPanel() {
     const h = HANDLERS[st.sec], sec = SECTIONS.find(s => s[0] === st.sec);
     const scroll = $("#panel").scrollTop, openFolds = new Set($$("#panel details.fold[open] > summary").map(x => x.textContent));
-    $("#panel").innerHTML = `<div class="inner"><div class="crumb">${sec[3]} · ${sec[1]} · ${SECTIONS.indexOf(sec) + 1} of ${SECTIONS.length}</div><h2 class="headline">${headline(st.sec)}</h2>` + h.panel() + "</div>";
+    const pg = isSimple() && PLAIN.pages[st.sec];
+    $("#panel").innerHTML = `<div class="inner"><div class="crumb">${sec[3]} · ${sec[1]} · ${SECTIONS.indexOf(sec) + 1} of ${SECTIONS.length}</div><h2 class="headline">${headline(st.sec)}</h2>` + (pg ? pg.panel() : h.panel()) + "</div>";
     $$("#panel details.fold > summary").forEach(x => { if (openFolds.has(x.textContent)) x.parentElement.open = true; }); // folds stay as the viewer left them
     $("#panel").scrollTop = scroll;
-    h.wire && h.wire();
+    if (pg) pg.wire && pg.wire(); else h.wire && h.wire();
     on("[data-go]", "onclick", e => go(e.currentTarget.dataset.go));
+    on("#panel [data-mode]", "onclick", e => setMode(e.currentTarget.dataset.mode));
   }
   function refresh() { renderPanel(); draw(); }
   function go(sec, push = true) {
@@ -1361,6 +1372,11 @@ const App = (() => {
     const pick = $("#themePick"); if (pick) pick.value = name;
     if (redraw) refresh();
   }
+  function setMode(m, redraw = true) {
+    MODE = m === "detailed" ? "detailed" : "simple"; store("demo-mode", MODE); document.documentElement.dataset.mode = MODE;
+    const pick = $("#modePick"); if (pick) pick.value = MODE;
+    if (redraw) { $("#panel").scrollTop = 0; refresh(); }
+  }
   function togglePresent() {
     const on = document.documentElement.classList.toggle("present"); store("demo-present", on ? "1" : "0");
     $("#presentBtn").classList.toggle("on", on); fitView(); refresh();
@@ -1370,9 +1386,11 @@ const App = (() => {
     prepare();
     let n = 0;
     $("#secs").innerHTML = CHAPTERS.map(([ch, v], c) => `<div class="ch" style="--n:${v.length}"><span>${c + 1} ${ch}</span><div>${v.map(([k, t]) => `<button type="button" data-sec="${k}"><i>${++n}</i>${t}</button>`).join("")}</div></div>`).join("");
-    $("#tools").insertAdjacentHTML("beforeend", `<div class="viewctl"><select id="themePick" aria-label="Theme" title="Theme (T)">${Object.entries(THEMES).map(([k, t]) => `<option value="${k}">${t.label}</option>`).join("")}</select><button type="button" id="presentBtn" class="wide" title="Presentation mode: larger text for screen sharing (P)">Present</button></div>`);
+    $("#tools").insertAdjacentHTML("beforeend", `<div class="viewctl"><select id="modePick" aria-label="Reading level" title="Reading level (D)"><option value="simple">Simple</option><option value="detailed">Detailed</option></select><select id="themePick" aria-label="Theme" title="Theme (T)">${Object.entries(THEMES).map(([k, t]) => `<option value="${k}">${t.label}</option>`).join("")}</select><button type="button" id="presentBtn" class="wide" title="Presentation mode: larger text for screen sharing (P)">Present</button></div>`);
     $("#secs").addEventListener("click", e => { const b = e.target.closest("button[data-sec]"); if (b) go(b.dataset.sec); });
     $("#themePick").onchange = e => setTheme(e.target.value);
+    $("#modePick").onchange = e => setMode(e.target.value);
+    setMode(new URLSearchParams(location.search).get("mode") || stored("demo-mode") || "simple", false);
     $("#presentBtn").onclick = togglePresent;
     setTheme(document.documentElement.dataset.theme in THEMES ? document.documentElement.dataset.theme : "paper", false);
     $("#presentBtn").classList.toggle("on", document.documentElement.classList.contains("present"));
@@ -1382,6 +1400,7 @@ const App = (() => {
       if (e.key === "ArrowLeft") step(-1);
       if (e.key === "Escape") { st.sel = null; st.selPipe = null; refresh(); }
       if (e.key === "p" || e.key === "P") togglePresent();
+      if (e.key === "d" || e.key === "D") setMode(isSimple() ? "detailed" : "simple");
       if (e.key === "t" || e.key === "T") { const k = Object.keys(THEMES); setTheme(k[(k.indexOf(document.documentElement.dataset.theme) + 1) % k.length]); }
     });
     fitView(); wireMap();
@@ -1393,5 +1412,11 @@ const App = (() => {
   // Where a manhole is on screen, for tests.
   function screenOf(name) { const nd = G().nodes[idx[name]], [x, y] = P(nd.x, nd.y), r = cv().getBoundingClientRect(); return { x: r.left + x, y: r.top + y }; }
   const toScreen = (x, y) => { const [a, b] = P(x, y), r = cv().getBoundingClientRect(); return { x: r.left + a, y: r.top + b }; };
-  return { init, prepare, go, st, toScreen, setTheme, togglePresent, THEMES, score, greedy, ladderIdx, planIdx, SIM4_TEST, unseenWeather, screenOf, chamberName: i => R().chambers[i], targetPool, screenRank, spearman, responseAt, SCREENS, util, H: () => H, SECTIONS };
+  // simple.js builds the plain pages from these.
+  const _ = { $, $$, G, R, S, D, C, COL, pal: () => PAL, heat, rgba, nameOf, regionId, regionIndex, caseOf, caseLabel, wetTags, allTags, stepsTo, FULL, pct, money, list,
+    regionLabel, rowAt, riseAt, baseMm, stepLabel, table, trow, tcol, seenSet, score, SIM4_TEST, planIdx, ladderIdx, H: () => H, util, SCREENS, responseAt, spearman, st,
+    focus, manholeFacts, bars, lineChart, cutaway, stat, chips, fold, nextBtn, on, refresh, draw, go, HANDLERS, ALTERNATIVES, PIPELINE, SENSOR_TYPES, METHODS, methodSets,
+    triagePipe, sensorLabels, regionLabels, REGION_COLS, riseColour, riseScale, sensorWhy, stopPlay, play, PRICE, SECTIONS, setMode, isSimple };
+  const registerPlain = o => { Object.assign(PLAIN.pages, o.pages || {}); Object.assign(PLAIN.headlines, o.headlines || {}); Object.assign(PLAIN.read, o.read || {}); PLAIN.words.push(...(o.words || [])); };
+  return { _, registerPlain, setMode, isSimple: () => isSimple(), init, prepare, go, st, toScreen, setTheme, togglePresent, THEMES, score, greedy, ladderIdx, planIdx, SIM4_TEST, unseenWeather, screenOf, chamberName: i => R().chambers[i], targetPool, screenRank, spearman, responseAt, SCREENS, util, H: () => H, SECTIONS };
 })();

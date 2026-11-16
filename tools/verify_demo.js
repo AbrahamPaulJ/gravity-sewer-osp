@@ -42,6 +42,8 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   // The demo alone
   await send("Page.navigate", { url: `http://127.0.0.1:${HTTP}/demo/index.html` });
   for (let i = 0; i < 80; i++) { await wait(250); if (await ev("document.body.dataset.ready")) break; }
+  ok("opens in the Simple reading level by default", await ev(`App.isSimple()`));
+  await ev(`App.setMode('detailed')`); await wait(200);
   const fig = await ev(`(()=>{const o=App.SIM4_TEST();const a=App.score(App.ladderIdx(1),o),b=App.score(App.ladderIdx(5),o),c=App.score(App.ladderIdx(5),{...o,mm:25});return [a.worst,a.avg,a.warned,b.worst,b.avg,b.warned,b.warnable,c.worst,c.avg].map(x=>Math.round(x*100)/100)})()`);
   ok("engine reproduces Sim 4: 0%/53%, 8 warned; 81%/94%, 11 of 11; 25 mm 36%/45%", JSON.stringify(fig) === JSON.stringify([0, 0.53, 8, 0.81, 0.94, 11, 11, 0.36, 0.45]), JSON.stringify(fig));
   ok("twelve views in four chapters", await ev(`document.querySelectorAll('#secs .ch').length===4 && document.querySelectorAll('#secs button[data-sec]').length===12`));
@@ -149,6 +151,32 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await shot("present_compare");
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "p", code: "KeyP", windowsVirtualKeyCode: 80 }); await wait(300);
   await ev(`App.go('conclude')`); await wait(300);
+  // Simple reading level: every page in plain words
+  await ev(`App.setMode('simple')`); await wait(300);
+  const JARGON = /surcharg|infiltrat|spearman|\u03c1|greedy|heuristic|quantile|worst case|scenario|manning|I&I|d\/D|exact solver|heat map/i;
+  let plainOk = true, plainBad = "", plainHeads = true;
+  for (const v of await ev(`App.SECTIONS.map(s=>s[0])`)) {
+    await ev(`App.go('${v}')`); await wait(v === "compare" || v === "check" || v === "future" ? 900 : 250);
+    const txt = await ev(`[...document.querySelectorAll('#panel, #legend, #read, #labels .callout')].map(e=>e.innerText).join(' ')`);
+    const m = JARGON.exec(txt); if (m) { plainOk = false; plainBad += `${v}: "${txt.slice(Math.max(0, m.index - 40), m.index + 40)}" `; }
+    plainHeads = plainHeads && await ev(`!!document.querySelector('#panel h2.headline') && !document.querySelector('#read').hidden`);
+    await shot("simple_" + v);
+  }
+  ok("Simple: no jargon on any page (panel, legend, map notes, callouts)", plainOk, plainBad);
+  ok("Simple: every page has a headline and a 'how to read the map' note", plainHeads);
+  await ev(`App.go('setting')`); await wait(250);
+  ok("Simple: the first page has the road analogy and the five words", /roads for wastewater/.test(await panel()) && await ev(`document.querySelectorAll('.words > div').length===5`));
+  await ev(`App.go('algorithms')`); await wait(250);
+  ok("Simple: 5 sensors notice 14 of 16 futures in the hardest weather, as dots", /14 of 16/.test(await panel()) && await ev(`document.querySelectorAll('svg.dots circle').length===16`));
+  await ev(`(()=>{const e=document.querySelector('#alK');e.value=1;e.dispatchEvent(new Event('input'))})()`); await wait(250);
+  ok("Simple: with 1 sensor, 2 of 16", /2 of 16/.test(await panel()));
+  await ev(`App.go('simulate')`); await wait(250); await click('[data-sp="1"]'); await wait(300);
+  ok("Simple: the followed future appears, with its early warning", /future we follow/.test(await panel()) && /already risen/.test(await panel()));
+  await ev(`App.go('compare')`); await wait(800);
+  ok("Simple: compare shows four rows of dots (ours 14, desk 4)", await ev(`document.querySelectorAll('.rowwrap svg.dots').length===4`) && /14 of 16/.test(await panel()) && /4 of 16/.test(await panel()));
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "d", code: "KeyD", windowsVirtualKeyCode: 68 }); await wait(300);
+  ok("D switches to Detailed", await ev(`!App.isSimple()`) && await ev(`document.querySelectorAll('table.cmp tr[data-row]').length===7`));
+  await ev(`App.setMode('simple')`); await ev(`App.go('conclude')`); await wait(300);
   // Keys and names
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowLeft", code: "ArrowLeft", windowsVirtualKeyCode: 37 }); await wait(300);
   ok("← steps back a view", await ev(`App.st.sec==='future'`));

@@ -201,6 +201,21 @@ table.alts td.num{font-weight:700;color:var(--ink)}
 #tools label{background:var(--overlay);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12.5px;color:var(--dim);display:flex;gap:6px;align-items:center}
 #tip{position:fixed;z-index:9;pointer-events:none;background:var(--tip);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px;max-width:320px;box-shadow:0 2px 10px rgba(0,0,0,.18)}
 #tip b{display:block} #tip span{display:block;color:var(--dim)} #tip em{display:block;font-style:normal;color:var(--sensor);margin-top:2px;font-weight:600}
+/* How to read the map: next to the map, not in the panel (spatial contiguity). */
+#read{position:absolute;left:14px;top:14px;max-width:min(420px,60%);background:var(--overlay);border:1px solid var(--line);border-radius:9px;padding:8px 11px;
+  font-size:13px;line-height:1.4;color:var(--dim);zoom:var(--z)}
+#read b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:2px}
+/* Simple reading level */
+.analogy{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:9px;padding:10px 12px;font-size:13.5px;line-height:1.5;margin:4px 0 10px}
+.analogy .dim{display:block;margin-top:5px;font-size:12.5px}
+.thread{background:var(--sel);border:1px dashed var(--accent);border-radius:9px;padding:9px 12px;font-size:13.5px;margin:12px 0}
+.thread span{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:2px}
+.words{display:grid;grid-template-columns:1fr;gap:6px}
+.words>div{display:grid;grid-template-columns:34px 1fr;column-gap:10px;align-items:center;font-size:13px}
+.words svg{grid-row:span 2;width:34px;height:34px;color:var(--ink)} .words b{font-size:13.5px} .words span{color:var(--dim)}
+.dotrow{margin:8px 0;padding:6px 8px;border-radius:9px} .dotrow .dl{font-size:13.5px;color:var(--dim);margin-bottom:4px} .dotrow .dl b{color:var(--ink);font-size:15px;margin-right:4px}
+.dotrow.click,.rowwrap[data-row]{cursor:pointer} .dotrow.click:hover,.rowwrap[data-row]:hover{background:var(--sel)} .rowwrap{border-radius:9px} .rowwrap.on{background:var(--sel);box-shadow:inset 3px 0 0 var(--accent)}
+svg.dots{display:block;min-width:200px;max-width:100%}
 #status{position:absolute;right:14px;bottom:14px;font-size:12px;color:var(--faint);background:var(--overlay);border-radius:7px;padding:5px 9px}
 
 @media (max-width:900px){
@@ -222,12 +237,13 @@ table.alts td.num{font-weight:700;color:var(--ink)}
   <div id="labels"></div>
   <div id="tools">
     <button id="zin" type="button" title="Zoom in">+</button>
-    <button id="zout" type="button" title="Zoom out">âˆ’</button>
-    <button id="zreset" type="button" title="Show the whole network">â¤¢</button>
-    <label><input type="checkbox" id="homesToggle" checked> Homes</label>
+    <button id="zout" type="button" title="Zoom out">−</button>
+    <button id="zreset" type="button" title="Show the whole network">⤢</button>
+    <label><input type="checkbox" id="homesToggle"> Homes</label>
   </div>
+  <div id="read" hidden></div>
   <div id="legend" hidden></div>
-  <div id="status">Uncalibrated model: a guide to where to look first Â· Drag to move, scroll to zoom</div>
+  <div id="status">Uncalibrated model: a guide to where to look first · Drag to move, scroll to zoom</div>
 </main>
 <div id="tip" hidden></div>
 
@@ -236,7 +252,8 @@ table.alts td.num{font-weight:700;color:var(--ink)}
 <script src="../simulation4/data/regions.js?v=1"></script>
 <script src="../simulation4/data/sim4.js?v=7"></script>
 <script src="data/compare.js?v=2"></script>
-<script src="app.js?v=9"></script>
+<script src="app.js?v=12"></script>
+<script src="simple.js?v=3"></script>
 <script>App.init();</script>
 </body>
 </html>
