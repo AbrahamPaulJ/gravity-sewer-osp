@@ -63,12 +63,25 @@ def valid_rows(summary, case_tag):
     return valid, excluded
 
 
-def evaluate_row(raw, ladder):
+def response_type(detected, sensors_downstream):
+    if not detected:
+        return None
+    return 'direct' if set(detected).intersection(sensors_downstream) else 'indirect'
+
+
+def evaluate_row(raw, ladder, sensors_downstream=(), chosen_k=None, baseline=None):
+    """Label the recommended sensors at 10 mm, with a label at each threshold too."""
     rises = {name(mh): v for mh, v in raw['rise_mm'].items()}
     detected = {str(rule): {str(k): [s for s in chosen if rises.get(s, 0) >= rule]
                             for k, chosen in ladder.items()} for rule in RULES}
     detectable = {str(rule): any(v >= rule for v in rises.values()) for rule in RULES}
-    return {'homes': raw['dwellings'], 'added_lps': raw['added_lps'],
+    chosen_k = str(chosen_k) if chosen_k is not None else next(iter(ladder))
+    responses = {str(rule): response_type(detected[str(rule)][chosen_k], sensors_downstream)
+                 for rule in RULES}
+    return {'response_type': responses[str(min(RULES))], 'response_types': responses,
+            'baseline_absolute_surcharge_count': (len(baseline['surcharged'])
+                if baseline is not None and 'surcharged' in baseline else None),
+            'homes': raw['dwellings'], 'added_lps': raw['added_lps'],
             'detected': detected, 'detectable': detectable, 'rise_mm': rises,
             'surcharge': [name(m) for m in raw.get('surcharge', [])],
             'flooded': [name(m) for m in raw.get('spilled', [])],
@@ -189,26 +202,29 @@ def main():
                          'rise_mm': {chambers[i]: v for i, v in raw['rise']},
                          'surcharge': [chambers[i] for i in raw['sur']],
                          'spilled': [chambers[i] for i in raw['spill']], 'run': raw['run']}
-            infill[tag][raw['r']].append(evaluate_row(converted, ladder))
+            infill[tag][raw['r']].append(evaluate_row(converted, ladder, chosen_k=chosen_k))
 
     output = []
     for site in sites:
         mh = site['manhole_id']
-        regidx = next(i for i, r in enumerate(regions['regions'])
-                      if not r.get('overlay') and chambers.index(name(mh)) in r['manholes'])
-        record = {'id': name(mh), 'manhole_id': mh, 'steps': site['steps'],
+        site_id = site.get('site_id', name(mh))
+        regidx = next((i for i, r in enumerate(regions['regions'])
+                       if not r.get('overlay') and (r['id'] == site.get('region') or
+                           (name(mh) in chambers and chambers.index(name(mh)) in r['manholes']))), None)
+        record = {'id': site_id, 'manhole_id': mh, 'steps': site['steps'],
                   'edge_stretch': site.get('edge_stretch', mh),
-                  'connection_class': site['connection_class'], 'region': regions['regions'][regidx]['id'],
+                  'connection_class': site['connection_class'], 'region': regions['regions'][regidx]['id'] if regidx is not None else site.get('region'),
                   'cases': {}}
         for case in plan['cases']:
             if case.get('variant', 'primary') not in ('primary', 'pumprate'):
                 continue
             tag = case['tag']
-            raw_rows = {r['dwellings']: r for r in available.get(tag, []) if r.get('site') == mh}
+            raw_rows = {r['dwellings']: r for r in available.get(tag, []) if r.get('site') in (site_id, mh)}
             rows = []
             for homes in site['steps']:
                 raw = raw_rows.get(homes)
-                gf = evaluate_row(raw, ladder) if raw else None
+                gf = evaluate_row(raw, ladder, site.get('sensors_downstream', []), chosen_k,
+                                  summaries.get(tag, {}).get('baseline')) if raw else None
                 match = match_infill(gf, infill.get(tag, {}).get(regidx, [])) if gf else None
                 rows.append({'homes': homes, 'greenfield': gf, 'infill': match,
                              'infill_match': 'matched within 10% added peak flow' if match else 'unmatched'})
@@ -224,7 +240,10 @@ def main():
         tag = case['tag']
         variant = case.get('variant', 'primary')
         if variant in ('together', 'with_infill'):
-            combined = [evaluate_row(raw, ladder) for raw in available.get(tag, [])]
+            combined = [evaluate_row(raw, ladder,
+                sorted({sensor for s in sites if s.get('site_id', name(s['manhole_id']))
+                        in (raw.get('estate_dwellings') or {}) for sensor in s.get('sensors_downstream', [])}),
+                chosen_k, summaries.get(tag, {}).get('baseline')) for raw in available.get(tag, [])]
             mark_before_surcharge(combined, chosen_k)
             extra_cases[tag] = {'variant': variant, 'rows': combined,
                                 'rules': scores({'combined estates': combined}, chosen_k),
@@ -236,6 +255,9 @@ def main():
         matched_infill = {s['id']: [r['infill'] for r in s['cases'][tag]['rows']
                                    if r['greenfield'] and r['infill']] for s in output}
         headline = {'rules': scores(groups, chosen_k),
+                    'hits_by_response_type': {str(rule): {
+                        kind: sum(r['response_types'][str(rule)] == kind for rows in groups.values() for r in rows)
+                        for kind in ('direct', 'indirect')} for rule in RULES},
                     'by_connection_class': {cl: scores({s['id']: groups[s['id']] for s in output
                                                         if s['connection_class'] == cl}, chosen_k)
                                             for cl in ('reticulation', 'trunk')},
@@ -247,13 +269,13 @@ def main():
         (headlines if variant == 'primary' else extra_cases)[tag] = headline
 
     result = {'recommend': numbers['recommend'], 'sensors': ladder[chosen_k], 'ladder': ladder,
-              'rules_mm': list(RULES), 'headlines': headlines, 'extra_cases': extra_cases,
+              'rules_mm': list(RULES), 'response_type_rule_mm': min(RULES), 'headlines': headlines, 'extra_cases': extra_cases,
               'sites': output, 'excluded_runs': excluded, 'excluded_infill_runs': infill_excluded,
               'missing_cases': missing, 'continuity_limit_pct': CONTINUITY_LIMIT_PCT,
-              'missing_sizes': [{'case': c['tag'], 'site': s['manhole_id'], 'homes': n}
+              'missing_sizes': [{'case': c['tag'], 'site': s.get('site_id', name(s['manhole_id'])), 'homes': n}
                                 for c in plan['cases'] if c.get('variant', 'primary') in ('primary', 'pumprate')
                                 for s in sites for n in s['steps']
-                                if not any(r.get('site') == s['manhole_id'] and r.get('dwellings') == n
+                                if not any(r.get('site') in (s.get('site_id', name(s['manhole_id'])), s['manhole_id']) and r.get('dwellings') == n
                                            for r in summaries.get(c['tag'], {}).get('rows', []))],
               'scoring': 'Each edge representative has equal weight; valid size steps are averaged within it. Detectable coverage conditions the same weighted population on any manhole rise at the stated threshold. Invalid runs and failed-baseline cases have zero contribution. Partial sites use available valid sizes only.',
               'comparison': 'Only added peak flows within 10% are paired. Unmatched rows enter no paired percentage. Reused infill rows are comparisons for distinct estate scenarios, not independent infill evidence.',
@@ -280,6 +302,7 @@ def main():
             print_scores('  ' + cl, rules)
         for family, rules in headline['matched_pairs_only'].items():
             print_scores('  matched ' + family, rules)
+        lines.append(f"  Hits by response type: {headline['hits_by_response_type']}")
         lines.append(f"  Unmatched pairs: {headline['unmatched_pairs']}")
     lines += ['', 'Separate brackets (excluded from primary headlines):']
     for tag, extra in extra_cases.items():

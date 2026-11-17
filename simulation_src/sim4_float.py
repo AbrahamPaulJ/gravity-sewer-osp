@@ -30,7 +30,7 @@ lines = []
 
 
 def say(*a):
-    t = " ".join(str(x) for x in a)
+    t = M.C.sets.report_text(" ".join(str(x) for x in a), M.C.SCENARIO_SET)
     print(t, flush=True)
     lines.append(t)
 
@@ -40,9 +40,9 @@ def main():
     X = json.load(open(os.path.join(OUT, N.STEM + ".json"), encoding="utf-8"))
     tri = N.triage()
     T = {M.rid.index(i) for i, v in tri.items() if v["action"] != "leave"}
-    assert sorted(M.rid[r] for r in T) == X["targets"], f"targets moved since {N.STEM}.json: rerun sim4_numbers.py first"
-    d_keep = lambda sc: sc["r"] in T and lad[sc["s"]] <= 1.0
-    w_keep = lambda sc: sc["r"] in T and lad[sc["s"] + 1] <= 1.0
+    assert sorted(M.rid[r] for r in T) == sorted(X["targets"]), f"targets moved since {N.STEM}.json: rerun sim4_numbers.py first"
+    d_keep = lambda sc: sc["r"] in T and sc["f"] <= 1.0
+    w_keep = lambda sc: sc["r"] in T and sc["next_in_scope"]
     Det, War = M.Problem("detect", 10, M.MARGIN), M.Problem("warn", 10, M.MARGIN)
     assert Det.opts == War.opts, "float options differ between the two scores"
     ix = {c: i for i, c in enumerate(ch)}

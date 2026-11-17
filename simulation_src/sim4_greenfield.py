@@ -8,6 +8,7 @@ The graph functions accept Network-like objects and do not import the SWMM model
 Pipe ids are Network pipe indices; plan records also give published asset ids.
 """
 import argparse
+import hashlib
 from collections import Counter, defaultdict
 import json
 import math
@@ -34,13 +35,16 @@ def pipe_limit(diameter_m, table=None):
     table = TABLE_4_4 if table is None else table
     if diameter_m < .150:
         return table["150"] * (diameter_m / .150) ** (8 / 3)
-    dn = min((int(d) for d in table), key=lambda d: (abs(diameter_m * 1000 - d), d))
-    limit = table[str(dn)]
-    # SA Water cl 4.5.5, Table 4.4: 400/1000/1800 properties at DN150/225/300.
-    if abs(diameter_m * 1000 - dn) <= 5 + 1e-9:
-        return float(limit)
-    # This equal-slope, equal-roughness scaling is a team calculation.
-    return limit * (diameter_m / (dn / 1000)) ** (8 / 3)
+    # Team assumption: log-log interpolation between Table 4.4 anchors.
+    anchors = sorted((int(d) / 1000, float(v)) for d, v in table.items())
+    for d, limit in anchors:
+        if diameter_m == d:
+            return limit
+    for (lo, low), (hi, high) in zip(anchors, anchors[1:]):
+        if lo < diameter_m < hi:
+            fraction = math.log(diameter_m / lo) / math.log(hi / lo)
+            return low * (high / low) ** fraction
+    raise ValueError("Table 4.4 must cover DN150 through DN300")
 
 
 def _graph(net, domain_pipes):
@@ -67,7 +71,7 @@ def _reachable(net, start, adjacency, next_node, transfers=None):
     return seen_nodes, seen_pipes
 
 
-def headroom(net, domain_pipes, table=None, node_properties=None, pump_transfers=()):
+def headroom(net, domain_pipes, table=None, node_properties=None, pump_transfers=(), exits=()):
     """Return pipe and node headroom for the domain's directed gravity graph.
 
     Each pipe counts its own properties and every unique upstream pipe's properties.
@@ -77,7 +81,7 @@ def headroom(net, domain_pipes, table=None, node_properties=None, pump_transfers
     to the discharge, so a relief returning to a wet well cannot multiply them.
     No flow split is assumed. Downstream constraints also follow pump transfers.
     A missing diameter on any downstream route makes node headroom unknown.
-    A terminal node has no downstream pipe constraint (headroom and limiter None).
+    Terminal room uses incoming pipe constraints, or zero if there are none.
     """
     domain = set(domain_pipes)
     incoming, outgoing = _graph(net, domain)
@@ -86,6 +90,7 @@ def headroom(net, domain_pipes, table=None, node_properties=None, pump_transfers
     for wet, discharge in pump_transfers:
         pump_outgoing[wet].append(discharge)
         pump_incoming[discharge].append(wet)
+    exits = set(exits)
     pipes, nodes = {}, {}
     for pi in sorted(domain):
         p = net.pipes[pi]
@@ -98,6 +103,9 @@ def headroom(net, domain_pipes, table=None, node_properties=None, pump_transfers
                      "headroom": None if limit is None else limit - existing}
     for nid in sorted(set(incoming) | set(outgoing) | set(pump_incoming) | set(pump_outgoing)):
         _, downstream = _reachable(net, nid, outgoing, "down", pump_outgoing)
+        # A terminal is not an unconstrained route. Retain its receiving-pipe room.
+        if not downstream:
+            downstream = set(incoming.get(nid, ()))
         unknown = sorted(i for i in downstream
                          if pipes[i]["limit"] is None and not pipes[i]["unlimited"])
         constrained = [i for i in downstream if pipes[i]["limit"] is not None]
@@ -108,9 +116,14 @@ def headroom(net, domain_pipes, table=None, node_properties=None, pump_transfers
             limiting = min(constrained, key=lambda i: (pipes[i]["headroom"], i))
             h = pipes[limiting]["headroom"]
         else:
-            limiting, h = None, None
+            limiting, h = None, None if outgoing.get(nid) or pump_outgoing.get(nid) else 0
+        is_exit = nid not in pump_outgoing and (not outgoing[nid] or exits.intersection(outgoing[nid]))
+        if is_exit and h is None:
+            receiving = [i for i in incoming[nid] if pipes[i]['limit'] is not None]
+            limiting = min(receiving, key=lambda i: (pipes[i]['headroom'], i)) if receiving else limiting
+            h = pipes[limiting]['headroom'] if receiving else 0
         nodes[nid] = {"headroom": h, "limiting_pipe_id": limiting,
-                      "unlimited": not unknown and not constrained,
+                      "unlimited": h is None and not unknown and not constrained,
                       "unknown_diameter_pipes": unknown}
     return {"pipes": pipes, "nodes": nodes,
             "receiving_nodes": set(node_properties) | set(pump_incoming)}
@@ -144,7 +157,7 @@ def boundary_properties(model, loads):
 
 
 def network_points(net, domain_pipes=None):
-    """All gravity polylines held by Network, sampled every 10 m, plus homes.
+    """All gravity polylines held by Network, sampled at most every 1 m, plus homes.
 
     domain_pipes remains an optional argument for callers; it does not clip land
     obstacles. Statewide pipes are included too if present in net.pipes.
@@ -155,15 +168,12 @@ def network_points(net, domain_pipes=None):
         if not line:
             continue
         points.append(tuple(line[0][:2]))
-        distance, sample = 0., 10.
         for a, b in zip(line, line[1:]):
             length = math.hypot(b[0] - a[0], b[1] - a[1])
-            while length and sample <= distance + length:
-                t = (sample - distance) / length
+            count = max(1, math.ceil(length))
+            for step in range(1, count + 1):
+                t = step / count
                 points.append((a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])))
-                sample += 10.
-            distance += length
-        points.append(tuple(line[-1][:2]))
     points.extend((x, y) for x, y, _ in getattr(net, "connections", ()))
     points.extend(getattr(net, "connection_junctions", ()))
     for connection in getattr(net, "connection_paths", ()):
@@ -176,10 +186,11 @@ def edge_sites(points, node_xy, edge_open_deg=120, edge_radius_m=200,
     """Return {node: (sector degrees, bearing clockwise from north)}.
 
     Sector obstacles lie 15 m through edge_radius_m from the node. Clearance
-    is the distance to the finite ray segment from 60 m through edge_clear_m;
-    the initial 60 m accommodates the adjoining pipe and new connection.
-    Search all qualifying sectors, including subsectors when a gap's middle
-    is blocked farther away. No SWMM or Network object is needed.
+    obstacles lie 15 m through edge_clear_m + 60 m; clearance is the distance
+    to the finite ray segment from 60 m through edge_clear_m, so the initial
+    15 m radius and 60 m clearance accommodate the adjoining pipe and new
+    connection. Search all qualifying sectors, including subsectors when a
+    gap's middle is blocked farther away. No SWMM or Network object is needed.
     """
     from scipy.spatial import cKDTree
 
@@ -200,7 +211,7 @@ def edge_sites(points, node_xy, edge_open_deg=120, edge_radius_m=200,
             if 15 <= radius <= edge_radius_m:
                 bearings.append(bearing)
             # Bearings whose finite ray comes closer than 60 m to this point.
-            if 0 < radius < edge_clear_m + 60:
+            if 15 <= radius < edge_clear_m + 60:
                 if radius < math.sqrt(60 ** 2 + 60 ** 2):
                     cosine = radius / 120
                     half = math.degrees(math.acos(min(1., cosine)))
@@ -243,9 +254,57 @@ def edge_sites(points, node_xy, edge_open_deg=120, edge_radius_m=200,
     return result
 
 
+def _net_node(net, nid):
+    nodes = getattr(net, "nodes", None)
+    if isinstance(nodes, dict):
+        return nodes.get(nid)
+    if nodes is not None and 0 <= nid < len(nodes):
+        return nodes[nid]
+    return None
+
+
+def point_kinds(net, domain_pipes, pump_transfers=(), exits=()):
+    incoming, outgoing = _graph(net, domain_pipes)
+    wet_wells = {wet for wet, _ in pump_transfers}
+    exits = set(exits)
+    kinds = {}
+    for nid in set(incoming) | set(outgoing) | wet_wells:
+        if nid in wet_wells:
+            kind = 'pump_wet_well'
+        elif not outgoing[nid] or exits.intersection(outgoing[nid]):
+            kind = 'exit'
+        elif getattr(_net_node(net, nid), 'manhole_id', None) is not None:
+            kind = 'manhole'
+        elif not incoming[nid]:
+            kind = 'pipe_end'
+        elif len(incoming[nid]) == len(outgoing[nid]) == 1:
+            kind = 'inline'
+        else:
+            kind = 'junction'
+        kinds[nid] = kind
+    return kinds
+
+
+def downstream_details(net, domain_pipes, sensors, pump_transfers=()):
+    _, outgoing = _graph(net, domain_pipes)
+    transfers = defaultdict(list)
+    for wet, discharge in pump_transfers:
+        transfers[wet].append(discharge)
+    sensor_nodes = {nid: f'MH{_net_node(net, nid).manhole_id}'
+                    for nid in set(outgoing) | {p.down for p in (net.pipes[i] for i in domain_pipes)}
+                    if getattr(_net_node(net, nid), 'manhole_id', None) is not None
+                    and f'MH{_net_node(net, nid).manhole_id}' in sensors}
+    result = {}
+    for nid in point_kinds(net, domain_pipes, pump_transfers):
+        nodes, pipes = _reachable(net, nid, outgoing, 'down', transfers)
+        result[nid] = {'sensors_downstream': sorted(sensor_nodes[n] for n in nodes if n in sensor_nodes),
+                       'downstream_pipe_ids': sorted(net.pipes[i].asset_id for i in pipes)}
+    return result
+
+
 def eligible_sites(net, domain_pipes, candidates, min_homes=10, table=None,
-                   headrooms=None, edge=None):
-    """Classify a {published manhole id: network node id} candidate mapping.
+                   headrooms=None, edge=None, pump_transfers=(), exits=(), sensors=()):
+    """Classify a {site_id: network node id} candidate mapping.
 
     Exclusion reasons are exclusive: outside/pumped flow, network edge,
     known diameter, then minimum headroom. Degree is descriptive only.
@@ -253,7 +312,9 @@ def eligible_sites(net, domain_pipes, candidates, min_homes=10, table=None,
     """
     domain = set(domain_pipes)
     incoming, outgoing = _graph(net, domain)
-    hr = headroom(net, domain, table) if headrooms is None else headrooms
+    hr = headroom(net, domain, table, pump_transfers=pump_transfers, exits=exits) if headrooms is None else headrooms
+    kinds = point_kinds(net, domain, pump_transfers, exits)
+    details = downstream_details(net, domain, sensors, pump_transfers)
     eligible, excluded = [], []
     receives_flow = "receives pumped or outside flow"
     not_edge = "not on the network's edge"
@@ -261,11 +322,14 @@ def eligible_sites(net, domain_pipes, candidates, min_homes=10, table=None,
     reasons = [receives_flow, not_edge, "unknown diameter", below_minimum]
     counts = dict.fromkeys(reasons, 0)
     edge = {} if edge is None else edge
-    for mh, nid in sorted(candidates.items()):
+    for site_id, nid in sorted(candidates.items()):
         node = hr["nodes"][nid]
         pi = node["limiting_pipe_id"]
         limiter = net.pipes[pi] if pi is not None else None
-        row = {"manhole_id": mh, "node_id": nid, "in_degree": len(incoming[nid]),
+        net_node = _net_node(net, nid)
+        mh = net_node.manhole_id if net_node is not None else None
+        row = {"land_id": None, "point_kind": kinds[nid], **details[nid], "site_id": site_id, "manhole_id": mh, "node_id": nid,
+               "in_degree": len(incoming[nid]),
                "outgoing_dn": [None if net.pipes[i].dia is None else
                                net.pipes[i].dia * 1000 for i in outgoing[nid]],
                "outgoing_pipe_ids": [net.pipes[i].asset_id for i in outgoing[nid]],
@@ -294,40 +358,80 @@ def eligible_sites(net, domain_pipes, candidates, min_homes=10, table=None,
 
 def steps_for(h, steps, max_levels=None):
     """Every configured step below the common ceiling, then the ceiling itself."""
-    if not steps or (h is not None and (not math.isfinite(h) or h < 1)):
+    if not steps or any(not isinstance(s, int) or isinstance(s, bool) or s <= 0 for s in steps):
+        raise ValueError("greenfield steps must be a non-empty ladder of positive integers")
+    if h is not None and (not math.isfinite(h) or h < 1):
         return []
     last = min(math.floor(h), max(steps)) if h is not None else max(steps)
     smaller = sorted({s for s in steps if 0 < s < last})
     return smaller + [last]
 
 
-def cluster_sites(sites, node_xy, radius_m=300, angle_deg=45):
-    """Connected components: shared non-null limiter OR nearby aligned bearings.
+def connection_order(site):
+    rank = {'manhole': 0, 'junction': 0, 'pipe_end': 0, 'inline': 1, 'pump_wet_well': 2}
+    return (rank[site['point_kind']],
+            -(math.inf if site['headroom'] is None else site['headroom']),
+            -site['open_sector_deg'], site['site_id'])
 
-    Proximity and bearing tests are inclusive; bearings wrap through north.
-    A chain of matching sites belongs to one stretch.
-    """
-    remaining = {s['manhole_id']: s for s in sites}
-    representatives, excluded, clusters = [], [], []
+
+def cluster_sites(sites, node_xy, radius_m=300, angle_deg=45):
+    """Land components by distance and facing; one connection per sensor class."""
+    remaining = {s['site_id']: dict(s) for s in sites}
+    components = []
     while remaining:
         group = [remaining.pop(min(remaining))]
         for a in group:
-            for mh, b in list(remaining.items()):
-                shared = (a['limiting_pipe'] is not None and
-                          a['limiting_pipe'] == b['limiting_pipe'])
+            for sid, b in sorted(list(remaining.items())):
                 distance = math.dist(node_xy[a['node_id']], node_xy[b['node_id']])
                 angle = abs((a['open_bearing_deg'] - b['open_bearing_deg'] + 180) % 360 - 180)
-                if shared or (distance <= radius_m and angle <= angle_deg):
-                    group.append(remaining.pop(mh))
-        winner = min(group, key=lambda s: (-s['open_sector_deg'], s['manhole_id']))
-        representative = winner['manhole_id']
-        representatives.append(dict(winner, edge_stretch=representative))
-        clusters.append({'representative': representative,
-                         'members': sorted(s['manhole_id'] for s in group)})
-        excluded += [dict(s, edge_stretch=representative,
-                          reason=f'same edge stretch as MH{representative}')
-                     for s in group if s is not winner]
-    return sorted(representatives, key=lambda s: s['manhole_id']), excluded, clusters
+                if distance <= radius_m + 1e-9 and angle <= angle_deg + 1e-9:
+                    group.append(remaining.pop(sid))
+        components.append(sorted(group, key=lambda s: s['site_id']))
+    components.sort(key=lambda g: (-len(g), g[0]['site_id']))
+    connections, excluded, groups = [], [], []
+    for index, group in enumerate(components, 1):
+        land_id = f'L{index}'
+        classes = defaultdict(list)
+        for site in group:
+            site['land_id'] = land_id
+            if site['point_kind'] == 'exit':
+                excluded.append(dict(site, reason='sewage leaves the model here'))
+            else:
+                classes[tuple(site['sensors_downstream'])].append(site)
+        picks = []
+        for members in classes.values():
+            winner = min(members, key=connection_order)
+            picks.append(winner)
+            excluded.extend(dict(s, grouped_into=winner['site_id'],
+                                 reason=f"same land and sensor class as {winner['site_id']}")
+                            for s in members if s is not winner)
+        primary = min(picks, key=connection_order)['site_id'] if picks else None
+        for site in picks:
+            if site['site_id'] != primary:
+                site['alternative_of'] = primary
+        connections.extend(picks)
+        span = max((math.dist(node_xy[a['node_id']], node_xy[b['node_id']])
+                    for a in group for b in group), default=0.)
+        groups.append({'land_id': land_id, 'members': [s['site_id'] for s in group],
+                       'connections': sorted(s['site_id'] for s in picks), 'primary': primary,
+                       'span_m': round(span, 1),
+                       'no_connection_reason': None if picks else 'every point is an exit'})
+    return (sorted(connections, key=lambda s: s['site_id']),
+            sorted(excluded, key=lambda s: s['site_id']), groups)
+
+
+def coverage(points, groups, sensors):
+    usable = [s for s in points if s['point_kind'] != 'exit']
+    return {'usable_points': len(usable),
+            'points_with_sensor_downstream': sum(bool(s['sensors_downstream']) for s in usable),
+            'land_groups': len(groups),
+            'land_groups_with_covered_connection': sum(any(
+                s['site_id'] in g['members'] and s['sensors_downstream'] for s in usable) for g in groups),
+            'sensors': sorted(sensors)}
+
+
+def load_variants(site):
+    return ['steady_peak', 'pump_rate'] if site.get('pumped') or not site.get('pumped_known', False) else ['steady_peak']
 
 
 def read_js_object(path):
@@ -341,7 +445,8 @@ def build_plan():
     import sim25
 
     cfg = osp_config.load()
-    settings = cfg["simulation"]["greenfield"]
+    settings = {k: v for k, v in cfg["simulation"]["greenfield"].items() if not k.startswith('_')}
+    steps_for(None, settings['steps'])  # Validate before loading the model.
     if sim25.STUDY_AREA != "whole":
         raise ValueError("Sim 4 greenfield requires simulation.study_area 'whole'")
     model = sim25.Sim25Model(sim25.Case(), whole=True)
@@ -351,22 +456,32 @@ def build_plan():
     names = model.candidates
     if len(names) != 328:
         raise ValueError(f"Expected 328 published candidates, found {len(names)}")
-    candidates = {net.nodes[model.chambers[name]].manhole_id: model.chambers[name]
-                  for name in names}
-    if len(candidates) != len(names):
+    sensor_mhs = {net.nodes[model.chambers[name]].manhole_id for name in names}
+    if len(sensor_mhs) != len(names):
         raise ValueError("Published candidate manhole ids are not unique")
+    domain_nodes = {nid for pi in domain for nid in (net.pipes[pi].up, net.pipes[pi].down)}
+    candidates = {}
+    for nid in sorted(domain_nodes):
+        if nid not in model.node_of:
+            continue
+        mh = net.nodes[nid].manhole_id
+        site_id = f"MH{mh}" if mh is not None else model.node_of[nid]
+        candidates[site_id] = nid
     boundaries, outside_properties = boundary_properties(model, cfg["loads"])
     by_name = {name: nid for nid, name in model.node_of.items()}
     transfers = [(by_name[wet], by_name[discharge]) for _, wet, discharge in model.pumps]
+    numbers = json.loads((OUT.parent / 'numbers.json').read_text(encoding='utf-8'))
+    sensors = next(r['chosen'] for r in numbers['ladder'] if r['k'] == numbers['recommend'])
     hr = headroom(net, domain, settings["table_4_4_max_properties"],
-                  node_properties=outside_properties, pump_transfers=transfers)
+                  node_properties=outside_properties, pump_transfers=transfers, exits=model._exits)
     xy = {nid: (net.nodes[nid].x, net.nodes[nid].y) for nid in candidates.values()}
     points = network_points(net)
     edge = edge_sites(points, xy,
                       settings["edge_open_deg"], settings["edge_radius_m"], settings["edge_clear_m"])
     classified = eligible_sites(net, domain, candidates, settings["min_homes"],
-                                headrooms=hr, edge=edge)
-    before = [s['manhole_id'] for s in classified['eligible']]
+                                headrooms=hr, edge=edge, pump_transfers=transfers, exits=model._exits, sensors=sensors)
+    before = [s['site_id'] for s in classified['eligible']]
+    pre_grouping = classified['eligible']
     # Compare the old clipped obstacle rule using the identical sampler.
     from types import SimpleNamespace
     clipped = SimpleNamespace(pipes=[net.pipes[i] for i in sorted(domain)],
@@ -375,19 +490,19 @@ def build_plan():
                               connection_paths=getattr(net, 'connection_paths', ()))
     old_edge = edge_sites(network_points(clipped), xy, settings['edge_open_deg'],
                           settings['edge_radius_m'], settings['edge_clear_m'])
-    old_ids = [s['manhole_id'] for s in eligible_sites(
-        net, domain, candidates, settings['min_homes'], headrooms=hr, edge=old_edge)['eligible']]
+    old_ids = [s['site_id'] for s in eligible_sites(
+        net, domain, candidates, settings['min_homes'], headrooms=hr, edge=old_edge, pump_transfers=transfers, exits=model._exits, sensors=sensors)['eligible']]
     edge_sensitivity = []
     for angle in (90, 120, 150):
         for radius in (150, 200, 300):
             sensitivity_edge = edge_sites(points, xy, angle, radius, settings['edge_clear_m'])
             shortlist = eligible_sites(net, domain, candidates, settings['min_homes'],
-                                       headrooms=hr, edge=sensitivity_edge)['eligible']
+                                       headrooms=hr, edge=sensitivity_edge, pump_transfers=transfers, exits=model._exits, sensors=sensors)['eligible']
             reps, _, _ = cluster_sites(shortlist, xy, settings['cluster_radius_m'],
                                        settings['cluster_angle_deg'])
             edge_sensitivity.append({'edge_open_deg': angle, 'edge_radius_m': radius,
                                      'before_clustering': len(shortlist), 'after_clustering': len(reps)})
-    representatives, duplicates, clusters = cluster_sites(
+    representatives, duplicates, land_groups = cluster_sites(
         classified['eligible'], xy, settings['cluster_radius_m'], settings['cluster_angle_deg'])
     classified['eligible'] = representatives
     classified['excluded'] += duplicates
@@ -398,18 +513,24 @@ def build_plan():
     estates = read_js_object(estates_path).get('sites', {}) if estates_path.exists() else {}
     missing_pumped = []
     for site in representatives:
-        site['steps'] = steps_for(site['headroom'], settings['steps'])
+        site['steps'] = steps_for(hr['nodes'][site['node_id']]['headroom'], settings['steps'])
         site['ceiling'] = site['steps'][-1]
-        levels = estates.get(f"MH{site['manhole_id']}", {}).get('levels', {})
+        entry = estates.get(site['site_id'])
+        if entry is None and site['manhole_id'] is not None:
+            entry = estates.get(str(site['manhole_id']))
+        levels = (entry or {}).get('levels', {})
         site['pumped'] = levels.get('pumped') is True
         site['pumped_known'] = isinstance(levels.get('pumped'), bool)
+        site['load_variants'] = load_variants(site)
         if not site['pumped_known']:
-            missing_pumped.append(site['manhole_id'])
+            missing_pumped.append(site['site_id'])
         site['connection_class'] = ('reticulation' if any(
             d is not None and d <= 300 for d in site['outgoing_dn']) else 'trunk')
-    for site in classified["eligible"] + classified["excluded"]:
-        if site["headroom"] is not None:
-            site["headroom"] = round(site["headroom"], 1)
+    # All exits are excluded for the same reason, including those failing earlier filters.
+    for site in classified['excluded']:
+        if site['point_kind'] == 'exit':
+            site['reason'] = 'sewage leaves the model here'
+    classified['excluded_counts'] = dict(Counter(s['reason'] for s in classified['excluded']))
     most_loaded = []
     for pi in sorted(domain, key=lambda i: (-hr["pipes"][i]["existing_properties"],
                                           net.pipes[i].asset_id))[:10]:
@@ -442,9 +563,17 @@ def build_plan():
                                            partition='bisection') if not r.get('overlay')]
     infill_nodes, infill_regions = defaultdict(float), {}
     for site in representatives:
-        region = next((r for r in regs if site['manhole_id'] in r['manholes']), None)
+        nid = site['node_id']
+        region = next((r for r in regs if any(net.pipes[i].up == nid for i in r['pipes'])), None)
         if region is None:
-            raise ValueError(f"No Sim4 infill region for MH{site['manhole_id']}")
+            region = next((r for r in regs if any(net.pipes[i].down == nid for i in r['pipes'])), None)
+        if region is None:
+            exit_ups = {net.pipes[e].up for e in model._exits if net.pipes[e].down == nid}
+            region = next((r for r in regs
+                           if any(net.pipes[i].up in exit_ups or net.pipes[i].down in exit_ups
+                                  for i in r['pipes'])), None)
+        if region is None:
+            raise ValueError(f"No Sim4 infill region for {site['site_id']}")
         site['region'] = region['id']
         if region['id'] not in infill_regions:
             step = max(cfg['simulation']['regions']['ladder'])
@@ -463,39 +592,41 @@ def build_plan():
     for pi in domain:
         d = net.pipes[pi].dia
         if pipe_limit(d) is not None and (d < .150 or
-                min(abs(d * 1000 - dn) for dn in (150, 225, 300)) > 5 + 1e-9):
+                d * 1000 not in (150, 225, 300)):
             scaled[d * 1000] += 1
     growth_runs = sum(len(s["steps"]) for s in classified["eligible"])
     notes = [
         f"A greenfield estate joins a manhole on the network's edge, where open land lies beside it (an open sector of at least {settings['edge_open_deg']:g} degrees with no pipes or homes within {settings['edge_radius_m']:g} m, clear for {settings['edge_clear_m']:g} m along its middle); an estate in the middle of the built network would need a second sewer under existing streets.",
         "This family is for understanding whether the infill-chosen sensors notice hypothetical growth at an edge connection. It is not a planning, serviceability or capacity study; geometric openness does not establish access, land availability or a feasible receiving invert.",
-        "Geometry uses every gravity pipe held by Network, including non-domain/statewide pipes if held, sampled every 10 m, and all retained homes and property connection points. It does not import extra surrounding GIS. The sector ignores points within 15 m; the 60 m clearance is checked along the ray from 60 m to its configured end, allowing the short connection beside the existing pipe.",
+        "Geometry uses every gravity pipe held by Network, including non-domain/statewide pipes if held, sampled at most every 1 m, including every bend, and all retained homes and property connection points. It does not import extra surrounding GIS. The sector and clearance checks ignore points within 15 m; the 60 m clearance is checked along the ray from 60 m to its configured end, allowing the short connection beside the existing pipe.",
         "outgoing_dn is a list of recorded diameters in mm, in outgoing pipe order; limiting_pipe_dn is also in mm. Pipe ids are published asset ids; pipe indices are Network indices.",
         "At splits, every downstream route must have headroom. Shared upstream properties are counted once per pipe, including relief loops; no hydraulic flow split is assumed.",
-        "Limits are from SA Water Supplement Table 4.4 for reticulation sewers (DN150-300). Only pipes DN <= 300 constrain property headroom on each downstream path. Branch and trunk capacity (DN375+) is left to SWMM, with no property limit above DN300.",
-        "Below DN150 the limit scales from DN150; other unlisted reticulation diameters scale from the nearest Table 4.4 DN at equal slope and roughness. This is a team calculation.",
+        "Limits are from the sewer supplement Table 4.4 for reticulation sewers (DN150-300). Only pipes DN <= 300 constrain property headroom on each downstream path. Branch and trunk capacity (DN375+) is left to SWMM, with no property limit above DN300.",
+        "Below DN150 the limit scales from DN150; DN150 through DN300 use log-log interpolation between Table 4.4 anchors. This is a team assumption.",
         "Estate sizes, the short connection at the network edge and estate infiltration are team assumptions because no public data gives them. The estate adds sewage only, with no extra infiltration for its own new pipes, exactly as Sim25Model growth does. For paths without a reticulation constraint, the largest configured estate size caps the ladder only.",
         "Table 4.4 limits apply to total EP on a pipe, expressed here as equivalent properties using the configured Table 4.4 property limits; they are not an allowance for new properties alone.",
         "Boundary conversion is a team estimate: use Sim25's estimated/countable connections, not total boundary L/s divided by sewage per property. Boundary L/s includes both sewage and I&I, on the nominal Sim25 case basis.",
         "Counts include unique upstream Pipe.dwellings, boundary properties at their joins and wet-well catchments transferred at pump discharges. Downstream checks follow pumps as well as gravity pipes. Hydraulic constraints are tested by the SWMM run stage.",
-        "Headroom is displayed to one decimal; integer steps use floor of unrounded headroom, capped at the largest configured step for every site. All smaller configured steps are retained. 'No table cap' means no Table 4.4 property limit above DN300, not unlimited hydraulic capacity.",
+        "Headroom is displayed to one decimal in this report and retained unrounded in JSON; integer steps use floor of unrounded headroom, capped at the largest configured step for every site. All smaller configured steps are retained. 'No table cap' means no Table 4.4 property limit above DN300, not unlimited hydraulic capacity.",
         f"Existing dwellings use {cfg['loads']['people_per_connection']:g} people per connection; new dwellings use {cfg['loads']['people_per_new_dwelling']:g}, both at the same configured peaking factor ({cfg['loads']['peak_factor']:g} for these peak-hour cases). b1.5 multiplies boundary sewage AND boundary I&I by 1.5; it does not multiply existing in-domain sewage, in-domain I&I or estate sewage. Estates add no infiltration: a sewage-only control. Pumped estates use their smoothed peak-hour flow in the primary cases.",
-        f"The _pumprate bracket uses max(estate peak-hour flow, {pump_rate:.4f} L/s), from {velocity:g} m/s in the smallest published rising main DN{bore * 1000:g}, only for sites flagged levels.pumped in simulation4/data/estates.js. Gravity estates are unchanged. This is steady depth while the pump runs, an upper bound, not a volume-preserving duty-cycle model.",
-        f"Missing pumped flags are treated as gravity: {', '.join('MH' + str(mh) for mh in missing_pumped) or 'none'}.",
-        "The _together case loads all representatives at once at 30, 80 and 150 homes each, capped individually. The _with_infill case loads every representative at 150 homes (or its ceiling) on top of the largest Sim4 infill step in each distinct containing region. Its baseline includes that same infill background, so rises isolate the additional estates.",
-        "Exclusion order: receives pumped or outside flow, not on the network's edge, unknown diameter, headroom below minimum, then same edge stretch. Clusters are connected components sharing a non-null limiting pipe or within the configured distance and bearing difference; the largest open sector wins, then the lowest manhole id. Counts are exclusive.",
+        f"The _pumprate bracket uses max(estate peak-hour flow, {pump_rate:.4f} L/s), from {velocity:g} m/s in the smallest published rising main DN{bore * 1000:g}, for pumped estates and estates with unknown pump status in simulation4/data/estates.js. This is steady depth while the pump runs, an upper bound, not a volume-preserving duty-cycle model.",
+        f"Unknown pump status runs both steady peak and pump rate: {', '.join(missing_pumped) or 'none'}.",
+        "The _together case loads land-group primaries at 30, 80 and 150 homes each, reduced for shared limiting-pipe room. The _with_infill case loads land-group primaries at up to 150 homes each within shared room on top of the largest Sim4 infill step in each distinct containing region. Its baseline includes that same infill background, so rises isolate the additional estates.",
+        "Land groups chain edge points within the configured distance and circular bearing difference, including exits. Exits are not connections. Each downstream-sensor class has one connection, ranked by point kind, room, open sector and site id. Combined cases use only land-group primaries.",
         f"Remaining limits: no pump duty-cycle bursts; free outfall (no tailwater); steady peak hour only (no trough, diurnal or wet-weather timing); relief inlets as configured ({cfg['simulation']['overflow_inlet']}).",
     ]
     if len(terminals) > 1:
         notes.append(f"The gravity domain has {len(terminals)} terminals, including pump wet wells and relief exits; all reachable downstream gravity paths are checked.")
     if unknown:
         notes.append(f"{len(unknown)} domain pipes have unknown diameter; any candidate reaching one is excluded.")
-    return {"family": "sim4_greenfield", "candidate_count": len(names),
+    plan = {"family": "sim4_greenfield", "candidate_count": len(candidates),
+            "sensor_candidate_count": len(names),
             "candidate_ids": sorted(candidates), "eligible_count": len(classified["eligible"]),
             **classified, "config": settings, "study_area": "whole",
             "case_set": case_config["case_set"], "case_config": case_config,
             "cases": case_rows, "case_count": len(case_rows), 'primary_case_count': len(cases),
-            'clusters': clusters, 'edge_sensitivity': edge_sensitivity,
+            'land_groups': land_groups, 'coverage': coverage(pre_grouping, land_groups, sensors),
+            'edge_sensitivity': edge_sensitivity,
             'eligible_before_clustering': before,
             'obstacle_change': {'clipped_eligible': old_ids, 'all_network_eligible': before,
                                 'removed': sorted(set(old_ids) - set(before)),
@@ -503,7 +634,7 @@ def build_plan():
                                 'domain_pipes': len(domain), 'network_pipes': len(net.pipes)},
             'pump_rate_lps': pump_rate,
             "growth_runs_per_case": growth_runs, "baseline_runs": len(case_rows),
-            "run_count": sum(1 + len(case_jobs({}, c, representatives)) for c in case_rows),
+            "run_count": 0,
             "data_notes": notes,
             "boundary_entries": boundaries, "most_loaded_pipes": most_loaded,
             "domain": {"pipe_count": len(domain), "outlet_node_ids": terminals,
@@ -513,6 +644,16 @@ def build_plan():
                        "relief_pipe_ids": [net.pipes[i].asset_id for i in sorted(domain)
                                            if getattr(net.pipes[i], "overflow", False)],
                        "pump_links": [list(p) for p in model.pumps]}}
+
+    plan['combined_steps'], plan['combined_skips'] = [], []
+    for case in case_rows:
+        if case['variant'] in ('together', 'with_infill'):
+            jobs, notes = combined_jobs(plan, case, representatives)
+            plan['combined_steps'].extend({'label': label, 'case_tag': case['tag'], 'homes': homes}
+                                          for _, label, homes in jobs)
+            plan['combined_skips'].extend(f"{case['tag']}: {note}" for note in notes)
+    plan['run_count'] = sum(1 + len(case_jobs(plan, c, representatives)) for c in case_rows)
+    return plan
 
 
 def write_plan(plan):
@@ -540,11 +681,11 @@ def write_plan(plan):
         lines.append(f"{entry['id']} | {entry['node']} | {entry['manhole']} | "
                      f"{entry['flow_lps']:.3f} | {entry['equivalent_properties']:.1f} | {entry['method']}")
     eligible_lines = ["", "Eligible estate connections:",
-              "Manhole | Headroom | Limiting pipe | DN (mm) | Open bearing (deg) | Open sector (deg) | Estate steps (properties) | Connection | Pumped"]
+              "Site | Headroom | Limiting pipe | DN (mm) | Open bearing (deg) | Open sector (deg) | Estate steps (properties) | Connection | Pumped"]
     for site in plan["eligible"]:
         h = "no table cap" if site["no_table_cap"] else f"{site['headroom']:.1f}"
         dn = "n/a" if site["limiting_pipe_dn"] is None else f"{site['limiting_pipe_dn']:g}"
-        eligible_lines.append(f"{site['manhole_id']} | {h} | {site['limiting_pipe']} | "
+        eligible_lines.append(f"{site['site_id']} | {h} | {site['limiting_pipe']} | "
                      f"{dn} | {site['open_bearing_deg']:.1f} | {site['open_sector_deg']:.1f} | {', '.join(map(str, site['steps']))} | {site['connection_class']} | {site['pumped']}")
     edge_connections = [s for s in plan["eligible"] + plan["excluded"]
                         if s.get("reason") not in ("not on the network's edge", "receives pumped or outside flow")]
@@ -565,9 +706,19 @@ def write_plan(plan):
     for row in plan['edge_sensitivity']:
         lines.append(f"{row['edge_open_deg']} | {row['edge_radius_m']} | {row['before_clustering']} | {row['after_clustering']}")
     lines += eligible_lines
-    lines += ['', 'Edge stretches (representative <- all cluster members):']
-    for cluster in plan['clusters']:
-        lines.append(f"MH{cluster['representative']} <- " + ', '.join('MH' + str(m) for m in cluster['members']))
+    cov = plan['coverage']
+    lines += ['', f"Usable edge points: {cov['usable_points']}.",
+              f"Points with a sensor downstream: {cov['points_with_sensor_downstream']}.",
+              f"Land groups: {cov['land_groups']}.",
+              f"Land groups with a covered connection: {cov['land_groups_with_covered_connection']}.",
+              'Sensors: ' + ', '.join(cov['sensors']), '', 'Land groups:']
+    for group in plan['land_groups']:
+        lines.append(f"{group['land_id']}: {', '.join(group['members'])}; connections {group['connections']}; "
+                     f"primary {group['primary']}; span {group['span_m']:g} m; "
+                     f"{group['no_connection_reason'] or ''}".rstrip())
+    lines += ['', 'Combined sizes reduced or skipped:', *plan['combined_skips']]
+    for step in plan['combined_steps']:
+        lines.append(f"{step['case_tag']} / {step['label']}: {step['homes']}")
     lines += ['', 'Separate cases:']
     for case in plan['cases']:
         if case['variant'] != 'primary':
@@ -595,28 +746,88 @@ def atomic_summary(path, summary):
         temporary.unlink(missing_ok=True)
 
 
+def combined_jobs(plan, case, sites):
+    """Cap each shared limiting pipe using all estates whose routes reach it."""
+    all_sites = plan.get('eligible', sites)
+    rooms = {}
+    for site in all_sites:
+        pipe = site.get('limiting_pipe')
+        if pipe is not None and site['headroom'] is not None:
+            rooms[pipe] = min(rooms.get(pipe, math.inf), site['headroom'])
+    primaries = {g['primary'] for g in plan.get('land_groups', []) if g['primary']}
+    selected = [s for s in sites if s['site_id'] in primaries]
+    variant = case['variant']
+    sizes = (30, 80, 150) if variant == 'together' else (150,)
+    jobs, notes, seen = [], [], set()
+    for size in sizes:
+        homes = {s['site_id']: min(size, s['ceiling']) for s in selected}
+        original = dict(homes)
+        for pipe, room in sorted(rooms.items()):
+            members = [s['site_id'] for s in selected if pipe in s.get('downstream_pipe_ids', [])]
+            total = sum(homes[sid] for sid in members)
+            if total > room:
+                for sid in members:
+                    homes[sid] = math.floor(homes[sid] * max(0, room) / total)
+        if not homes or any(n < plan.get('config', {}).get('min_homes', 10) for n in homes.values()):
+            notes.append(f"Skipped {size}: no primary connections or shared pipe room below minimum estate size")
+            continue
+        key = tuple(sorted(homes.items()))
+        if key in seen:
+            notes.append(f"Skipped {size}: same combined membership and sizes as an earlier job")
+            continue
+        seen.add(key)
+        if homes != original:
+            notes.append(f"Reduced {size}: shared limiting-pipe room; {homes}")
+        jobs.append((variant, size, homes))
+    return jobs, notes
+
+
 def case_jobs(plan, case, sites, limit_sizes=None):
     """(site key, size label, estate dwellings mapping), without running SWMM."""
     variant = case.get('variant', 'primary')
-    if variant == 'together':
-        return [('together', n, {s['manhole_id']: min(n, s['ceiling']) for s in sites})
-                for n in (30, 80, 150)][:limit_sizes]
-    if variant == 'with_infill':
-        return [('with_infill', 150, {s['manhole_id']: min(150, s['ceiling']) for s in sites})]
-    return [(s['manhole_id'], n, {s['manhole_id']: n})
-            for s in sites for n in s['steps'][:limit_sizes]]
+    if variant in ('together', 'with_infill'):
+        return combined_jobs(plan, case, sites)[0][:limit_sizes]
+    return [(s['site_id'], n, {s['site_id']: n})
+            for s in sites if variant != 'pumprate' or 'pump_rate' in load_variants(s)
+            for n in s['steps'][:limit_sizes]]
 
 
 def estate_loads(growth, sites, per_home_lps, pump_rate_lps=None):
     """Equivalent dwelling loads preserve the shared sewage-only Sim25 loader."""
-    pumped = {str(s['manhole_id']) for s in sites if s.get('pumped')}
-    return {int(mh): max(n, pump_rate_lps / per_home_lps)
-            if pump_rate_lps is not None and str(mh) in pumped else n
-            for mh, n in growth.items()}
+    pumped = {s['site_id'] for s in sites if 'pump_rate' in load_variants(s)}
+    return {str(sid): max(n, pump_rate_lps / per_home_lps)
+            if pump_rate_lps is not None and str(sid) in pumped else n
+            for sid, n in growth.items()}
+
+
+def _site_nodes(case, growth, sites):
+    """Translate each site_id in growth to its network node id."""
+    node_of_site = {s['site_id']: s['node_id'] for s in sites if 'node_id' in s}
+    if all(sid in node_of_site for sid in growth):
+        return node_of_site
+    import sim25
+    model = sim25.Sim25Model(case, whole=True)
+    by_mh = {}
+    for nid, name in model.node_of.items():
+        node = _net_node(getattr(model, 'net', None), nid) or model.nodes[name]
+        mh = getattr(node, 'manhole_id', None)
+        if mh is not None:
+            by_mh[str(mh)] = nid
+    by_name = {name: nid for nid, name in model.node_of.items()}
+    for sid in growth:
+        if sid in node_of_site:
+            continue
+        if sid.startswith('MH') and sid[2:] in by_mh:
+            node_of_site[sid] = by_mh[sid[2:]]
+        elif sid in by_name:
+            node_of_site[sid] = by_name[sid]
+        else:
+            raise KeyError(f"Unknown site_id {sid!r}")
+    return node_of_site
 
 
 def _run_task(args):
-    """Use the infill grid's gated solver and its exact single-manhole loads.
+    """Use the infill grid's gated solver and its exact node loads.
 
     SWMM needs input/report/output files while solving. Growth files live only in
     a temporary directory and are removed by _whole_task; baseline files are kept.
@@ -640,10 +851,15 @@ def _run_task(args):
             growth = options.get('growth', {site: dwellings})
             per_home = (sim25.PEOPLE_PER_NEW_DWELLING * sim25.LITRES_PER_PERSON_DAY
                         / 86400 * sim25.PF_NOMINAL)
-            growth = estate_loads(growth, options.get('sites', []), per_home,
-                                  options.get('pump_rate_lps'))
+            sites = options.get('sites', [])
+            growth = estate_loads(growth, sites, per_home, options.get('pump_rate_lps'))
+            node_of_site = _site_nodes(case, growth, sites)
+            growth_nodes = dict(background)
+            for sid, load in growth.items():
+                nid = node_of_site[sid]
+                growth_nodes[nid] = growth_nodes.get(nid, 0.0) + load
             _, added_lps, _, state, gate = sim25_grid._whole_task(
-                (case, background, growth, str(Path(scratch) / "run")))
+                (case, growth_nodes, None, str(Path(scratch) / "run")))
             added_lps -= sum(background.values()) * per_home
     return state, added_lps, gate, round(time.monotonic() - started, 3)
 
@@ -674,6 +890,14 @@ def _update_run_length(summary):
         "max_minutes": max((r["minutes"] for r in runs), default=None),
         "unconverged": sum(r["converged"] is False for r in runs),
         "max_drift_mm": max((r["max_drift_mm"] or 0 for r in runs), default=None)}
+
+
+def job_fingerprint(site, homes, growth, sites, variant):
+    nodes = {s['site_id']: s['node_id'] for s in sites}
+    payload = {'site_id': site, 'homes': homes, 'load_variant': variant,
+               'membership': [{'site_id': sid, 'node_id': nodes[sid], 'homes': n}
+                              for sid, n in sorted(growth.items())]}
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
 def run_sweep(plan, args):
@@ -746,7 +970,16 @@ def run_sweep(plan, args):
             previous_wall = summary["wall_s"]
             started = time.monotonic()
             summary["sites"] = sites
+            variant = 'pump_rate' if spec['variant'] == 'pumprate' else 'steady_peak'
+            fingerprints = {(site, n): job_fingerprint(site, n, growth, sites, variant)
+                            for site, n, growth in jobs}
+            # Keep only rows matching the actual current job, including combined members.
+            summary['rows'] = [row for row in summary['rows']
+                               if row.get('job_fingerprint') == fingerprints.get((row['site'], row['dwellings']))
+                               and row.get('job_fingerprint') is not None]
             completed = {(row["site"], row["dwellings"]) for row in summary["rows"]}
+            _update_run_length(summary)
+            atomic_summary(path, summary)
             done += sum((site, n) in completed for site, n, _ in jobs)
             pending = {pool.submit(_run_task, (case, site, n, str(directory),
                                               dict(options, growth=growth))): (site, n, growth)
@@ -755,6 +988,7 @@ def run_sweep(plan, args):
                 site, n, growth = pending[future]
                 row = result_row(site, n, future.result(), mh_of, summary["baseline"])
                 row['estate_dwellings'] = growth
+                row['job_fingerprint'] = fingerprints[(site, n)]
                 summary["rows"].append(row)
                 summary["rows"].sort(key=lambda row: (row["site"], row["dwellings"]))
                 _update_run_length(summary)

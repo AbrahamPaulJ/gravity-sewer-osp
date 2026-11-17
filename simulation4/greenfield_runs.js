@@ -1,11 +1,12 @@
 /* greenfield_runs.js - Sim 4's greenfield runs in the shape the explorer's greenfield family reads.
 
    The explorer's "A new estate at one manhole" family was written for Sim 3's grid
-   (window.GROWTH_RUNS: every manhole, five fixed sizes). Sim 4 runs greenfield only where an
-   estate could join: the line-end manholes with pipe room under SA Water's Table 4.4, each at
-   up to four sizes of its own (data/greenfield.js, from simulation_src/sim4_greenfield.py).
-   This file rebuilds that grid from those runs so the same panels, map states and sensor
-   scores work unchanged:
+   (window.GROWTH_RUNS: every manhole, five fixed sizes). Sim 4 runs greenfield only at the
+   9 connections of simulation_src/sim4_greenfield.py: one per land group of open land at the
+   network's edge and per distinct set of downstream sensors, 5 of them manholes and 4 of them
+   pipe ends. Each connection runs its own sizes (10 to 1,000 homes, capped at the pipe room
+   from the sewer supplement's Table 4.4), from data/greenfield.js. This file rebuilds the
+   grid from those runs so the same panels, map states and sensor scores work unchanged:
 
      cells     {case, add, rule, base, rows: [{site, tip}]}, one per case, size and rule. A
                size holds the sites that were run at it; a site's own sizes are stepsAt[site].
@@ -15,9 +16,14 @@
                both families run the same model on the same settle gate.
      heat, sensors   each manhole's share of the detectable greenfield runs it sees, and the
                greedy order on those runs, as the Sim 3 grid published them.
+     siteList  the 9 connections: {id, site, chamber, land, kind, x, y, steps, pumped}. A
+               manhole connection's site key is its chamber index; a pipe end, which is not
+               a chamber, takes a key from chambers.length upward (siteName holds its id).
+     exits     where sewage leaves the model; never a connection, drawn as a quiet marker.
 
-   The chamber list, manhole ids and homes per manhole stay Sim 3's (the same 328 chambers).
-   growthLevels is set by the page: the selected site's own sizes. */
+   The chamber list, manhole ids and homes per manhole stay Sim 3's (the same 328 chambers),
+   so sensors and heat stay on chambers. Runs that did not settle carry no rises and are left
+   out. growthLevels is set by the page: the selected site's own sizes. */
 "use strict";
 (function () {
   const G3 = window.GROWTH_RUNS, GF = window.SIM4_GREENFIELD, S = window.SIM3_REGIONS;
@@ -41,9 +47,13 @@
     return cellOf[k];
   };
 
+  const siteList = [], siteName = {};
   GF.sites.forEach(s => {
-    const si = idx[s.id];
-    if (si === undefined) return;
+    const chamber = idx[s.id] === undefined ? null : idx[s.id];
+    const si = chamber != null ? chamber : G3.chambers.length + siteList.filter(x => x.chamber == null).length;
+    siteName[si] = s.id;
+    siteList.push({ id: s.id, site: si, chamber, land: s.land, kind: s.kind, x: s.x, y: s.y,
+                    steps: s.steps.slice(), pumped: s.pumped, pumpedKnown: s.pumped_known });
     sites.push(si);
     stepsAt[si] = s.steps.slice();
     cases.forEach((c, ci) => {
@@ -102,11 +112,14 @@
     });
   });
 
+  // With no site selected, the size knob offers the full ladder (the longest connection's sizes).
+  const levels = siteList.reduce((a, x) => (x.steps.length > a.length ? x.steps : a), []).slice();
   window.SIM4_GF_RUNS = Object.assign({}, G3, {
     source: "Sim 4 greenfield (data/greenfield.js)",
     cases, cells, spill, heat, sensors, sites, stepsAt,
-    defaultLevels: [80, 150, 300],
-    growthLevels: [80, 150, 300],
+    siteList, siteName, exits: (GF.exits || []).slice(),
+    defaultLevels: levels,
+    growthLevels: levels,
     lpsPerDwelling: null,
     baseDepthMm: depth,
     baseOver: base.map(b => (b ? b.alarm.slice() : [])),

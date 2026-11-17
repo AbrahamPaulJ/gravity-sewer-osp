@@ -30,7 +30,7 @@ window.Growth3D = (function () {
   // bState holds 0 plain, 1 upstream, 2 here, so a highlight is a colour write.
   let bFill = null, bEdge = null, bVert = null, bCount = null, bState = null;
   const themed = {};          // SIM4: materials whose colour follows the light or dark theme
-  let houseGeo = null, houseColours = null, houseHi = null, houseRim = null, houseUp = null,
+  let houseGeo = null, housePts = null, houseColours = null, houseHi = null, houseRim = null, houseUp = null,
       sleeves = null;
   let siteLabel = null, bottleneckMesh = null, lastPipeState = null, region = null;
   // SIM3: a persistent tint per manhole name ([r,g,b] 0-255) for the area it belongs to, and
@@ -38,6 +38,7 @@ window.Growth3D = (function () {
   // nothing else to say (state "ok", heatmap off), so the areas read at a glance; the result
   // colours (amber, red, green) still win wherever they apply.
   let regionTint = null, regionLabels = [];
+  let extraPick = new Set(), exitNames = [], exitMarks = [];   // Sim 4: pipe-end connections, exits
   let eligible = new Set(), houseBase = null, viewListener = null, tiltedOffset = null;
   // SIM3: the manholes of the selected area pulse (scale, in the shared beat) so the area is
   // found by movement, not by a colour of its own. paint() records each manhole's resting
@@ -54,7 +55,7 @@ window.Growth3D = (function () {
   let connMeshes = [], connCounts = null, pipeScale = 0;  // the Connections chip; mains' radius per mm
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
   const clock = { t0: performance.now() };
-  let ZEXAG = 22.0;           // SIM4: the Vertical slider changes it (setExaggeration)
+  let ZEXAG = 10.0;           // SIM4: the Vertical slider changes it (setExaggeration)
   /* DARK, and saturated. The first version drew grey pipes and beige markers on a cream
      background and was unreadable: every state looked like every other state. On a dark
      ground a saturated colour carries, so the three pipe states separate at a glance and
@@ -239,8 +240,11 @@ window.Growth3D = (function () {
         if (sleeves) sleeves.material.opacity = pulseMeshes.length ? 0.12 + 0.62 * (0.5 + 0.5 * beat) : 0.20 + 0.22 * (0.5 + 0.5 * beat);
         if (pulseMeshes.length) {
           const sc = 1.1 + 0.7 * (0.5 + 0.5 * beat);
-          pulseMeshes.forEach(m => m.scale.setScalar((m.userData.baseScale || 1) * sc));
+          // Greenfield's edge connections are already drawn large, so they breathe by 20% only.
+          const scE = 1 + 0.2 * (0.5 + 0.5 * beat);
+          pulseMeshes.forEach(m => m.scale.setScalar((m.userData.baseScale || 1) * (eligible.has(m.userData.node.name) ? scE : sc)));
         }
+        flowTick(t);
 /* SIM35 BEGIN */        coverTick(t);
 /* SIM35 END */        renderer.render(scene, camera);
         if (pumpsOn) {
@@ -281,9 +285,11 @@ window.Growth3D = (function () {
       houseGeo.setAttribute("position", new THREE.Float32BufferAttribute(hp, 3));
       houseColours = new THREE.Float32BufferAttribute(new Float32Array(hp.length), 3);
       houseGeo.setAttribute("color", houseColours);
-      scene.add(new THREE.Points(houseGeo, new THREE.PointsMaterial({
+      housePts = new THREE.Points(houseGeo, new THREE.PointsMaterial({
         size: 4.5, sizeAttenuation: true, vertexColors: true,
-        transparent: true, opacity: 0.9 })));
+        transparent: true, opacity: 0.9 }));
+      housePts.visible = false;
+      scene.add(housePts);
       const overlay = (col, size, order = 2) => {
         const geo = new THREE.BufferGeometry();
         geo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(hp), 3));
@@ -310,7 +316,7 @@ window.Growth3D = (function () {
     // could put a sensor in, these are not.
     const jp = [];
     g.nodes.forEach(nd => {
-      if (nd.kind === "chamber") return;
+      if (nd.kind === "chamber" || extraPick.has(nd.name)) return;
       const v = P(nd.x, nd.y, nd.inv);
       jp.push(v.x, v.y, v.z);
     });
@@ -629,12 +635,28 @@ window.Growth3D = (function () {
     const sphere = new THREE.SphereGeometry(5.6, 14, 10);
     chamberMeshes = [];
     g.nodes.forEach((nd, i) => {
-      if (nd.kind !== "chamber") return;
+      // Sim 4 pipe-end connections are not chambers but take an estate, so they are picked too.
+      if (nd.kind !== "chamber" && !extraPick.has(nd.name)) return;
       const m = new THREE.Mesh(sphere, new THREE.MeshBasicMaterial({ color: COL.chamber }));
       m.position.copy(P(nd.x, nd.y, nd.inv));
       m.userData = { node: nd, index: i };
       scene.add(m);
       chamberMeshes.push(m);
+    });
+
+    // Sim 4 exits: where sewage leaves the model. Never a connection; a quiet grey ring each,
+    // shown only while the edge connections are (setEligible).
+    exitMarks.forEach(m => scene.remove(m));
+    exitMarks = [];
+    exitNames.forEach(name => {
+      const nd = g.nodes.find(n => n.name === name);
+      if (!nd || name === g.outletName) return;
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(14, 1.6, 6, 32), new THREE.MeshBasicMaterial({ color: 0x8b949e }));
+      ring.rotation.x = Math.PI / 2;
+      ring.position.copy(P(nd.x, nd.y, nd.inv));
+      ring.visible = eligible.size > 0;
+      scene.add(ring);
+      exitMarks.push(ring);
     });
 
     // A ring on the ground plus a stalk above it. One chamber among 71, in a view you can
@@ -949,11 +971,13 @@ window.Growth3D = (function () {
     geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
     bFill = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
     bFill.userData.fixedY = true;
+    bFill.visible = false;
     scene.add(bFill);
     const eg = new THREE.BufferGeometry();
     eg.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(ne * 3), 3));
     bEdge = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: B_EDGE, transparent: true, opacity: 0.9 }));
     bEdge.userData.fixedY = true;
+    bEdge.visible = false;
     scene.add(bEdge);
     placeBuildings();
     // ODbL asks for credit wherever the data is shown.
@@ -983,8 +1007,8 @@ window.Growth3D = (function () {
   }
   /* SIM4: optional background streets, one-pixel lines on the datum plane.
      Imaginary estate streets are drawn separately at their own ground level. */
-  let streetLines = null;
-  function setStreets(lines) {
+  let streetLines = null, gridLines = null;
+  function setStreets(lines, opacity) {
     if (!built) return;
     if (streetLines) { scene.remove(streetLines); streetLines.geometry.dispose(); streetLines.material.dispose(); streetLines = null; }
     themed.streets = null;
@@ -993,14 +1017,49 @@ window.Growth3D = (function () {
     if (!sp.length) return;
     const sg = new THREE.BufferGeometry();
     sg.setAttribute("position", new THREE.Float32BufferAttribute(sp, 3));
-    streetLines = new THREE.LineSegments(sg, new THREE.LineBasicMaterial({ color: B_EDGE, transparent: true, opacity: 0.55 }));
+    streetLines = new THREE.LineSegments(sg, new THREE.LineBasicMaterial({ color: B_EDGE, transparent: true, opacity: opacity == null ? 0.55 : opacity, depthWrite: false }));
     themed.streets = streetLines.material;
     scene.add(streetLines);
   }
+  function showGrid(on) {
+    if (!built) return;
+    if (!gridLines) {
+      const g = G();
+      const lv = g.nodes.map(n => g.oz + n.inv / 100);
+      const base = Math.floor(Math.min(...lv) / 5) * 5;
+      const z = (base - g.oz) * 100;
+      const xs = g.nodes.map(n => n.x), ys = g.nodes.map(n => n.y);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      const pad = 0.04 * Math.max(x1 - x0, y1 - y0), gx = 1000;
+      const X0 = x0 - pad, X1 = x1 + pad, Y0 = y0 - pad, Y1 = y1 + pad;
+      const gp = [];
+      const add = (a, b) => gp.push(a.x, a.y, a.z, b.x, b.y, b.z);
+      for (let x = Math.ceil(X0 / gx) * gx; x <= X1; x += gx) add(P(x, Y0, z), P(x, Y1, z));
+      for (let y = Math.ceil(Y0 / gx) * gx; y <= Y1; y += gx) add(P(X0, y, z), P(X1, y, z));
+      const gg = new THREE.BufferGeometry();
+      gg.setAttribute("position", new THREE.Float32BufferAttribute(gp, 3));
+      gridLines = new THREE.LineSegments(gg, new THREE.LineBasicMaterial({ color: COL.datum, transparent: true, opacity: 0.35 }));
+      themed.grid = gridLines.material;
+      scene.add(gridLines);
+    }
+    gridLines.visible = !!on;
+  }
+  /* SIM4: house-shapes mode. Homes are building outlines only, never dots, and the houses
+     switch shows or hides the outlines and their connection pipes together. Off by default,
+     so the other pages sharing this file keep their own drawing. */
+  let houseShapes = false;
+  function setHouseShapes(on) {
+    houseShapes = !!on;
+    if (houseShapes) showConnections(true);
+  }
   function showConnections(on) {
-    if (!connMeshes.length) return null;
-    connMeshes.forEach(m => { m.visible = !!on; });
-    return connCounts;
+    const v = !!on;
+    connMeshes.forEach(m => { m.visible = v; });
+    if (housePts) housePts.visible = v && !houseShapes;
+    if (houseShapes) [latHi, latUp, latGuess].forEach(l => { if (l) l.visible = v; });
+    if (bFill) bFill.visible = v;
+    if (bEdge) bEdge.visible = v;
+    return connCounts || { own: 0, mis: 0, spare: 0, guess: 0 };
   }
   /* The sites of a growth scenario: a cyan ring at each, the colour the legend gives to
      "where the new dwellings connect", sized a little by its dwellings, and a "+n" label.
@@ -1042,6 +1101,8 @@ window.Growth3D = (function () {
       estateGrp = null;
     }
     const list = (Array.isArray(spec) ? spec : [spec]).filter(Boolean);
+    flowEst = estateFlow(list);
+    rebuildFlow();
     if (!list.length) return;
     const grp = new THREE.Group();
     list.forEach(sp => addEstate(grp, sp));
@@ -1106,28 +1167,54 @@ window.Growth3D = (function () {
         box.add(new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry), new THREE.LineBasicMaterial({ color: 0x0d1117 })));
         grp.add(box);
       }
+      // Lift wells: where a sewer would pass the depth limit, a small well pumps along the streets to the main well.
+      (spec.lifts || []).forEach(l => {
+        if (!l || l.length < 2) return;
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(l.map(V)),
+          new THREE.LineDashedMaterial({ color: COL.pump, dashSize: 7, gapSize: 5 }));
+        line.computeLineDistances();
+        grp.add(line);
+        const lift = new THREE.Mesh(new THREE.BoxGeometry(8, 8, 8), new THREE.MeshBasicMaterial({ color: COL.pump }));
+        lift.position.copy(V(l[0]));
+        grp.add(lift);
+      });
     }
-    // Imaginary streets: the background street style at the estate's mean ground level.
-    const ground = spec.lv && spec.lv.ground_m;
-    const streetY = yOf(ground && ground.length ? ground.reduce((a, b) => a + b, 0) / ground.length :
-      g.oz + nd.inv / 100 + 1.4);
+    // Estate homes and streets follow the network's own drawing: each sits at the level of the
+    // estate sewer nearest to it, as the network's homes sit on the main they join. The view
+    // has no ground surface, so drawing them at ground level would lift them clear of their pipes.
+    const sewer = [];
+    [spec.link].concat(spec.pipes || []).forEach(l => {
+      if (l) for (let k = 0; k < l.length - 1; k++) sewer.push([l[k], l[k + 1]]);
+    });
+    const levelAt = (x, y, fallback) => {
+      let best = Infinity, z = fallback;
+      sewer.forEach(([a, b]) => {
+        const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+        const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L2)) : 0;
+        const ex = a[0] + t * dx - x, ey = a[1] + t * dy - y, d2 = ex * ex + ey * ey;
+        if (d2 < best) { best = d2; z = a[2] + t * (b[2] - a[2]); }
+      });
+      return z;
+    };
+    const baseZ = g.oz + nd.inv / 100;
     const streets = [];
     (spec.streets || []).forEach(l => {
       for (let k = 0; k < l.length - 1; k++)
-        streets.push(l[k][0], streetY, -l[k][1], l[k + 1][0], streetY, -l[k + 1][1]);
+        streets.push(l[k][0], yOf(levelAt(l[k][0], l[k][1], baseZ)), -l[k][1],
+          l[k + 1][0], yOf(levelAt(l[k + 1][0], l[k + 1][1], baseZ)), -l[k + 1][1]);
     });
     if (streets.length) {
       const sg = new THREE.BufferGeometry();
       sg.setAttribute("position", new THREE.Float32BufferAttribute(streets, 3));
       grp.add(new THREE.LineSegments(sg, new THREE.LineBasicMaterial({ color: B_EDGE, transparent: true, opacity: 0.55 })));
     }
-    // Houses: the network's block style, each at the level of the main it joins.
-    const fill = [], edge = [], dots = [];
+    // Houses: the network's block style, each at the level of the nearest estate sewer.
+    const fill = [], edge = [];
     (spec.houses || []).forEach((ring, h) => {
       let poly = ring.slice(), a2 = 0, cx = 0, cy = 0;
       poly.forEach((a, k) => { const b = poly[(k + 1) % poly.length]; a2 += a[0] * b[1] - b[0] * a[1]; cx += a[0]; cy += a[1]; });
       if (a2 < 0) poly = poly.reverse();
-      const dotY = yOf(spec.houseZ && spec.houseZ[h] != null ? spec.houseZ[h] : g.oz + nd.inv / 100);
+      const dotY = yOf(levelAt(cx / poly.length, cy / poly.length, baseZ));
       const H = bHeight(Math.abs(a2) / 2), y0 = dotY - 0.6, y1 = y0 + H;
       const put = (x, y, z) => fill.push(x, y, -z);
       THREE.ShapeUtils.triangulateShape(poly.map(([x, y]) => new THREE.Vector2(x, y)), [])
@@ -1138,7 +1225,6 @@ window.Growth3D = (function () {
         put(a[0], y0, a[1]); put(b[0], y1, b[1]); put(a[0], y1, a[1]);
         edge.push(a[0], y1 + 0.03, -a[1], b[0], y1 + 0.03, -b[1], a[0], y0, -a[1], a[0], y1, -a[1]);
       });
-      dots.push(cx / poly.length, dotY, -cy / poly.length);
     });
     if (fill.length) {
       const fg = new THREE.BufferGeometry();
@@ -1149,9 +1235,6 @@ window.Growth3D = (function () {
       const eg = new THREE.BufferGeometry();
       eg.setAttribute("position", new THREE.Float32BufferAttribute(edge, 3));
       grp.add(new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: B_EDGE, transparent: true, opacity: 0.9 })));
-      const dg = new THREE.BufferGeometry();
-      dg.setAttribute("position", new THREE.Float32BufferAttribute(dots, 3));
-      grp.add(new THREE.Points(dg, new THREE.PointsMaterial({ color: COL.houseHere, size: 4.5, sizeAttenuation: true })));
     }
   }
   /* SIM4: the light theme. Only the ground and the neutral marks change: the background, the
@@ -1175,6 +1258,7 @@ window.Growth3D = (function () {
     if (themed.junction) themed.junction.color.setHex(t.junction);
     if (themed.datum) themed.datum.color.setHex(t.datum);
     if (themed.streets) themed.streets.color.setHex(t.bEdge);
+    if (themed.grid) themed.grid.color.setHex(t.datum);
     if (bEdge) bEdge.material.color.setHex(t.bEdge);
     if (bottleneckMesh) bottleneckMesh.material.color.setHex(t.bottleneck);
     tintBuildings();
@@ -1573,9 +1657,16 @@ window.Growth3D = (function () {
     const rimPos = houseRim.geometry.attributes.position.array;
     const upPos = houseUp.geometry.attributes.position.array;
     if (bState) bState.fill(0);
+    // While building outlines are on show (or in house-shapes mode, always), homes are marked by
+    // tinting their building, never by a dot; the few homes without an outline (no room to draw
+    // one) stay counted but unmarked.
+    // w counts the dots written, separately from the homes counted.
+    const w = { hi: 0, up: 0 };
     const copy = (dst, k, i) => {
       if (bState) bState[i] = dst === hiPos ? 2 : dst === upPos ? 1 : bState[i];
-      dst[k * 3] = src[i * 3]; dst[k * 3 + 1] = src[i * 3 + 1]; dst[k * 3 + 2] = src[i * 3 + 2];
+      if (houseShapes || (bFill && bFill.visible)) return;
+      const j = dst === hiPos ? w.hi++ : w.up++;
+      dst[j * 3] = src[i * 3]; dst[j * 3 + 1] = src[i * 3 + 1]; dst[j * 3 + 2] = src[i * 3 + 2];
     };
     let nHi = 0, nUp = 0, nDirect = 0, out, pipes = null;
     // A home's connection, its published line or a dashed guess, appended as segments.
@@ -1600,8 +1691,9 @@ window.Growth3D = (function () {
       pipes = up.pipes;
       for (let i = 0; i < n; i++) {
         const node = g.hn[i];
-        if (t.firstMh[node] === me) { lat("hi", i); copy(hiPos, nHi++, i); if (node === me) nDirect++; }
-        else if (up.nodes.has(node)) { lat("up", i); copy(upPos, nUp++, i); }
+        // spec.quiet: count the homes but do not mark them (a greenfield estate is the subject).
+        if (t.firstMh[node] === me) { if (!spec.quiet) { lat("hi", i); copy(hiPos, nHi, i); } nHi++; if (node === me) nDirect++; }
+        else if (up.nodes.has(node)) { if (!spec.quiet) { lat("up", i); copy(upPos, nUp, i); } nUp++; }
       }
       out = { mode: "site", here: nHi, direct: nDirect, through: nUp, elsewhere: n - nHi - nUp, total: n };
     } else if (spec && spec.mode === "region" && spec.names && spec.names.length) {
@@ -1638,8 +1730,9 @@ window.Growth3D = (function () {
     tintBuildings();
     houseHi.material.color.setHex(out.mode === "sensors" ? COL.watched : COL.houseHere);
     houseUp.material.opacity = 1;
-    rimPos.set(hiPos.subarray(0, nHi * 3));             // the rim sits under every linked home
-    [[houseHi, nHi], [houseRim, nHi], [houseUp, nUp]].forEach(([pts, k]) => {
+    const dHi = w.hi, dUp = w.up;                       // dots drawn, not homes counted
+    rimPos.set(hiPos.subarray(0, dHi * 3));             // the rim sits under every linked home
+    [[houseHi, dHi], [houseRim, dHi], [houseUp, dUp]].forEach(([pts, k]) => {
       pts.geometry.setDrawRange(0, k);
       pts.geometry.attributes.position.needsUpdate = true;
       pts.frustumCulled = false;
@@ -1754,14 +1847,14 @@ window.Growth3D = (function () {
         : rt ? ((Math.round(rt[0] + (255 - rt[0]) * 0.45) << 16) | (Math.round(rt[1] + (255 - rt[1]) * 0.45) << 8) | Math.round(rt[2] + (255 - rt[2]) * 0.45))
         : COL.chamber;
       m.material.color.setHex(c);
-      m.userData.baseScale = sensorSet.has(nm) ? 2.1 : heat ? 0.9 + 1.4 * (heat[nm] || 0)
+      m.userData.baseScale = nm !== siteName && eligible.has(nm) ? 3.4 : sensorSet.has(nm) ? 2.1 : heat ? 0.9 + 1.4 * (heat[nm] || 0)
         : st === "ok" ? 1 : st === "rise" || st === "fall" ? 1.3 : 1.6;
       m.scale.setScalar(m.userData.baseScale);
       if (nm === siteName) {
         focusRing.position.copy(m.position);
         focusRing.visible = true;
         siteLabel.at.copy(m.position);
-        siteLabel.el.textContent = "MH " + m.userData.node.mh;
+        siteLabel.el.textContent = m.userData.node.mh ? "MH " + m.userData.node.mh : "pipe end " + nm;
         siteLabel.el.style.display = "";
       }
     });
@@ -1855,7 +1948,9 @@ window.Growth3D = (function () {
     }
     houseColours.needsUpdate = true;
   }
-  function setEligible(names) { eligible = new Set(names || []); }
+  function setEligible(names) { eligible = new Set(names || []); exitMarks.forEach(m => { m.visible = eligible.size > 0; }); }
+  // Sim 4: call before build. Pipe-end connections become pickable; exits get a quiet marker.
+  function setExtraNodes(sites, exits) { extraPick = new Set(sites || []); exitNames = (exits || []).slice(); }
   function setRegionLabels(list) {
     regionLabels.forEach(l => l.el.remove());
     regionLabels = [];
@@ -1876,6 +1971,124 @@ window.Growth3D = (function () {
     });
   }
   function showRegionLabels(on) { regionLabels.forEach(l => { l.el.style.visibility = on ? "" : "hidden"; }); }
+  /* Sewer flow: squares that travel along every pipe from its upstream end to its downstream
+     end (the direction the model gives each link), and along each rising main from its wet
+     well. Speed and spacing are for display only; they do not show how fast sewage moves.
+     Each square is twice the drawn pipe's thickness (side = 2 x 2 x radius) and is sized in
+     world units, so it grows and shrinks with the pipe when zooming. */
+  const FLOW_GAP = 30, FLOW_SPEED = 20;     // metres between squares; metres per second on screen
+  let flowPts = null, flowNet = null, flowEst = [], flowPaths = [], flowOn = false;
+  // A path is x and y in metres (y north) and h in metres above the datum, so the scene
+  // height is h x ZEXAG and follows the Vertical slider.
+  function flowPath(xs, ys, hs, side) {
+    const n = xs.length;
+    if (n < 2) return null;
+    const cum = [0];
+    for (let i = 1; i < n; i++) cum.push(cum[i - 1] + Math.hypot(xs[i] - xs[i - 1], ys[i] - ys[i - 1]));
+    const L = cum[n - 1];
+    if (L < 1) return null;
+    return { xs, ys, hs, cum, L, side, k: Math.max(1, Math.round(L / FLOW_GAP)) };
+  }
+  function flowSide(d) {
+    const dia = G().dia || [];
+    let dlo = Infinity;
+    for (let p = 0; p < dia.length; p++) if (dia[p] > 0 && dia[p] < dlo) dlo = dia[p];
+    if (!isFinite(dlo)) dlo = 150;
+    return 4 * Math.max(0.3, (d > 0 ? d : dlo) * (pipeScale || 0.01));
+  }
+  function buildFlowNet() {
+    const g = G(), dia = g.dia || [];
+    flowNet = [];
+    const push = f => { if (f) flowNet.push(f); };
+    for (let p = 0; p < g.nPipes; p++) {
+      const a = g.ptr[p], b = g.ptr[p + 1], n = b - a;
+      if (n < 2) continue;
+      const xs = [], ys = [], hs = [];
+      for (let i = a; i < b; i++) {
+        xs.push(g.px[i] / 10); ys.push(g.py[i] / 10);
+        hs.push((g.zu[p] + (g.zd[p] - g.zu[p]) * (i - a) / (n - 1)) / 100);
+      }
+      push(flowPath(xs, ys, hs, flowSide(dia[p])));
+    }
+    // A rising main is drawn as a line with no bore, so it gets the smallest pipe's square.
+    (g.pumps || []).forEach(ps => push(flowPath(ps.px.map(x => x / 10), ps.py.map(y => y / 10), ps.pz.map(z => z / 100), flowSide(ps.dia))));
+  }
+  /* Estate sewers drain downhill, so each one runs from its higher end to its lower end. The
+     connection and a pumped estate's rising main both end at the network's manhole. */
+  function estateFlow(list) {
+    const g = G(), out = [];
+    const side = flowSide(150);
+    (list || []).forEach(spec => {
+      const nd = spec && g.nodes.find(x => x.name === spec.at);
+      if (!nd) return;
+      const mhq = [nd.x / 10, nd.y / 10, g.oz + nd.inv / 100];
+      const add = (pts, toMh) => {
+        if (!pts || pts.length < 2) return;
+        let q = pts.map(v => v.slice());
+        if (toMh) { q[0] = mhq; q.reverse(); }
+        else if (q[0][2] < q[q.length - 1][2]) q.reverse();
+        const f = flowPath(q.map(v => v[0]), q.map(v => v[1]), q.map(v => v[2] - g.oz), side);
+        if (f) out.push(f);
+      };
+      (spec.pipes || []).forEach(l => add(l, false));
+      add(spec.link, true);
+      if (spec.pumped && spec.risingMain && spec.risingMain.length >= 2) add(spec.risingMain, true);
+    });
+    return out;
+  }
+  function rebuildFlow() {
+    if (!built || !(flowOn || flowPts)) return;
+    if (!flowNet) buildFlowNet();
+    flowPaths = flowNet.concat(flowEst);
+    if (flowPts) { scene.remove(flowPts); flowPts.geometry.dispose(); flowPts.material.dispose(); flowPts = null; }
+    const total = flowPaths.reduce((t, f) => t + f.k, 0);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(total * 3), 3));
+    const sides = new Float32Array(total);
+    let q = 0;
+    flowPaths.forEach(f => { for (let j = 0; j < f.k; j++) sides[q++] = f.side; });
+    geo.setAttribute("side", new THREE.Float32BufferAttribute(sides, 1));
+    // Points are screen squares; this shader turns a side in metres into pixels for the
+    // current camera distance, the same way a tube of that width would shrink.
+    flowPts = new THREE.Points(geo, new THREE.ShaderMaterial({
+      uniforms: { uColor: { value: new THREE.Color(0x7df9ff) }, uH: { value: 800 } },
+      vertexShader: "attribute float side; uniform float uH;" +
+        "void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0);" +
+        " gl_PointSize = max(1.5, side * projectionMatrix[1][1] * 0.5 * uH / -mv.z);" +
+        " gl_Position = projectionMatrix * mv; }",
+      fragmentShader: "uniform vec3 uColor; void main(){ gl_FragColor = vec4(uColor, 0.95); }",
+      depthTest: false, transparent: true }));
+    flowPts.frustumCulled = false;
+    flowPts.renderOrder = 5;
+    flowPts.visible = flowOn;
+    scene.add(flowPts);
+  }
+  function flowTick(t) {
+    if (!flowOn || !flowPts) return;
+    flowPts.material.uniforms.uH.value = renderer.domElement.height;
+    const arr = flowPts.geometry.attributes.position.array;
+    let o = 0;
+    for (const f of flowPaths) {
+      const gap = f.L / f.k, off = (t * FLOW_SPEED) % gap;
+      let seg = 1;
+      for (let j = 0; j < f.k; j++) {
+        const s = off + j * gap;
+        while (seg < f.cum.length - 1 && f.cum[seg] < s) seg++;
+        const s0 = f.cum[seg - 1], s1 = f.cum[seg], u = s1 > s0 ? Math.min(1, (s - s0) / (s1 - s0)) : 0;
+        arr[o++] = f.xs[seg - 1] + (f.xs[seg] - f.xs[seg - 1]) * u;
+        arr[o++] = (f.hs[seg - 1] + (f.hs[seg] - f.hs[seg - 1]) * u) * ZEXAG;
+        arr[o++] = -(f.ys[seg - 1] + (f.ys[seg] - f.ys[seg - 1]) * u);
+      }
+    }
+    flowPts.geometry.attributes.position.needsUpdate = true;
+  }
+  function setFlow(on) {
+    if (!built) return false;
+    flowOn = !!on;
+    if (flowOn && !flowPts) rebuildFlow();
+    if (flowPts) flowPts.visible = flowOn;
+    return flowOn;
+  }
   function setPulse(names) {
     pulseMeshes.forEach(m => m.scale.setScalar(m.userData.baseScale || 1));
     const want = new Set(names || []);
@@ -2051,8 +2264,8 @@ window.Growth3D = (function () {
   }
   const coverSelectInfo = () => coverSel ? { sensor: coverSel.mesh.userData.node.name, arcs: coverSel.arcs, pin: !!coverSel.mark } : null;
 
-/* SIM35 END */  return { build, liveCamera, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, setSpills, setPumpRates, mapState, frameNodes, setEstate, frameBox, setStreets, setTheme,
-           setRegionTints, setRegionLabels, showRegionLabels, setPulse, setEligible,
+/* SIM35 END */  return { build, liveCamera, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setHouseShapes, setScenario, setSpills, setPumpRates, mapState, frameNodes, setEstate, frameBox, setStreets, showGrid, setTheme,
+           setRegionTints, setRegionLabels, showRegionLabels, setPulse, setEligible, setExtraNodes, setFlow,
            viewTop, viewTilt, heading, isTop, onViewChange, getCamera, setCamera,
            frame, resize, heatHex, setExaggeration,
            get ZEXAG() { return ZEXAG; }/* SIM35 BEGIN */, setCoverSelect, coverSelectInfo, mapCam, screenOf/* SIM35 END */ };

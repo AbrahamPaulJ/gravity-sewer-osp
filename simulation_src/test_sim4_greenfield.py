@@ -26,13 +26,16 @@ def test_pure_import():
 
 
 def test_pipe_limit():
-    for d, expected in ((.150, 400), (.225, 1000), (.300, 1800),
-                        (.155, 400), (.220, 1000)):
+    for d, expected in ((.150, 400), (.225, 1000), (.300, 1800)):
         assert greenfield.pipe_limit(d) == expected, d
     for d in (None, 0, -.1, math.nan, math.inf, .305, .375, .450, .900):
         assert greenfield.pipe_limit(d) is None, d
-    for d, anchor, limit in ((.100, .150, 400), (.145, .150, 400), (.216, .225, 1000)):
+    for d, anchor, limit in ((.100, .150, 400), (.145, .150, 400)):
         assert math.isclose(greenfield.pipe_limit(d), limit * (d / anchor) ** (8 / 3))
+    values = [greenfield.pipe_limit(mm / 1000) for mm in (100 + i / 10 for i in range(2001))]
+    assert all(a < b for a, b in zip(values, values[1:]))
+    assert greenfield.pipe_limit(.187501) > greenfield.pipe_limit(.1875)
+    assert 400 < greenfield.pipe_limit(.155) < greenfield.pipe_limit(.220) < 1000
     assert greenfield.pipe_limit(.150, {"150": 450, "225": 1100, "300": 1900}) == 450
 
 
@@ -44,6 +47,13 @@ def test_steps():
     assert greenfield.steps_for(80, [10, 30, 80], 1) == [10, 30, 80]
     assert greenfield.steps_for(9, [10, 30], 4) == [9]
     assert greenfield.steps_for(None, [10, 30, 80]) == [10, 30, 80]
+    for invalid in ([], [0], [-1], [1.5]):
+        try:
+            greenfield.steps_for(None, invalid)
+        except ValueError as exc:
+            assert 'non-empty ladder of positive integers' in str(exc)
+        else:
+            raise AssertionError('Invalid ladder must raise ValueError')
     ladder = [10, 30, 80, 150, 300, 600, 1000]
     assert greenfield.steps_for(1562.9, ladder) == ladder
     assert greenfield.steps_for(80.9, ladder) == [10, 30, 80]
@@ -59,7 +69,7 @@ def test_tree_headroom():
         assert hr["nodes"][nid]["headroom"] == 340
         assert hr["nodes"][nid]["limiting_pipe_id"] == 2
     assert hr["nodes"][3]["headroom"] == 1700
-    assert hr["nodes"][4]["headroom"] is None
+    assert hr["nodes"][4]["headroom"] == 1700
 
 
 def test_relief_loop():
@@ -92,8 +102,10 @@ def test_boundary_headroom():
     assert hr["pipes"][2]["existing_properties"] == 72.5
     assert hr["pipes"][3]["existing_properties"] == 112.5
     assert hr["nodes"][0]["headroom"] == 327.5
-    result = greenfield.eligible_sites(net, range(4), {1000: 0, 1002: 2}, headrooms=hr, edge={nid: (180., 270.) for nid in net.nodes})
+    result = greenfield.eligible_sites(net, range(4), {"MH1000": 0, "MH1002": 2}, headrooms=hr, edge={nid: (180., 270.) for nid in net.nodes})
+    assert result["eligible"][0]["site_id"] == "MH1000"
     assert result["eligible"][0]["headroom"] == 327.5
+    assert result["excluded"][0]["site_id"] == "MH1002"
     assert result["excluded"][0]["reason"] == "receives pumped or outside flow"
 
 
@@ -125,7 +137,8 @@ def test_pump_transfer():
     assert hr["pipes"][1]["existing_properties"] == 75
     assert hr["pipes"][2]["existing_properties"] == 105
     assert hr["nodes"][0]["headroom"] == 325  # Discharge pipe also limits wet-well sites.
-    result = greenfield.eligible_sites(net, range(3), {1000: 0, 1002: 2}, headrooms=hr, edge={nid: (180., 270.) for nid in net.nodes})
+    result = greenfield.eligible_sites(net, range(3), {"MH1000": 0, "MH1002": 2}, headrooms=hr, edge={nid: (180., 270.) for nid in net.nodes})
+    assert result["eligible"][0]["site_id"] == "MH1000"
     assert result["eligible"][0]["manhole_id"] == 1000
     assert result["excluded"][0]["in_degree"] == 0
     assert result["excluded"][0]["reason"] == "receives pumped or outside flow"
@@ -147,7 +160,7 @@ def test_multiple_outlets_and_unknown():
         hr = greenfield.headroom(net, range(3))
         assert hr["nodes"][0]["headroom"] is None
         assert hr["nodes"][0]["unknown_diameter_pipes"] == [2]
-        result = greenfield.eligible_sites(net, range(3), {1000: 0}, headrooms=hr, edge={nid: (180., 270.) for nid in net.nodes})
+        result = greenfield.eligible_sites(net, range(3), {"MH1000": 0}, headrooms=hr, edge={nid: (180., 270.) for nid in net.nodes})
         assert result["excluded_counts"]["unknown diameter"] == 1
 
 
@@ -161,7 +174,7 @@ def test_trunk_has_no_property_limit():
     assert hr["pipes"][2]["limit"] is None
     assert hr["nodes"][2]["unlimited"]
     assert hr["nodes"][2]["unknown_diameter_pipes"] == []
-    sites = greenfield.eligible_sites(net, range(3), {1000: 0, 1002: 2}, headrooms=hr, edge={nid: (180., 270.) for nid in net.nodes})
+    sites = greenfield.eligible_sites(net, range(3), {"MH1000": 0, "MH1002": 2}, headrooms=hr, edge={nid: (180., 270.) for nid in net.nodes})
     assert len(sites["eligible"]) == 2
     # Any reticulation pipe on either relief route still constrains the site.
     net = network([(0, 1, .375, 10), (1, 2, .150, 20), (1, 3, .450, 9000)])
@@ -173,12 +186,14 @@ def test_trunk_has_no_property_limit():
 
 def test_edge_and_exclusions():
     net = network(TREE + [(9, 0, .150, 200)])
-    candidates = {1000: 0, 1001: 1, 1002: 2, 1003: 3}
+    net.nodes[2].manhole_id = None
+    candidates = {"MH1000": 0, "MH1001": 1, "N2": 2, "MH1003": 3}
     edge = {0: (180., 270.), 2: (150., 90.)}
     result = greenfield.eligible_sites(net, range(4), candidates, edge=edge)
     # An edge street junction qualifies despite incoming domain pipes; a line
     # end in the built network does not. Outside-domain pipes do not add load.
-    assert [s["manhole_id"] for s in result["eligible"]] == [1000, 1002]
+    assert [s["site_id"] for s in result["eligible"]] == ["MH1000", "N2"]
+    assert [s["manhole_id"] for s in result["eligible"]] == [1000, None]
     assert result["eligible"][1]["in_degree"] == 2
     assert result["eligible"][1]["open_sector_deg"] == 150
     assert result["eligible"][1]["open_bearing_deg"] == 90
@@ -195,8 +210,8 @@ def test_edge_and_exclusions():
     hr = greenfield.headroom(net, range(4), node_properties={1: 1})
     result = greenfield.eligible_sites(net, range(4), candidates, headrooms=hr, edge=edge)
     assert [s["reason"] for s in result["excluded"]] == [
-        "unknown diameter", "receives pumped or outside flow", "unknown diameter",
-        "not on the network's edge"]
+        "unknown diameter", "receives pumped or outside flow", "not on the network's edge",
+        "unknown diameter"]
     # Retain the old positional call shape, but missing geometry cannot prove edge eligibility.
     assert not greenfield.eligible_sites(net, range(4), candidates)["eligible"]
 
@@ -228,6 +243,9 @@ def test_edge_sites():
     assert math.isclose(greenfield.edge_sites(south, nodes)[0][1], 0.)
     assert greenfield.edge_sites(ring, nodes, edge_open_deg=40) == {}
     assert greenfield.edge_sites([], nodes) == {0: (360., 0.)}
+    # A pipe 5 m away (< 15 m floor) does not block the corridor; >= 15 m does.
+    assert 0 in greenfield.edge_sites(gap + [polar(5, 90)], nodes)
+    assert greenfield.edge_sites(gap + [polar(15, 90)], nodes) == {}
 
 
 def test_network_points():
@@ -235,31 +253,128 @@ def test_network_points():
                                  SimpleNamespace(line=[(999., 999.), (999., 1000.)])],
                           connections=[(30., 40., 1)], connection_junctions=[(31., 41.)],
                           connection_paths=[{"path": [(32., 42.), (33., 43.)]}])
-    assert greenfield.network_points(net, [0]) == [
-        (0., 0.), (6., 4.), (6., 14.), (6., 18.),
-        (999., 999.), (999., 1000.),
-        (30., 40.), (31., 41.), (32., 42.), (33., 43.)]
+    points = greenfield.network_points(net, [0])
+    assert (6., 0.) in points and (6., 18.) in points
+    assert points[-4:] == [(30., 40.), (31., 41.), (32., 42.), (33., 43.)]
+    assert (999., 999.) in points and (999., 1000.) in points
+    assert all(math.dist(a, b) <= 1 + 1e-9 for a, b in zip(points[:24], points[1:25]))
+    # A short bend crossing the 15 m exemption between the old 10 m samples.
+    # Its endpoints are exempt; its middle vertex intrudes into the corridor.
+    bend = SimpleNamespace(pipes=[SimpleNamespace(line=[(0, 14), (0, 16), (0, 14)])])
+    sampled = greenfield.network_points(bend)
+    assert (0., 16.) in sampled
+    gap = [(100 * math.sin(math.radians(a)), 100 * math.cos(math.radians(a)))
+           for a in range(0, 360, 10) if not -90 < (a + 180) % 360 - 180 < 90]
+    assert 0 in greenfield.edge_sites(gap + [(0, 14)], {0: (0, 0)})
+    assert greenfield.edge_sites(gap + sampled, {0: (0, 0)}) == {}
+
+
+def fixture_site(sid, node, kind='manhole', sensors=(), room=100., bearing=0, sector=180):
+    return dict(site_id=sid, node_id=node, point_kind=kind, sensors_downstream=list(sensors),
+                headroom=room, open_bearing_deg=bearing, open_sector_deg=sector)
+
+
+def test_point_kinds_and_pump_reach():
+    net = network([(0, 1, .150, 0), (1, 2, .150, 0),
+                   (3, 4, .150, 0), (5, 6, .150, 0), (7, 8, .150, 0)])
+    net.nodes[1].manhole_id = None
+    transfers = [(4, 5)]
+    kinds = greenfield.point_kinds(net, range(5), transfers, exits=[4])
+    assert kinds[1] == 'inline' and kinds[2] == 'exit'
+    net.nodes[3].manhole_id = None
+    assert greenfield.point_kinds(net, range(5), transfers)[3] == 'pipe_end'
+    branch = network([(0, 1, .150, 0), (1, 2, .150, 0), (1, 3, .150, 0)])
+    branch.nodes[1].manhole_id = None
+    assert greenfield.point_kinds(branch, range(3))[1] == 'junction'
+    trunk_exit = network([(0, 1, .450, 0)])
+    assert greenfield.headroom(trunk_exit, [0])['nodes'][1]['headroom'] == 0
+    assert greenfield.headroom(trunk_exit, [0], exits=[0])['nodes'][0]['headroom'] == 0
+    assert kinds[4] == 'pump_wet_well' and kinds[7] == 'exit'
+    assert greenfield.point_kinds(net, range(5))[4] == 'exit'
+    result = greenfield.eligible_sites(net, range(5), {'A': 1, 'B': 2, 'C': 4},
+        edge={i: (180, 0) for i in net.nodes}, pump_transfers=transfers, sensors=['MH1006'])
+    points = result['eligible']
+    wet = next(s for s in points if s['site_id'] == 'C')
+    assert wet['point_kind'] == 'pump_wet_well'
+    assert wet['sensors_downstream'] == ['MH1006']
+    assert greenfield.downstream_details(net, range(5), ['MH1006'])[4]['sensors_downstream'] == []
+    connections, excluded, groups = greenfield.cluster_sites(points, {1: (0, 0), 2: (1, 0), 4: (1000, 0)})
+    assert {s['site_id'] for s in connections} == {'A', 'C'}
+    assert next(s for s in excluded if s['site_id'] == 'B')['reason'] == 'sewage leaves the model here'
+    assert next(s for s in points if s['site_id'] == 'B')['headroom'] == 400
+    assert groups[0]['members'] == ['A', 'B']
+    only_exit = greenfield.cluster_sites([next(s for s in points if s['site_id'] == 'B')], {2: (0, 0)})[2][0]
+    assert only_exit['connections'] == [] and only_exit['primary'] is None
+    assert only_exit['no_connection_reason'] == 'every point is an exit'
+    cov = greenfield.coverage(points, groups, ['MH1006'])
+    assert cov == dict(usable_points=2, points_with_sensor_downstream=1, land_groups=2,
+                       land_groups_with_covered_connection=1, sensors=['MH1006'])
 
 
 def test_clustering():
-    def site(mh, node, limiter, bearing, sector):
-        return dict(manhole_id=mh, node_id=node, limiting_pipe=limiter,
-                    open_bearing_deg=bearing, open_sector_deg=sector)
+    opposite = [fixture_site('A', 0), fixture_site('B', 1, bearing=180)]
+    assert len(greenfield.cluster_sites(opposite, {0: (0, 0), 1: (289, 0)})[2]) == 2
+    chain = [fixture_site(c, i, bearing=350 if i == 0 else 35) for i, c in enumerate('ABC')]
+    xy = {i: (i * 300, 0) for i in range(3)}
+    result = greenfield.cluster_sites(chain, xy)
+    assert result[2][0]['members'] == ['A', 'B', 'C']
+    assert result[2][0]['span_m'] == 600
+    import itertools
+    for order in itertools.permutations(chain):
+        assert greenfield.cluster_sites(order, xy) == result
+    # Type outranks room; room outranks sector; sector outranks id.
+    sites = [fixture_site('inline', 0, 'inline', ['MH1'], None, sector=360),
+             fixture_site('wet', 1, 'pump_wet_well', ['MH1'], None, sector=360),
+             fixture_site('small', 2, sensors=['MH1'], room=50, sector=360),
+             fixture_site('narrow', 3, 'pipe_end', ['MH1'], 100, sector=150),
+             fixture_site('best', 4, 'junction', ['MH1'], 100, sector=200),
+             fixture_site('tie', 5, sensors=['MH1'], room=100, sector=200),
+             fixture_site('other', 6, sensors=['MH2'], room=110)]
+    reps, excluded, groups = greenfield.cluster_sites(sites, {i: (i, 0) for i in range(7)})
+    assert [s['site_id'] for s in reps] == ['best', 'other']
+    assert groups[0]['primary'] == 'other'
+    assert reps[0]['alternative_of'] == 'other'
+    assert all(s['grouped_into'] == 'best' and s['reason'].startswith('same land and sensor class as ')
+               for s in excluded)
+    assert all(s['land_id'] == 'L1' for s in reps + excluded)
+    uncapped = [fixture_site('finite', 0, room=999), fixture_site('uncapped', 1, room=None)]
+    assert greenfield.cluster_sites(uncapped, {0: (0, 0), 1: (1, 0)})[0][0]['site_id'] == 'uncapped'
 
-    # Null limiters are not shared pipes. Bearings wrap through north; ties use id.
-    sites = [site(10, 0, None, 350, 180), site(20, 1, None, 35, 200),
-             site(30, 2, 99, 180, 150), site(40, 3, 99, 0, 150),
-             site(50, 4, None, 81, 250)]
-    xy = {0: (0, 0), 1: (300, 0), 2: (10000, 0), 3: (20000, 0), 4: (301, 0)}
-    reps, excluded, clusters = greenfield.cluster_sites(sites, xy)
-    assert [s['manhole_id'] for s in reps] == [20, 30, 50]
-    assert [c['members'] for c in clusters] == [[10, 20], [30, 40], [50]]
-    assert {r['reason'] for r in excluded} == {'same edge stretch as MH20', 'same edge stretch as MH30'}
-    assert greenfield.cluster_sites(list(reversed(sites)), xy) == (reps, excluded, clusters)
-    # Transitive geography is one connected component, even beyond one radius.
-    chain = [site(i, i, None, 0, 180) for i in range(3)]
-    assert greenfield.cluster_sites(chain, {i: (i * 300, 0) for i in range(3)})[2] == [
-        {'representative': 0, 'members': [0, 1, 2]}]
+
+def test_shared_pipe_combined():
+    sites = [dict(fixture_site('A', 0, room=100), limiting_pipe=42, downstream_pipe_ids=[42], ceiling=100),
+             dict(fixture_site('B', 1, room=100), limiting_pipe=99, downstream_pipe_ids=[99, 42], ceiling=100),
+             dict(fixture_site('alt', 2, room=100), limiting_pipe=42, downstream_pipe_ids=[42], ceiling=100)]
+    plan = dict(eligible=sites, land_groups=[dict(primary='A'), dict(primary='B')])
+    jobs, notes = greenfield.combined_jobs(plan, {'variant': 'together'}, sites)
+    assert jobs == [('together', 30, {'A': 30, 'B': 30}), ('together', 80, {'A': 50, 'B': 50})]
+    assert any('Reduced' in n for n in notes) and any('Skipped 150' in n for n in notes)
+    assert all(sum(growth.values()) <= 100 and 'alt' not in growth for _, _, growth in jobs)
+    sites[0]['headroom'] = 10
+    assert not greenfield.combined_jobs(plan, {'variant': 'together'}, sites)[0]
+
+
+def test_job_fingerprint():
+    sites = [dict(site_id='A', node_id=1), dict(site_id='B', node_id=2)]
+    fp = greenfield.job_fingerprint('together', 30, {'A': 30, 'B': 30}, sites, 'steady_peak')
+    assert fp == greenfield.job_fingerprint('together', 30, {'B': 30, 'A': 30}, sites[::-1], 'steady_peak')
+    assert fp != greenfield.job_fingerprint('together', 30, {'A': 30}, sites, 'steady_peak')
+    assert fp != greenfield.job_fingerprint('together', 30, {'A': 30, 'B': 29}, sites, 'steady_peak')
+    assert fp != greenfield.job_fingerprint('together', 30, {'A': 30, 'B': 30}, [dict(site_id='A', node_id=9), sites[1]], 'steady_peak')
+    assert fp != greenfield.job_fingerprint('together', 30, {'A': 30, 'B': 30}, sites, 'pump_rate')
+    assert fp != greenfield.job_fingerprint('other', 30, {'A': 30, 'B': 30}, sites, 'steady_peak')
+
+
+def test_eval_response_type():
+    raw = dict(dwellings=10, added_lps=.1, rise_mm={'1': 30, '2': 60}, run={})
+    ladder = {'1': ['MH2'], '2': ['MH1', 'MH2']}
+    direct = evaluation.evaluate_row(raw, ladder, ['MH1'], 2, {'surcharged': [1, 2]})
+    assert direct['response_type'] == 'direct'
+    assert direct['response_types'] == {'10': 'direct', '25': 'direct', '50': 'indirect'}
+    assert direct['baseline_absolute_surcharge_count'] == 2
+    assert evaluation.evaluate_row(raw, ladder, ['MH1'], 1)['response_type'] == 'indirect'
+    assert evaluation.evaluate_row(raw, ladder, ['MH1'], 1, {'surcharged': []})['baseline_absolute_surcharge_count'] == 0
+    assert evaluation.evaluate_row(dict(raw, rise_mm={}), ladder, ['MH1'], 1)['response_type'] is None
 
 
 def test_eval_scoring():
@@ -315,16 +430,20 @@ def test_eval_invalid_runs():
 
 
 def test_bracket_jobs_and_loads():
-    sites = [dict(manhole_id=1, steps=[10, 30, 60], ceiling=60, pumped=True),
-             dict(manhole_id=2, steps=[10, 30, 80, 150], ceiling=150, pumped=False)]
-    jobs = greenfield.case_jobs({}, {'variant': 'together'}, sites)
-    assert [j[2] for j in jobs] == [{1: 30, 2: 30}, {1: 60, 2: 80}, {1: 60, 2: 150}]
-    assert greenfield.case_jobs({}, {'variant': 'with_infill'}, sites)[0][2] == {1: 60, 2: 150}
-    assert len(greenfield.case_jobs({}, {'variant': 'pumprate'}, sites)) == 7
-    loads = greenfield.estate_loads({1: 30, 2: 30}, sites, .01, 7.85)
-    assert loads == {1: 785, 2: 30}
-    assert greenfield.estate_loads({1: 1000, 2: 1000}, sites, .01, 7.85) == {1: 1000, 2: 1000}
-    assert greenfield.estate_loads({1: 30, 2: 30}, sites, .01) == {1: 30, 2: 30}
+    sites = [dict(site_id='MH1', manhole_id=1, steps=[10, 30, 60], ceiling=60, pumped=True, pumped_known=True),
+             dict(site_id='N2', manhole_id=None, steps=[10, 30, 80, 150], ceiling=150, pumped=False, pumped_known=True),
+             dict(site_id='N3', manhole_id=None, steps=[10], ceiling=10, pumped=False, pumped_known=False)]
+    assert greenfield.load_variants(sites[0]) == ['steady_peak', 'pump_rate']
+    assert greenfield.load_variants(sites[1]) == ['steady_peak']
+    assert greenfield.load_variants(sites[2]) == ['steady_peak', 'pump_rate']
+    primary = greenfield.case_jobs({}, {'variant': 'primary'}, sites)
+    assert primary[0] == ('MH1', 10, {'MH1': 10})
+    assert primary[3] == ('N2', 10, {'N2': 10})
+    assert {job[0] for job in greenfield.case_jobs({}, {'variant': 'pumprate'}, sites)} == {'MH1', 'N3'}
+    loads = greenfield.estate_loads({'MH1': 30, 'N2': 30, 'N3': 10}, sites, .01, 7.85)
+    assert loads == {'MH1': 785, 'N2': 30, 'N3': 785}
+    assert greenfield.estate_loads({'MH1': 1000, 'N2': 1000}, sites, .01, 7.85) == {'MH1': 1000, 'N2': 1000}
+    assert greenfield.estate_loads({'MH1': 30, 'N2': 30}, sites, .01) == {'MH1': 30, 'N2': 30}
 
 
 def test_eval_report():
@@ -336,8 +455,8 @@ def test_eval_report():
     from unittest.mock import patch
 
     gate = dict(converged=True, continuity_err_pct=.1)
-    sites = [dict(manhole_id=1, steps=[10, 30, 80], connection_class='reticulation'),
-             dict(manhole_id=2, steps=[10], connection_class='trunk')]
+    sites = [dict(site_id='MH1', manhole_id=1, steps=[10, 30, 80], connection_class='reticulation', sensors_downstream=['MH1']),
+             dict(site_id='N2', manhole_id=None, region='R1', steps=[10], connection_class='trunk')]
     cases = [dict(tag='base', variant='primary'), dict(tag='failed', variant='primary')]
     cases += [dict(tag=v, variant=v) for v in ('pumprate', 'together', 'with_infill')]
     plan = dict(eligible=sites, cases=cases, config={}, data_notes=['understanding only'])
@@ -347,8 +466,8 @@ def test_eval_report():
                     surcharge=[1] if n >= 30 else [], spilled=[], run=run)
 
     summaries = {c['tag']: dict(greenfield_config={}, sites=sites, case_spec=c,
-        baseline={'run': gate}, rows=[raw(1, 10), raw(1, 30),
-            raw(1, 80, dict(gate, converged=False)), raw(2, 10)]) for c in cases}
+        baseline={'run': gate, 'surcharged': [1]}, rows=[raw(1, 10), raw('MH1', 30),
+            raw('MH1', 80, dict(gate, converged=False)), raw('N2', 10)]) for c in cases}
     summaries['failed']['baseline']['run'] = dict(gate, converged=False)
     for tag in ('together', 'with_infill'):
         summaries[tag]['rows'] = [raw(tag, 30)]
@@ -378,11 +497,14 @@ def test_eval_report():
             contextlib.redirect_stdout(io.StringIO()):
         evaluation.main()
     result = json.loads(written['eval.json'])
+    assert [s['id'] for s in result['sites']] == ['MH1', 'N2']
     assert set(result['headlines']) == {'base', 'failed'}
     assert set(result['extra_cases']) == {'pumprate', 'together', 'with_infill'}
     assert result['headlines']['failed']['rules']['10']['total'] == 0
     assert result['headlines']['base']['rules']['10']['total'] == 3
     assert result['headlines']['base']['unmatched_pairs'] == 1
+    assert result['headlines']['base']['hits_by_response_type']['10'] == {'direct': 2, 'indirect': 1}
+    assert result['sites'][0]['cases']['base']['rows'][0]['greenfield']['baseline_absolute_surcharge_count'] == 1
     assert result['headlines']['base']['matched_pairs_only']['infill']['10']['total'] == 2
     assert result['headlines']['base']['by_connection_class']['trunk']['25']['total'] == 1
     assert len(result['excluded_runs']) == 3  # base+pumprate growth, failed baseline
@@ -401,19 +523,23 @@ def test_bracket_task_loader():
     calls = []
 
     def fake_whole(args):
-        case, background, growth, directory = args
-        calls.append((background, growth))
-        return None, (sum(background.values()) + sum(growth.values())) * per_home, 0., {}, {'converged': True}
+        case, growth_nodes, growth, directory = args
+        calls.append((growth_nodes, growth))
+        extra = sum(growth.values()) if growth else 0.0
+        return None, (sum(growth_nodes.values()) + extra) * per_home, 0., {}, {'converged': True}
 
-    sites = [dict(manhole_id=1, pumped=True), dict(manhole_id=2, pumped=False)]
+    probe = sim25.Sim25Model(sim25.Case(), whole=True)
+    mh_nid = probe.chambers['MH1625959']
+    sites = [dict(site_id='MH1625959', pumped=True), dict(site_id='N0', pumped=False, pumped_known=True)]
     with tempfile.TemporaryDirectory() as directory, \
             patch.object(sim25_grid, '_whole_task', side_effect=fake_whole):
         result = greenfield._run_task((sim25.Case(), 'combined', 30, directory,
-            {'growth': {1: 30, 2: 30}, 'background_nodes': {'5': 123},
+            {'growth': {'MH1625959': 30, 'N0': 30}, 'background_nodes': {'0': 123, '5': 10},
              'sites': sites, 'pump_rate_lps': 7.85}))
-    assert calls[0][0] == {5: 123}
-    assert math.isclose(calls[0][1][1] * per_home, 7.85)
-    assert calls[0][1][2] == 30
+    assert calls[0][1] is None
+    assert calls[0][0][5] == 10
+    assert calls[0][0][0] == 123 + 30
+    assert math.isclose(calls[0][0][mh_nid] * per_home, 7.85)
     assert math.isclose(result[1], 7.85 + 30 * per_home)  # Background subtracted.
 
 
@@ -431,18 +557,24 @@ def test_real_plan():
             patch.object(model, "run", no_swmm), patch.object(sim25, "solve", no_swmm):
         plan = greenfield.build_plan()
         real_model = sim25.Sim25Model(sim25.Case(), whole=True)
-    candidates = {real_model.net.nodes[real_model.chambers[name]].manhole_id
-                  for name in real_model.candidates}
-    assert len(candidates) == plan["candidate_count"] == 328
+    sensor_candidates = {real_model.net.nodes[real_model.chambers[name]].manhole_id
+                         for name in real_model.candidates}
+    assert len(sensor_candidates) == plan["sensor_candidate_count"] == 328
+    domain = real_model._pipe_ids
+    domain_nodes = {nid for pi in domain for nid in (real_model.net.pipes[pi].up, real_model.net.pipes[pi].down)}
+    candidates = {
+        f"MH{real_model.net.nodes[nid].manhole_id}" if real_model.net.nodes[nid].manhole_id is not None
+        else real_model.node_of[nid]
+        for nid in domain_nodes if nid in real_model.node_of}
+    assert len(candidates) == plan["candidate_count"] > 328
     assert candidates == set(plan["candidate_ids"])
     assert 0 <= plan["eligible_count"] <= plan["candidate_count"]
-    domain = real_model._pipe_ids
     boundaries, node_properties = greenfield.boundary_properties(real_model, sim25.CFG["loads"])
     by_name = {name: nid for nid, name in real_model.node_of.items()}
     transfers = [(by_name[wet], by_name[dis]) for _, wet, dis in real_model.pumps]
     hr = greenfield.headroom(real_model.net, domain,
                             plan["config"]["table_4_4_max_properties"],
-                            node_properties=node_properties, pump_transfers=transfers)
+                            node_properties=node_properties, pump_transfers=transfers, exits=real_model._exits)
     assert math.isclose(sum(e["flow_lps"] for e in boundaries), real_model.boundary_lps)
     assert plan["boundary_entries"] == boundaries
     # Both separate wet-well catchments must reach the downstream trunk.
@@ -454,32 +586,40 @@ def test_real_plan():
     assert math.isclose(hr["pipes"][trunk]["existing_properties"]
                         - without_pumps["pipes"][trunk]["existing_properties"], wet_properties)
     for site in plan["eligible"] + plan["excluded"]:
+        assert "site_id" in site and "manhole_id" in site and "node_id" in site
         raw_headroom = hr["nodes"][site["node_id"]]["headroom"]
-        assert site["headroom"] == (round(raw_headroom, 1) if raw_headroom is not None else None)
+        assert site["headroom"] == raw_headroom
         if site["no_table_cap"]:
             assert site["limiting_pipe_index"] is None
+            continue
+        if site['limiting_pipe_index'] is None:
+            assert site['point_kind'] == 'exit' and site['headroom'] == 0
             continue
         assert site["limiting_pipe_index"] in domain
         pipe = real_model.net.pipes[site["limiting_pipe_index"]]
         assert site["limiting_pipe"] == site["limiting_pipe_id"] == pipe.asset_id
         assert site["limiting_pipe_dn"] == pipe.dia * 1000
+    obstacles = greenfield.network_points(real_model.net, domain)
     for site in plan["eligible"]:
-        assert site["manhole_id"] in candidates
+        assert site['point_kind'] != 'exit' and site['land_id']
+        assert site['load_variants'] == greenfield.load_variants(site)
+        assert site["site_id"] in candidates
         assert site["open_sector_deg"] >= plan["config"]["edge_open_deg"]
         assert 0 <= site["open_bearing_deg"] < 360
         # Independently check annular emptiness and finite-ray clearance.
         bearing = math.radians(site["open_bearing_deg"])
         ux, uy = math.sin(bearing), math.cos(bearing)
         origin = real_model.net.nodes[site["node_id"]]
-        for x, y in greenfield.network_points(real_model.net, domain):
+        for x, y in obstacles:
             dx, dy = x - origin.x, y - origin.y
             radius = math.hypot(dx, dy)
             if 15 <= radius <= plan["config"]["edge_radius_m"]:
                 angle = math.degrees(math.atan2(dx, dy))
                 difference = abs((angle - site["open_bearing_deg"] + 180) % 360 - 180)
                 assert difference + 1e-7 >= site["open_sector_deg"] / 2
-            t = min(plan["config"]["edge_clear_m"], max(60., dx * ux + dy * uy))
-            assert math.hypot(dx - t * ux, dy - t * uy) >= 60 - 1e-7
+            if radius >= 15:
+                t = min(plan["config"]["edge_clear_m"], max(60., dx * ux + dy * uy))
+                assert math.hypot(dx - t * ux, dy - t * uy) >= 60 - 1e-7
         steps = site["steps"]
         assert 1 <= len(steps) <= len(plan['config']['steps']) + 1
         assert all(a < b for a, b in zip(steps, steps[1:]))
@@ -489,9 +629,9 @@ def test_real_plan():
         assert set(s for s in plan['config']['steps'] if s <= steps[-1]) <= set(steps)
         assert all(isinstance(s, int) for s in steps)
         assert min(steps) >= 10
-    eligible_ids = {s["manhole_id"] for s in plan["eligible"]}
-    excluded_ids = {s["manhole_id"] for s in plan["excluded"]}
-    assert {4451967, 1623725}.isdisjoint(eligible_ids)
+    eligible_ids = {s["site_id"] for s in plan["eligible"]}
+    excluded_ids = {s["site_id"] for s in plan["excluded"]}
+    assert {4451967, 1623725}.isdisjoint({s["manhole_id"] for s in plan["eligible"]})
     assert {s["manhole_id"] for s in plan["excluded"]
             if s["reason"] == "receives pumped or outside flow"} >= {4451967, 1623725}
     assert len(plan["most_loaded_pipes"]) == 10
@@ -499,7 +639,7 @@ def test_real_plan():
         [p["existing_properties"] for p in hr["pipes"].values()], reverse=True)[:10]
     assert not (eligible_ids & excluded_ids)
     assert eligible_ids | excluded_ids == candidates
-    assert plan["eligible_count"] + sum(plan["excluded_counts"].values()) == 328
+    assert plan["eligible_count"] + sum(plan["excluded_counts"].values()) == plan["candidate_count"]
     assert plan["growth_runs_per_case"] == sum(len(s["steps"]) for s in plan["eligible"])
     assert plan["run_count"] == sum(1 + len(greenfield.case_jobs(plan, c, plan['eligible']))
                                     for c in plan['cases'])
@@ -512,8 +652,13 @@ def test_real_plan():
     assert [c["tag"] for c in plan["cases"] if c['variant'] == 'primary'] == [c.tag() for c in sim25_grid.cases("all")]
     assert len(plan['edge_sensitivity']) == 9
     assert all(r['after_clustering'] <= r['before_clustering'] for r in plan['edge_sensitivity'])
-    assert len({m for c in plan['clusters'] for m in c['members']}) == len(plan['eligible_before_clustering'])
-    assert all(c['representative'] in c['members'] for c in plan['clusters'])
+    assert {m for g in plan['land_groups'] for m in g['members']} == set(plan['eligible_before_clustering'])
+    assert all(g['primary'] in g['connections'] if g['connections'] else g['primary'] is None for g in plan['land_groups'])
+    assert plan['coverage']['land_groups'] == len(plan['land_groups'])
+    assert plan['combined_steps']
+    for step in plan['combined_steps']:
+        assert set(step['homes']) <= {g['primary'] for g in plan['land_groups']}
+    assert any(not s["site_id"].startswith("MH") and s["manhole_id"] is None for s in plan["eligible"])
     assert all(p["limit"] is None for p in plan["most_loaded_pipes"] if p["dn"] > 300)
 
 
@@ -580,7 +725,7 @@ def test_runner_resume_and_schema():
 
     args = SimpleNamespace(cases=plan["cases"][0]["tag"], limit_sites=1,
                            limit_sizes=1, workers=1, resume=False)
-    site, n = plan["eligible"][0]["manhole_id"], plan["eligible"][0]["steps"][0]
+    site, n = plan["eligible"][0]["site_id"], plan["eligible"][0]["steps"][0]
     with tempfile.TemporaryDirectory() as directory, \
             patch.object(greenfield, "OUT", Path(directory)), \
             patch.object(greenfield, "_run_task", side_effect=fake_run), \
@@ -609,6 +754,10 @@ def test_runner_resume_and_schema():
         assert called[-1] == (site, plan["eligible"][0]["steps"][1])
         assert len(called) == 3
         assert len(json.loads(path.read_text())["rows"]) == 2
+        plan['eligible'][0]['node_id'] += 1
+        greenfield.run_sweep(plan, args)
+        assert len(called) == 5
+        assert len(json.loads(path.read_text())["rows"]) == 2
         with patch.object(greenfield, "_run_task", side_effect=RuntimeError("failed run")):
             args.limit_sizes = 3
             try:
@@ -618,6 +767,25 @@ def test_runner_resume_and_schema():
             else:
                 raise AssertionError("Failed runs must not be checkpointed")
         assert len(json.loads(path.read_text())["rows"]) == 2
+        # Combined membership changes while the job label and requested size stay fixed.
+        combo_sites = [dict(plan['eligible'][0], site_id=sid, limiting_pipe=None,
+                            downstream_pipe_ids=[], ceiling=100) for sid in ('A', 'B')]
+        combo_plan = dict(plan, eligible=combo_sites, land_groups=[dict(primary='A'), dict(primary='B')])
+        combo_case = next(c for c in plan['cases'] if c['variant'] == 'together')
+        args.cases, args.limit_sites, args.limit_sizes = combo_case['tag'], 1, 1
+        greenfield.run_sweep(combo_plan, args)
+        combo_path = Path(directory) / args.cases / 'summary.json'
+        before = json.loads(combo_path.read_text())['rows'][0]
+        assert before['estate_dwellings'] == {'A': 30}
+        count = len(called)
+        args.limit_sites = 2
+        greenfield.run_sweep(combo_plan, args)
+        after = json.loads(combo_path.read_text())['rows'][0]
+        assert after['estate_dwellings'] == {'A': 30, 'B': 30}
+        assert after['job_fingerprint'] != before['job_fingerprint']
+        assert len(called) == count + 1
+        greenfield.run_sweep(combo_plan, args)
+        assert len(called) == count + 1
 
 
 if __name__ == "__main__":
@@ -626,7 +794,8 @@ if __name__ == "__main__":
              test_boundary_conversion, test_pump_transfer, test_multiple_outlets_and_unknown,
              test_trunk_has_no_property_limit, test_edge_and_exclusions, test_edge_sites,
              test_network_points, test_real_plan,
-             test_clustering, test_eval_scoring, test_eval_invalid_runs, test_bracket_jobs_and_loads,
+             test_clustering, test_point_kinds_and_pump_reach, test_shared_pipe_combined,
+             test_job_fingerprint, test_eval_response_type, test_eval_scoring, test_eval_invalid_runs, test_bracket_jobs_and_loads,
              test_eval_report,
              test_bracket_task_loader,
              test_atomic_checkpoint, test_runner_resume_and_schema]

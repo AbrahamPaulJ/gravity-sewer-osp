@@ -27,6 +27,7 @@ import json, os, statistics, sys
 from collections import defaultdict
 
 import numpy as np
+import sim4_sets as sets
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -37,8 +38,9 @@ SUBURB = next((f for f in (os.path.join(HERE, "results", "sim3e", "suburb.json")
 # and results/sim4, which sim4_numbers.py reads. Unset, it is Simulation 3.5 as published: simulation3/data/regions.js
 # and results/sim35. sim35_mix.py and the rest read the same two settings.
 TARGET = os.environ.get("SIM35_TARGET", "sim35")
+SCENARIO_SET = os.environ.get("SIM4_SET", "infill") if TARGET == "sim4" else "infill"
 REGIONS = os.path.join(ROOT, "simulation4", "data", "regions.js") if TARGET == "sim4" else os.path.join(DATA, "regions.js")
-OUT = os.path.join(HERE, "results", TARGET)
+OUT = os.path.join(HERE, "results", "sim4_set_" + SCENARIO_SET if SCENARIO_SET != "infill" else TARGET)
 LIMITS = [0.5, 0.6, 0.7]
 HEADLINE = 0.7
 DESIGN = "ii0.11_flat_uniform_b1_sfree"
@@ -58,6 +60,10 @@ def chamber_names():
     s = open(os.path.join(DATA, "growth.js"), encoding="utf-8").read()
     at = s.index('"chambers":')
     return json.loads(s[s.index("[", at):s.index("]", at) + 1])
+
+
+def read_regions():
+    return sets.select_set(read_js(REGIONS), chamber_names(), SCENARIO_SET)
 
 
 def geometry(geo, chambers):
@@ -152,7 +158,7 @@ def band_for(F, bore, dw, share, rng):
 
 
 def main():
-    reg, geo = read_js(REGIONS), read_js(os.path.join(DATA, "catchment.js"))
+    reg, geo = read_regions(), read_js(os.path.join(DATA, "catchment.js"))
     ch = chamber_names()
     gm = geometry(geo, ch)
     down = downstream(geo, ch)
@@ -162,7 +168,7 @@ def main():
     lines = []
 
     def say(*a):
-        t = " ".join(str(x) for x in a)
+        t = sets.report_text(" ".join(str(x) for x in a), SCENARIO_SET)
         print(t)
         lines.append(t)
 
@@ -183,6 +189,8 @@ def main():
         base = reg["base"][t]["depthMm"]
         results[t] = {}
         for ri, r in enumerate(regions):
+            if r.get("family") == "greenfield":
+                continue
             rows = sorted((x for x in reg["rows"][t] if x["r"] == ri), key=lambda x: x["s"])
             dw = [0.0] + [x["dw"] for x in rows]
             path = set(r["manholes"])
@@ -213,7 +221,7 @@ def main():
             results[t][r["id"]] = entry
 
     # ---- report
-    ids = [r["id"] for r in regions]
+    ids = [r["id"] for r in regions if r.get("family") != "greenfield"]
     def cell(e, L):
         x = e[str(L)]
         return f">{e['top_homes']:.0f}" if x["homes"] is None else f"{x['homes']:.0f}"
@@ -235,7 +243,8 @@ def main():
         say(f"  {i}: reached in {sum(1 for f in firsts if f)} of {len(firsts)} wet cases; " + ", ".join(f"{k} x{v}" for k, v in sorted(c.items(), key=lambda kv: -kv[1])))
     errs = [results[t][i][str(L)].get("worst_drop_step_err") for t in tags for i in ids for L in LIMITS]
     errs = [e for e in errs if e is not None]
-    say(f"\nReading between steps: with an interior step left out, the figure moves by a median of {statistics.median(errs):.0%} (worst per figure), up to {max(errs):.0%}; {len(errs)} figures.")
+    if errs:
+        say(f"\nReading between steps: with an interior step left out, the figure moves by a median of {statistics.median(errs):.0%} (worst per figure), up to {max(errs):.0%}; {len(errs)} figures.")
 
     # Within the plausible range, how many areas run out?
     say("\nAreas reaching the limit within their own 2041 share (100% build-out), of 8:")
@@ -252,6 +261,8 @@ def main():
         base = reg["base"][t]["depthMm"]
         bands[t] = {}
         for ri, r in enumerate(regions):
+            if r.get("family") == "greenfield":
+                continue
             rows = sorted((x for x in reg["rows"][t] if x["r"] == ri), key=lambda x: x["s"])
             dw = [0.0] + [x["dw"] for x in rows]
             share = rows[4]["dw"]

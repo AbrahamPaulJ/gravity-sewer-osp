@@ -1,0 +1,24 @@
+
+=== quiet on Design wet, margin 25 mm: float options 3825, useful 244
+  25 floats budget        0L+18F  worst  31% average  42%  unseen weather  28%  unseen region  22%  floats tripped before growth, median 0 of 7 wet cases
+  125 floats budget       0L+40F  worst  31% average  42%  unseen weather  31%  unseen region  22%  floats tripped before growth, median 3 of 7 wet cases
+  1 level sensor          1L+ 0F  worst  20% average  41%  unseen weather  41%  unseen region  11%
+  5 level sensors         5L+ 0F  worst  77% average  82%  unseen weather  82%  unseen region  40%
+  25 floats by case: {'Design wet': '40%', 'Beyond design': '42%', 'Severe': '51%', 'Design wet + age-weighted I&I': '31%', 'Design wet + outside inflow x1.5': '45%', 'Beyond design + age-weighted I&I': '41%', 'Beyond design + outside inflow x1.5': '44%'}
+
+=== quiet rule removed, margin 25 mm: float options 4538, useful 252
+  25 floats budget        0L+20F  worst  34% average  43%  unseen weather  29%  unseen region  22%  floats tripped before growth, median 1 of 7 wet cases
+  125 floats budget       0L+44F  worst  34% average  43%  unseen weather  32%  unseen region  22%  floats tripped before growth, median 3 of 7 wet cases
+  1 level sensor          1L+ 0F  worst  20% average  41%  unseen weather  41%  unseen region  11%
+  5 level sensors         5L+ 0F  worst  77% average  82%  unseen weather  82%  unseen region  40%
+  25 floats by case: {'Design wet': '40%', 'Beyond design': '42%', 'Severe': '51%', 'Design wet + age-weighted I&I': '34%', 'Design wet + outside inflow x1.5': '45%', 'Beyond design + age-weighted I&I': '41%', 'Beyond design + outside inflow x1.5': '44%'}
+
+=== quiet rule removed, margin 10 mm: float options 4538, useful 370
+  25 floats budget        0L+23F  worst  71% average  73%  unseen weather  54%  unseen region  33%  floats tripped before growth, median 0 of 7 wet cases
+  125 floats budget       0L+66F  worst  71% average  73%  unseen weather  57%  unseen region  39%  floats tripped before growth, median 2 of 7 wet cases
+  25 floats by case: {'Design wet': '73%', 'Beyond design': '76%', 'Severe': '71%', 'Design wet + age-weighted I&I': '72%', 'Design wet + outside inflow x1.5': '74%', 'Beyond design + age-weighted I&I': '71%', 'Beyond design + outside inflow x1.5': '75%'}
+
+=== quiet rule removed, margin 0 mm: float options 4538, useful 417
+  25 floats budget        0L+18F  worst  94% average  97%  unseen weather  62%  unseen region  62%  floats tripped before growth, median 2 of 7 wet cases
+  125 floats budget       0L+69F  worst  94% average  97%  unseen weather  84%  unseen region  73%  floats tripped before growth, median 3 of 7 wet cases
+  25 floats by case: {'Design wet': '97%', 'Beyond design': '94%', 'Severe': '97%', 'Design wet + age-weighted I&I': '97%', 'Design wet + outside inflow x1.5': '97%', 'Beyond design + age-weighted I&I': '97%', 'Beyond design + outside inflow x1.5': '100%'}

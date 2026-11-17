@@ -634,7 +634,8 @@ const App = (() => {
           <tr><td>Pipes: size, material, year, length, inverts</td><td>200 L a person a day, 2.3 people a home, peak 2×</td><td>Flow and level records</td></tr>
           <tr><td>Manholes: lid and floor levels</td><td>Leakage per 100 m of pipe, by weather</td><td>Pump station run times</td></tr>
           <tr><td>Homes connected; growth to 2041 (projections)</td><td>Pipe limit 0.7 of pipe height</td><td>Rainfall response, blockage history</td></tr>
-          <tr><td>3 pump stations and rising mains</td><td>Roughness n by material</td><td>Calibration</td></tr></table>`)}
+          <tr><td>3 pump stations and rising mains</td><td>Roughness n by material</td><td>Calibration</td></tr>
+          <tr><td>Pipe room for new estates: sewer supplement Table 4.4, DN150 to DN300</td><td>A new estate joins at an edge connection with open land beside it; its size is capped at the pipe's room (log-log interpolation between table sizes); sewage only, no extra leakage</td><td>Where estates could really join, and how big</td></tr></table>`)}
         ${nextBtn()}`;
     },
     pipeCard() {
@@ -661,7 +662,7 @@ const App = (() => {
   // [id, title, what it does, detail view, part]; step 2 is split into three parts.
   const PIPELINE = [
     ["1", "Build the network model", "Pipes, manholes, inverts, lids and connected homes from public layers, assembled into one hydraulic model.", "network", "sim"],
-    ["2a", "Where the homes go", "Infill: new homes spread through existing streets, region by region, in steps from 10% to 300% of the 2041 projection. Greenfield: a new estate joining at one manhole (explored in Simulation 4; the plan here rests on infill).", "simulate", "sim"],
+    ["2a", "Where the homes go", "Infill: new homes spread through existing streets, region by region, in steps from 10% to 300% of the 2041 projection. Greenfield: a new estate joining at one point on the network's edge (explored in Simulation 4). The five sensors were chosen on infill, then tested on new estates at the edge.", "simulate", "sim"],
     ["2b", "What each home sends", "Sewage per home: 2.3 people × 200 L a day, peaking at twice the average, loaded where each home connects.", "simulate", "sim"],
     ["2c", "How wet it is", "Infiltration that depends on the weather: 8 cases, from a dry day to severe leakage into old pipes, because the weather to plan for is unknown.", "simulate", "sim"],
     ["3", "Simulate sewer levels", "PySWMM runs EPA SWMM 5 for every scenario until flows settle: 504 runs, each giving the water level at every manhole.", "insights", "sim"],
@@ -1001,7 +1002,7 @@ const App = (() => {
           <table class="matrix"><tr><th></th>${wet.map(t => `<th title="${caseLabel(t)}">${caseTiny(t)}</th>`).join("")}</tr>
           ${alone.map((row, j) => `<tr><th>S${j + 1}</th>${row.map(x => `<td style="background:${rgba(PAL.sensor, (x.share * 0.85).toFixed(2))};${x.share > 0.5 ? `color:${PAL.bg}` : ""}" title="${x.hit} of ${x.n}">${Math.round(x.share * 100)}</td>`).join("")}</tr>`).join("")}</table>
           <div class="hint">% of runs each sensor sees alone, per weather case. A column with one strong cell rests on one site.</div>` : `<div class="card muted">Random has no single set to stress.</div>`}
-        ${fold("Read these carefully", `<ul class="plain"><li>Percentages count only growth that shows somewhere (≥ 10 mm at some manhole).</li><li>Many sets tie: read the plan as areas, not exact lids.</li><li>The best set changes with the count: going from 4 to 5 sensors moves some of them. The nested list never moves a sensor, but sees less in the worst case (81% against 88% at 5); it does slightly better on unseen weather (77% against 75%).</li><li>One site carries the worst case in both: if it fails, the worst case drops to 0%. Check that site first, or double it.</li><li>Costs are ${PRICE_NOTE}.</li></ul>`)}
+        ${fold("Read these carefully", `<ul class="plain"><li>Percentages count only growth that shows somewhere (≥ 10 mm at some manhole).</li><li>Many sets tie: read the plan as areas, not exact lids.</li><li>The best set changes with the count: going from 4 to 5 sensors moves some of them. The nested list never moves a sensor, but sees less in the worst case (81% against 88% at 5); it does slightly better on unseen weather (77% against 75%).</li><li>One site carries the worst case in both: if it fails, the worst case drops to 0%. Check that site first, or double it.</li><li>Costs are ${PRICE_NOTE}.</li><li>New estates were tested separately. The five sensors were chosen on infill growth (504 runs) and then tried on greenfield growth (510 runs: a new estate joining at one of 9 edge connections, 55 sizes in each weather case). On a wet day within design they see a rise of 10 mm or more in 6 of 55 runs, 2 directly and 4 by backwater; in severe weather, 23 of 55. When greenfield is included in the choice, the same searches give a different five. Today's five reach 81% (worst wet case) and 94% (average) on infill but 17% and 40% on greenfield; the five chosen on both reach 50% and 84% on infill and 53% and 69% on greenfield. The recommendation shown here is unchanged.</li></ul>`)}
         ${nextBtn()}`;
     },
     click(i) {
@@ -1303,8 +1304,9 @@ const App = (() => {
         ${fold("How sure we are", `<table class="mini"><tr><th class="in">Firm</th><th class="out">Say carefully</th></tr>
           <tr><td>Where growth shows, and which regions</td><td>Exact lids: many sites tie</td></tr>
           <tr><td>Five beat one when weather is unknown</td><td>Uncalibrated, steady-state model</td></tr>
-          <tr><td>Level beats floats for early warning</td><td>Timing and costs are assumed</td></tr></table>`)}
-        ${fold("What we need from you", `<ul class="plain"><li>Level or flow records of a normal day, to tell which weather case is realistic: that decides how many sensors are needed.</li><li>Your pipe ratings and capacity limit.</li><li>Development approvals, year by year.</li></ul>`)}
+          <tr><td>Level beats floats for early warning</td><td>Timing and costs are assumed</td></tr>
+          <tr><td>New estates at the edge were tested: 9 connections, 510 runs</td><td>The five see few of them (17% worst wet case, 40% average), mostly by backwater rather than directly; model uncalibrated</td></tr></table>`)}
+        ${fold("What we need from you", `<ul class="plain"><li>Level or flow records of a normal day, to tell which weather case is realistic: that decides how many sensors are needed.</li><li>Your pipe ratings and capacity limit.</li><li>Development approvals, year by year.</li><li>Where new estates could join the network and how big they could be, so we can decide whether growth at the edge should shape the placement.</li></ul>`)}
         <h3>Next steps</h3>
         <ol class="redo"><li>Pilot <b>one level sensor</b> at Sensor 1, the site the worst case rests on, for a wet season.</li><li>Calibrate the model on what it records.</li><li>Re-run the placement on the calibrated runs before buying the rest.</li></ol>
         <div class="links"><a class="link" href="../simulation4/index.html" target="_blank" rel="noopener">Simulation 4, in full ↗</a> <a class="link" href="../simulation4/redo.html" target="_blank" rel="noopener">Redo guide ↗</a></div>

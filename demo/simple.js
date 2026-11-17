@@ -114,7 +114,7 @@
       panel() {
         const a = st.approach, x = facts(), STEPS = [
           ["1", "Map the pipes", "Every pipe and manhole, from public maps, into a computer model.", "network"],
-          ["2a", "Where new homes go", "The homes expected by 2041, added one area at a time, in small steps.", "simulate"],
+          ["2a", "Where new homes go", "The homes expected by 2041, added one area at a time, in small steps. The sensors were picked on this, then tried on new estates at the edge of the network.", "simulate"],
           ["2b", "What each home sends", "About 460 litres a day from a typical home (2.3 people), more at peak times.", "simulate"],
           ["2c", "How wet it is", `From a dry day to an extreme wet one. On a normal wet day, rain leaks in at about half a running garden tap for every 100 m of pipe.`, "simulate"],
           ["3", "Run the model", "504 possible futures, each giving the water level in every manhole.", "insights"],
@@ -202,6 +202,7 @@
           <div data-row="homes" class="rowwrap ${c.method === "homes" ? "on" : ""}">${dotRow("Rule of thumb: most homes upstream", x.homes, x.n, _.pal().pink)}</div>
           <div class="rowwrap">${dotRow("5 manholes picked at random (typical)", x.random, x.n, _.pal().failed)}</div>
           <div class="hint">Across all ${allTags().length - 1} kinds of wet weather, our 5 notice <b>${x.all} of ${x.allN}</b> futures.</div>
+          <div class="hint"><b>New estates:</b> we also tried a new estate joining at the edge of the network, in 510 more futures (separate from the 504 used to pick the 5). Our 5 notice 6 of 55 on a wet day, 2 from the estate's own flow and 4 as water backing up from downstream, and 23 of 55 on an extreme wet day. The 5 were picked on homes in existing streets and are unchanged. Picking for both kinds of growth would give a different 5: it notices fewer in the streets (50% in the hardest weather, against 81%) and more at the edge (53%, against 17%).</div>
           <div class="hint"><b>One weak spot:</b> if Sensor ${weak + 1} fails, the other four notice only ${wq.hit} of ${wq.n} futures on a ${weather(wq.tag).toLowerCase()}. Check it first, or put two there.</div>
           ${nextBtn()}`;
       },
@@ -272,8 +273,8 @@
           <h3>What we recommend</h3>
           <ol class="redo"><li><b>Start with one sensor</b> at the site the plan depends on most, for a wet season (about ${money(_.PRICE)}).</li><li><b>Check the model</b> against what it records.</li><li><b>Then place the rest</b>, about ${money(5 * _.PRICE)} for five, at assumed prices.</li></ol>
           <div class="hint"><b>Why it matters:</b> sensors give years of warning before a spill, and time to plan a fix rather than react to one.</div>
-          ${fold("What we need from you", `<ul class="plain"><li>A few weeks of water-level or flow readings from a normal day.</li><li>Your pipe ratings: how full is too full.</li><li>Where new homes are approved, year by year.</li></ul>`)}
-          ${fold("How sure we are", `<ul class="plain"><li><b>Firm:</b> where growth shows, and that five sensors beat one when the weather is unknown.</li><li><b>Less sure:</b> exact lids (many nearby sites do as well), timing, and costs. The model is not yet checked against real readings.</li></ul>`)}
+          ${fold("What we need from you", `<ul class="plain"><li>A few weeks of water-level or flow readings from a normal day.</li><li>Your pipe ratings: how full is too full.</li><li>Where new homes are approved, year by year.</li><li>Where new estates could join the network and how big they could be, so we can decide whether growth at the edge should shape the sensor sites.</li></ul>`)}
+          ${fold("How sure we are", `<ul class="plain"><li><b>Firm:</b> where growth shows, and that five sensors beat one when the weather is unknown.</li><li><b>Less sure:</b> exact lids (many nearby sites do as well), timing, and costs. The model is not yet checked against real readings.</li><li><b>Assumed:</b> a new estate joins where there is open land at the edge of the network, no bigger than the pipe has room for, and adds sewage only.</li><li><b>Weak:</b> our 5 notice few new estates at the edge, and mostly as water backing up rather than the estate's own flow.</li></ul>`)}
           ${nextBtn()}`;
       },
     },

@@ -1,37 +1,40 @@
 Sim 4 greenfield plan
 New estate outside the network; one existing manhole connection.
-Eligible: 6 of 328 candidates.
-Excluded - receives pumped or outside flow: 3
-Excluded - not on the network's edge: 298
-Excluded - unknown diameter: 0
-Excluded - headroom below 10: 12
-Excluded - same edge stretch as MH1631057: 3
-Excluded - same edge stretch as MH4320104: 5
-Excluded - same edge stretch as MH4449485: 1
+Eligible: 9 of 887 candidates.
+Excluded - receives pumped or outside flow: 18
+Excluded - not on the network's edge: 763
+Excluded - headroom below 10: 38
+Excluded - sewage leaves the model here: 7
+Excluded - same land and sensor class as N67: 6
+Excluded - same land and sensor class as MH1631057: 28
+Excluded - same land and sensor class as N677: 11
+Excluded - same land and sensor class as MH4452680: 5
+Excluded - same land and sensor class as MH4450314: 1
+Excluded - same land and sensor class as N153: 1
 Cases: 11 (eight).
-Growth sizes per case: 36.
-Planned runs: 339 (including 11 baselines).
+Growth sizes per case: 55.
+Planned runs: 510 (including 11 baselines).
 Gravity outlets: 6.
 Unknown-diameter pipes: 0.
 This plan does not run SWMM.
 
 A greenfield estate joins a manhole on the network's edge, where open land lies beside it (an open sector of at least 120 degrees with no pipes or homes within 200 m, clear for 400 m along its middle); an estate in the middle of the built network would need a second sewer under existing streets.
 This family is for understanding whether the infill-chosen sensors notice hypothetical growth at an edge connection. It is not a planning, serviceability or capacity study; geometric openness does not establish access, land availability or a feasible receiving invert.
-Geometry uses every gravity pipe held by Network, including non-domain/statewide pipes if held, sampled every 10 m, and all retained homes and property connection points. It does not import extra surrounding GIS. The sector ignores points within 15 m; the 60 m clearance is checked along the ray from 60 m to its configured end, allowing the short connection beside the existing pipe.
+Geometry uses every gravity pipe held by Network, including non-domain/statewide pipes if held, sampled at most every 1 m, including every bend, and all retained homes and property connection points. It does not import extra surrounding GIS. The sector and clearance checks ignore points within 15 m; the 60 m clearance is checked along the ray from 60 m to its configured end, allowing the short connection beside the existing pipe.
 outgoing_dn is a list of recorded diameters in mm, in outgoing pipe order; limiting_pipe_dn is also in mm. Pipe ids are published asset ids; pipe indices are Network indices.
 At splits, every downstream route must have headroom. Shared upstream properties are counted once per pipe, including relief loops; no hydraulic flow split is assumed.
-Limits are from SA Water Supplement Table 4.4 for reticulation sewers (DN150-300). Only pipes DN <= 300 constrain property headroom on each downstream path. Branch and trunk capacity (DN375+) is left to SWMM, with no property limit above DN300.
-Below DN150 the limit scales from DN150; other unlisted reticulation diameters scale from the nearest Table 4.4 DN at equal slope and roughness. This is a team calculation.
+Limits are from the sewer supplement Table 4.4 for reticulation sewers (DN150-300). Only pipes DN <= 300 constrain property headroom on each downstream path. Branch and trunk capacity (DN375+) is left to SWMM, with no property limit above DN300.
+Below DN150 the limit scales from DN150; DN150 through DN300 use log-log interpolation between Table 4.4 anchors. This is a team assumption.
 Estate sizes, the short connection at the network edge and estate infiltration are team assumptions because no public data gives them. The estate adds sewage only, with no extra infiltration for its own new pipes, exactly as Sim25Model growth does. For paths without a reticulation constraint, the largest configured estate size caps the ladder only.
 Table 4.4 limits apply to total EP on a pipe, expressed here as equivalent properties using the configured Table 4.4 property limits; they are not an allowance for new properties alone.
 Boundary conversion is a team estimate: use Sim25's estimated/countable connections, not total boundary L/s divided by sewage per property. Boundary L/s includes both sewage and I&I, on the nominal Sim25 case basis.
 Counts include unique upstream Pipe.dwellings, boundary properties at their joins and wet-well catchments transferred at pump discharges. Downstream checks follow pumps as well as gravity pipes. Hydraulic constraints are tested by the SWMM run stage.
-Headroom is displayed to one decimal; integer steps use floor of unrounded headroom, capped at the largest configured step for every site. All smaller configured steps are retained. 'No table cap' means no Table 4.4 property limit above DN300, not unlimited hydraulic capacity.
+Headroom is displayed to one decimal in this report and retained unrounded in JSON; integer steps use floor of unrounded headroom, capped at the largest configured step for every site. All smaller configured steps are retained. 'No table cap' means no Table 4.4 property limit above DN300, not unlimited hydraulic capacity.
 Existing dwellings use 2.81 people per connection; new dwellings use 2.3, both at the same configured peaking factor (2 for these peak-hour cases). b1.5 multiplies boundary sewage AND boundary I&I by 1.5; it does not multiply existing in-domain sewage, in-domain I&I or estate sewage. Estates add no infiltration: a sewage-only control. Pumped estates use their smoothed peak-hour flow in the primary cases.
-The _pumprate bracket uses max(estate peak-hour flow, 7.8540 L/s), from 1 m/s in the smallest published rising main DN100, only for sites flagged levels.pumped in simulation4/data/estates.js. Gravity estates are unchanged. This is steady depth while the pump runs, an upper bound, not a volume-preserving duty-cycle model.
-Missing pumped flags are treated as gravity: none.
-The _together case loads all representatives at once at 30, 80 and 150 homes each, capped individually. The _with_infill case loads every representative at 150 homes (or its ceiling) on top of the largest Sim4 infill step in each distinct containing region. Its baseline includes that same infill background, so rises isolate the additional estates.
-Exclusion order: receives pumped or outside flow, not on the network's edge, unknown diameter, headroom below minimum, then same edge stretch. Clusters are connected components sharing a non-null limiting pipe or within the configured distance and bearing difference; the largest open sector wins, then the lowest manhole id. Counts are exclusive.
+The _pumprate bracket uses max(estate peak-hour flow, 7.8540 L/s), from 1 m/s in the smallest published rising main DN100, for pumped estates and estates with unknown pump status in simulation4/data/estates.js. This is steady depth while the pump runs, an upper bound, not a volume-preserving duty-cycle model.
+Unknown pump status runs both steady peak and pump rate: MH4450314, MH4452680, MH4452902, N153, N331, N67, N677.
+The _together case loads land-group primaries at 30, 80 and 150 homes each, reduced for shared limiting-pipe room. The _with_infill case loads land-group primaries at up to 150 homes each within shared room on top of the largest Sim4 infill step in each distinct containing region. Its baseline includes that same infill background, so rises isolate the additional estates.
+Land groups chain edge points within the configured distance and circular bearing difference, including exits. Exits are not connections. Each downstream-sensor class has one connection, ranked by point kind, room, open sector and site id. Combined cases use only land-group primaries.
 Remaining limits: no pump duty-cycle bursts; free outfall (no tailwater); steady peak hour only (no trough, diurnal or wet-weather timing); relief inlets as configured (published).
 The gravity domain has 6 terminals, including pump wet wells and relief exits; all reachable downstream gravity paths are checked.
 
@@ -73,50 +76,82 @@ Entry id | Node | Manhole | L/s | Equivalent properties | Method
 Limiting pipes for eligible or excluded edge connections:
 Asset id | DN (mm) | Headroom | Edge connections
 1495347 | 143 | 349.1 | 1
-1495435 | 143 | 311.1 | 1
-4433084 | 150 | 390.0 | 1
-4433419 | 150 | 125.1 | 2
-4433425 | 300 | -56.1 | 7
-4433482 | 150 | -325.5 | 5
-4476322 | 225 | 895.2 | 5
-4476326 | 300 | 1562.2 | 1
-None | unknown | no table cap | 4
+1495401 | 150 | 393.0 | 1
+1495435 | 143 | 311.1 | 4
+4405134 | 150 | 396.0 | 1
+4405151 | 150 | 390.0 | 1
+4405156 | 150 | 398.0 | 1
+4432943 | 150 | 353.5 | 1
+4433055 | 150 | 324.0 | 1
+4433084 | 150 | 390.0 | 4
+4433166 | 150 | 343.7 | 1
+4433185 | 150 | 292.8 | 2
+4433363 | 150 | 398.0 | 1
+4433402 | 225 | 976.0 | 1
+4433408 | 143 | 343.1 | 2
+4433412 | 150 | 398.0 | 1
+4433419 | 150 | 125.1 | 11
+4433425 | 300 | -56.1 | 26
+4433482 | 150 | -325.5 | 15
+4476322 | 225 | 895.2 | 16
+4476326 | 300 | 1562.2 | 3
+4476332 | 300 | 1562.2 | 1
+None | unknown | 0.0 | 1
+None | unknown | no table cap | 10
 
 Obstacle coverage: 890 domain pipes -> 1001 Network gravity pipes.
-Eligible before clustering: clipped 16 -> all Network 15.
-Removed: [4450802]; added: [].
+Eligible before clustering: clipped 64 -> all Network 63.
+Removed: ['MH4450802']; added: [].
 
 Edge-rule sensitivity (all Network obstacles; no SWMM):
 Open deg | Radius m | Eligible before clustering | Representatives
-90 | 150 | 15 | 6
-90 | 200 | 15 | 6
-90 | 300 | 15 | 6
-120 | 150 | 15 | 6
-120 | 200 | 15 | 6
-120 | 300 | 13 | 6
-150 | 150 | 14 | 7
-150 | 200 | 12 | 5
-150 | 300 | 9 | 3
+90 | 150 | 65 | 9
+90 | 200 | 64 | 8
+90 | 300 | 59 | 7
+120 | 150 | 63 | 10
+120 | 200 | 63 | 9
+120 | 300 | 57 | 6
+150 | 150 | 53 | 8
+150 | 200 | 50 | 7
+150 | 300 | 43 | 6
 
 Eligible estate connections:
-Manhole | Headroom | Limiting pipe | DN (mm) | Open bearing (deg) | Open sector (deg) | Estate steps (properties) | Connection | Pumped
-1625959 | 311.1 | 1495435 | 143 | 111.8 | 227.5 | 10, 30, 80, 150, 300, 311 | reticulation | True
-1630702 | 349.1 | 1495347 | 143 | 75.0 | 139.9 | 10, 30, 80, 150, 300, 349 | reticulation | True
-1631057 | no table cap | None | n/a | 238.3 | 164.4 | 10, 30, 80, 150, 300, 600, 1000 | trunk | True
-4320104 | 895.2 | 4476322 | 225 | 198.6 | 180.3 | 10, 30, 80, 150, 300, 600, 895 | reticulation | True
-4449485 | 125.1 | 4433419 | 150 | 315.0 | 173.8 | 10, 30, 80, 125 | reticulation | False
-4456468 | 390.0 | 4433084 | 150 | 46.6 | 177.0 | 10, 30, 80, 150, 300, 390 | reticulation | True
+Site | Headroom | Limiting pipe | DN (mm) | Open bearing (deg) | Open sector (deg) | Estate steps (properties) | Connection | Pumped
+MH1630702 | 349.1 | 1495347 | 143 | 75.0 | 139.9 | 10, 30, 80, 150, 300, 349 | reticulation | True
+MH1631057 | no table cap | None | n/a | 240.7 | 169.1 | 10, 30, 80, 150, 300, 600, 1000 | trunk | True
+MH4450314 | 292.8 | 4433185 | 150 | 317.3 | 171.9 | 10, 30, 80, 150, 292 | reticulation | False
+MH4452680 | no table cap | None | n/a | 136.8 | 124.2 | 10, 30, 80, 150, 300, 600, 1000 | trunk | False
+MH4452902 | 353.5 | 4432943 | 150 | 340.0 | 120.3 | 10, 30, 80, 150, 300, 353 | reticulation | False
+N153 | 311.1 | 1495435 | 143 | 202.9 | 228.1 | 10, 30, 80, 150, 300, 311 | reticulation | False
+N331 | 393.0 | 1495401 | 150 | 98.5 | 142.8 | 10, 30, 80, 150, 300, 393 | reticulation | False
+N67 | 390.0 | 4433084 | 150 | 68.4 | 221.2 | 10, 30, 80, 150, 300, 390 | reticulation | False
+N677 | 343.7 | 4433166 | 150 | 329.9 | 139.4 | 10, 30, 80, 150, 300, 343 | reticulation | False
 
-Edge stretches (representative <- all cluster members):
-MH1625959 <- MH1625959
-MH1631057 <- MH1629194, MH1631057, MH1631514, MH4502186
-MH1630702 <- MH1630702
-MH4320104 <- MH4320104, MH4320244, MH4499632, MH4500043, MH4500422, MH4501201
-MH4449485 <- MH4448626, MH4449485
-MH4456468 <- MH4456468
+Usable edge points: 61.
+Points with a sensor downstream: 2.
+Land groups: 9.
+Land groups with a covered connection: 1.
+Sensors: MH4428268, MH4448345, MH4450531, MH4450922, MH4452994
+
+Land groups:
+L1: MH1629194, MH1631057, MH1631514, MH4320104, MH4320244, MH4499632, MH4500043, MH4500422, MH4501201, MH4502186, N0, N122, N149, N158, N176, N210, N211, N276, N34, N35, N434, N45, N507, N569, N600, N754, N887, N888, N98; connections ['MH1631057']; primary MH1631057; span 1443.2 m;
+L2: MH4447369, MH4448626, MH4449485, MH4450314, N4, N488, N489, N593, N677, N698, N699, N762, N878, N990; connections ['MH4450314', 'N677']; primary N677; span 544.1 m;
+L3: MH1623436, MH1625959, MH4456468, N67, N694, N875, N997; connections ['N67']; primary N67; span 331.3 m;
+L4: MH4452680, MH4453788, MH4453850, N715, N834, N837; connections ['MH4452680']; primary MH4452680; span 318.3 m;
+L5: N153, N801; connections ['N153']; primary N153; span 93.3 m;
+L6: X385, X902; connections []; primary None; span 106.6 m; every point is an exit
+L7: MH1630702; connections ['MH1630702']; primary MH1630702; span 0 m;
+L8: MH4452902; connections ['MH4452902']; primary MH4452902; span 0 m;
+L9: N331; connections ['N331']; primary N331; span 0 m;
+
+Combined sizes reduced or skipped:
+ii0.11_flat_uniform_b1_sfree_together / 30: {'MH1630702': 30, 'MH1631057': 30, 'MH4452680': 30, 'MH4452902': 30, 'N153': 30, 'N331': 30, 'N67': 30, 'N677': 30}
+ii0.11_flat_uniform_b1_sfree_together / 80: {'MH1630702': 80, 'MH1631057': 80, 'MH4452680': 80, 'MH4452902': 80, 'N153': 80, 'N331': 80, 'N67': 80, 'N677': 80}
+ii0.11_flat_uniform_b1_sfree_together / 150: {'MH1630702': 150, 'MH1631057': 150, 'MH4452680': 150, 'MH4452902': 150, 'N153': 150, 'N331': 150, 'N67': 150, 'N677': 150}
+ii0.11_flat_uniform_b1_sfree_with_infill / 150: {'MH1630702': 150, 'MH1631057': 150, 'MH4452680': 150, 'MH4452902': 150, 'N153': 150, 'N331': 150, 'N67': 150, 'N677': 150}
 
 Separate cases:
-ii0.11_flat_uniform_b1_sfree_pumprate: 36 growth runs + 1 baseline
+ii0.11_flat_uniform_b1_sfree_pumprate: 55 growth runs + 1 baseline
 ii0.11_flat_uniform_b1_sfree_together: 3 growth runs + 1 baseline
 ii0.11_flat_uniform_b1_sfree_with_infill: 1 growth runs + 1 baseline
-Planned runs: 339 (including 11 baselines).
+Planned runs: 510 (including 11 baselines).

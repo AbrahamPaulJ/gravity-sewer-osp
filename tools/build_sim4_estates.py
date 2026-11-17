@@ -4,11 +4,17 @@
 Generates one seeded planar street map in the open land (~40 m to 1.2 km) around the
 existing network, patterned on local Adelaide street statistics from osm_streets_ext.json
 (segment lengths, block sizes, T vs 4-way junction shares, cul-de-sac share/length,
-collector curvature). Each of the 6 eligible edge sites takes contiguous blocks nearest
-its exit until its largest requested step fits, lays out rectangular houses on ground
-contours, and routes a terrain-following sewer tree (gravity if feasible within 1.4-6.5 m
-depth, otherwise pumped from a wet well at the estate's lowest ground point with a rising
-main back along streets to the site manhole).
+collector curvature). Each of the 9 connections in plan.json gets its own entry and takes
+contiguous blocks nearest it, never a block another estate holds, until its largest step
+fits. Houses are laid out on ground contours and a terrain-following sewer tree is routed
+along the streets that serve them: gravity if feasible within 1.4-6.5 m depth, otherwise a
+wet well at the estate's lowest ground point, with a rising main along the streets to the
+connection. Where a sewer would pass 6.5 m (long runs on flat land, a valley behind a
+ridge), a small lift well takes the upstream flow. Manholes sit at junctions, turns over
+30 deg, changes of grade, drops and 120 m spacing; dead ends stop at a plain pipe end, as most
+do in the real network. Each manhole-to-manhole run is
+graded on its own and arrives through a drop where it meets a deeper pipe. Each size draws
+whole runs, so a larger size always contains the smaller one.
 
     .venv/bin/python tools/build_sim4_estates.py          writes estates.js
     .venv/bin/python tools/build_sim4_estates.py --check  compares without writing
@@ -19,6 +25,7 @@ import math
 import os
 import random
 import sys
+import zlib
 from collections import Counter, defaultdict
 
 import numpy as np
@@ -63,6 +70,35 @@ def sample(line, step=3.0):
 def rectangle(origin, along, across, a, b, c, d):
     return [(origin[0] + along[0] * x + across[0] * y, origin[1] + along[1] * x + across[1] * y)
             for x, y in ((a, c), (b, c), (b, d), (a, d))]
+
+
+def house_outline(ring):
+    """A house footprint inside its checked lot rectangle: plain, L-shaped, stepped or with a
+    narrower rear wing, so the estate does not read as identical boxes. The outline never leaves
+    the rectangle, so the spacing and street checks made on the rectangle still hold. The shape
+    is seeded from the rectangle itself, so it does not change the rest of the layout."""
+    p0, p1, p2, p3 = ring                      # front-left, front-right, back-right, back-left
+    rng = random.Random(zlib.crc32(repr([(round(x, 1), round(y, 1)) for x, y in ring]).encode()))
+    at = lambda u, v: (p0[0] + (p1[0] - p0[0]) * u + (p3[0] - p0[0]) * v,
+                       p0[1] + (p1[1] - p0[1]) * u + (p3[1] - p0[1]) * v)
+    front = rng.uniform(0.0, 0.12)             # a varied front setback inside the lot
+    kind = rng.random()
+    if kind < 0.25:
+        uv = [(0, front), (1, front), (1, 1), (0, 1)]
+    elif kind < 0.55:                           # L: one front corner left open (porch or yard)
+        cu, cv = rng.uniform(0.3, 0.5), rng.uniform(front + 0.2, front + 0.4)
+        uv = [(cu, front), (1, front), (1, 1), (0, 1), (0, cv), (cu, cv)]
+        if rng.random() < 0.5:
+            uv = [(1 - u, v) for u, v in reversed(uv)]
+    elif kind < 0.8:                            # stepped: garage set forward on one side
+        cu, cv = rng.uniform(0.35, 0.55), rng.uniform(front + 0.12, front + 0.25)
+        uv = [(0, front), (cu, front), (cu, cv), (1, cv), (1, 1), (0, 1)]
+        if rng.random() < 0.5:
+            uv = [(1 - u, v) for u, v in reversed(uv)]
+    else:                                       # narrower rear wing
+        a, b, cv = rng.uniform(0.0, 0.2), rng.uniform(0.6, 0.85), rng.uniform(0.55, 0.75)
+        uv = [(0, front), (1, front), (1, cv), (b, cv), (b, 1), (a, 1), (a, cv), (0, cv)]
+    return [at(u, v) for u, v in uv]
 
 
 def network_points(g):
@@ -207,14 +243,15 @@ def find_exit_points(g, plan, occupancy):
     nb = defaultdict(list)
     for u, v in zip(g["up"], g["down"]):
         nb[u].append(v); nb[v].append(u)
-    elig_by_mh = {str(r["manhole_id"]): r for r in plan["eligible"]}
-    exits = [{"nid": next(i for i, n in enumerate(g["nodes"]) if str(n.get("mh")) == str(r["manhole_id"])),
-              "xy": tuple(map(float, xy[next(i for i, n in enumerate(g["nodes"]) if str(n.get("mh")) == str(r["manhole_id"]))])),
+    # Connections are keyed by site id (the node name): four are pipe ends with no manhole id.
+    nid_of = {n["name"]: i for i, n in enumerate(g["nodes"])}
+    elig = {r["site_id"] for r in plan["eligible"]}
+    exits = [{"nid": nid_of[r["site_id"]], "xy": tuple(map(float, xy[nid_of[r["site_id"]]])),
               "bearing_deg": float(r["open_bearing_deg"]), "sector_deg": float(r["open_sector_deg"]),
-              "manhole_id": int(r["manhole_id"])} for r in plan["eligible"]]
+              "manhole_id": r["site_id"]} for r in plan["eligible"]]
     cands = []
     for i, n in enumerate(g["nodes"]):
-        if str(n.get("mh")) in elig_by_mh:
+        if n["name"] in elig:
             continue
         p = xy[i]
         fkd = cKDTree(occupancy[np.linalg.norm(occupancy - p, axis=1) > 25])
@@ -478,6 +515,12 @@ def generate_street_map(g, exits, occupancy, stats, ground, seed=MAP_SEED):
         entry_xy = next(((ex["xy"][0] + d * v[0], ex["xy"][1] + d * v[1])
                          for d in (46.0, 49.0, 52.0, 44.5)
                          if smap.in_open_land((ex["xy"][0] + d * v[0], ex["xy"][1] + d * v[1]))), None)
+        if entry_xy is None and isinstance(ex["manhole_id"], str):
+            # A connection must get an entry: widen the search around its open bearing.
+            entry_xy = next(((ex["xy"][0] + d * math.sin(b + math.radians(t)), ex["xy"][1] + d * math.cos(b + math.radians(t)))
+                             for d in range(40, 161, 6) for t in (0, -10, 10, -20, 20, -30, 30, -45, 45)
+                             if smap.in_open_land((ex["xy"][0] + d * math.sin(b + math.radians(t)),
+                                                   ex["xy"][1] + d * math.cos(b + math.radians(t))))), None)
         if entry_xy is None or any(math.dist(entry_xy, smap.nodes[nid]) < 30.0 for _, nid, _ in smap.exit_links):
             continue
         nid = smap.add_node(entry_xy)
@@ -790,8 +833,11 @@ def _est_cut_depth(smap, edges, node_gz, edge_samples):
     return worst
 
 
-def select_estate_blocks(smap, entry_nid, site_xy, need, node_gz, edge_samples, rng):
-    """Select contiguous blocks nearest by street distance to entry_nid, keeping sewer depth <= ~6 m."""
+def select_estate_blocks(smap, entry_nid, site_xy, need, node_gz, edge_samples, rng, taken=frozenset()):
+    """Select contiguous blocks nearest by street distance to entry_nid, keeping sewer depth <= ~6 m.
+
+    Blocks with a street already used by another estate (taken) are skipped, and no houses are
+    placed on taken streets, so estates never draw on top of each other."""
     blocks = smap.extract_blocks(site_xy)
     dist, prev_n, pq = {entry_nid: 0.0}, {entry_nid: None}, [(0.0, entry_nid)]
     while pq:
@@ -806,6 +852,8 @@ def select_estate_blocks(smap, entry_nid, site_xy, need, node_gz, edge_samples, 
     block_info, edge_to_blocks = [], defaultdict(list)
     for face in blocks:
         if any(u not in dist for u in face):
+            continue
+        if any((min(face[i], face[(i + 1) % len(face)]), max(face[i], face[(i + 1) % len(face)])) in taken for i in range(len(face))):
             continue
         f_edges = [(min(face[i], face[(i + 1) % len(face)]), max(face[i], face[(i + 1) % len(face)])) for i in range(len(face))]
         pts = [smap.nodes[u] for u in face]
@@ -870,7 +918,7 @@ def select_estate_blocks(smap, entry_nid, site_xy, need, node_gz, edge_samples, 
         street_len = sum(math.dist(smap.nodes[a], smap.nodes[b]) for a, b in full_edges)
         avail = [i for i in range(len(block_info)) if i not in chosen and i not in deferred]
         if street_len >= next_check_len or not avail:
-            est_houses = _place_houses_on_edges(smap, full_edges, smap.occ_kd, random.Random(rng.randint(0, 10**9)), need)
+            est_houses = _place_houses_on_edges(smap, full_edges - taken, smap.occ_kd, random.Random(rng.randint(0, 10**9)), need)
             if len(est_houses) >= need or (not avail and not deferred):
                 sel_edges = full_edges
                 break
@@ -901,7 +949,7 @@ def select_estate_blocks(smap, entry_nid, site_xy, need, node_gz, edge_samples, 
 def chamber_design(down, xy, ground, covers, outlet, point_levels, fixed_root=None, extra_chambers=()):
     """Split a downstream tree into chamber runs and grade each run in plan distance."""
     down, xy, ground, covers = dict(down), dict(xy), dict(ground), dict(covers)
-    new_id = min(0, *down) - 1
+    new_id = min(0, *down, *xy) - 1
     for u, d in list(down.items()):
         if d is None:
             continue
@@ -980,23 +1028,39 @@ def chamber_design(down, xy, ground, covers, outlet, point_levels, fixed_root=No
         else:
             inv[d] = min(inv[d], centimetre(req))
     for run in runs:
-        length = sum(math.dist(xy[a], xy[b]) for a, b in zip(run, run[1:]))
-        dist = 0.0
-        for a, b in zip(run, run[1:]):
-            dist += math.dist(xy[a], xy[b])
-            if b != run[-1]:
-                inv[b] = inv[run[0]] + (inv[run[-1]] - inv[run[0]]) * dist / max(length, 1e-9)
+        cum, length, z_end = _run_end(run, xy, ground, covers, inv)
+        for b, dist in zip(run[1:-1], cum[1:-1]):
+            inv[b] = inv[run[0]] + (z_end - inv[run[0]]) * dist / length
     return down, xy, ground, covers, chambers, runs, inv
 
 
+def _run_end(run, xy, ground, covers, inv):
+    """Grade one manhole-to-manhole run on its own: its downstream end sits as high as minimum grade and
+    cover allow, and a run that arrives above the deeper outgoing pipe drops at that manhole."""
+    u, d = run[0], run[-1]
+    cum = [0.0]
+    for a, b in zip(run, run[1:]):
+        cum.append(cum[-1] + math.dist(xy[a], xy[b]))
+    length = max(cum[-1], 1e-9)
+    req = inv[u] - length * MIN_GRADE
+    for b, dist in zip(run[1:], cum[1:]):
+        if dist:
+            req = min(req, inv[u] - (inv[u] - (ground[b] - covers[b])) * length / dist)
+    return cum, length, max(inv[d], math.floor(req * 100 + 1e-8) / 100)
+
+
 def _build_terrain_tree(sub_xy, adj, root, tg):
-    best, down = {root: (tg[root], 0.0)}, {root: None}
-    pq = [(tg[root], 0.0, root)]
+    roots = root if isinstance(root, (list, tuple)) else [root]
+    best, down = {r: (tg[r], 0.0) for r in roots}, {r: None for r in roots}
+    pq = [(tg[r], 0.0, r) for r in roots]
+    heapq.heapify(pq)
     while pq:
         pk, d, v = heapq.heappop(pq)
         if (pk, d) > best[v]:
             continue
         for u in adj[v]:
+            if u in best and down[u] is None:
+                continue  # another well
             nd = d + math.dist(sub_xy[v], sub_xy[u])
             cand = (max(pk, tg[u] - MIN_GRADE * nd), nd)
             if cand < best.get(u, (1e18, 1e18)):
@@ -1024,17 +1088,20 @@ def _subdivide_estate_edges(smap, sel_edges, max_seg=25.0):
 
 def _design_with_grade_breaks(down, sub_xy, tg, covers, outlet, point_levels, fixed_root):
     extra = set()
-    for _ in range(8):
+    for _ in range(40):
         res = chamber_design(down, sub_xy, tg, covers, outlet, point_levels, fixed_root=fixed_root, extra_chambers=extra)
-        _, r_xy, r_tg, _, _, runs, inv = res
+        _, r_xy, r_tg, r_cov, _, runs, inv = res
         added = False
         for run in runs:
-            if len(run) <= 2 or max(r_tg[u] - inv[u] for u in run) <= 4.0:
+            if len(run) <= 2:
                 continue
-            d_cum = [0.0]
-            for a, b in zip(run, run[1:]):
-                d_cum.append(d_cum[-1] + math.dist(r_xy[a], r_xy[b]))
-            L, z0, z1 = max(1e-6, d_cum[-1]), r_tg[run[0]] - MIN_DEPTH_M, r_tg[run[-1]] - MIN_DEPTH_M
+            d_cum, L, z_end = _run_end(run, r_xy, r_tg, r_cov, inv)
+            grade = (inv[run[0]] - z_end) / L
+            deep = max(r_tg[u] - inv[u] for u in run[:-1]) > MAX_DEPTH_M - 0.5 and grade > MIN_GRADE + 0.002
+            steep = grade > max((r_tg[run[0]] - r_tg[run[-1]]) / L, MIN_GRADE) + 0.03
+            if not (deep or steep):
+                continue  # a manhole here would not make the run shallower or follow the ground better
+            z0, z1 = r_tg[run[0]] - MIN_DEPTH_M, r_tg[run[-1]] - MIN_DEPTH_M
             worst_i = max(range(1, len(run) - 1), key=lambda i: abs((r_tg[run[i]] - MIN_DEPTH_M) - (z0 + (z1 - z0) * d_cum[i] / L)))
             if run[worst_i] in down and run[worst_i] not in extra:
                 extra.add(run[worst_i]); added = True
@@ -1043,24 +1110,116 @@ def _design_with_grade_breaks(down, sub_xy, tg, covers, outlet, point_levels, fi
     return chamber_design(down, sub_xy, tg, covers, outlet, point_levels, fixed_root=fixed_root, extra_chambers=extra)
 
 
-def design_estate_sewers(smap, sel_edges, entry_nid, site, site_inv, site_depth, ground):
+def _prune(down, served):
+    """Keep only the sewers that carry some home's flow: no empty branches and no manholes for them."""
+    keep = set()
+    for u in served:
+        while u is not None and u not in keep and u in down:
+            keep.add(u); u = down[u]
+    return {u: d for u, d in down.items() if u in keep or d is None}
+
+
+def design_estate_sewers(smap, sel_edges, entry_nid, site, site_inv, site_depth, ground, served):
     """Build gravity or pumped sewer tree along estate streets keeping depth in 1.4-6.5 m."""
     sub_xy, sub_adj = _subdivide_estate_edges(smap, sel_edges, max_seg=25.0)
     tg, covers = {u: float(ground([p])[0]) for u, p in sub_xy.items()}, {u: MIN_DEPTH_M for u in sub_xy}
     point_levels = lambda p: (float(ground([p])[0]), MIN_DEPTH_M)
     try:
-        down_g = _build_terrain_tree(sub_xy, sub_adj, entry_nid, tg)
+        down_g = _prune(_build_terrain_tree(sub_xy, sub_adj, entry_nid, tg), served | {entry_nid})
         g_xy, g_tg, g_cov = dict(sub_xy), dict(tg), dict(covers)
         g_xy[-1], g_tg[-1], g_cov[-1] = (round(site[0], 1), round(site[1], 1)), site_inv + site_depth, site_depth
         down_g[entry_nid] = -1; down_g[-1] = None
         res_g = _design_with_grade_breaks(down_g, g_xy, g_tg, g_cov, entry_nid, point_levels, fixed_root=site_inv)
         depths = [res_g[2][u] - res_g[6][u] for u in res_g[6]]
         if min(depths) >= 1.0 and max(depths) <= MAX_DEPTH_M:
-            return res_g, None
+            return res_g, None, [], None
     except ValueError:
         pass
-    well = min(sub_xy, key=lambda u: (tg[u], u))
-    return _design_with_grade_breaks(_build_terrain_tree(sub_xy, sub_adj, well, tg), sub_xy, tg, covers, well, point_levels, fixed_root=None), well
+    # Pumped: the main wet well at the lowest street point. Where a sewer would pass the 6.5 m depth
+    # limit (a long run on flat land, or a second valley behind a ridge), a small lift well takes the
+    # flow from upstream and its rising main follows the streets to the main well.
+    low = min(tg.values())
+    centre = (sum(p[0] for p in sub_xy.values()) / len(sub_xy), sum(p[1] for p in sub_xy.values()) / len(sub_xy))
+    wells = [min((u for u in sub_xy if tg[u] <= low + 0.5), key=lambda u: (math.dist(sub_xy[u], centre), u))]
+    for _ in range(25):
+        tree = _prune(_build_terrain_tree(sub_xy, sub_adj, wells, tg), served)
+        res = _design_forest(tree, sub_xy, tg, covers, point_levels, wells)
+        down, _, r_tg, _, _, _, inv = res
+        deep = [u for u in down if u in sub_xy and r_tg[u] - inv[u] > MAX_DEPTH_M]
+        if not deep:
+            break
+        kids = defaultdict(list)
+        for u, d in down.items():
+            if d is not None:
+                kids[d].append(u)
+        # Each deep stretch starts where no deeper sewer feeds it; lift where that sewer is still 5 m deep,
+        # so everything upstream drains to the new well.
+        added = set()
+        for v in deep:
+            if any(k in sub_xy and r_tg[k] - inv[k] > MAX_DEPTH_M for k in kids[v]):
+                continue
+            new = v
+            while r_tg[new] - inv[new] > MAX_DEPTH_M - 1.5:
+                up = [k for k in kids[new] if k in sub_xy]
+                if not up:
+                    break
+                new = max(up, key=lambda u: (r_tg[u] - inv[u], u))
+            if new not in wells:
+                added.add(new)
+        if not added:
+            break
+        wells.extend(sorted(added))
+    def design(ws):
+        r = _design_forest(_prune(_build_terrain_tree(sub_xy, sub_adj, ws, tg), served), sub_xy, tg, covers, point_levels, ws)
+        return r, any(u in sub_xy and r[2][u] - r[6][u] > MAX_DEPTH_M for u in r[0])
+    # Drop any lift well the design can do without.
+    for w in list(reversed(wells[1:])):
+        trial = [x for x in wells if x != w]
+        r, too_deep = design(trial)
+        if not too_deep:
+            wells, res = trial, r
+    down = res[0]
+    wells = wells[:1] + [w for w in wells[1:] if w in served or any(d == w for d in down.values())]
+    lifts = [_street_path(sub_xy, sub_adj, w, wells[0]) for w in wells[1:]]
+    return res, wells, lifts, _street_path(sub_xy, sub_adj, entry_nid, wells[0])
+
+
+def _design_forest(down, sub_xy, tg, covers, point_levels, roots):
+    """Design each well's catchment on its own and merge the results."""
+    root_of = {}
+    for u in down:
+        path, w = [], u
+        while w not in root_of and down[w] is not None:
+            path.append(w); w = down[w]
+        r = root_of.get(w, w)
+        for x in path + [w]:
+            root_of[x] = r
+    D, X, G, C, CH, R, I = {}, dict(sub_xy), dict(tg), dict(covers), set(), [], {}
+    for r in roots:
+        sub = {u: d for u, d in down.items() if root_of[u] == r}
+        res = _design_with_grade_breaks(sub, X, G, C, r, point_levels, fixed_root=None)
+        D.update(res[0]); X.update(res[1]); G.update(res[2]); C.update(res[3])
+        CH |= res[4]; R += res[5]; I.update(res[6])
+    return D, X, G, C, CH, R, I
+
+
+def _street_path(sub_xy, adj, a, b):
+    dist, prev, pq = {a: 0.0}, {}, [(0.0, a)]
+    while pq:
+        d, u = heapq.heappop(pq)
+        if u == b:
+            break
+        if d > dist[u]:
+            continue
+        for v in adj[u]:
+            nd = d + math.dist(sub_xy[u], sub_xy[v])
+            if nd < dist.get(v, 1e18):
+                dist[v], prev[v] = nd, u
+                heapq.heappush(pq, (nd, v))
+    path = [b]
+    while path[-1] != a:
+        path.append(prev[path[-1]])
+    return path[::-1]
 
 
 def _graph_stats(lines):
@@ -1097,31 +1256,36 @@ def build():
     smap, net_centroid = generate_street_map(g, exits, occupancy, stats, ground, seed=MAP_SEED)
     node_gz = [float(z) for z in ground(smap.nodes)]
     edge_samples = _precompute_edge_samples(smap, ground)
-    entry_by_mh = {mh: nid for _, nid, mh in smap.exit_links if mh is not None}
+    entry_by_key = {key: nid for _, nid, key in smap.exit_links if isinstance(key, str)}
 
-    nodes = {str(n["mh"]): n for n in g["nodes"] if n.get("mh")}
-    sites = {}
-    for row in sorted(plan["eligible"], key=lambda r: (-r["open_sector_deg"], int(r["manhole_id"]))):
-        mh_id = int(row["manhole_id"])
-        key = "MH" + str(mh_id)
-        n = nodes[str(mh_id)]
+    nodes = {n["name"]: n for n in g["nodes"]}
+    sites, taken = {}, set()
+    for row in sorted(plan["eligible"], key=lambda r: (-r["open_sector_deg"], r["site_id"])):
+        key = row["site_id"]
+        n = nodes[key]
         site = (n["x"] / 10, n["y"] / 10)
         site_inv, site_depth = g["oz"] + n["inv"] / 100, n.get("depth") or MIN_DEPTH_M
-        entry_nid = entry_by_mh[mh_id]
+        entry_nid = entry_by_key[key]
         entry_m = math.dist(site, smap.nodes[entry_nid])
 
         need = max(row["steps"])
-        sel_edges, houses = select_estate_blocks(smap, entry_nid, site, need, node_gz, edge_samples, random.Random(mh_id))
-        result, well = design_estate_sewers(smap, sel_edges, entry_nid, site, site_inv, site_depth, ground)
+        sel_edges, houses = select_estate_blocks(smap, entry_nid, site, need, node_gz, edge_samples,
+                                                 random.Random(zlib.crc32(key.encode())), taken)
+        taken |= sel_edges
+        result, wells, lifts, main_path = design_estate_sewers(smap, sel_edges, entry_nid, site, site_inv, site_depth, ground,
+                                                    {conn for _, conn in houses})
         down, txy, tg, covers, chambers, runs, inv = result
-        pumped, outlet = well is not None, well if well is not None else entry_nid
+        pumped = wells is not None
+        well = wells[0] if pumped else None
+        outlet = well if pumped else entry_nid
         point = lambda u: [round(txy[u][0], 1), round(txy[u][1], 1), round(inv[u], 2)]
 
         children = defaultdict(list)
         for u, d in down.items():
             if d is not None:
                 children[d].append(u)
-        distance, seq = {outlet: 0.0}, [outlet]
+        lift_m = {p[0]: sum(math.dist(txy[a], txy[b]) for a, b in zip(p, p[1:])) for p in lifts}
+        distance, seq = {outlet: 0.0, **lift_m}, [outlet] + list(lift_m)
         for u in seq:
             for v in children[u]:
                 distance[v] = distance[u] + math.dist(txy[u], txy[v])
@@ -1131,8 +1295,10 @@ def build():
         house_z = [round(float(z), 2) for z in ground(centroids)] if centroids else []
 
         link_nodes, u = [], entry_nid
-        while u is not None:
+        while u is not None and not pumped:
             link_nodes.append(u); u = down[u]
+        if pumped:
+            link_nodes = main_path  # the rising main follows the streets from the well to the entry
         rising_main = []
         if pumped:
             route_xy = [site] + [txy[u] for u in link_nodes]
@@ -1155,6 +1321,19 @@ def build():
         main = rising_main if pumped else link
         main_m = sum(math.dist(a[:2], b[:2]) for a, b in zip(main, main[1:]))
 
+        run_pts, drops = [], set()
+        for run in runs:
+            cum, L, z_end = _run_end(run, txy, tg, covers, inv)
+            if z_end > inv[run[-1]] + 0.05:
+                drops.add(run[-1])
+            run_pts.append([[round(txy[a][0], 1), round(txy[a][1], 1), round(inv[a], 2)] for a in run[:-1]] +
+                           [[round(txy[run[-1]][0], 1), round(txy[run[-1]][1], 1), round(z_end, 2)]])
+        mh_point = lambda u: [round(txy[u][0], 1), round(txy[u][1], 1), round(inv[u], 2), round(tg[u], 2)]
+
+        # A dead-end sewer stops at a plain pipe end, not a manhole, as 138 of the 160 dead ends
+        # in the real network do (measured from its node records).
+        fed = {d for d in down.values() if d is not None}
+        ends = {u for u in chambers if u not in fed and down.get(u) is not None}
         out_steps = {}
         link_chambers = set() if pumped else chambers.intersection(link_nodes)
         for wanted in row["steps"]:
@@ -1162,24 +1341,28 @@ def build():
             used, used_nodes = set(), {outlet}
             for _, conn in selected:
                 cur = conn; used_nodes.add(cur)
-                while cur != outlet:
+                while down[cur] is not None:
                     d = down[cur]; used.add((cur, d)); used_nodes.add(d); cur = d
-            lines, mh = [], (chambers & used_nodes) | link_chambers | {outlet}
-            for run in runs:
-                part = next((i for i, e in enumerate(zip(run, run[1:])) if e in used), None)
-                if part is not None:
-                    suffix = run[part:]
-                    lines.append([point(u) for u in suffix])
-                    mh.update((suffix[0], suffix[-1]))
-            out_steps[str(wanted)] = {"n": len(selected), "pipes": lines, "mh": [point(u) for u in sorted(mh)],
-                                      "partial": len(selected) < wanted,
-                                      "pipe_m": round(sum(math.dist(txy[a], txy[b]) for a, b in used))}
+            # Whole manhole-to-manhole runs, so a larger step always contains the smaller one.
+            lines, mh, pipe_m = [], link_chambers | {outlet}, 0.0
+            for run, pts in zip(runs, run_pts):
+                if any(e in used for e in zip(run, run[1:])):
+                    lines.append(pts); mh.update((run[0], run[-1]))
+                    pipe_m += sum(math.dist(a[:2], b[:2]) for a, b in zip(pts, pts[1:]))
+            out_steps[str(wanted)] = {"n": len(selected), "pipes": lines,
+                                      "mh": [mh_point(u) for u in sorted(mh - ends) if u in tg],
+                                      "ends": [mh_point(u) for u in sorted(mh & ends) if u in tg],
+                                      "drops": [mh_point(u)[:2] for u in sorted(drops & mh) if u in tg],
+                                      "lifts": [[[round(txy[u][0], 1), round(txy[u][1], 1), round(tg[u] - 1.0, 2)] for u in p]
+                                                for p in lifts if p[0] in used_nodes],
+                                      "partial": len(selected) < wanted, "pipe_m": round(pipe_m)}
         depths = [tg[u] - inv[u] for u in inv]
         levels = {"ground_m": [round(min(tg.values()), 1), round(max(tg.values()), 1)],
                   "depth_m": [round(min(depths), 2), round(max(depths), 2)],
                   "site_inv_m": round(site_inv, 2), "drop_m": None if drop is None else round(drop, 2),
-                  "pumped": pumped, "well": point(well) if pumped else None}
-        rings = [[[round(x, 1), round(y, 1)] for x, y in ring] for ring, _ in houses]
+                  "pumped": pumped, "well": point(well) if pumped else None,
+                  "lift_wells": [point(p[0]) for p in lifts]}
+        rings = [[[round(x, 1), round(y, 1)] for x, y in house_outline(ring)] for ring, _ in houses]
         site_streets = [[[round(x, 1), round(y, 1)] for x, y in line] for line in smap.to_polylines(edge_filter=sel_edges)]
         pts = link + [p for r in rings for p in r] + [p for l in site_streets for p in l]
         bbox = [round(min(p[0] for p in pts) - 40), round(min(p[1] for p in pts) - 40),
@@ -1191,7 +1374,7 @@ def build():
                       "bbox": bbox, "streets": site_streets}
         st_loops, st_junc, st_dead = _graph_stats(site_streets)
         print(f"{key}: {len(houses)}/{need} homes, {'pumped' if pumped else 'gravity'}, "
-              f"rising_main {round(main_m) if pumped else 0} m, depth {levels['depth_m'][0]:.2f}-{levels['depth_m'][1]:.2f} m, "
+              f"rising_main {round(main_m) if pumped else 0} m, depth {levels['depth_m'][0]:.2f}-{levels['depth_m'][1]:.2f} m, {len(lifts)} lift wells, "
               f"bbox {bbox}, loops/juncs/dead {st_loops}/{st_junc}/{st_dead}")
 
     top_streets = [[[round(x, 1), round(y, 1)] for x, y in line] for line in smap.to_polylines(include_exits=True)]
@@ -1205,7 +1388,7 @@ def build():
                     "not real streets or houses; the simulation adds each estate's flow at its manhole.",
             "design": {"min_grade": MIN_GRADE, "min_depth_m": MIN_DEPTH_M,
                        "max_structure_spacing_m": MAX_RUN_M, "max_run_m": MAX_RUN_M, "chamber_turn_deg": CHAMBER_TURN_DEG,
-                       "source": "SA Water Sewerage Code Supplement Pt 1 (Issue 03, 2010), Table 4.6; "
+                       "source": "Sewerage Code Supplement Pt 1 (Issue 03, 2010), Table 4.6; "
                                  "cl 4.6.5.4 (connection depth, assumed for main cover); cl 2.9.4. "
                                  "Table 4.7 permanent-upstream-end grade is not applied to growing estates."},
             "served_buffer_m": CLEARANCE_M, "streets": top_streets, "sites": sites}

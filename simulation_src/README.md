@@ -163,33 +163,46 @@ watch, and whether a design day needs one sensor or two, change with the cut.
 ### Greenfield (Sim 4)
 
 Greenfield here means a new estate network outside the existing network, joining it at one
-manhole. Infill adds homes inside the existing network, across its existing connection points.
-`sim4_greenfield.py` tests each eligible estate connection separately.
+connection on the network's edge. Infill adds homes inside the existing network, across its
+existing connection points. `sim4_greenfield.py` tests each eligible estate connection separately.
 
-A connection must be a line-end manhole receiving neither pumped nor outside flow. Every
-downstream reticulation sewer must stay within the SA Water Sewerage Code Supplement Pt 1
-Table 4.4 property limits: 400 at DN150, 1,000 at DN225 and 1,800 at DN300. Headroom is what
+A connection is an edge point: an open sector of at least 120 degrees with no pipes or homes
+within 200 m, clear for 400 m along its middle, so the estate joins through a short new
+connection beside open land. Points receiving pumped or outside flow are excluded, and so are
+exits, where sewage leaves the model; an exit is never a connection. Edge points on the same open
+land form a land group (chained within 300 m and 45 degrees of bearing), and a land group keeps
+one connection for each distinct set of downstream sensors. The distances, the sector and the
+grouping are team assumptions.
+
+Room is the number of homes the downstream pipes can still take. Every downstream reticulation
+sewer must stay within the sewer supplement Table 4.4 property limits: 400 at DN150, 1,000 at
+DN225 and 1,800 at DN300. DN150 to DN300 use log-log interpolation between those sizes, and
+below DN150 the limit scales from DN150; both are team calculations. DN375+ trunk capacity is
+left to the SWMM runs, with no Table 4.4 property cap applied to those pipes. Headroom is what
 remains after counting existing properties, outside-inflow properties and properties transferred
 by pumps. The check follows every downstream route, including pump links, and counts shared
-upstream properties once per pipe. Below DN150 and at other unlisted reticulation diameters,
-the code scales the limit at equal slope and roughness; this is a team calculation. DN375+
-trunk capacity is left to the SWMM runs, with no Table 4.4 property cap applied to those pipes.
+upstream properties once per pipe.
 
-Of 328 candidate manholes, 13 are eligible. The exclusions are 297 not at a line end, 15 with
-headroom below 10 properties, 3 receiving pumped or outside flow, and 0 with unknown diameter.
-Each excluded site counts under one reason, checked in this order: pumped or outside flow,
-line end, unknown diameter, then minimum headroom.
+Of 887 candidate edge points, 9 are connections, in 9 land groups: 5 manholes and 4 pipe ends.
+The exclusions are 763 not on the network's edge, 38 with room below 10 homes, 18 receiving
+pumped or outside flow, 7 exits and 52 sharing land and downstream sensors with a kept
+connection. No pipe has an unknown diameter.
 
-Each site has up to four estate sizes: the largest configured steps below its headroom, then
-the headroom itself rounded down to whole properties. The saved plan has four sizes at each
-of the 13 sites, or 52 site-size combinations per case. For example, MH4451576 has 30, 80,
-150 and 292 homes. Across the 8 cases this is 416 growth runs plus 8 baselines, using the same
-settle gate as infill. All 424 saved runs settled; no cases are missing.
+Estate sizes step through 10, 30, 80, 150, 300, 600 and 1,000 homes, capped at the connection's
+room; the steps are test stages, not recorded development stages. That gives 55 sizes per case.
+There are 11 cases: the same 8 weather cases as infill, plus three on Design wet. `_pumprate`
+has estates that are pumped or of unknown pump status discharge at 7.854 L/s or their peak flow,
+whichever is larger; `_together` loads every land group's main connection at once; and
+`_with_infill` puts the estates on top of the largest infill step. Two connections are known to
+be pumped and 7 are unknown, which run both load variants. The plan is 510 runs, including 11
+baselines, using the same settle gate as infill.
 
-From `simulation_src/` (replace `N` with the number of worker processes):
+From `simulation_src/` (replace `N` with the number of worker processes). The infill sensors
+come from `results/sim4/numbers.json`, so `sim4_numbers.py` above runs first:
 
 ```
 python sim4_greenfield.py --plan
+PYTHONPATH=. python ../tools/check_sim4_greenfield_plan.py
 python sim4_greenfield.py --run --cases all --workers N --resume
 python test_sim4_greenfield.py
 python sim4_greenfield_eval.py
@@ -197,55 +210,82 @@ python ../tools/build_sim4_greenfield.py          # add --check to compare witho
 ```
 
 The plan command writes `results/sim4/greenfield/plan.json` and `plan.txt` without running SWMM.
-The sweep saves a `summary.json` and baseline SWMM files in each case folder there; temporary
-growth SWMM files are removed. The evaluation writes `eval.json` and `eval_report.txt`, with
-detection shares, missed sites, first detection and first new chamber surcharge. The builder
-writes `../simulation4/data/greenfield.js` for the explorer; `--check` compares it with a rebuild.
+The checker is written independently: it does not import `sim4_greenfield.py`, rebuilds the
+connections, land groups and room from the network, and compares them with `plan.json`, printing
+PASS or FAIL for each rule. The sweep saves a `summary.json` and baseline SWMM files in each case
+folder there; temporary growth SWMM files are removed. The evaluation writes `eval.json` and
+`eval_report.txt`, with detection shares, first detection and first new chamber surcharge. The
+builder writes `../simulation4/data/greenfield.js` for the explorer; `--check` compares it with a
+rebuild.
 
 The same recommended 5 infill sensors are tested: MH4450531, MH4448345, MH4450922, MH4452994
-and MH4428268. At a 25 mm rise from each chamber's baseline, the saved report gives:
+and MH4428268. The model is uncalibrated, so these are runs the sensors see as a level rise of
+10 mm or more, out of the runs that settled. A run is direct when the estate's sewage flows past
+the sensor and indirect when the sensor sees backwater:
 
-| Case | Greenfield detected | Paired infill detected |
-|---|---|---|
-| Dry | 1/52 (1.9%) | 0/52 (0.0%) |
-| Design wet | 2/52 (3.8%) | 4/52 (7.7%) |
-| Beyond design | 21/52 (40.4%) | 11/52 (21.2%) |
-| Severe | 29/52 (55.8%) | 20/52 (38.5%) |
-| Design wet + age-weighted I&I | 1/52 (1.9%) | 4/52 (7.7%) |
-| Design wet + outside inflow x1.5 | 4/52 (7.7%) | 4/52 (7.7%) |
-| Beyond design + age-weighted I&I | 21/52 (40.4%) | 11/52 (21.2%) |
-| Beyond design + outside inflow x1.5 | 21/52 (40.4%) | 5/52 (9.6%) |
+| Case | Seen | Direct | Indirect |
+|---|---|---|---|
+| Dry | 3 of 54 | 3 | 0 |
+| Design wet | 6 of 55 | 2 | 4 |
+| Beyond design | 17 of 55 | 4 | 13 |
+| Severe | 23 of 55 | 4 | 19 |
+| Design wet + age-weighted I&I | 5 of 55 | 2 | 3 |
+| Design wet + outside inflow x1.5 | 6 of 55 | 2 | 4 |
+| Beyond design + age-weighted I&I | 17 of 55 | 4 | 13 |
+| Beyond design + outside inflow x1.5 | 18 of 55 | 4 | 14 |
 
-Each estate site-size counts once, including scenarios no chamber can detect. Paired infill
-uses the nearest saved homes count in the site's containing non-overlapping region, choosing
-fewer homes on a tie, without interpolation. The evaluation also checks a 10 mm rise.
-
-The 5 sensors miss these estate connections at every tested size under the 25 mm rule:
-
-- Dry and Design wet + age-weighted I&I: MH1623436, MH1630702, MH4450787, MH4452760,
-  MH4452919, MH4453095, MH4453315, MH4453981, MH4454395, MH4498291, MH5164627, MH5216010.
-- Design wet: MH1623436, MH1630702, MH4452760, MH4452919, MH4453095, MH4453315,
-  MH4453981, MH4454395, MH4498291, MH5164627, MH5216010.
-- Beyond design and Beyond design + age-weighted I&I: MH1623436, MH1630702, MH4453315,
-  MH4454395, MH4498291, MH5164627.
-- Severe: MH1630702, MH4498291.
-- Design wet + outside inflow x1.5: MH1623436, MH1630702, MH4452760, MH4452919,
-  MH4453315, MH4453981, MH4454395, MH4498291, MH5164627, MH5216010.
-- Beyond design + outside inflow x1.5: MH1623436, MH1630702, MH4498291.
+One run did not settle and is excluded: Dry, MH4452680 at 1,000 homes. All direct hits come from
+one connection, MH4450314. The evaluation also reports 25 and 50 mm rises.
 
 Assumptions:
 
 - Estate sizes are assumed test stages, not recorded development stages.
-- The single line-end connection rule is assumed; these are not recorded estate connection points.
-- The estate adds sewage only, with no infiltration from its new pipes; their lengths and
-  infiltration are unknown.
+- The edge rule and the land-group distances are assumed; these are not recorded estate connection points.
+- The estate adds sewage only, at 2.3 people per new dwelling and a peaking factor of 2, with no
+  infiltration from its new pipes; their lengths and infiltration are unknown.
 - The estate drawn on the explorer is illustrative, not a surveyed or simulated estate pipe layout.
 
 These are team assumptions because no public data gives per-estate sewer connection points or
 stage sizes. PlanSA reports regional totals: about 2,500 greenfield dwellings a year in Greater
 Adelaide over 2017-2021, not the sites or stages used here. See the
 [Land Supply Report for Greater Adelaide - Residential 2022](https://www.plan.sa.gov.au/__data/assets/pdf_file/0007/1267486/Land-Supply-Report-for-Greater-Adelaide-Residential-June-2022.pdf),
-section 3.1. Table 4.4 informs the headroom screen; it does not prescribe estate sites or sizes.
+section 3.1. Table 4.4 informs the room screen; it does not prescribe estate sites or sizes.
+
+#### Scenario sets
+
+The Sim 3.5 scripts can run the same algorithms on the estates instead of, or beside, the infill
+regions. `SIM4_SET=infill|greenfield|both` (default `infill`) picks the set, and it applies only
+with `SIM35_TARGET=sim4`. `sim4_sets.py` turns the saved estate runs into the same row format as
+infill, so no algorithm changes. Infill outputs stay in `results/sim4/`, byte for byte as before;
+the other sets write `results/sim4_set_greenfield/` and `results/sim4_set_both/`. From
+`simulation_src/`, with the plan and sweep already run:
+
+```
+export SIM35_TARGET=sim4 SIM4_SET=both        # or greenfield
+python sim35_capacity.py && python sim35_mix.py && python sim35_warn.py
+python sim35_float_check.py && python sim35_coverage.py
+python sim4_numbers.py && python sim4_float.py
+unset SIM35_TARGET SIM4_SET
+python test_sim4_sets.py
+```
+
+Coverage is the share of the scenarios that some manhole sees at 10 mm which the sensors see,
+shown as the worst wet case / the average of the 7 wet cases. Five sensors chosen on each set,
+scored on each set:
+
+| Five sensors chosen on | Scored on infill | Scored on greenfield | Scored on both |
+|---|---|---|---|
+| Infill only (today's five) | 81% / 94% | 17% / 40% | 44% / 59% |
+| Infill + greenfield: MH4450922, MH4454376, MH1630926, MH4448345, MH1625316 | 50% / 84% | 53% / 69% | 67% / 74% |
+| Greenfield only: MH4452527, MH1630926, MH4450802, MH1625316, MH4456468 | 13% / 27% | 70% / 75% | not computed |
+
+The published recommendation is still the infill five; the infill + greenfield five is a
+comparison, and whether it replaces the recommendation is not decided. In the both set the
+ladder's five equals the exact best at five, and 8 sensors reach 78% / 84%. The exact fewest
+sensors for all 7 wet cases are 8, 11 and 20 for 80%, 90% and 100% on both, and 6, 8 and 12 on
+greenfield alone. Greenfield estates have no capacity band, so all 9 count as monitor, and in
+the both set about 30 estate scenarios per case sit beside the infill ones. The cross-family
+scores were recomputed from the raw runs outside the repository scripts.
 
 ## Rebuild the Sim 2.5 browser page
 
