@@ -25,6 +25,11 @@ window.Growth3D = (function () {
   let pipeGeo = null, pipeColours = null, chamberMeshes = [], labelLayer = null;
   let pipeBodies = null, bodyTint = null;
   let built = false, onPick = null, onHover = null, focusRing = null, outletLabel = null;
+  // SIM4: building blocks, one per property (footprints.js, from the buildings demo, PR 10).
+  // bVert[i] is the first fill vertex of property i's block, bCount[i] how many it has;
+  // bState holds 0 plain, 1 upstream, 2 here, so a highlight is a colour write.
+  let bFill = null, bEdge = null, bVert = null, bCount = null, bState = null;
+  const themed = {};          // SIM4: materials whose colour follows the light or dark theme
   let houseGeo = null, houseColours = null, houseHi = null, houseRim = null, houseUp = null,
       sleeves = null;
   let siteLabel = null, bottleneckMesh = null, lastPipeState = null, region = null;
@@ -33,6 +38,7 @@ window.Growth3D = (function () {
   // nothing else to say (state "ok", heatmap off), so the areas read at a glance; the result
   // colours (amber, red, green) still win wherever they apply.
   let regionTint = null, regionLabels = [];
+  let eligible = new Set(), houseBase = null, viewListener = null, tiltedOffset = null;
   // SIM3: the manholes of the selected area pulse (scale, in the shared beat) so the area is
   // found by movement, not by a colour of its own. paint() records each manhole's resting
   // scale; the loop breathes the pulsing ones around it.
@@ -48,7 +54,7 @@ window.Growth3D = (function () {
   let connMeshes = [], connCounts = null, pipeScale = 0;  // the Connections chip; mains' radius per mm
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
   const clock = { t0: performance.now() };
-  const ZEXAG = 22.0;
+  let ZEXAG = 22.0;           // SIM4: the Vertical slider changes it (setExaggeration)
   /* DARK, and saturated. The first version drew grey pipes and beige markers on a cream
      background and was unreadable: every state looked like every other state. On a dark
      ground a saturated colour carries, so the three pipe states separate at a glance and
@@ -69,6 +75,7 @@ window.Growth3D = (function () {
     house: 0xff6f9c,
     junction: 0x30363d,            // a pipe end the record does not call a chamber
     chamber: 0xc9d1d9,             // a real, published manhole: a candidate sensor site
+    eligible: 0xd66be8,            // orchid: an edge manhole that can take an estate
     site: 0x00d4ff,                // cyan, where the new dwellings connect
     outlet: 0xa371f7,              // violet, the chamber everything drains through
     sensor: 0x2ef56b,              // bright green, a proposed sensor (manhole, pin and label)
@@ -168,6 +175,8 @@ window.Growth3D = (function () {
       container.appendChild(labelLayer);
       controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
+      controls.addEventListener("change", () => { if (viewListener) viewListener(); });
+      controls.addEventListener("start", () => { ++camTween; });
       /* The left button turns the map the full 360 degrees and tilts it, the right button
          drags it (along the ground, not the screen, so a tilted view does not climb), and
          the wheel zooms toward whatever is under the pointer. Out of the box the wheel
@@ -187,6 +196,7 @@ window.Growth3D = (function () {
         const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 800 : 1;
         const dy = Math.max(-ZOOM_CAP, Math.min(ZOOM_CAP, e.deltaY * unit));
         if (!dy) return;
+        ++camTween;
         const r = renderer.domElement.getBoundingClientRect();
         zNdc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
         zRay.setFromCamera(zNdc, camera);
@@ -307,8 +317,8 @@ window.Growth3D = (function () {
     if (jp.length) {
       const jg = new THREE.BufferGeometry();
       jg.setAttribute("position", new THREE.Float32BufferAttribute(jp, 3));
-      scene.add(new THREE.Points(jg, new THREE.PointsMaterial({
-        color: COL.junction, size: 6, sizeAttenuation: true })));
+      themed.junction = new THREE.PointsMaterial({ color: COL.junction, size: 6, sizeAttenuation: true });
+      scene.add(new THREE.Points(jg, themed.junction));
     }
 
     // One LineSegments for every pipe, with a colour attribute so recolouring a scenario
@@ -497,6 +507,7 @@ window.Growth3D = (function () {
       }
       houseGeo.attributes.position.needsUpdate = true;
       houseGeo.computeBoundingSphere();
+      if (window.Footprints) buildBuildings(g, hp);
 
       // Branches laid to no property: drawn only by the Connections chip, below.
       const spareLines = hasLines ? (g.cSpare || []).map(li => lineOf(li)) : [];
@@ -661,49 +672,7 @@ window.Growth3D = (function () {
        cover minus invert gives credible chamber depths, so both share one datum, which
        for South Australian survey levels is AHD. The label says "consistent with AHD"
        rather than claiming what the data does not state. */
-    {
-      const lv = g.nodes.map(n => g.oz + n.inv / 100);
-      const top = g.nodes.map(n => g.oz + n.inv / 100 + (n.depth || 0));
-      const lo = Math.min(...lv), hi = Math.max(...top);
-      const step = hi - lo > 40 ? 10 : 5;
-      const base = Math.floor(lo / step) * step, peak = Math.ceil(hi / step) * step;
-      const cm = level => (level - g.oz) * 100;          // real metres -> P()'s z units
-      const xs = g.nodes.map(n => n.x), ys = g.nodes.map(n => n.y);
-      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-      const pad = 0.04 * Math.max(x1 - x0, y1 - y0);
-      const rx = x0 - pad, ry = y0 - pad, tick = 0.025 * Math.max(x1 - x0, y1 - y0);
-
-      const seg = [];
-      const add = (a, b) => seg.push(a.x, a.y, a.z, b.x, b.y, b.z);
-      add(P(rx, ry, cm(base)), P(rx, ry, cm(peak)));
-      for (let L = base; L <= peak + 1e-9; L += step) {
-        add(P(rx, ry, cm(L)), P(rx + tick, ry, cm(L)));
-        const el = document.createElement("div");
-        el.className = "lbl scale";
-        // The foot of the ruler is the datum plane, so its tick says so rather than
-        // leaving the plane a grid with no name.
-        el.textContent = L === base ? L + " m \u2190 datum plane (100 m grid)" : L + " m";
-        labelLayer.appendChild(el);
-        scaleLabels.push({ el, at: P(rx + tick, ry, cm(L)) });
-      }
-      const cap = document.createElement("div");
-      cap.className = "lbl scale cap";
-      cap.textContent = "height above datum, m (consistent with AHD) \u00b7 vertical \u00d7" + ZEXAG;
-      labelLayer.appendChild(cap);
-      // Under the foot of the ruler, not above its top: the top sits in the corner the
-      // "homes behind" box covers, and a caption you cannot read explains nothing.
-      scaleLabels.push({ el: cap, at: P(rx, ry, cm(base)) });
-
-      // The datum plane at the ruler's foot: the network's outline plus a 100 m grid.
-      const z = cm(base), gx = 1000;                     // 1000 dm = 100 m
-      const X0 = rx, X1 = x1 + pad, Y0 = ry, Y1 = y1 + pad;
-      for (let x = Math.ceil(X0 / gx) * gx; x <= X1; x += gx) add(P(x, Y0, z), P(x, Y1, z));
-      for (let y = Math.ceil(Y0 / gx) * gx; y <= Y1; y += gx) add(P(X0, y, z), P(X1, y, z));
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute("position", new THREE.Float32BufferAttribute(seg, 3));
-      scene.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
-        color: COL.datum, transparent: true, opacity: 0.35 })));
-    }
+    drawRuler();
 
     /* Pump stations and their rising mains. A gravity main falls; a rising main is pumped
        uphill under pressure, so it is drawn as a dashed line, never a tube, and its station
@@ -913,6 +882,121 @@ window.Growth3D = (function () {
   }
   /* Show or hide every published connection pipe. Returns the counts drawn, or null if the
      data has none, so the page can hide its chip rather than offer a switch that does nothing. */
+  /* SIM4 (from the buildings demo, PR 10): buildings as flat outlines, like a street map's. Each is laid just under its own
+     property's dot, at that dot's height, so it moves with the elevation the rest of the
+     view uses. Shapes are drawn, not surveyed: see footprints.js. */
+  let B_FILL = 0x343c48, B_EDGE = 0x5f6b7d;
+  function bMix(hex, k) {
+    const c = new THREE.Color(B_FILL), t = new THREE.Color(hex);
+    return [c.r + (t.r - c.r) * k, c.g + (t.g - c.g) * k, c.b + (t.b - c.b) * k];
+  }
+  /* SIM4 (from the buildings demo, PR 10): each footprint is raised into a block, roof plus walls, in true metres (the
+     plan is in metres, so a 4 m house keeps its shape whatever the vertical
+     exaggeration). The base sits just under the property's dot; placeBuildings() redraws
+     it from the dots' current heights, so the blocks follow the exaggeration slider. */
+  let bList = null;
+  const bHeight = a => (a > 400 ? 8 : a > 220 ? 6 : 4.2);
+  function polyArea(poly) {
+    let s = 0;
+    poly.forEach((a, k) => { const b = poly[(k + 1) % poly.length]; s += a[0] * b[1] - b[0] * a[1]; });
+    return Math.abs(s) / 2;
+  }
+  function placeBuildings() {
+    if (!bFill) return;
+    const hp = houseGeo.attributes.position.array;
+    const pos = bFill.geometry.attributes.position.array, edge = bEdge.geometry.attributes.position.array;
+    let v = 0, e = 0;
+    const put = (x, y, z) => { pos[v++] = x; pos[v++] = y; pos[v++] = -z; };
+    const seg = (a, ya, b, yb) => {
+      edge[e++] = a[0]; edge[e++] = ya; edge[e++] = -a[1]; edge[e++] = b[0]; edge[e++] = yb; edge[e++] = -b[1];
+    };
+    bList.forEach(({ i, poly, tris, H }) => {
+      const y0 = hp[i * 3 + 1] - 0.6, y1 = y0 + H;
+      tris.forEach(t => t.forEach(k => put(poly[k][0], y1, poly[k][1])));
+      poly.forEach((a, k) => {
+        const b = poly[(k + 1) % poly.length];
+        put(a[0], y0, a[1]); put(b[0], y0, b[1]); put(b[0], y1, b[1]);
+        put(a[0], y0, a[1]); put(b[0], y1, b[1]); put(a[0], y1, a[1]);
+        seg(a, y1 + 0.03, b, y1 + 0.03);
+        seg(a, y0, a, y1);
+      });
+    });
+    bFill.geometry.attributes.position.needsUpdate = true;
+    bFill.geometry.computeVertexNormals();
+    bFill.geometry.computeBoundingSphere();
+    bEdge.geometry.attributes.position.needsUpdate = true;
+    bEdge.geometry.computeBoundingSphere();
+  }
+  function buildBuildings(g, hp) {
+    const realOutlines = (window.OSM_BUILDINGS || []).map(b => b.p).concat(window.MSFT_BUILDINGS || []);
+    const F = window.Footprints.make(g, { real: realOutlines }), n = g.hx.length;
+    bVert = new Int32Array(n).fill(-1); bCount = new Int32Array(n); bState = new Uint8Array(n);
+    let nv = 0, ne = 0;
+    bList = F.map(({ i, poly }) => {
+      // Wind every outline anticlockwise in plan so the wall normals face out.
+      let s = 0;
+      poly.forEach((a, k) => { const b = poly[(k + 1) % poly.length]; s += a[0] * b[1] - b[0] * a[1]; });
+      if (s < 0) poly = poly.slice().reverse();
+      const tris = THREE.ShapeUtils.triangulateShape(poly.map(([x, y]) => new THREE.Vector2(x, y)), []);
+      bVert[i] = nv; bCount[i] = tris.length * 3 + poly.length * 6;
+      nv += bCount[i]; ne += poly.length * 4;
+      return { i, poly, tris, H: bHeight(polyArea(poly)) };
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(nv * 3), 3));
+    const col = new Float32Array(nv * 3), base = bMix(B_FILL, 0);
+    for (let v = 0; v < col.length; v += 3) col.set(base, v);
+    geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+    bFill = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+    bFill.userData.fixedY = true;
+    scene.add(bFill);
+    const eg = new THREE.BufferGeometry();
+    eg.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(ne * 3), 3));
+    bEdge = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: B_EDGE, transparent: true, opacity: 0.9 }));
+    bEdge.userData.fixedY = true;
+    scene.add(bEdge);
+    placeBuildings();
+    // ODbL asks for credit wherever the data is shown.
+    const host = renderer.domElement.parentElement;
+    if (host) {
+      const cr = document.createElement("div");
+      cr.className = "mapCredit";
+      cr.textContent = "Buildings and streets: \u00a9 OpenStreetMap contributors, Microsoft Building Footprints (ODbL)";
+      cr.style.cssText = "position:absolute;left:8px;top:4px;font-size:10px;color:#8b949e;pointer-events:none;z-index:5";
+      if (getComputedStyle(host).position === "static") host.style.position = "relative";
+      host.appendChild(cr);
+      bFill.userData.credit = cr;
+    }
+    bFill.userData.counts = { drawn: F.length, skipped: F.skipped, total: n, sized: F.stats };
+  }
+  function tintBuildings() {
+    if (!bFill) return;
+    const arr = bFill.geometry.attributes.color.array;
+    const tones = [bMix(B_FILL, 0), bMix(COL.houseUp, 0.38), bMix(COL.houseHere, 0.55)];
+    for (let i = 0; i < bVert.length; i++) {
+      if (bVert[i] < 0) continue;
+      const rt = homeTint(i);
+      const c = bState[i] ? tones[bState[i]] : rt ? bMix((rt[0] << 16) | (rt[1] << 8) | rt[2], 0.38) : tones[0];
+      for (let v = bVert[i]; v < bVert[i] + bCount[i]; v++) arr.set(c, v * 3);
+    }
+    bFill.geometry.attributes.color.needsUpdate = true;
+  }
+  /* SIM4: optional background streets, one-pixel lines on the datum plane.
+     Imaginary estate streets are drawn separately at their own ground level. */
+  let streetLines = null;
+  function setStreets(lines) {
+    if (!built) return;
+    if (streetLines) { scene.remove(streetLines); streetLines.geometry.dispose(); streetLines.material.dispose(); streetLines = null; }
+    themed.streets = null;
+    const sp = [];
+    (lines || []).forEach(l => { for (let k = 0; k < l.length - 1; k++) sp.push(l[k][0], -0.4, -l[k][1], l[k + 1][0], -0.4, -l[k + 1][1]); });
+    if (!sp.length) return;
+    const sg = new THREE.BufferGeometry();
+    sg.setAttribute("position", new THREE.Float32BufferAttribute(sp, 3));
+    streetLines = new THREE.LineSegments(sg, new THREE.LineBasicMaterial({ color: B_EDGE, transparent: true, opacity: 0.55 }));
+    themed.streets = streetLines.material;
+    scene.add(streetLines);
+  }
   function showConnections(on) {
     if (!connMeshes.length) return null;
     connMeshes.forEach(m => { m.visible = !!on; });
@@ -941,6 +1025,287 @@ window.Growth3D = (function () {
       labelLayer.appendChild(el);
       scnMarks.push({ ring, label: { el, at } });
     });
+  }
+  /* SIM4: imaginary estates on open land beside edge manholes, joining through short new
+     sewers. spec has link, risingMain, pipes and mh in [x, y, invert m], streets and houses
+     in plan metres, houseZ, lv, pumped and well. A list draws separate estates; null clears.
+     Gravity pipes use their design inverts. Pumped estates drain to the lowest-ground well,
+     with a dashed rising main back to the edge manhole. Houses use the network's block style.
+     SWMM adds the flow at the connection manhole; these imaginary pipes are illustrative. */
+  let estateGrp = null, lastEstate = null;   // lastEstate: redrawn at a new exaggeration
+  function setEstate(spec) {
+    if (!built) return;
+    lastEstate = spec;
+    if (estateGrp) {
+      scene.remove(estateGrp);
+      estateGrp.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      estateGrp = null;
+    }
+    const list = (Array.isArray(spec) ? spec : [spec]).filter(Boolean);
+    if (!list.length) return;
+    const grp = new THREE.Group();
+    list.forEach(sp => addEstate(grp, sp));
+    estateGrp = grp;
+    scene.add(grp);
+  }
+  function addEstate(grp, spec) {
+    const g = G(), nd = g.nodes.find(x => x.name === spec.at);
+    if (!nd) return;
+    const yOf = m => ((m - g.oz) * 100 / 100) * ZEXAG;      // metres on the datum -> scene height
+    const V = q => new THREE.Vector3(q[0], yOf(q[2]), -q[1]);
+    const mh = P(nd.x, nd.y, nd.inv);
+    const okHex = (COL.ok[0] << 16) | (COL.ok[1] << 8) | COL.ok[2];
+    // The estate's mains and short connection, including a pumped estate's connection.
+    const segs = [], ends = new Map();
+    const key = q => q[0].toFixed(1) + "," + q[1].toFixed(1);
+    const addLine = (l, fromMh) => {
+      if (!l || l.length < 2) return;
+      for (let k = 0; k < l.length - 1; k++) {
+        const A = fromMh && k === 0 ? mh.clone() : V(l[k]), B = V(l[k + 1]);
+        segs.push([A, B]);
+      }
+      [l[0], l[l.length - 1]].forEach(q => ends.set(key(q), V(q)));
+    };
+    addLine(spec.link, true);
+    (spec.pipes || []).forEach(l => addLine(l, false));
+    if (spec.link && spec.link.length) ends.delete(key(spec.link[0])); // network's own manhole
+    if (segs.length) {
+      const r = Math.max(0.5, 150 * (pipeScale || 0.01));
+      const tube = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 8, 1, true),
+        new THREE.MeshBasicMaterial({ color: okHex }), segs.length);
+      const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
+      segs.forEach(([A, B], k) => {
+        const dv = B.clone().sub(A), len = Math.max(0.01, dv.length());
+        q.setFromUnitVectors(up, dv.clone().normalize());
+        m.compose(A.clone().add(B).multiplyScalar(0.5), q, new THREE.Vector3(r, len, r));
+        tube.setMatrixAt(k, m);
+      });
+      grp.add(tube);
+      const pts = [];
+      segs.forEach(([A, B]) => pts.push(A.x, A.y, A.z, B.x, B.y, B.z));
+      const lg = new THREE.BufferGeometry();
+      lg.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+      grp.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: okHex })));
+    }
+    const sphere = new THREE.SphereGeometry(5.6, 14, 10), mat = new THREE.MeshBasicMaterial({ color: COL.chamber });
+    const mhs = spec.mh && spec.mh.length ? spec.mh.map(V) : Array.from(ends.values());
+    mhs.forEach(v => { const c = new THREE.Mesh(sphere, mat); c.position.copy(v); grp.add(c); });
+    // A pumped estate: the full rising main, dashed, and the station at the wet well.
+    if (spec.pumped) {
+      const route = spec.risingMain && spec.risingMain.length >= 2 ? spec.risingMain : spec.link;
+      if (route && route.length >= 2) {
+        const pts = route.map((q, k) => (k === 0 ? mh.clone() : V(q)));
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+          new THREE.LineDashedMaterial({ color: COL.pump, dashSize: 7, gapSize: 5 }));
+        line.computeLineDistances();
+        grp.add(line);
+      }
+      if (spec.well) {
+        const box = new THREE.Mesh(new THREE.BoxGeometry(12, 12, 12), new THREE.MeshBasicMaterial({ color: COL.pump }));
+        box.position.copy(V(spec.well));
+        box.add(new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry), new THREE.LineBasicMaterial({ color: 0x0d1117 })));
+        grp.add(box);
+      }
+    }
+    // Imaginary streets: the background street style at the estate's mean ground level.
+    const ground = spec.lv && spec.lv.ground_m;
+    const streetY = yOf(ground && ground.length ? ground.reduce((a, b) => a + b, 0) / ground.length :
+      g.oz + nd.inv / 100 + 1.4);
+    const streets = [];
+    (spec.streets || []).forEach(l => {
+      for (let k = 0; k < l.length - 1; k++)
+        streets.push(l[k][0], streetY, -l[k][1], l[k + 1][0], streetY, -l[k + 1][1]);
+    });
+    if (streets.length) {
+      const sg = new THREE.BufferGeometry();
+      sg.setAttribute("position", new THREE.Float32BufferAttribute(streets, 3));
+      grp.add(new THREE.LineSegments(sg, new THREE.LineBasicMaterial({ color: B_EDGE, transparent: true, opacity: 0.55 })));
+    }
+    // Houses: the network's block style, each at the level of the main it joins.
+    const fill = [], edge = [], dots = [];
+    (spec.houses || []).forEach((ring, h) => {
+      let poly = ring.slice(), a2 = 0, cx = 0, cy = 0;
+      poly.forEach((a, k) => { const b = poly[(k + 1) % poly.length]; a2 += a[0] * b[1] - b[0] * a[1]; cx += a[0]; cy += a[1]; });
+      if (a2 < 0) poly = poly.reverse();
+      const dotY = yOf(spec.houseZ && spec.houseZ[h] != null ? spec.houseZ[h] : g.oz + nd.inv / 100);
+      const H = bHeight(Math.abs(a2) / 2), y0 = dotY - 0.6, y1 = y0 + H;
+      const put = (x, y, z) => fill.push(x, y, -z);
+      THREE.ShapeUtils.triangulateShape(poly.map(([x, y]) => new THREE.Vector2(x, y)), [])
+        .forEach(t => t.forEach(k => put(poly[k][0], y1, poly[k][1])));
+      poly.forEach((a, k) => {
+        const b = poly[(k + 1) % poly.length];
+        put(a[0], y0, a[1]); put(b[0], y0, b[1]); put(b[0], y1, b[1]);
+        put(a[0], y0, a[1]); put(b[0], y1, b[1]); put(a[0], y1, a[1]);
+        edge.push(a[0], y1 + 0.03, -a[1], b[0], y1 + 0.03, -b[1], a[0], y0, -a[1], a[0], y1, -a[1]);
+      });
+      dots.push(cx / poly.length, dotY, -cy / poly.length);
+    });
+    if (fill.length) {
+      const fg = new THREE.BufferGeometry();
+      fg.setAttribute("position", new THREE.Float32BufferAttribute(fill, 3));
+      fg.computeVertexNormals();
+      const tone = bMix(COL.houseHere, 0.55);
+      grp.add(new THREE.Mesh(fg, new THREE.MeshLambertMaterial({ color: new THREE.Color(tone[0], tone[1], tone[2]), side: THREE.DoubleSide })));
+      const eg = new THREE.BufferGeometry();
+      eg.setAttribute("position", new THREE.Float32BufferAttribute(edge, 3));
+      grp.add(new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: B_EDGE, transparent: true, opacity: 0.9 })));
+      const dg = new THREE.BufferGeometry();
+      dg.setAttribute("position", new THREE.Float32BufferAttribute(dots, 3));
+      grp.add(new THREE.Points(dg, new THREE.PointsMaterial({ color: COL.houseHere, size: 4.5, sizeAttenuation: true })));
+    }
+  }
+  /* SIM4: the light theme. Only the ground and the neutral marks change: the background, the
+     buildings, streets and grid, plain manholes and pipe ends, and the pipes muted under the
+     heatmap. Every result colour (blue room, amber, red, the sensors) stays as it is, so the
+     legend reads the same in both. The caller repaints afterwards. */
+  const THEMES = {
+    dark: { bg: 0x0d1117, junction: 0x30363d, chamber: 0xc9d1d9, houseDim: 0x3a2430, region: 0x4f5d75,
+            heatPipe: [0x3a, 0x42, 0x50], datum: 0x8b949e, bottleneck: 0xffffff, entryIn: 0xf0f6fc,
+            rise: 0xfff176, bFill: 0x343c48, bEdge: 0x5f6b7d },
+    light: { bg: 0xf3f0e8, junction: 0xb4bac2, chamber: 0x57606a, houseDim: 0xe6d9df, region: 0x98a3b5,
+             heatPipe: [0xc6, 0xcb, 0xd2], datum: 0x6e7781, bottleneck: 0x24292f, entryIn: 0x24292f,
+             rise: 0xc99a00, bFill: 0xdcd6ca, bEdge: 0x9c9484 },
+  };
+  function setTheme(name) {
+    const t = THEMES[name] || THEMES.dark;
+    ["junction", "chamber", "houseDim", "region", "heatPipe", "datum", "bottleneck", "entryIn", "rise"].forEach(k => { COL[k] = t[k]; });
+    B_FILL = t.bFill; B_EDGE = t.bEdge;
+    if (!built) return;
+    scene.background = new THREE.Color(t.bg);
+    if (themed.junction) themed.junction.color.setHex(t.junction);
+    if (themed.datum) themed.datum.color.setHex(t.datum);
+    if (themed.streets) themed.streets.color.setHex(t.bEdge);
+    if (bEdge) bEdge.material.color.setHex(t.bEdge);
+    if (bottleneckMesh) bottleneckMesh.material.color.setHex(t.bottleneck);
+    tintBuildings();
+    tintHomes();
+  }
+  /* The height ruler (see the note in build()), as a function so a new exaggeration redraws
+     it with ticks that suit the new scale (from the buildings demo, PR 10). SIM4: the 100 m
+     grid that lay under the network is gone; the street map now shows the ground. */
+  let rulerObj = null;
+  function drawRuler() {
+    const g = G();
+    if (rulerObj) { scene.remove(rulerObj); rulerObj.geometry.dispose(); rulerObj = null; }
+    scaleLabels.forEach(l => l.el.remove());
+    scaleLabels = [];
+    const lv = g.nodes.map(n => g.oz + n.inv / 100);
+    const top = g.nodes.map(n => g.oz + n.inv / 100 + (n.depth || 0));
+    const lo = Math.min(...lv), hi = Math.max(...top);
+    const xs = g.nodes.map(n => n.x), ys = g.nodes.map(n => n.y);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    // Tick spacing follows the exaggeration, so the labels never pile up near true scale.
+    const span = Math.max(x1 - x0, y1 - y0) / 10;
+    const step = [5, 10, 20, 50, 100, 200].find(st => st * ZEXAG >= 0.015 * span) || 200;
+    const base = Math.floor(lo / 5) * 5, peak = Math.ceil(hi / 5) * 5;
+    const levels = [base];
+    for (let L = Math.ceil((base + 1e-9) / step) * step; L < peak - 1e-9; L += step) if (L - base >= step / 2) levels.push(L);
+    levels.push(peak);
+    const cm = level => (level - g.oz) * 100;          // real metres -> P()'s z units
+    const pad = 0.04 * Math.max(x1 - x0, y1 - y0);
+    const rx = x0 - pad, ry = y0 - pad, tick = 0.025 * Math.max(x1 - x0, y1 - y0);
+    const seg = [];
+    const add = (a, b) => seg.push(a.x, a.y, a.z, b.x, b.y, b.z);
+    add(P(rx, ry, cm(base)), P(rx, ry, cm(peak)));
+    for (const L of levels) {
+      add(P(rx, ry, cm(L)), P(rx + tick, ry, cm(L)));
+      const el = document.createElement("div");
+      el.className = "lbl scale";
+      el.textContent = L + " m";
+      labelLayer.appendChild(el);
+      scaleLabels.push({ el, at: P(rx + tick, ry, cm(L)) });
+    }
+    const cap = document.createElement("div");
+    cap.className = "lbl scale cap";
+    cap.textContent = "height above datum, m (consistent with AHD) \u00b7 vertical \u00d7" + ZEXAG;
+    labelLayer.appendChild(cap);
+    // Under the foot of the ruler, not above its top: the top sits in the corner the
+    // "homes behind" box covers, and a caption you cannot read explains nothing.
+    scaleLabels.push({ el: cap, at: P(rx, ry, cm(base)) });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(seg, 3));
+    if (!themed.datum) themed.datum = new THREE.LineBasicMaterial({ color: COL.datum, transparent: true, opacity: 0.35 });
+    rulerObj = new THREE.LineSegments(geo, themed.datum);
+    rulerObj.userData.fixedY = true;
+    scene.add(rulerObj);
+  }
+
+  /* The vertical exaggeration, live (from the buildings demo, PR 10). Everything was placed
+     through P(), so a world height is (level x factor) and multiplying every world y by
+     new/old moves it to the new factor. Lines, points and fills carry world coordinates and
+     are rescaled vertex by vertex; shapes with a size of their own (spheres, rings, pins)
+     only move, so they are never squashed; pipe cylinders are re-aimed between their moved
+     ends, so their bore stays round. The ruler, the sensor pins, the buildings and the
+     estate are drawn again. */
+  function setExaggeration(k) {
+    k = Math.max(1, Math.min(40, Math.round(+k) || 1));
+    if (!built) { ZEXAG = k; return; }
+    if (k === ZEXAG) return;
+    const r = k / ZEXAG;
+    ZEXAG = k;
+    const seenV = new Set(), seenG = new Set();
+    const sv = v => { if (v && !seenV.has(v)) { seenV.add(v); v.y *= r; } };
+    const geoY = geo => {
+      if (!geo || seenG.has(geo) || !geo.attributes.position) return;
+      seenG.add(geo);
+      const a = geo.attributes.position.array;
+      for (let i = 1; i < a.length; i += 3) a[i] *= r;
+      geo.attributes.position.needsUpdate = true;
+      geo.computeBoundingSphere(); geo.computeBoundingBox();
+    };
+    const m = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+    const ax = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
+    const inst = mesh => {
+      for (let i = 0; i < mesh.instanceMatrix.count; i++) {
+        mesh.getMatrixAt(i, m); m.decompose(p, q, sc);
+        if (!(sc.y > 0)) continue;
+        ax.copy(Y).applyQuaternion(q).multiplyScalar(sc.y / 2);
+        a.subVectors(p, ax); b.addVectors(p, ax); a.y *= r; b.y *= r;
+        ax.subVectors(b, a);
+        const len = ax.length();
+        if (len < 1e-6) continue;
+        q.setFromUnitVectors(Y, ax.divideScalar(len));
+        p.addVectors(a, b).multiplyScalar(0.5); sc.y = len;
+        m.compose(p, q, sc); mesh.setMatrixAt(i, m);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.computeBoundingSphere();
+    };
+    const visit = o => {
+      if (o.userData.fixedY || o === estateGrp) return;    // redrawn below
+      if (o.isInstancedMesh) return inst(o);
+      if (o === region) return o.children.forEach(visit);
+      if ((o.isPoints || o.isLine || o.isMesh) && o.geometry && o.geometry.type === "BufferGeometry") return geoY(o.geometry);
+      o.position.y *= r;
+    };
+    scene.children.slice().forEach(visit);
+    if (region && !region.parent) region.children.forEach(visit);
+    segEnds.forEach(([v0, v1]) => { sv(v0); sv(v1); });
+    if (houseLat) houseLat.forEach(h => { if (h && h.pts) h.pts.forEach(sv); });
+    [outletLabel, siteLabel, ...pumpLabels, ...scnMarks.map(x => x.label), ...spillMarks.map(x => x.label),
+     ...rateLabels, ...regionLabels].forEach(l => { if (l && l.at) sv(l.at); });
+    const dy = controls.target.y * (r - 1);
+    controls.target.y += dy; camera.position.y += dy; controls.update();
+    drawRuler();
+    const names = sensorMarks.map(x => x.name);
+    sensorKey = "\u0000"; setSensorMarks(names);
+    placeBuildings();
+    setEstate(lastEstate);
+  }
+  /* SIM4: frame a plan box (metres) and the named manhole, from frame()'s viewpoint. */
+  function frameBox(b, name) {
+    if (!built || !b) return;
+    ++camTween;
+    const nd = name && G().nodes.find(x => x.name === name), y = nd ? P(nd.x, nd.y, nd.inv).y : 0;
+    const box = new THREE.Box3(new THREE.Vector3(b[0], y, -b[3]), new THREE.Vector3(b[2], y, -b[1]));
+    if (nd) box.expandByPoint(P(nd.x, nd.y, nd.inv));
+    const sphere = box.getBoundingSphere(new THREE.Sphere());
+    const centre = sphere.center, span = Math.max(300, sphere.radius * 2);
+    const r = span / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)) * 0.72;
+    controls.target.copy(centre);
+    camera.position.set(centre.x + r * 0.62, centre.y + r * 0.48, centre.z + r * 0.62);
+    camera.updateProjectionMatrix();
+    controls.update();
   }
   /* Overflow, from SWMM: a violet ring round each manhole that spills from its lid before any
      growth, a magenta ring and an "overflows" label round each that spills only because of
@@ -1203,16 +1568,13 @@ window.Growth3D = (function () {
   function highlight(spec) {
     if (!built || !houseGeo || !G().hn) return null;
     const g = G(), t = topology(), n = g.hn.length;
-    const arr = houseColours.array, src = houseGeo.attributes.position.array;
+    const src = houseGeo.attributes.position.array;
     const hiPos = houseHi.geometry.attributes.position.array;
     const rimPos = houseRim.geometry.attributes.position.array;
     const upPos = houseUp.geometry.attributes.position.array;
-    const paintHouse = (i, hex) => {
-      arr[i * 3] = ((hex >> 16) & 255) / 255;
-      arr[i * 3 + 1] = ((hex >> 8) & 255) / 255;
-      arr[i * 3 + 2] = (hex & 255) / 255;
-    };
+    if (bState) bState.fill(0);
     const copy = (dst, k, i) => {
+      if (bState) bState[i] = dst === hiPos ? 2 : dst === upPos ? 1 : bState[i];
       dst[k * 3] = src[i * 3]; dst[k * 3 + 1] = src[i * 3 + 1]; dst[k * 3 + 2] = src[i * 3 + 2];
     };
     let nHi = 0, nUp = 0, nDirect = 0, out, pipes = null;
@@ -1238,7 +1600,6 @@ window.Growth3D = (function () {
       pipes = up.pipes;
       for (let i = 0; i < n; i++) {
         const node = g.hn[i];
-        paintHouse(i, COL.houseDim);
         if (t.firstMh[node] === me) { lat("hi", i); copy(hiPos, nHi++, i); if (node === me) nDirect++; }
         else if (up.nodes.has(node)) { lat("up", i); copy(upPos, nUp++, i); }
       }
@@ -1256,7 +1617,6 @@ window.Growth3D = (function () {
       for (let p = 0; p < g.nPipes; p++) if (nodesIn.has(g.up[p]) && nodesIn.has(g.down[p])) pipes.add(p);
       let homes = 0;
       for (let i = 0; i < n; i++) {
-        paintHouse(i, COL.houseDim);
         if (nodesIn.has(g.hn[i])) { copy(upPos, nUp++, i); homes++; }
       }
       out = { mode: "region", homes, elsewhere: n - homes, total: n, manholes: set.size, pipes: pipes.size };
@@ -1267,15 +1627,15 @@ window.Growth3D = (function () {
       // Counted, not drawn: big highlighted homes over the green sensors were too busy.
       // Every home is a faint dot here; the homes box still gives the count.
       for (let i = 0; i < n; i++) {
-        paintHouse(i, COL.houseDim);
         if (up.nodes.has(g.hn[i])) watched++;
       }
       out = { mode: "sensors", watched, unwatched: n - watched, total: n };
     } else {
-      for (let i = 0; i < n; i++) paintHouse(i, COL.house);
       out = { mode: "none", total: n };
     }
-    houseColours.needsUpdate = true;
+    houseBase = out.mode === "none" ? "house" : "houseDim";
+    tintHomes();
+    tintBuildings();
     houseHi.material.color.setHex(out.mode === "sensors" ? COL.watched : COL.houseHere);
     houseUp.material.opacity = 1;
     rimPos.set(hiPos.subarray(0, nHi * 3));             // the rim sits under every linked home
@@ -1385,7 +1745,7 @@ window.Growth3D = (function () {
       const nm = m.userData.node.name;
       const st = nodeState(nm);
       const rt = regionTint && regionTint[nm];
-      const c = sensorSet.has(nm) ? COL.sensor
+      const c = nm !== siteName && eligible.has(nm) ? COL.eligible : sensorSet.has(nm) ? COL.sensor
         : heat ? heatHex(heat[nm] || 0)
         : st === "tip" ? 0xff2d55 : st === "was" ? 0xffa500 : st === "rise" ? COL.rise
         : st === "fall" ? COL.fall
@@ -1452,6 +1812,7 @@ window.Growth3D = (function () {
 
   function frame(tightOn) {
     if (!built) return;
+    ++camTween;
     const box = new THREE.Box3().setFromObject(scene);
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     let centre = sphere.center, span = sphere.radius * 2;
@@ -1471,13 +1832,30 @@ window.Growth3D = (function () {
      set again; paint() applies the tints on its next call. */
   function setRegionTints(byName) {
     regionTint = null;
-    if (!byName) return;
-    regionTint = {};
-    for (const nm in byName) {
+    if (byName) regionTint = {};
+    for (const nm in (byName || {})) {
       const h = parseInt(String(byName[nm]).replace("#", ""), 16);
       regionTint[nm] = [(h >> 16) & 255, (h >> 8) & 255, h & 255];
     }
+    tintHomes();
+    tintBuildings();
   }
+  function homeTint(i) {
+    if (!regionTint || !G().hn) return null;
+    const mh = topology().firstMh[G().hn[i]];
+    return mh >= 0 ? regionTint[G().nodes[mh].name] : null;
+  }
+  function tintHomes() {
+    if (!houseColours) return;
+    const arr = houseColours.array, hex = COL[houseBase || "house"];
+    for (let i = 0; i < arr.length / 3; i++) {
+      const rt = homeTint(i);
+      for (let k = 0; k < 3; k++) arr[i * 3 + k] = rt ? rt[k] / 255 * 0.65 + ((COL.houseDim >> (16 - k * 8)) & 255) / 255 * 0.35
+        : ((hex >> (16 - k * 8)) & 255) / 255;
+    }
+    houseColours.needsUpdate = true;
+  }
+  function setEligible(names) { eligible = new Set(names || []); }
   function setRegionLabels(list) {
     regionLabels.forEach(l => l.el.remove());
     regionLabels = [];
@@ -1507,6 +1885,7 @@ window.Growth3D = (function () {
   /* SIM3: frame a set of manholes (a region), from the same viewpoint frame() uses. */
   function frameNodes(names) {
     if (!built) return;
+    ++camTween;
     const want = new Set(names || []);
     const box = new THREE.Box3();
     let any = false;
@@ -1534,6 +1913,60 @@ window.Growth3D = (function () {
      200 ms. The page calls this once its first view is framed, so a viewer who joins late is
      not then reset to the default view. */
   let camTween = 0;
+  const isTop = () => !!controls && controls.getPolarAngle() < 0.01;
+  function heading() {
+    if (!camera) return 0;
+    camera.updateMatrixWorld();
+    const e = camera.matrixWorld.elements;
+    return Math.atan2(-e[2], -e[6]) * 180 / Math.PI;
+  }
+  function onViewChange(fn) { viewListener = fn; if (fn && built) fn(); }
+  function turnView(top) {
+    if (!built) return;
+    const damping = controls.enableDamping;
+    controls.enableDamping = false;
+    controls.update();
+    controls.enableDamping = damping;
+    const offset = camera.position.clone().sub(controls.target);
+    if (top && !isTop()) tiltedOffset = offset.clone();
+    const from = new THREE.Spherical().setFromVector3(offset);
+    const to = top ? new THREE.Spherical(from.radius, 1e-6, 0)
+      : tiltedOffset ? new THREE.Spherical().setFromVector3(tiltedOffset)
+      : new THREE.Spherical(from.radius, 55 * Math.PI / 180, Math.PI / 4);
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      ++camTween;
+      camera.position.copy(controls.target).add(offset.setFromSpherical(to));
+      controls.update();
+      return;
+    }
+    const delta = Math.atan2(Math.sin(to.theta - from.theta), Math.cos(to.theta - from.theta));
+    const t0 = performance.now(), id = ++camTween;
+    const step = now => {
+      if (id !== camTween) return;
+      const k = Math.min(1, (now - t0) / 300), ease = k * k * (3 - 2 * k);
+      const s = new THREE.Spherical(from.radius + (to.radius - from.radius) * ease,
+        from.phi + (to.phi - from.phi) * ease, from.theta + delta * ease);
+      camera.position.copy(controls.target).add(offset.setFromSpherical(s));
+      controls.update();
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  const viewTop = () => turnView(true), viewTilt = () => turnView(false);
+  function getCamera() {
+    return built ? [...camera.position.toArray(), ...controls.target.toArray()] : null;
+  }
+  function setCamera(arr) {
+    if (!built || !Array.isArray(arr) || arr.length !== 6 || !arr.every(Number.isFinite)) return;
+    ++camTween;
+    const damping = controls.enableDamping;
+    controls.enableDamping = false;
+    controls.update(); // clear any remaining drag before restoring the saved view
+    camera.position.fromArray(arr, 0);
+    controls.target.fromArray(arr, 3);
+    controls.update();
+    controls.enableDamping = damping;
+  }
   function liveCamera() {
     window.LiveSync?.register("camera3d",
       () => [...camera.position.toArray(), ...controls.target.toArray()].map((v) => Math.round(v * 10) / 10),
@@ -1618,8 +2051,9 @@ window.Growth3D = (function () {
   }
   const coverSelectInfo = () => coverSel ? { sensor: coverSel.mesh.userData.node.name, arcs: coverSel.arcs, pin: !!coverSel.mark } : null;
 
-/* SIM35 END */  return { build, liveCamera, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, setSpills, setPumpRates, mapState, frameNodes,
-           setRegionTints, setRegionLabels, showRegionLabels, setPulse,
-           frame, resize, heatHex,
-           ZEXAG/* SIM35 BEGIN */, setCoverSelect, coverSelectInfo, mapCam, screenOf/* SIM35 END */ };
+/* SIM35 END */  return { build, liveCamera, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setScenario, setSpills, setPumpRates, mapState, frameNodes, setEstate, frameBox, setStreets, setTheme,
+           setRegionTints, setRegionLabels, showRegionLabels, setPulse, setEligible,
+           viewTop, viewTilt, heading, isTop, onViewChange, getCamera, setCamera,
+           frame, resize, heatHex, setExaggeration,
+           get ZEXAG() { return ZEXAG; }/* SIM35 BEGIN */, setCoverSelect, coverSelectInfo, mapCam, screenOf/* SIM35 END */ };
 })();

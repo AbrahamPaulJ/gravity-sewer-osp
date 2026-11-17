@@ -9,8 +9,10 @@
      infill      new homes spread through one of the regions in proportion to the
                  homes already there, from 10% to 300% of that region's share of the 2021 to
                  2041 planning projection (SIM3_REGIONS, from sim3_regions.py / sim3_analysis.py)
-     greenfield  a new estate joining at one manhole, 10 to 700 dwellings (GROWTH_RUNS, the
-                 Sim 2.5 grid, re-run with settled run lengths where it has been)
+     greenfield  a new estate joining at an edge manhole with pipe room for it
+                 (SA Water Table 4.4), up to four sizes each, settled runs (SIM4_GREENFIELD,
+                 from sim4_greenfield.py, in the grid shape by greenfield_runs.js), drawn as
+                 imaginary streets and houses on nearby open land (SIM4_ESTATES)
    plus "no growth": the suburb as it is, for the choke points and the baseline.
 
    The map is the live Sim 2.5 page's renderer (growth_3d.js) with its colours unchanged, so
@@ -28,7 +30,7 @@ window.Sim35UI = (function () {
   const pct = x => Math.round(x * 100) + "%";
   const row2 = (k, v) => '<div class="fact"><span>' + esc(k) + "</span><span>" + v + "</span></div>";
 
-  const G = () => window.GROWTH_GEOM, R = () => window.GROWTH_RUNS, S = () => window.SIM3_REGIONS;
+  const G = () => window.GROWTH_GEOM, R = () => window.SIM4_GF_RUNS || window.GROWTH_RUNS, S = () => window.SIM3_REGIONS;
   const IDX = () => window.SIM3_INDEX;
   const ALARM_MM = window.GROWTH_RUNS.alarmMm;
   // Page rule ids and their plain names. The regions payload uses the same ids.
@@ -51,7 +53,9 @@ window.Sim35UI = (function () {
   const REGION_COLS = { R1: "#3987e5", R2: "#d95926", R3: "#008300", R4: "#e87ba4", R5: "#199e70", R6: "#39c5cf", R7: "#b08457", R8: "#9085e9", R9: "#c9d1d9" };
   const isOverlay = ri => !!S().regions[ri].overlay;
   const regionCol = ri => REGION_COLS[S().regions[ri].id] || "#5b6470";
-  const SIZES_TIP = "The size of the new estate, all of it draining into the sewer at the chosen manhole. 10, 30, 80 and 150 homes are realistic: one year of the whole council's growth landing at one point is about 30 to 80 homes, one apartment project 50 to 150. 700 is a stress case, roughly a decade of the council's growth in one place, kept as an upper bound and not a plausible development. For scale, the state projection (PlanSA, 2021 to 2041) is 390 to 485 new dwellings over twenty years for the whole council; the infill family spreads that figure over the regions, and Sim 2.5's corridor runs placed exactly 390 and 485 along Walkerville Terrace, where the state expects them.";
+  const GF_SIZES_TIP = "The size of the new estate, all of it draining into the sewer at the chosen manhole. Each edge manhole has up to four sizes of its own: 80, 150 and 300 homes where the pipes have room for them, and the most the pipes downstream can take under SA Water's Table 4.4 (properties per reticulation sewer, DN150 to DN300). " +
+    "For scale, PlanSA's Land Supply Report puts Greater Adelaide's greenfield supply at about 2,500 dwellings a year over 2017 to 2021, built as estates on the fringe; an estate's size and where it joins are team assumptions, as no public data gives them for this network.";
+  const SIZES_TIP_SIM3 = "The size of the new estate, all of it draining into the sewer at the chosen manhole. 10, 30, 80 and 150 homes are realistic: one year of the whole council's growth landing at one point is about 30 to 80 homes, one apartment project 50 to 150. 700 is a stress case, roughly a decade of the council's growth in one place, kept as an upper bound and not a plausible development. For scale, the state projection (PlanSA, 2021 to 2041) is 390 to 485 new dwellings over twenty years for the whole council; the infill family spreads that figure over the regions, and Sim 2.5's corridor runs placed exactly 390 and 485 along Walkerville Terrace, where the state expects them.";
   // Region indices in the order of their ids (R1, R2, ...), for the dropdown and the chips;
   // the data lists them in another order.
   const regionOrder = () => S().regions.map((r, i) => i).sort((a, b) => String(S().regions[a].id).localeCompare(String(S().regions[b].id), undefined, { numeric: true }));
@@ -123,11 +127,12 @@ window.Sim35UI = (function () {
   const st = {
     view: "simple", fam: "infill",
     region: 0, step: 4,                 // infill: region index, ladder index (100%)
-    site: null, add: 3,                 // greenfield: chamber index, growth size index
+    site: null, add: 1,                 // greenfield: chamber index, growth size index
     caseTag: null,                      // the uncertainty case, by tag (shared by the families)
     rule: "r10", k: 5, method: "story", obj: "worst",
     scope: "story",                     // the test sets are scored on: the story's (default) or the broader one (TEST_NOTE)
     showSensors: true, showHeat: false, showPumps: false, showConn: false,
+    showEstates: false,                 // greenfield: every edge manhole's estate at its largest size
     hover: null, pick: null,            // hovered / clicked manhole NAME for the right panel
     legend: false,                      // the colour key, off until asked for
     areasView: false,                   // every region in its colour, nothing else
@@ -135,6 +140,20 @@ window.Sim35UI = (function () {
     rb: true, lb: true, top: true,      // right panel, left panel, top bar shown
     words: true,                        // the summary bubble on the map open
   };
+
+  const GF = () => window.SIM4_GF_RUNS || null;
+  const sizesTip = () => (GF() ? GF_SIZES_TIP : SIZES_TIP_SIM3);
+  const gfSite = i => !GF() || (i != null && GF().stepsAt[i] != null);     // can an estate join here?
+  const EST = () => window.SIM4_ESTATES || null;
+  const gfHead = i => { const g = (window.SIM4_GREENFIELD.sites || []).find(x => x.id === nameOf(i)); return g ? g.headroom : 0; };
+  if (GF()) Object.defineProperty(GF(), "growthLevels", {
+    get: () => (st.site != null && GF().stepsAt[st.site]) || GF().defaultLevels });
+  // Moving the estate keeps the size step where it fits the new site's own sizes.
+  function moveSite(i) {
+    if (st.site !== i) growthChanged();
+    st.site = i;
+    if (i != null) st.add = Math.min(st.add, R().growthLevels.length - 1);
+  }
 
   /* ------------------------------------------------------------- index spaces */
   const names = () => R().chambers;                 // chamber index -> SWMM name "MH<id>"
@@ -364,6 +383,70 @@ window.Sim35UI = (function () {
   }
 
   /* ------------------------------------------------------------ greenfield */
+  // The imaginary estate for a site at a size, on open land beside an edge manhole (estates.js).
+  function estateSpec(i, homes) {
+    const E = EST(), e = E && i != null && E.sites[nameOf(i)];
+    if (!e) return null;
+    const step = e.steps[String(homes)] || null, n = step ? step.n : 0, b = e.bbox;
+    return { at: nameOf(i), link: e.link, risingMain: e.rising_main || null, pipes: step ? step.pipes : [], mh: step ? (step.mh || []) : [], streets: e.streets || [], houses: e.houses.slice(0, n), houseZ: (e.house_z || []).slice(0, n),
+             pumped: !!(e.levels && e.levels.pumped), well: e.levels ? e.levels.well : null, lv: e.levels || null, mainM: e.main_m,
+             box: b, n, linkM: e.link_m, pipeM: step ? step.pipe_m : 0, dir: e.direction, partial: step ? step.partial : true };
+  }
+  const estateWhere = () => { const e = estateSpec(st.site, R().growthLevels[st.add]); return e ? ", the estate drawn " + (e.linkM / 1000).toFixed(1) + " km " + e.dir : ""; };
+  // One whole imaginary estate per piece of land, preferring gravity and then more homes.
+  function allEstates() {
+    const out = [], boxes = [];
+    const candidates = GF().sites.map(i => {
+      const lv = GF().stepsAt[i];
+      return estateSpec(i, lv[lv.length - 1]);
+    }).filter(Boolean).sort((a, b) => Number(a.pumped) - Number(b.pumped) || b.n - a.n);
+    candidates.forEach(e => {
+      const box = [Infinity, Infinity, -Infinity, -Infinity];
+      e.houses.forEach(r => r.forEach(([x, y]) => {
+        box[0] = Math.min(box[0], x); box[1] = Math.min(box[1], y);
+        box[2] = Math.max(box[2], x); box[3] = Math.max(box[3], y);
+      }));
+      const area = e.houses.length ? (box[2] - box[0]) * (box[3] - box[1]) : 0;
+      if (area > 0 && boxes.some(b =>
+        Math.max(0, Math.min(box[2], b[2]) - Math.max(box[0], b[0])) *
+        Math.max(0, Math.min(box[3], b[3]) - Math.max(box[1], b[1])) > 0.25 * area)) return;
+      out.push(e);
+      if (area > 0) boxes.push(box);
+    });
+    return out;
+  }
+  const estatesDrawn = list => list.length + " distinct estate" + (list.length === 1 ? " is" : "s are") +
+    " drawn. Edge manholes sharing the same land show it once.";
+  function frameAllEstates() {
+    const list = allEstates();
+    if (!list.length) return;
+    const b = list.reduce((a, e) => [Math.min(a[0], e.box[0]), Math.min(a[1], e.box[1]), Math.max(a[2], e.box[2]), Math.max(a[3], e.box[3])], [1e9, 1e9, -1e9, -1e9]);
+    Growth3D.frameBox(b, list[0].at);
+  }
+  function frameEstate() {
+    const e = estateSpec(st.site, R().growthLevels[st.add]);
+    if (e) Growth3D.frameBox(e.box, e.at);
+  }
+  // The estate on the map: the hovered edge manhole's (a preview), else the selected one's.
+  function drawEstate() {
+    if (!Growth3D.setEstate) return;
+    $("#toggleEstates").hidden = st.fam !== "one" || !EST();
+    $("#toggleEstates").classList.toggle("primary", st.showEstates);
+    if (st.fam !== "one" || st.areasView) { Growth3D.setEstate(null); return; }
+    if (st.showEstates) {
+      const list = allEstates();
+      $("#toggleEstates").textContent = "Estates (" + list.length + ")";
+      $("#toggleEstates").title = estatesDrawn(list);
+      Growth3D.setEstate(list); return;
+    }
+    $("#toggleEstates").textContent = "Estates";
+    $("#toggleEstates").title = "Draw distinct imaginary estates at their largest sizes. Edge manholes sharing the same land show it once.";
+    const h = st.hover != null && idxOfName[st.hover] !== undefined && gfSite(idxOfName[st.hover]) ? idxOfName[st.hover] : null;
+    const i = h != null ? h : st.site;
+    if (i == null) { Growth3D.setEstate(null); return; }
+    const lv = (GF() && GF().stepsAt[i]) || R().growthLevels;
+    Growth3D.setEstate(estateSpec(i, lv[Math.min(st.add, lv.length - 1)]));
+  }
   function cell() {
     const Rr = R(), add = Rr.growthLevels[st.add];
     return Rr.cells.find(c => c.case === caseIndex() && c.add === add && c.rule === st.rule) || Rr.cells[0];
@@ -413,6 +496,7 @@ window.Sim35UI = (function () {
   /* ------------------------------------------------------------------ paint */
   function repaint() {
     const sensors = sensorSet();
+    Growth3D.setEligible(st.fam === "one" && GF() && !st.areasView && !coverOn() ? GF().sites.map(nameOf) : []);
     Growth3D.setCoverSelect(null);
     let named = {}, site = null, spillsBefore = [], spillsNew = [];
     if (st.fam === "infill") {
@@ -454,13 +538,15 @@ window.Sim35UI = (function () {
       if (st.fam === "infill") {
         Growth3D.setPulse(region().manholes.map(nameOf));
         Growth3D.setRegionLabels([{ names: [regionPaint().labelAt[st.region]], text: region().id, col: "#00d4ff" }]);
-      } else { Growth3D.setPulse([]); Growth3D.setRegionLabels([]); }
+      } else if (st.fam === "one" && GF()) { Growth3D.setPulse(GF().sites.map(nameOf)); Growth3D.setRegionLabels([]); }
+      else { Growth3D.setPulse([]); Growth3D.setRegionLabels([]); }
       Growth3D.setSpills(spillsBefore, spillsNew);
     }
     Growth3D.setPumpRates([]);
+    drawEstate();
     renderHomes(sensors);
     renderKnobs();
-    renderStrip();
+    renderCardSummaries();
     syncDDs();
     renderPanel();
     renderSide();
@@ -514,33 +600,22 @@ window.Sim35UI = (function () {
       row("#1f4fff", "<strong>" + r.here + "</strong> reach it first" + (r.here > r.direct ? " (" + (r.here - r.direct) + " via unrecorded pipe ends)" : ""), true),
       row("#7dc4e0", "<strong>" + r.through + "</strong> drain through it from further up"),
       row("#3a2430", "<strong>" + r.elsewhere + "</strong> elsewhere"),
-      st.hover ? (st.fam === "one" ? "Click to move the growth here" : "Click to inspect it") : "");
+      st.hover ? (st.fam === "one" ? (gfSite(idxOfName[st.hover]) ? "Click to move the estate here" : "No estate here: not an edge manhole with pipe room. Click to inspect it") : "Click to inspect it") : "");
+    const e = st.fam === "one" && !st.areasView ? estateSpec(st.hover != null && gfSite(idxOfName[st.hover]) ? idxOfName[st.hover] : st.hover == null ? st.site : null,
+      R().growthLevels[st.add]) : null;
+    if (st.fam === "one" && !st.areasView && st.showEstates) {
+      $("#homesLine").insertAdjacentHTML("beforeend", row("#1f4fff", estatesDrawn(allEstates()), true));
+    } else if (e) $("#homesLine").insertAdjacentHTML("beforeend", row("#1f4fff", "<strong>" + e.n + "</strong> new homes in an imaginary estate on open land " + e.dir + " of this manhole", true));
   }
   const shortName = reg => reg.name.split(":")[0];
 
   /* ------------------------------------------------------------------ knobs */
   function buildCaseKnobs() {
     const cs = famCases();
-    $("#iiKnob").innerHTML = cs.map((c, i) => "<button data-i=" + JSON.stringify(String(i)) + " title=" + JSON.stringify(c.note || "") + ">" +
+    $("#iiKnob").innerHTML = cs.map((c, i) => "<button" + (/^(Dry|Design wet)$/.test(c.label) ? "" : ' class="x"') + " data-i=" + JSON.stringify(String(i)) + " title=" + JSON.stringify(c.note || "") + ">" +
       esc(c.label) + '<span class="knobNum">' + c.ii.toFixed(2) + " L/s/100m" + (c.settled === false ? ", 480 min" : "") + "</span></button>").join("");
   }
-  // The simple strip's "where": the regions, then greenfield, then no growth.
-  function buildStrip() {
-    $("#whereSel").innerHTML = regionOrder().map(i => { const r = S().regions[i]; return "<option value=" + JSON.stringify("r" + i) + ">" + esc(r.id + ": " + shortName(r)) + "</option>"; }).join("") +
-      '<option value="one">A new estate at one manhole</option><option value="none">Nowhere: the suburb today</option>';
-    $("#whereSel").onchange = () => {
-      const v = $("#whereSel").value;
-      if (v === "one" || v === "none") { setFamily(v); return; }
-      st.region = +v.slice(1); st.pick = null;
-      if (st.fam !== "infill") setFamily("infill"); else repaint();
-    };
-    $("#howRange").oninput = () => {
-      if (st.fam === "infill") st.step = +$("#howRange").value; else if (st.fam === "one") st.add = +$("#howRange").value;
-      repaint();
-    };
-    $("#wxKnob").onclick = e => { const b = e.target.closest("button"); if (b) setWeather(b.dataset.w); };
-    $("#kDown").onclick = () => { st.k = Math.max(1, st.k - 1); repaint(); };
-    $("#kUp").onclick = () => { st.k = Math.min(+$("#kRange").max || 10, st.k + 1); repaint(); };
+  function bindPanelControls() {
     // Arrows beside every dropdown: step through its options.
     $$(".arrow[data-for]").forEach(b => { b.onclick = () => {
       const sel = $("#" + b.dataset.for), n = sel.options.length;
@@ -559,9 +634,11 @@ window.Sim35UI = (function () {
     $("#wordsTab").innerHTML = on ? "&#9662;" : "&#9656;";
     $("#wordsTab").title = on ? "Fold the summary away" : "Show the summary";
   }
-  // The fold tabs on the map's edges: top bar, left panel (expert only), right panel.
+  // The fold tabs on the map's edges: top bar, left panel, right panel.
   function setFold(which, on) {
     st[which] = on;
+    if (which === "rb" && on && !demo) { tour.panel = true; saveTour(); }
+    renderCards();
     document.body.classList.toggle({ rb: "rbHidden", lb: "lbHidden", top: "topHidden" }[which], !on);
     $("#rTab").innerHTML = st.rb ? "&#9654;" : "&#9664;";
     $("#lTab").innerHTML = st.lb ? "&#9664;" : "&#9654;";
@@ -579,50 +656,79 @@ window.Sim35UI = (function () {
     const c = w === "dry" ? cs.find(x => x.ii < 1e-6) : (cs.find(x => Math.abs(x.ii - 0.11) < 1e-6 && /^Design wet$/.test(x.label)) || cs.find(x => Math.abs(x.ii - 0.11) < 1e-6));
     if (c) { st.caseTag = c.tag; repaint(); }
   }
-  function renderStrip() {
-    if (st.view !== "simple") return;
-    $("#whereSel").value = st.fam === "infill" ? "r" + st.region : st.fam;
-    const reg = region();
-    const desc = String(reg.name).split(":").slice(1).join(":").trim();
-    $("#whereSel").title = st.fam === "infill" ? reg.name : "";
-    $("#whereHint").textContent = st.fam === "infill" ? (desc ? desc.charAt(0).toUpperCase() + desc.slice(1) + "; " : "") + reg.dwellings + " homes, " + reg.nManholes + " manholes today"
-      : st.fam === "one" ? (st.site != null ? "At " + label(st.site) + ". Click another manhole to move it." : "Click a manhole on the map to place it.")
-      : "No homes added. Amber manholes are over the alarm already.";
-    const how = $("#howStep");
-    if (st.fam === "infill") {
-      const row = curRow(), f = ladder()[st.step];
-      $("#howRange").disabled = false; $("#howRange").max = String(ladder().length - 1); $("#howRange").value = String(st.step);
-      $("#howLbl").innerHTML = "+" + (row ? Math.round(row.dw) : Math.round(reg.nominal * f)) + " homes <span class='quiet' style='display:inline'>(" + Math.round(f * 100) + "% of its share)</span>";
-      $("#howInfo").dataset.tip = "100% is this region's share of the council's 2021 to 2041 planning projection, " + Math.round(reg.nominal) + " homes on top of its " + reg.dwellings +
-        " today. 25% is roughly the first year or two of that; 300% is a stress test. The homes are added all at once to today's pipes, with no upgrades; in reality they arrive over three to five years.";
-    } else if (st.fam === "one") {
-      $("#howRange").disabled = false; $("#howRange").max = String(R().growthLevels.length - 1); $("#howRange").value = String(st.add);
-      const g = R().growthLevels[st.add];
-      $("#howLbl").innerHTML = "+" + g + " homes in the new estate" + (g >= 500 ? " <span class='quiet' style='display:inline'>(stress case)</span>" : "");
-      $("#howInfo").dataset.tip = SIZES_TIP;
-    } else {
-      $("#howRange").disabled = true; $("#howLbl").textContent = "No growth"; $("#howInfo").dataset.tip = "Nothing is added in this view; the map shows the network as it is in the selected weather.";
+  // cards stores the open cards; seen tracks the current visit's tour independently.
+  const CARD_ORDER = ["growth", "weather", "detection", "sensors"];
+  let demo = null;
+  let tour = { active: true, cards: [], seen: new Set(), panel: false, growth: false, dismissed: false };
+  function readTour() {
+    let saved = null;
+    try {
+      const value = JSON.parse(localStorage.getItem("sim4Seen"));
+      if (value && Array.isArray(value.cards) && typeof value.panel === "boolean") saved = value;
+    } catch (e) { /* unavailable or invalid storage: first visit */ }
+    tour = { active: !saved, cards: saved ? saved.cards.filter(c => CARD_ORDER.includes(c)) : [],
+      seen: new Set(), panel: saved ? saved.panel : false, growth: false, dismissed: false };
+    if (!saved) {
+      st.view = "simple"; st.rule = "r10"; st.method = "story";
+      st.legend = false; st.areasView = false; st.coverView = false;
     }
-    $$("#wxKnob button").forEach(b => b.classList.toggle("on", b.dataset.w === wxOf()));
-    const c = curCase();
-    $("#wxHint").textContent = c.label + (c.settled === false ? " (480-minute runs)" : "");
-    $("#kBig").textContent = st.k + " sensor" + (st.k === 1 ? "" : "s");
-    const pl = placement();
-    $("#kHint").textContent = pl.warn ? "warn of " + pl.warn.plausible_warned + " of " + WARN(st.rule).plausible_total + " overloads by 100% build-out" : pl.worst != null ? "catch " + pct(pl.worst) + " of detectable growth, worst case" : "";
-    $("#kInfo").dataset.tip = pl.warn ? WARN_TIP : st.method === "story" ? "The story's first " + st.k + " sensor" + (st.k === 1 ? "" : "s") + ", in its order (Sim 4's list, up to " + storyMax() + "). " +
-      "A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth. The percentage is the share of the detectable growth the set notices, on " +
-      (st.fam === "one" ? "the greenfield grid." : storyScope() ? TEST_NOTE.story.charAt(0).toLowerCase() + TEST_NOTE.story.slice(1) : TEST_NOTE.broad.charAt(0).toLowerCase() + TEST_NOTE.broad.slice(1))
-      : st.fam !== "one" && storyScope() ? "This many level sensors, by the method chosen, scored on " + TEST_NOTE.story.charAt(0).toLowerCase() + TEST_NOTE.story.slice(1) +
-      " A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth; the percentage is the share of the detectable growth the set notices." : "The best set of this many level sensors, chosen once for the worst of all " + famCases().length + " weather and leakage cases. " +
-      "A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth. " +
-      "Detectable growth means the scenarios that at least one manhole anywhere would see; the percentage is the share of those that this set notices." +
-      (st.fam === "one" ? " For a new estate the set is built one sensor at a time (greedy); the infill set is the exact optimum." : " Each size is solved on its own, so the set for one more sensor need not contain this one.");
+    st.rb = tour.panel; st.words = !!saved;
+    document.body.classList.toggle("rbHidden", !st.rb);
+    $("#inWords").classList.toggle("collapsed", !st.words);
+    renderCards();
+  }
+  function saveTour() {
+    if (demo) return;
+    try { localStorage.setItem("sim4Seen", JSON.stringify({ cards: tour.cards, panel: tour.panel })); }
+    catch (e) { /* progress stays in memory for this visit */ }
+  }
+  function renderCards() {
+    $$(".section-card").forEach(card => {
+      const open = tour.cards.includes(card.dataset.card), header = card.querySelector(".card-header");
+      header.setAttribute("aria-expanded", String(open));
+      $("#" + header.getAttribute("aria-controls")).hidden = !open;
+    });
+    const next = tour.active && CARD_ORDER.find(c => (c !== "detection" || st.view === "expert") && !tour.seen.has(c));
+    const marker = $("#startHere");
+    marker.hidden = !next;
+    if (next) $('[data-card="' + next + '"] .card-title').appendChild(marker);
+    $("#panelNudge").hidden = !(tour.active && tour.growth && !tour.panel && !st.rb && !tour.dismissed);
+  }
+  function renderCardSummaries() {
+    $("#growthSummary").textContent = st.fam === "infill"
+      ? "Infill · " + region().id.replace(/^R/, "Region ") + " · " + pct(ladder()[st.step])
+      : st.fam === "one" ? "Greenfield · +" + R().growthLevels[st.add] + " homes" + (st.site == null ? "" : " · " + label(st.site)) : "No growth";
+    $("#weatherSummary").textContent = curCase().label;
+    $("#detectionSummary").textContent = ruleOf(st.rule).label;
+    $("#sensorsSummary").textContent = st.k + " sensor" + (st.k === 1 ? "" : "s");
+  }
+  function growthChanged() {
+    if (demo) return;
+    tour.growth = true;
+    renderCards();
+  }
+  function bindCards() {
+    $$(".card-header").forEach(header => { header.onclick = () => {
+      const name = header.closest(".section-card").dataset.card, open = !tour.cards.includes(name);
+      tour.cards = tour.cards.filter(c => c !== name);
+      if (open) { tour.cards.push(name); if (!demo) tour.seen.add(name); }
+      saveTour(); renderCards(); closeDDs(); Growth3D.resize($("#stage"));
+    }; });
+    $("#dismissNudge").onclick = () => { tour.dismissed = true; renderCards(); };
+    $("#restartTour").onclick = () => {
+      try { localStorage.removeItem("sim4Seen"); } catch (e) { /* restart in memory */ }
+      tour = { active: true, cards: [], seen: new Set(), panel: false, growth: false, dismissed: false };
+      closeDDs(); st.legend = false; st.areasView = false; st.coverView = false;
+      setFold("lb", true); setFold("rb", false); setWords(false); setView("simple");
+      renderCards(); $("#side").scrollTop = 0;
+    };
+    renderCards();
   }
   function buildKnobs() {
     const Rr = R();
     $("#ruleKnob").innerHTML = RULES.map(r => "<button data-r=" + JSON.stringify(r.id) + " title=" + JSON.stringify(r.note) + ">" + esc(r.label) + "</button>").join("");
     $("#addKnob").innerHTML = Rr.growthLevels.map((g, i) => "<button data-i=" + JSON.stringify(String(i)) + (g >= 500 ? ' title="A stress case, not a plausible estate"' : "") + ">+" + g + (g >= 500 ? '<span class="knobNum">stress case</span>' : "") + "</button>").join("");
-    $("#addInfo").dataset.tip = SIZES_TIP;
+    $("#addInfo").dataset.tip = sizesTip();
     $("#region").innerHTML = regionOrder().map(i => { const r = S().regions[i]; return "<option value=" + JSON.stringify(String(i)) + " title=" + JSON.stringify(r.name) + ">" + esc(r.id + ": " + shortName(r)) + "</option>"; }).join("");
     $("#stepRange").max = String(ladder().length - 1);
     buildCaseKnobs();
@@ -630,7 +736,8 @@ window.Sim35UI = (function () {
     on("#viewKnob", b => setView(b.dataset.v));
     on("#famKnob", b => setFamily(b.dataset.f));
     on("#iiKnob", b => { st.caseTag = famCases()[+b.dataset.i].tag; repaint(); });
-    buildStrip();
+    bindPanelControls();
+    bindCards();
     on("#ruleKnob", b => { st.rule = b.dataset.r; repaint(); });
     $("#toggleLegend").onclick = () => { st.legend = !st.legend; legendGroups(); };
     $("#toggleAreas").onclick = () => { st.areasView = !st.areasView; if (st.areasView) st.coverView = false; legendGroups(); repaint(); };
@@ -641,14 +748,14 @@ window.Sim35UI = (function () {
     };
     $("#areasKeyList").innerHTML = regionOrder().filter(i => !isOverlay(i)).map(i => { const r = S().regions[i]; return '<span><span class="k" style="background:' + regionCol(i) + '"></span>' + esc(r.id + " " + shortName(r)) + "</span>"; }).join("") +
       regionOrder().filter(isOverlay).map(i => '<span class="quiet">' + esc(S().regions[i].id + ", " + shortName(S().regions[i]).replace(/ \(.*\)$/, "")) + ", overlaps the regions above, so it is not shaded.</span>").join("");
-    on("#addKnob", b => { st.add = +b.dataset.i; repaint(); });
+    on("#addKnob", b => { if (st.add !== +b.dataset.i) growthChanged(); st.add = +b.dataset.i; repaint(); });
     on("#methKnob", b => { st.method = b.dataset.m; st.pickedGreedy = b.dataset.m === "greedy"; repaint(); });
     on("#scopeKnob", b => { st.scope = b.dataset.s === "broad" ? "broad" : "story"; repaint(); });
     on("#objKnob", b => { st.obj = b.dataset.o; repaint(); });
-    $("#region").onchange = () => { st.region = +$("#region").value; st.pick = null; repaint(); };
-    $("#stepRange").oninput = () => { st.step = +$("#stepRange").value; repaint(); };
+    $("#region").onchange = () => { if (st.region !== +$("#region").value) growthChanged(); st.region = +$("#region").value; st.pick = null; repaint(); };
+    $("#stepRange").oninput = () => { if (st.step !== +$("#stepRange").value) growthChanged(); st.step = +$("#stepRange").value; repaint(); };
     $("#kRange").oninput = () => { st.k = +$("#kRange").value; repaint(); };
-    $("#site").onchange = () => { st.site = $("#site").value === "" ? null : +$("#site").value; st.pick = null; repaint(); };
+    $("#site").onchange = () => { moveSite($("#site").value === "" ? null : +$("#site").value); st.pick = null; repaint(); };
   }
   function renderKnobs() {
     $("#methWarn").hidden = !WARN(st.rule) || st.fam === "one";
@@ -667,6 +774,7 @@ window.Sim35UI = (function () {
     $$("#famKnob button").forEach(b => b.classList.toggle("on", b.dataset.f === st.fam));
     $$("#iiKnob button").forEach(b => b.classList.toggle("on", +b.dataset.i === ci));
     $$("#ruleKnob button").forEach(b => b.classList.toggle("on", b.dataset.r === st.rule));
+    if (GF()) $("#addKnob").innerHTML = R().growthLevels.map((g, i) => "<button data-i=" + JSON.stringify(String(i)) + ">+" + g + "</button>").join("");
     $$("#addKnob button").forEach(b => b.classList.toggle("on", +b.dataset.i === st.add));
     $$("#methKnob button").forEach(b => b.classList.toggle("on", b.dataset.m === st.method));
     $$("#objKnob button").forEach(b => b.classList.toggle("on", b.dataset.o === st.obj));
@@ -704,14 +812,14 @@ window.Sim35UI = (function () {
     const methText = st.method === "story"
       ? (st.fam !== "one"
         ? "Sim 4's list: the story's sensors, in the story's order. The recommendation. Chosen in Sim 4 for the regions to monitor or watch, up to the 2041 homes, and scored here on " + (storyScope() ? "that same test" : "the broader test, which adds Dry, the regions the story leaves and the stress steps") + ". The other methods are comparisons."
-        : "Sim 4's list: the story's sensors, chosen for infill growth, scored here on a new estate joining at one manhole. Greedy is the greenfield grid's own order, as a comparison.")
+        : "Sim 4's list: the story's sensors, chosen for infill growth, tested here on new estates joining at the edge manholes. The placement does not change. Greedy is the greenfield runs' own order, as a comparison.")
       : st.fam !== "one"
       ? (st.method === "warn" ? "Warn before surcharge: the best set of this size for warning at least one build-out step before the first new surcharge, worst of the 7 wet cases." : st.method === "exact" ? (storyScope() && storyExact(st.k)
            ? "Exact: the best set of this size on the story's own test, solved exactly for the worst case (sim4_numbers.py, HiGHS). A comparison: the recommendation is Sim 4's list, which is nested and keeps step 5a's sensor."
            : "Exact: the best set of this size, solved exactly over all cases for the worst case (PuLP + HiGHS). A comparison: the recommendation is Sim 4's list.")
          : st.method === "risk" ? "Risk-weighted: a severity x occurrence score of the kind Kimbrough (2019) uses, with this page's own scales. Severity is homes draining through the manhole where it bites; occurrence is how far it pushes that manhole towards 0.7 of its bore. The set that notices the most risk, solved exactly. A comparison, not the recommendation: it pulls sensors towards trunk mains already near capacity."
                                : "Greedy: each sensor is the best addition to the ones before it. Up to 10 points below the exact optimum at the same size.")
-      : "The greenfield grid publishes the greedy order only; the exact solver has run on the infill family.";
+      : "Greedy is the greenfield runs' own order, a comparison only; the exact solver has run on the infill family.";
     const objText = st.method !== "greedy" ? "" : (st.obj === "worst"
       ? " Best worst case: each sensor added is the one that most raises the worst of the cases, so whatever the unknowns turn out to be at least this much is caught."
       : " Best average: each sensor added is the one that most raises the average over the cases; catches more on average, but can leave one case poorly covered.");
@@ -728,10 +836,12 @@ window.Sim35UI = (function () {
       st.method = "story";                // the simple view shows the recommendation: the story's list
       if (wxOf() !== "dry" && wxOf() !== "wet") setWeather("wet"); else if (!/^(Dry|Design wet)$/.test(curCase().label)) setWeather(wxOf());
     }
+    renderCards();
     repaint();
     Growth3D.resize($("#stage"));
   }
   function setFamily(f) {
+    if (st.fam !== f) growthChanged();
     st.fam = f; st.pick = null; st.hover = null;
     if (f === "one" && (st.method === "exact" || st.method === "warn")) st.method = "greedy";
     if (f !== "one" && st.method === "greedy" && !st.pickedGreedy) st.method = "story";
@@ -780,6 +890,11 @@ window.Sim35UI = (function () {
       $("#siteFacts").innerHTML =
         row2("Homes reaching it first", "<b>" + (reach ? reach.here : (Rr.dwellingsAt[st.site] || 0)) + "</b>") +
         row2("Adding", "<b>+" + add + "</b> dwellings" + (Rr.lpsPerDwelling ? ", " + (add * Rr.lpsPerDwelling[caseIndex()]).toFixed(2) + " L/s" : "")) +
+        (GF() ? row2("Pipe room", "<b>" + Math.floor(gfHead(st.site)) + "</b> properties before a pipe downstream reaches its Table 4.4 limit") : "") +
+        (estateSpec(st.site, add) ? row2("Drawn estate", (s => "An imaginary estate on the open land beside this manhole, joining through a short new sewer; not real streets or houses. " + s.n + " houses. " + (s.pipeM / 1000).toFixed(1) + " km of estate sewer" +
+          (s.lv ? ". Ground " + s.lv.ground_m[0].toFixed(0) + "\u2013" + s.lv.ground_m[1].toFixed(0) + " m, sewers " + s.lv.depth_m[0].toFixed(1) + "\u2013" + s.lv.depth_m[1].toFixed(1) + " m deep" +
+            (s.pumped ? ". The land falls away from this manhole, so the estate drains to a pump station at its lowest ground and a " + (s.mainM / 1000).toFixed(1) + " km rising main (dashed) carries it here"
+                      : ", falling by gravity to this manhole") : ""))(estateSpec(st.site, add))) : "") +
         row2("Manholes that see it", tipped.length ? '<b class="bad">' + tipped.length + "</b>" : "none at this size") +
         (Rr.spill ? row2("Newly overflowing", spillNewOne().length ? '<b class="bad">' + spillNewOne().length + "</b> spill from the lid" : "none") : "") +
         row2("The " + chosen.length + " chosen sensors", caught.length ? '<b class="good">' + caught.length + "</b> (" +
@@ -843,7 +958,7 @@ window.Sim35UI = (function () {
       return;
     }
     if (st.fam === "one") {
-      if (st.site == null) { el.innerHTML = '<span class="tag">Greenfield</span>Click a manhole to place the new estate there.'; return; }
+      if (st.site == null) { el.innerHTML = '<span class="tag">Greenfield</span>' + (GF() ? "Click a pulsing manhole: an estate can join only at an edge manhole with pipe room for it." : "Click a manhole to place the new estate there."); return; }
       const cl = cell(), row = rowFor(cl, st.site), tipped = row ? row.tip : [], chosen = placement().chosen, caught = chosen.filter(i => tipped.includes(i));
       el.innerHTML = '<span class="tag">Greenfield</span><b>' + R().growthLevels[st.add] + " dwellings</b> joining at <b>" + esc(label(st.site)) + "</b> in " + wx + ": " +
         (tipped.length ? "<b>" + tipped.length + "</b> manhole" + (tipped.length === 1 ? "" : "s") + " see it" : "no manhole passes the rule") + ". " +
@@ -1078,7 +1193,7 @@ window.Sim35UI = (function () {
       const pl = R().sensors[st.rule][st.obj];
       series = [{ name: "Greedy, worst case", col: "var(--worst)", v: pl.worst }, { name: "Greedy, average", col: "var(--mean)", v: pl.mean }];
       if (st.method === "story") series.push({ name: "Sim 4's list, worst case", col: "var(--selset)", v: storyCurve("one", st.rule).map(c => c.worst) });
-      note = st.method === "story" ? "Selected set: Sim 4's list, against the greenfield grid's greedy order." : "Greedy: each sensor is the one that most raises the " + (st.obj === "worst" ? "worst case" : "average") + ". Greenfield publishes greedy only.";
+      note = st.method === "story" ? "Selected set: Sim 4's list, against the greenfield runs' greedy order." : "Greedy: each sensor is the one that most raises the " + (st.obj === "worst" ? "worst case" : "average") + ". Greenfield publishes greedy only.";
     }
     series = series.filter(s => s.v && s.v.length);
     if (!series.length) { el.innerHTML = ""; return; }
@@ -1630,10 +1745,10 @@ window.Sim35UI = (function () {
       "<text x='" + ((L + W_ - Rt) / 2) + "' y='" + (H_ - 4) + "' text-anchor='middle' class='covax'>" + (isIn ? "Sensors, the best set of each size" : "Sensors, in greedy order") + "</text>" +
       "<line x1='" + x(at) + "' x2='" + x(at) + "' y1='" + T + "' y2='" + (H_ - B) + "' class='covcross' stroke-dasharray='3 3'/>" +
       SER.map(s => "<path d='" + path(s) + "' fill='none' stroke='" + s.col + "' stroke-width='2' stroke-linejoin='round' stroke-dasharray='" + s.dash + "'/>").join("") +
-      (lv == null ? "" : "<circle cx='" + x(at) + "' cy='" + y(lv) + "' r='4.5' fill='" + COV_LEVEL + "' stroke='#111c2f' stroke-width='2'/>") +
+      (lv == null ? "" : "<circle cx='" + x(at) + "' cy='" + y(lv) + "' r='4.5' fill='" + COV_LEVEL + "' stroke='var(--panel)' stroke-width='2'/>") +
       "<line id='covCross' y1='" + T + "' y2='" + (H_ - B) + "' class='covcross' visibility='hidden'/></svg><div class='covtip' id='covTip' hidden></div></div>" +
       "<p class='quiet'>" + (isIn ? "The best set of each size for seeing growth, so it can sit above the Warn before surcharge set. Scored on the runs each set was chosen on; the Level or float tab in Results has the unseen scores."
-        : "Greenfield growth only, so these counts do not compare with infill's. All five estate sizes count, 700 homes included. The map and slider stop at " + (R().maxSensors || 10) + " sensors; the curve carries on past them.") + "</p>";
+        : "Greenfield growth only, so these counts do not compare with infill's. Every edge manhole at each of its sizes counts. The map and slider stop at " + (R().maxSensors || 10) + " sensors; the curve carries on past them.") + "</p>";
   }
   function wireCoverCurve() {
     if (!_covCurve) return;
@@ -1720,7 +1835,7 @@ window.Sim35UI = (function () {
     const Rr = R(), sel = $("#site");
     const homes = i => { const r = Growth3D.reach(nameOf(i)); return r ? r.here : (Rr.dwellingsAt[i] || 0); };
     const n = Rr.chambers.map((_, i) => homes(i));
-    const order = Rr.chambers.map((_, i) => i).sort((a, b) => n[b] - n[a]);
+    const order = Rr.chambers.map((_, i) => i).filter(gfSite).sort((a, b) => n[b] - n[a]);
     sel.innerHTML = '<option value="">No manhole selected</option>' + order.map(i => "<option value=" + JSON.stringify(String(i)) + ">" + esc(label(i)) + "  (" + n[i] + " homes)</option>").join("");
     return order;
   }
@@ -1763,6 +1878,7 @@ window.Sim35UI = (function () {
     $("#areasKey").hidden = !av;
     $("#coverKey").hidden = !cv;
     $("#simpleKey").hidden = !full;
+    $$(".eligibleKey").forEach(el => { el.hidden = st.fam !== "one" || !GF(); });
     $$(".legend .lg-results").forEach(g => { g.hidden = g.id === "heatKey" ? !heat : !full; });
     $$(".legend .lg-network").forEach(g => { g.hidden = !full || (g.id === "pumpKey" ? !st.showPumps : g.id === "connKey" ? !st.showConn : !(st.showPumps || st.showConn)); });
     $("#toggleLegend").classList.toggle("primary", st.legend && !own);
@@ -1778,7 +1894,7 @@ window.Sim35UI = (function () {
      the Pumps toggle, whose "Highlight" title it reads as a private action, a popup closed
      with Esc) and gives a viewer who joins late the presenter's whole view. */
   const LIVE = ["region", "step", "site", "add", "caseTag", "rule", "k", "method", "obj", "pickedGreedy", "pick", "scope"];
-  const LIVE_TOGGLES = { showSensors: "#toggleSensors", showHeat: "#toggleHeat", showPumps: "#togglePumps",
+  const LIVE_TOGGLES = { showSensors: "#toggleSensors", showHeat: "#toggleHeat", showPumps: "#togglePumps", showEstates: "#toggleEstates",
                          showConn: "#toggleConn", legend: "#toggleLegend", areasView: "#toggleAreas", coverView: "#toggleCover" };
   const docOpen = () => $("#modal").hidden ? null : $("#modalBox .docbody > .lead") ? "ref" : $("#modalBox").classList.contains("wide") ? "qa" : "about";
   function liveGet() {
@@ -1790,14 +1906,300 @@ window.Sim35UI = (function () {
     if (!v || typeof v !== "object") return;
     if (v.view && v.view !== st.view) setView(v.view);
     if (v.fam && v.fam !== st.fam) setFamily(v.fam);
-    ["rb", "lb", "top"].forEach(w => { if (typeof v[w] === "boolean" && v[w] !== st[w]) setFold(w, v[w]); });
     if (typeof v.words === "boolean" && v.words !== st.words) setWords(v.words);
     for (const k in LIVE_TOGGLES) if (typeof v[k] === "boolean" && v[k] !== st[k]) $(LIVE_TOGGLES[k]).click();
     let dirty = false;
     LIVE.forEach(k => { if (k in v && v[k] !== st[k]) { st[k] = v[k]; dirty = true; } });
     if (dirty) repaint();
+    // A layer toggle may open the right panel. Apply saved folds after those effects.
+    ["rb", "lb", "top"].forEach(w => { if (typeof v[w] === "boolean" && v[w] !== st[w]) setFold(w, v[w]); });
     const d = v.doc || null;
     if (d !== docOpen()) { if (!d) $("#modal").hidden = true; else if (d === "about") showModal(); else showDoc(d); }
+  }
+  /* Each section owns a small list of real control actions. Resolve selectors at each
+     step: repaint replaces weather, estate-size and right-panel controls. */
+  const demoVisible = el => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
+  const demoClick = sel => $(sel)?.click();
+  function demoInput(sel, value) {
+    const el = $(sel);
+    el.value = String(value);
+    el.dispatchEvent(new Event(el.tagName === "SELECT" ? "change" : "input", { bubbles: true }));
+  }
+  function demoSteps(key) {
+    const click = (sel, text) => ({ sel, text, act: () => demoClick(sel) });
+    const range = (sel, value, text) => ({ sel, text, act: () => demoInput(sel, typeof value === "function" ? value() : value) });
+    const choose = (id, text) => ({ sel: "#" + id + " + .dd .ddBtn", text, act: () => {
+      const el = $("#" + id);
+      demoInput("#" + id, el.options[(el.selectedIndex + 1) % el.options.length].value);
+    } });
+    const arrows = (id, noun) => [-1, 1].map(n => click('.arrow[data-for="' + id + '"][data-step="' + n + '"]',
+      (n < 0 ? "Previous" : "Next") + " " + noun + ": move through the list. Watch the chosen place change on the map."));
+    const buttonSteps = (id, attr, text) => $$(id + " button").filter(demoVisible).map(b =>
+      click(id + ' [data-' + attr + '="' + b.dataset[attr] + '"]', text(b)));
+    // An edge manhole has its own size buttons. Choose it before walking those buttons.
+    const estateSite = Array.from($("#site").options).filter(o => o.value !== "")
+      .sort((a, b) => ((GF()?.stepsAt[+b.value] || []).length - (GF()?.stepsAt[+a.value] || []).length))[0];
+    const estateSizes = (GF()?.stepsAt[+estateSite?.value]) || R().growthLevels;
+    const growth = [
+      click('#famKnob [data-f="infill"]', "Infill adds homes among the homes already here. Watch the chosen area's pipes and homes light up."),
+      choose("region", "Choose an area to add homes to. Watch the lit homes move to that area."),
+      ...arrows("region", "area"),
+      range("#stepRange", $("#stepRange").min, "Less growth adds fewer homes. Watch which manholes still see a rise in water."),
+      range("#stepRange", $("#stepRange").max, "More growth sends more water down the pipes. Watch the red manholes and the summary change."),
+      click('#famKnob [data-f="one"]', "Greenfield adds an imaginary estate beside an edge manhole. The map now shows where an estate can join."),
+      { sel: "#site + .dd .ddBtn", text: "Choose where the new estate joins. Watch its homes and the pipes that carry their water.",
+        act: () => demoInput("#site", estateSite?.value || "") },
+      ...estateSizes.map((g, i) => click('#addKnob [data-i="' + i + '"]',
+        "+" + g + " sets the estate's size. Watch which manholes notice the extra water.")),
+      ...arrows("site", "edge manhole"),
+      click('#famKnob [data-f="none"]', "No growth shows the suburb today. It helps you spot trouble that was already there before new homes.")
+    ];
+    const weather = buttonSteps("#iiKnob", "i", b => /^Dry$/.test(famCases()[+b.dataset.i].label)
+      ? "Dry weather: less rain gets into the pipes. Watch the manhole colours change."
+      : /^Design wet$/.test(famCases()[+b.dataset.i].label)
+        ? "Wet weather: rain leaks into old pipes, so the water rises higher. Watch where red manholes appear."
+        : famCases()[+b.dataset.i].label + ": try this weather and leak pattern. Watch which manholes change colour.");
+    const detection = buttonSteps("#ruleKnob", "r", b => b.dataset.r === "alarm"
+      ? "The alarm rule notices water crossing the marked alarm level. Watch how the red manholes change."
+      : b.textContent + ": a sensor must see this much extra water depth. Watch which manholes still turn red.");
+    const methods = {
+      story: "Sim 4's list shows the suggested sensor sites. Watch the pins mark those manholes.",
+      warn: "This list aims to notice growth before pipes become too full. Watch the sensor pins move.",
+      exact: "This list finds the strongest sensor set for this test. Watch which manholes get sensor pins.",
+      greedy: "This list adds the most useful sensor each time. Watch the pins change.",
+      risk: "This list gives more weight to more serious trouble. Watch which sensor sites it chooses."
+    };
+    const sensors = [
+      ...buttonSteps("#scopeKnob", "s", b => b.dataset.s === "story"
+        ? "The story's test checks the growth used in the story. Watch the sensor scores update."
+        : "The broader test includes more growth and weather cases. Watch the scores change for the same pins."),
+      ...$$("#methKnob button").filter(demoVisible)
+        .sort((a, b) => Number(a.dataset.m === "greedy") - Number(b.dataset.m === "greedy"))
+        .map(b => click('#methKnob [data-m="' + b.dataset.m + '"]', methods[b.dataset.m])),
+      range("#kRange", $("#kRange").min, "Fewer sensors means fewer places to watch the water. Look for fewer pins on the map."),
+      range("#kRange", () => $("#kRange").max, "More sensors watch more places. Look for the added pins and the changed score."),
+      ...(st.view === "expert" ? $$("#objKnob button").map(b => click('#objKnob [data-o="' + b.dataset.o + '"]', b.dataset.o === "worst"
+        ? "Best worst case favours the weather case with the lowest score. Watch how the chosen pins compare."
+        : "Best average favours the score across all weather cases. Watch how the chosen pins compare.")) : [])
+    ];
+    const layerText = {
+      toggleSensors: "Sensors shows or hides the chosen sensor pins. Watch the markers on the map.",
+      togglePumps: "Pumps lights up the pumps and the pipes that feed them. Follow the highlighted paths.",
+      toggleHeat: "Heatmap colours each manhole by how much growth a sensor there could notice. Watch the colours spread.",
+      toggleEstates: "Estates shows distinct imaginary estates together. Edge manholes sharing the same land show it once.",
+      toggleConn: "Connections draws the small pipes from homes. Look for the added lines joining the sewer.",
+      toggleIds: "Manhole ids adds names beside the manholes. Use them to find the same place in a list.",
+      toggleLegend: "Legend shows the colour key below the map. Match a map colour to its meaning.",
+      toggleAreas: "Regions colours the areas of the suburb. Watch the map switch from water results to area colours.",
+      toggleCover: "Coverage colours places by the sensor that notices their growth. Watch the colours change around the sensor pins."
+    };
+    const layers = Object.entries(layerText).filter(([id]) => demoVisible($("#" + id))).map(([id, text]) => click("#" + id, text));
+    const pages = [
+      { sel: "#btn-story", text: "Story takes you back to the guided story. It explains why these sensor sites were chosen." },
+      { sel: "#btn-results", text: "Results opens the findings and comparisons. It helps you read what the map means." },
+      { sel: "#tab-ref", text: "Assumptions explains the choices behind the model. Read it to see what the map is based on." },
+      { sel: "#btn-info", text: "About explains this explorer and where its information comes from." },
+      { sel: "#btn-full", text: "Full screen gives the explorer more room. Press it again or use Esc to leave full screen." }
+    ].filter(step => demoVisible($(step.sel)));
+    const view = [
+      click('#viewKnob [data-v="simple"]', "Simple shows the main choices and the suggested sensors. Watch the extra controls fold away."),
+      click('#viewKnob [data-v="expert"]', "Expert shows more weather cases, sensor rules and comparisons. Watch the extra choices appear."),
+      range("#vexag", 1, "Vertical at 1× shows the true height scale. Watch the map flatten out."),
+      range("#vexag", 40, "Vertical at 40× makes height changes easier to see. Watch the pipes rise and dip."),
+      range("#vexag", demo.saved.slider, "Bring Vertical back to your setting. The pipes keep the same water results."),
+      { sel: "#themeBtn", text: "Light or Dark changes the page and map colours. The water results stay the same." }
+    ];
+    const map = [
+      click("#btn-compass", "The compass switches between looking straight down and a tilted view. Watch the map turn."),
+      click("#btn-compass", "Press the compass again to return to the other view. The same homes and pipes are still there."),
+      click("#btn-recentre", "Recentre brings the chosen place, estate or whole network back into view. Watch the map fill the space.")
+    ];
+    const panel = [
+      { sel: "#rightSensors", text: "This panel lists the suggested sensors and what they notice. The matching pins are on the map." },
+      { sel: "#mhFacts", text: "Choose a manhole to see its water level and the pipes around it. Watch its homes light up on the map.",
+        act: () => pickManhole(G().nodes.find(n => n.name === nameOf(placement().chosen[0]))) },
+      click("#rbBack", "Back returns from this manhole to the sensor list. The map returns to the chosen growth area."),
+      { sel: "#rightCover", text: "Coverage links the sensor list to the map colours. Watch the areas each sensor can notice.",
+        act: () => { if (!st.coverView) demoClick("#toggleCover"); } },
+      click('#covMode [data-v="count"]', "Number of sensors shows where more than one sensor notices growth. Watch the map colours change."),
+      click('#covMode [data-v="who"]', "First sensor shows which sensor first notices growth in each place. Match the map colours to the rows."),
+      click("#covRows tr", "Choose a sensor row to see what it watches. Follow the green arcs from its pin.")
+    ];
+    const summary = [
+      { sel: "#wordsText", text: "The summary puts this map into words. It says where homes are added and whether sensors notice the extra water." },
+      { sel: "#homesLine", text: "The homes line explains the lit homes and pipes. Watch it change as the chosen area changes.",
+        act: () => demoClick('.arrow[data-for="region"][data-step="1"]') },
+      click("#wordsTab", "Fold the summary away for more map space. The short Summary label stays here."),
+      click("#wordsTab", "Open Summary to read it again. It always follows the choices on the left.")
+    ];
+    const steps = { growth, weather, detection, sensors, layers, pages, view, map, panel, summary }[key];
+    if (demo.section.dataset.card) {
+      const sel = '[data-card="' + key + '"] .card-header';
+      steps.unshift(click(sel, "Fold this section to make more room. Its current choices stay in the header."),
+        click(sel, "Open the section to see its choices again. Watch the controls appear below the header."));
+    }
+    return steps;
+  }
+  function demoSnapshot() {
+    return { live: liveGet(), camera: Growth3D.getCamera(), z: Growth3D.ZEXAG,
+      slider: $("#vexag").value, zText: $("#vexagVal").textContent, scale: $("#scale").textContent,
+      theme: document.documentElement.getAttribute("data-theme"), hover: st.hover, cov: { ...COV }, cards: [...tour.cards] };
+  }
+  function demoRestore(saved) {
+    tour.cards = [...saved.cards];
+    liveSet(saved.live);
+    // Intermediate repaints can clear a selected coverage row while k is smaller.
+    Object.assign(COV, saved.cov);
+    renderCards();
+    st.hover = saved.hover;
+    Growth3D.setExaggeration(saved.z);
+    $("#vexag").value = saved.slider; $("#vexagVal").textContent = saved.zText;
+    $("#scale").textContent = saved.scale;
+    if (saved.theme == null) document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", saved.theme);
+    Growth3D.setTheme(saved.theme || "dark");
+    repaint();
+    Growth3D.resize($("#stage"));
+    Growth3D.setCamera(saved.camera);
+  }
+  function demoPlace() {
+    if (!demo) return;
+    const card = demo.dialog, anchor = demo.ring || demo.section, r = anchor.getBoundingClientRect();
+    const w = card.offsetWidth, h = card.offsetHeight, gap = 12;
+    let left = r.right + gap, top = r.top;
+    if (left + w > innerWidth - 8) {
+      if (r.left - w - gap >= 8) left = r.left - w - gap;
+      else { left = r.left; top = r.bottom + gap; if (top + h > innerHeight - 8) top = r.top - h - gap; }
+    }
+    card.style.left = Math.max(8, Math.min(innerWidth - w - 8, left)) + "px";
+    card.style.top = Math.max(8, Math.min(innerHeight - h - 8, top)) + "px";
+  }
+  function demoTimer() {
+    clearTimeout(demo.timer);
+    if (!demo.paused) demo.timer = setTimeout(() => {
+      if (demo.index === demo.steps.length) closeDemo(); else demoShow(demo.index + 1);
+    }, 2200);
+  }
+  function demoShow(index) {
+    clearTimeout(demo.timer);
+    if (demo.index >= 0) demo.history[demo.index] = demoSnapshot();
+    demo.ring?.classList.remove("demo-ring");
+    demo.index = index;
+    const step = demo.steps[index];
+    if (demo.history[index]) demoRestore(demo.history[index]);
+    else step?.act?.();
+    // Back replaces its own button with the sensor list: ring the resulting panel.
+    demo.ring = step ? ($(step.sel) || demo.section) : null;
+    if (demo.ring) {
+      demo.ring.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
+      demo.ring.classList.add("demo-ring");
+    }
+    $("#demoTitle").textContent = step ? demo.title : "That's it";
+    $("#demoText").textContent = step ? step.text : "Close to return to your map and settings.";
+    $("#demoBack").disabled = index === 0;
+    $("#demoNext").disabled = !step;
+    demoPlace(); demoTimer();
+  }
+  function closeDemo() {
+    if (!demo) return;
+    const done = demo;
+    clearTimeout(done.timer);
+    done.ring?.classList.remove("demo-ring");
+    closeDDs();
+    // Keep the demo guard active during restore: liveSet uses the real fold handlers.
+    tour = done.tour;
+    demoRestore(done.saved);
+    renderCards();
+    done.styles.forEach(([el, props]) => props.forEach(([key, value, priority]) => {
+      if (value) el.style.setProperty(key, value, priority); else el.style.removeProperty(key);
+    }));
+    done.scrim.remove(); done.dialog.remove();
+    demo = null;
+    done.scroll.forEach(([el, top, left]) => { el.scrollTop = top; el.scrollLeft = left; });
+    done.button.focus({ preventScroll: true });
+  }
+  function openDemo(button) {
+    if (demo) closeDemo();
+    const key = button.dataset.demo;
+    const section = button.closest(".section-card") || button.parentElement;
+    const saved = demoSnapshot();
+    demo = { section, button, title: button.getAttribute("aria-label").replace(/^Show how /, "").replace(/ works$/, ""),
+      saved, tour: { ...tour, cards: [...tour.cards], seen: new Set(tour.seen) },
+      scroll: $$('html, body, main, aside, .ddList').map(el => [el, el.scrollTop, el.scrollLeft]),
+      styles: [], history: [], index: -1, paused: false };
+    const scrim = document.createElement("div"), dialog = document.createElement("div");
+    scrim.id = "demoScrim"; dialog.id = "demoCard";
+    dialog.setAttribute("role", "dialog"); dialog.setAttribute("aria-modal", "true");
+    dialog.setAttribute("aria-labelledby", "demoTitle"); dialog.setAttribute("aria-describedby", "demoText"); dialog.tabIndex = -1;
+    dialog.innerHTML = '<h2 id="demoTitle"></h2><p id="demoText" aria-live="polite"></p><div class="demo-actions">' +
+      '<button id="demoBack">Back</button><button id="demoNext">Next</button><button id="demoPause" aria-pressed="false">Pause</button><button id="demoClose">Close</button></div>';
+    demo.scrim = scrim; demo.dialog = dialog;
+    document.body.append(scrim, dialog);
+    const lift = (el, z) => {
+      const props = ["position", "z-index"].map(k => [k, el.style.getPropertyValue(k), el.style.getPropertyPriority(k)]);
+      demo.styles.push([el, props]);
+      if (getComputedStyle(el).position === "static") el.style.position = "relative";
+      el.style.zIndex = String(z);
+    };
+    lift($("#stageWrap"), 1001);
+    if (!$("#stageWrap").contains(section)) lift(section, 1002);
+    if (key === "layers") lift($("#mapFoot"), 1001); // the Legend button's visible result
+    // Opening a card here never invokes its onboarding click handler.
+    if (section.dataset.card) {
+      tour.cards = [...new Set([...tour.cards, section.dataset.card])]; renderCards();
+      if (key === "detection" && st.view !== "expert") setView("expert");
+    }
+    if (["growth", "weather", "detection", "sensors", "summary", "panel", "layers"].includes(key)) {
+      if (st.areasView) demoClick("#toggleAreas");
+      if (st.coverView) demoClick("#toggleCover");
+    }
+    if (["growth", "weather", "detection", "sensors", "summary", "panel"].includes(key)) {
+      if (st.fam !== "infill") demoClick('#famKnob [data-f="infill"]');
+      if (!st.showSensors) demoClick("#toggleSensors");
+      st.hover = null; repaint();
+    }
+    if (key === "panel") { setView("simple"); st.pick = null; repaint(); }
+    if (key === "summary") setWords(true);
+    demo.steps = demoSteps(key);
+    $("#demoBack").onclick = () => demoShow(demo.index - 1);
+    $("#demoNext").onclick = () => demoShow(demo.index + 1);
+    $("#demoPause").onclick = () => {
+      demo.paused = !demo.paused;
+      $("#demoPause").textContent = demo.paused ? "Play" : "Pause";
+      $("#demoPause").setAttribute("aria-pressed", String(demo.paused)); demoTimer();
+    };
+    $("#demoClose").onclick = closeDemo; scrim.onclick = closeDemo;
+    demoShow(0); dialog.focus({ preventScroll: true });
+  }
+  function bindDemos() {
+    $$("[data-demo]").forEach(button => { button.onclick = e => { e.preventDefault(); e.stopPropagation(); openDemo(button); }; });
+    window.addEventListener("resize", demoPlace);
+    document.addEventListener("scroll", demoPlace, true);
+    document.addEventListener("keydown", e => {
+      if (!demo) return;
+      if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); closeDemo(); return; }
+      if (e.key === "Tab") {
+        const buttons = Array.from(demo.dialog.querySelectorAll("button:not(:disabled)"));
+        const i = buttons.indexOf(document.activeElement);
+        const next = i < 0 ? (e.shiftKey ? buttons.length - 1 : 0) : (i + (e.shiftKey ? -1 : 1) + buttons.length) % buttons.length;
+        e.preventDefault(); buttons[next].focus();
+      } else if (!demo.dialog.contains(e.target)) { e.preventDefault(); e.stopImmediatePropagation(); }
+    }, true);
+    document.addEventListener("focusin", e => { if (demo && !demo.dialog.contains(e.target)) demo.dialog.focus({ preventScroll: true }); });
+    // Keep the lifted map visible, while only the caption controls accept user input.
+    ["pointerdown", "mousedown", "click", "wheel", "touchstart"].forEach(type => document.addEventListener(type, e => {
+      if (!demo || !e.isTrusted || demo.dialog.contains(e.target) || e.target === demo.scrim) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+    }, { capture: true, passive: false }));
+  }
+  function pickManhole(nd) {
+    st.hover = null;
+    if (!nd) { st.pick = null; if (st.fam === "one" && st.site != null) { st.site = null; growthChanged(); } repaint(); return; }
+    if (!(nd.name in idxOfName)) return;
+    const i = idxOfName[nd.name];
+    if (st.fam === "one" && gfSite(i)) { moveSite(i); st.pick = null; }
+    else st.pick = nd.name;
+    repaint();
   }
   function init() {
     names().forEach((c, i) => { idxOfName[c] = i; });
@@ -1810,6 +2212,11 @@ window.Sim35UI = (function () {
     // can be linked to and the page can be checked headless.
     const hp = new URLSearchParams((location.hash || "").replace(/^#/, ""));
     if (hp.get("view") === "expert") st.view = "expert";
+    // The theme is the viewer's own: #theme=light|dark, else what this browser chose last, else dark.
+    let saved = null;
+    try { saved = localStorage.getItem("sim4Theme"); } catch (e) { /* storage blocked: dark */ }
+    const theme0 = ["light", "dark"].includes(hp.get("theme")) ? hp.get("theme") : saved === "light" ? "light" : "dark";
+    document.documentElement.dataset.theme = theme0;
     if (["infill", "one", "none"].includes(hp.get("fam"))) st.fam = hp.get("fam");
     if (hp.get("region") != null && S().regions[+hp.get("region")]) st.region = +hp.get("region");
     if (hp.get("step") != null && ladder()[+hp.get("step")] != null) st.step = +hp.get("step");
@@ -1820,40 +2227,82 @@ window.Sim35UI = (function () {
     if (hp.get("test") === "broad") st.scope = "broad";       // #test=broad: the broader test; the story's is the default
     if (hp.get("site") != null && names()[+hp.get("site")]) st.site = +hp.get("site");
     if (st.fam === "one" && (st.method === "exact" || st.method === "warn")) st.method = "greedy";
-    if (st.view === "simple") st.rule = "r10";
+    if (st.view === "simple") { st.rule = "r10"; st.method = "story"; }
     if (hp.get("areas") === "1") st.areasView = true;
     if (hp.get("cover") === "1" || hp.get("results") === "cover") st.coverView = true;   // the old Results tab's link lands on the view
+    readTour();
+    // Simple exposes the family's existing Dry / Design wet cases only.
+    if (st.view === "simple" && !/^(Dry|Design wet)$/.test(curCase().label)) {
+      const c = famCases().find(c => wxOf() === "dry" ? c.ii < 1e-6 : /^Design wet$/.test(c.label));
+      if (c) st.caseTag = c.tag;
+    }
     document.body.classList.toggle("simple", st.view === "simple");
     document.body.classList.toggle("expert", st.view === "expert");
-    Growth3D.build($("#stage"), nd => {
-      st.hover = null;
-      if (!nd) { st.pick = null; if (st.fam === "one" && st.site != null) st.site = null; repaint(); return; }
-      if (!(nd.name in idxOfName)) return;
-      const i = idxOfName[nd.name];
-      if (st.fam === "one") { st.site = i; st.pick = null; }
-      else st.pick = nd.name;          // inspect it; the selected region stays (23 Oct 2026)
-      repaint();
-    }, nd => {
+    Growth3D.build($("#stage"), pickManhole, nd => {
+      if (demo) return;
       const name = nd && !(st.fam === "one" && st.site != null && nd.name === nameOf(st.site)) ? nd.name : null;
       if (name === st.hover) return;
       st.hover = name;
+      drawEstate();
       renderHomes(sensorSet());
       coverHoverLine();
     }).then(() => {
       $("#kRange").max = String(R().maxSensors || 10);
+      const applyTheme = t => {
+        document.documentElement.dataset.theme = t;
+        if (Growth3D.setTheme) Growth3D.setTheme(t);
+        $("#themeBtn").textContent = t === "light" ? "Dark" : "Light";
+        $("#themeBtn").title = "Switch to the " + (t === "light" ? "dark" : "light") + " theme";
+      };
+      applyTheme(theme0);
+      $("#themeBtn").onclick = () => {
+        const t = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+        try { localStorage.setItem("sim4Theme", t); } catch (e) { /* not remembered */ }
+        applyTheme(t);
+        repaint();
+      };
+      if (EST() && Growth3D.setStreets) Growth3D.setStreets(EST().streets);
       buildKnobs();
       buildSiteList();
       legendGroups();
-      if (hp.get("panel") === "0") setFold("rb", false);
+      setFold("rb", st.rb);
+      setWords(st.words);
+      if (!tour.active && hp.get("panel") === "0") setFold("rb", false);
       if (hp.get("top") === "0") setFold("top", false);
       if (hp.get("words") === "0") setWords(false);
       if (hp.get("open") === "ref" || hp.get("open") === "qa") showDoc(hp.get("open"));
       else if (hp.get("open") === "about") showModal();
-      $("#scale").textContent = G().nPipes + " pipes, " + G().nChambers + " manholes, " + (G().nHouses || G().baseDwellings) + " connected properties, plus " +
-        G().nodes.filter(n => n.kind !== "chamber").length + " pipe ends with no manhole on record. Elevation is the pipe invert, exaggerated x" + Growth3D.ZEXAG +
-        ". Drag to turn the map, right-drag to move it, scroll to zoom where the pointer is.";
+      const scaleText = () => {
+        $("#scale").textContent = G().nPipes + " pipes, " + G().nChambers + " manholes, " + (G().nHouses || G().baseDwellings) + " connected properties, plus " +
+          G().nodes.filter(n => n.kind !== "chamber").length + " pipe ends with no manhole on record. Elevation is the pipe invert, " +
+          (Growth3D.ZEXAG === 1 ? "at true scale" : "exaggerated x" + Growth3D.ZEXAG) +
+          ". Drag to turn the map, right-drag to move it, scroll to zoom where the pointer is.";
+      };
+      scaleText();
+      // The Vertical slider in the top bar (from the buildings demo, PR 10): 1x is true scale.
+      $("#vexag").oninput = () => {
+        const k = +$("#vexag").value;
+        Growth3D.setExaggeration(k);
+        $("#vexagVal").textContent = k + "\u00d7";
+        scaleText();
+      };
       repaint();
       Growth3D.frame(null);            // the whole network, orbiting about its centre
+      $("#btn-recentre").onclick = () => {
+        if (st.fam === "one" && !st.areasView && st.showEstates && EST()) frameAllEstates();
+        else if (st.fam === "one" && !st.areasView && estateSpec(st.site, R().growthLevels[st.add])) frameEstate();
+        else Growth3D.frame(st.pick || null);
+      };
+      const compass = $("#btn-compass"), arrow = compass.querySelector("svg");
+      Growth3D.onViewChange(() => {
+        arrow.style.transform = "rotate(" + Growth3D.heading() + "deg)";
+        const top = Growth3D.isTop();
+        compass.setAttribute("aria-pressed", String(top));
+        compass.title = top ? "Restore the tilted 3D view" : "Top-down view, north up";
+        compass.setAttribute("aria-label", compass.title);
+      });
+      compass.onclick = () => { if (Growth3D.isTop()) Growth3D.viewTilt(); else Growth3D.viewTop(); };
+      bindDemos();
       // The page state first, then the camera, so a follower's view lands on the state it shows.
       const live = () => { window.LiveSync?.register("sim4explore", liveGet, liveSet); Growth3D.liveCamera(); };
       if (window.LiveSync) live(); else window.addEventListener("load", () => window.LiveSync && live(), { once: true });
@@ -1914,6 +2363,10 @@ window.Sim35UI = (function () {
       if (!Growth3D.showPumps(st.showPumps)) { st.showPumps = false; return; }
       $("#togglePumps").classList.toggle("primary", st.showPumps);
       legendGroups();
+    };
+    $("#toggleEstates").onclick = () => {
+      st.showEstates = !st.showEstates;
+      repaint();
     };
     $("#toggleHeat").onclick = () => { st.showHeat = !st.showHeat; $("#toggleHeat").classList.toggle("primary", st.showHeat); repaint(); };
     $("#toggleConn").hidden = !(G().cptr && G().cptr.length > 1);

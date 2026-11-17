@@ -27,11 +27,10 @@ html,body{margin:0;height:100%}
 body{background:var(--bg); color:var(--ink);
   font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;
   display:grid; grid-template-columns:var(--side) 6px 1fr var(--rside); height:100vh; overflow:hidden}
-/* Simple view hides the expert controls (.x); expert view hides the simple stand-ins (.s). */
+/* Both views share the same cards; simple view hides expert details. */
 body.simple .x{display:none!important}
 body.expert .s{display:none!important}
-/* Simple view: no left panel at all. The four-step strip over the map carries its controls.
-   The right panel can be folded away in either view. */
+/* Both side panels can be folded away in either view. */
 body.lbHidden{grid-template-columns:1fr var(--rside)}
 body.lbHidden #side,body.lbHidden #grip{display:none}
 body.rbHidden{grid-template-columns:var(--side) 6px 1fr}
@@ -120,17 +119,32 @@ select{width:100%; padding:7px; font:inherit; border:1px solid var(--line);
   line-height:1.45; box-shadow:0 8px 28px #000a; pointer-events:none; white-space:normal; text-align:left;
   font-weight:400; text-transform:none; letter-spacing:0}
 #tipBox[hidden]{display:none}
-/* The four steps of the simple view, stacked in the left panel. */
-#strip{display:flex; flex-direction:column; gap:9px; margin-top:12px}
-.step{background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:8px 10px 9px; min-width:0}
-.step .t{display:flex; align-items:center; gap:6px; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--dim); margin-bottom:7px}
-.step .n{display:inline-flex; width:18px; height:18px; border-radius:50%; background:var(--accent); color:#06131f;
-  font-weight:700; font-size:11px; align-items:center; justify-content:center; flex:none}
-.step .big{font-size:14px; font-weight:600; color:var(--ink); line-height:1.3; min-height:20px}
-.step .quiet{margin:5px 0 0; font-size:11.5px}
-.step input[type=range]{margin:6px 0 0}
-.step .knob button{padding:7px 3px; font-size:13px}
-.step .selwrap .big{flex:1; text-align:center}
+/* Shared collapsible controls use the theme palette. */
+.section-card{border:1px solid var(--line); border-radius:9px; margin:9px 0; background:var(--panel-2); min-width:0}
+.card-header{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 8px; width:100%; text-align:left;
+  padding:10px; border:0; border-radius:9px; background:transparent; color:var(--ink); font:inherit; cursor:pointer}
+.card-header:hover,.card-header:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+.card-title{font-weight:600}
+.card-summary{grid-column:1; color:var(--dim); font-size:11.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.card-chevron{grid-column:2; grid-row:1 / 3; align-self:center; color:var(--dim)}
+.card-header[aria-expanded="true"] .card-chevron{transform:rotate(90deg)}
+.card-content{padding:0 10px 10px; min-width:0}
+.card-content[hidden]{display:none}
+.card-content>.fld:first-child{margin-top:3px}
+#expertSide #sensorBox{margin:0; padding:0; border:0; background:transparent}
+#expertSide .sub{margin:9px 0; font-size:11.5px}
+#startHere{display:inline-block; margin-left:7px; padding:1px 6px; border-radius:12px; background:var(--accent);
+  color:var(--bg); font-size:10px; font-weight:600; animation:tour-pulse 1.8s ease-in-out infinite}
+#startHere[hidden]{display:none}
+@keyframes tour-pulse{50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){#startHere{animation:none}}
+#restartTour{border:0; background:none; padding:9px 0; color:var(--dim); font:inherit; font-size:11.5px; cursor:pointer}
+#restartTour:hover{color:var(--accent)}
+#panelNudge{position:absolute; z-index:9; right:22px; top:50%; transform:translateY(-50%); display:flex;
+  gap:6px; align-items:center; max-width:calc(100% - 46px); padding:8px; border:1px solid var(--accent);
+  border-radius:7px; background:var(--panel); color:var(--ink); font-size:11.5px}
+#panelNudge[hidden]{display:none}
+#panelNudge button{font:inherit; border:0; background:none; color:var(--dim); cursor:pointer; padding:2px}
 input[type=range]{width:100%; accent-color:var(--accent)}
 .fact{display:flex; justify-content:space-between; gap:10px; padding:5px 0;
   border-bottom:1px solid var(--line); font-size:12.5px}
@@ -197,6 +211,14 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 #stageWrap{flex:1; min-height:0; position:relative}
 #stage{position:absolute; inset:0}
 #stage canvas{display:block; width:100%; height:100%}
+#stage .mapCredit{max-width:calc(100% - 144px); line-height:12px}
+#mapControls{position:absolute; right:8px; top:24px; z-index:8; display:flex; align-items:center; gap:6px}
+#mapControls button{font:inherit; font-size:12px; height:36px; padding:0 10px; border:1px solid var(--line);
+  border-radius:6px; background:var(--panel); color:var(--dim); cursor:pointer}
+#mapControls button:hover,#mapControls button:focus-visible{color:var(--accent); border-color:var(--accent)}
+#mapControls #btn-compass{width:36px; padding:3px; border-radius:50%; display:grid; place-items:center}
+#btn-compass svg{width:24px; height:24px}
+.eligibleKey[hidden]{display:none}
 .labels{position:absolute; inset:0; pointer-events:none; overflow:hidden}
 .pipeCard{position:absolute; z-index:5; width:270px; padding:12px 14px 10px;
   background:#111c2fee; border:1px solid #22314d; border-radius:10px; color:#a9b8d4;
@@ -350,10 +372,14 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .badge.fixed{background:#3d2f12; color:#e3b341; border:1px solid #e3b34166}
 #stepLbl b{font-variant-numeric:tabular-nums}
 @media (max-width:820px){
-  body{grid-template-columns:1fr; grid-template-rows:auto 6px 1fr auto}
+  body,body.lbHidden,body.rbHidden,body.lbHidden.rbHidden{grid-template-columns:minmax(0,1fr)}
+  body{grid-template-rows:auto minmax(260px,1fr) auto}
+  body.lbHidden{grid-template-rows:minmax(260px,1fr) auto}
+  body.rbHidden{grid-template-rows:auto minmax(260px,1fr)}
+  body.lbHidden.rbHidden{grid-template-rows:minmax(260px,1fr)}
   #grip{display:none}
-  aside{border-right:0; border-bottom:1px solid var(--line); max-height:46vh}
-  #mhSide{border-left:0; border-top:1px solid var(--line); max-height:40vh}
+  aside{border-right:0; border-bottom:1px solid var(--line); max-height:24vh}
+  #mhSide{border-left:0; border-top:1px solid var(--line); max-height:24vh}
 }
 
 #btn-full{display:inline-flex; align-items:center; justify-content:center; padding-left:9px; padding-right:9px}
@@ -436,40 +462,242 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .kpis{display:flex; flex-wrap:wrap; gap:10px; margin-top:12px}
 .kpis div{flex:1 1 150px; background:#141d2b; border:1px solid var(--line); border-radius:8px; padding:8px 11px; font-size:12px; color:var(--dim)}
 .kpis b{display:block; font-size:18px; color:var(--ink); font-weight:600}
+/* The light theme (the Light/Dark switch in the map's top bar). The same layout and the same
+   result colours; only the ground, panels and text change. The map's own colours follow it in
+   growth_3d.js (setTheme). */
+html[data-theme="light"]{
+  --bg:#f6f8fa; --panel:#ffffff; --panel-2:#eef2f7; --ink:#1f2328; --dim:#47536a;
+  --faint:#6e7781; --line:#d0d7de; --accent:#0969da; --warn:#cf222e; --amber:#bf8700; --green:#1a7f37;
+  color-scheme:light}
+html[data-theme="light"] .knob button.on, html[data-theme="light"] nav button.primary, html[data-theme="light"] nav button.info:hover,
+html[data-theme="light"] .chip.on, html[data-theme="light"] .step .n{color:#fff}
+html[data-theme="light"] #rightSensors .why, html[data-theme="light"] .why{background:#f6f8fa}
+html[data-theme="light"] .ddList, html[data-theme="light"] #tipBox, html[data-theme="light"] #curveTip, html[data-theme="light"] .covtip{background:#fff; box-shadow:0 8px 28px #1f232833}
+html[data-theme="light"] .ddList div{border-top-color:var(--line)}
+html[data-theme="light"] #baseNote{background:#fff8e1; color:#7a5200}
+html[data-theme="light"] .pipeCard{background:#ffffffee; border-color:var(--line); color:var(--dim); box-shadow:0 8px 28px #1f232833}
+html[data-theme="light"] .pipeCard h4, html[data-theme="light"] .pipeCard .r b, html[data-theme="light"] .pipeCard .state,
+html[data-theme="light"] .pipeCard .x:hover{color:var(--ink)}
+html[data-theme="light"] .pipeCard .sub, html[data-theme="light"] .pipeCard .note, html[data-theme="light"] .pipeCard .x{color:var(--faint)}
+html[data-theme="light"] .pipeCard .r{border-top-color:var(--line)}
+html[data-theme="light"] .labels .lbl, html[data-theme="light"] #mapFoot, html[data-theme="light"] #inWords{text-shadow:0 0 3px #f3f0e8, 0 0 3px #f3f0e8, 0 1px 2px #f3f0e8}
+html[data-theme="light"] .labels .lbl{color:#5a32a3}
+html[data-theme="light"] .labels .lbl.site{color:#0969da}
+html[data-theme="light"] .labels .lbl.scn{color:#0550ae}
+html[data-theme="light"] .labels .lbl.pump, html[data-theme="light"] .labels .lbl.pumprate{color:#9a6700}
+html[data-theme="light"] .labels .lbl.spill{color:#bf3989}
+html[data-theme="light"] .labels .lbl.scale{color:#57606a}
+html[data-theme="light"] .labels .lbl.scale.cap{color:#47536a}
+html[data-theme="light"] .labels .lbl.sensor, html[data-theme="light"] .labels .lbl.region{text-shadow:none; box-shadow:0 0 0 2px #fff}
+html[data-theme="light"] .legend, html[data-theme="light"] .legend b, html[data-theme="light"] #homesLine, html[data-theme="light"] #homesLine .hd{color:#1f2328}
+html[data-theme="light"] .legend .ksq{border-color:#fff}
+html[data-theme="light"] #inWords, html[data-theme="light"] #inWords b, html[data-theme="light"] #homesLine strong{color:#1f2328}
+html[data-theme="light"] #homesLine .quiet2, html[data-theme="light"] #scale{color:#47536a}
+html[data-theme="light"] #homesLine .k.ring{box-shadow:0 0 0 2px #1f2328}
+html[data-theme="light"] #homesLine .tag, html[data-theme="light"] .say, html[data-theme="light"] .srctag,
+html[data-theme="light"] .ladder .lc, html[data-theme="light"] .kpis div{background:#eef2f7}
+html[data-theme="light"] .docbody .rf[aria-pressed="true"]{background:#ddf4ff}
+html[data-theme="light"] #modal{background:rgba(31,35,40,.45)}
+html[data-theme="light"] #modal .caveat{background:#ffebe9; color:#82071e}
+html[data-theme="light"] .badge.settled{background:#dafbe1; color:#1a7f37}
+html[data-theme="light"] .badge.fixed{background:#fff8c5; color:#7d4e00}
+html[data-theme="light"] .ressel{background:var(--panel-2)}
+html[data-theme="light"] .covbart{background:rgba(31,35,40,.08)}
+html[data-theme="light"] .covgl{stroke:rgba(31,35,40,.1)}
+html[data-theme="light"] .bo{color:#cf222e} html[data-theme="light"] .bu{color:#9a6700} html[data-theme="light"] .br{color:#1a7f37} html[data-theme="light"] .bg{color:#57606a}
+html[data-theme="light"] #inWords .tag{background:#ddf4ff; color:#0550ae; text-shadow:none}
+html[data-theme="light"] .tab{background:#ffffffee}
+#vexagBox{flex:none; display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); padding:0 4px 0 12px; white-space:nowrap}
+#vexagBox input{width:96px; accent-color:var(--accent)}
+#vexagVal{min-width:2.4em; color:var(--ink); font-variant-numeric:tabular-nums}
+#themeBtn{flex:none; height:32px; padding:0 12px; font-size:12.5px; margin-left:8px}
+/* Section demos sit above a blurred scrim; their controls use the current theme. */
+.demo-help-host{position:relative}
+.section-card .card-header{padding-right:38px}
+body .demo-help{position:absolute; right:8px; top:10px; width:20px; min-width:20px; height:20px;
+  padding:0; border:1px solid var(--dim); border-radius:50%; background:var(--panel-2); color:var(--ink);
+  font:600 12px/18px system-ui,sans-serif; text-align:center; cursor:pointer; flex:none; pointer-events:auto}
+body .demo-help:hover,body .demo-help:focus-visible{border-color:var(--accent); outline:2px solid var(--accent)}
+nav .demo-help-host{padding-right:28px; min-width:0; max-width:100%}
+nav .demo-help{right:0; top:6px}
+#viewControls{display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-left:auto}
+#viewControls #viewKnob{margin-left:0}
+#mapControls{padding-right:26px; max-width:calc(100% - 16px)}
+#mapControls .demo-help{right:0; top:8px; width:20px; height:20px; padding:0; border-radius:50%}
+#mhSide{position:relative}
+#mhSide h4{padding-right:22px}
+#inWords{padding-right:60px}
+#inWords.collapsed{padding-right:56px}
+#inWords .demo-help{right:32px; top:5px}
+#demoScrim{position:fixed; inset:0; z-index:1000; background:#060b1459;
+  -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px)}
+#demoCard{position:fixed; z-index:1004; width:286px; max-width:calc(100vw - 16px);
+  max-height:calc(100dvh - 16px); overflow:auto; padding:13px; border:1px solid var(--accent);
+  border-radius:10px; background:var(--panel); color:var(--ink); box-shadow:0 8px 30px #0006; font-size:13px}
+#demoCard h2{font-size:14px; margin:0 0 6px}
+#demoText{margin:0 0 12px}
+.demo-actions{display:flex; flex-wrap:wrap; gap:6px}
+.demo-actions button{font:inherit; font-size:12px; padding:5px 8px; border:1px solid var(--line);
+  border-radius:6px; background:var(--panel-2); color:var(--ink); cursor:pointer}
+.demo-actions button:focus-visible{outline:2px solid var(--accent)}
+.demo-actions button:disabled{opacity:.45; cursor:default}
+.demo-ring{outline:3px solid var(--accent)!important; outline-offset:2px; animation:demo-ring 1.1s ease-in-out infinite}
+@keyframes demo-ring{50%{outline-color:var(--ink)}}
+@media (prefers-reduced-motion:reduce){.demo-ring{animation:none}}
+@media print{.demo-help,#demoCard,#demoScrim{display:none!important}}
+
+/* Submission layout: scoped to the explorer so document views retain their styles. */
+#side, main, #mhSide, #demoCard {
+  --control-shadow:0 2px 8px color-mix(in srgb, var(--bg) 24%, transparent);
+}
+body{height:100dvh}
+#side, #mhSide{padding:16px; scrollbar-gutter:stable; overscroll-behavior:contain}
+#side h1{font-size:16px; line-height:1.4; margin:0 0 16px; font-weight:650}
+#side .section-card{margin:0 0 8px; border-radius:8px; background:transparent}
+#side .card-header{padding:12px 48px 12px 12px; gap:4px 8px; border-radius:8px; min-height:64px}
+#side .card-header:hover{outline:none; background:var(--panel-2)}
+#side .card-title{font-size:14px; line-height:1.4; font-weight:600}
+#side .card-summary{font-size:12px; line-height:1.5; white-space:normal; text-overflow:clip}
+#side .card-content{padding:0 12px 12px}
+#side .card-content>.fld:first-child{margin-top:4px}
+#side .fld, #side h4, #mhSide h4{font-size:12px; line-height:1.5; font-weight:600; margin:16px 0 8px; letter-spacing:.02em}
+#side .fld{gap:8px}
+#side .quiet, #side .sub, #mhSide .quiet, #side #iiBadge, #side #methNote{
+  color:var(--dim); font-size:12px; line-height:1.5; margin:8px 0;
+}
+#side .knob, #mhSide .knob{gap:4px; flex-wrap:wrap}
+#side .knob button, #mhSide .knob button{
+  min-height:36px; min-width:0; padding:8px; font-size:12px; line-height:1.4;
+  white-space:normal; border-radius:8px; background:transparent;
+}
+#side .knob button.on, #mhSide .knob button.on{
+  background:color-mix(in srgb, var(--accent) 14%, var(--panel));
+  border-color:var(--accent); color:var(--ink); font-weight:400; box-shadow:inset 0 -2px var(--accent);
+}
+#side :is(#famKnob, #methKnob, #iiKnob, #ruleKnob, #addKnob){display:grid; grid-template-columns:repeat(2,minmax(0,1fr))}
+#side :is(#famKnob, #methKnob, #iiKnob, #ruleKnob, #addKnob) button:last-child:nth-child(odd){grid-column:1 / -1}
+#side .knob button .knobNum{font-size:10px; margin-top:4px; opacity:1; color:var(--dim)}
+#side .selwrap{gap:4px; align-items:stretch}
+#side .arrow{width:32px; height:auto; min-height:36px; border-radius:8px; background:transparent}
+#side .ddBtn{min-height:36px; padding:8px 24px 8px 8px; font-size:12px; border-radius:8px; line-height:1.5}
+#side .ddList div{padding:8px 12px; font-size:12px; line-height:1.5}
+#side input[type=range]{display:block; min-height:24px; margin:4px 0}
+#side #sensorBox{padding:0; margin:0; background:transparent; border:0}
+#side #sensorBox h4{margin-top:4px}
+#side :is(#sensorList, #curve){margin-top:16px}
+#side .why, #mhSide .why{border:0; border-top:1px solid var(--line); border-radius:0; background:transparent; padding:12px 0; margin:0}
+#side .why .hd, #mhSide .why .hd{flex-wrap:wrap; gap:8px}
+#side .why p, #mhSide .why p{margin:4px 0 0}
+#side .fact, #mhSide .fact{padding:8px 0; gap:8px}
+#side .fact.sub2, #mhSide .fact.sub2{padding:0 0 8px 12px; margin-top:0}
+#side .fact span:first-child, #mhSide .fact span:first-child{color:var(--dim); white-space:normal}
+#side #baseNote, #side #pointNote{padding:8px 12px; margin-top:12px; border-radius:8px}
+#side #tipList ul{padding-left:16px; column-gap:16px}
+#side #restartTour{padding:8px 0; min-height:36px; font-size:12px}
+#side #startHere{margin-left:8px; padding:0 8px; line-height:20px; animation:none; background:var(--panel-2); color:var(--accent); border:1px solid var(--line)}
+#side .demo-help{top:12px; right:8px; width:28px; height:28px; min-width:28px; line-height:24px; border-color:var(--line); color:var(--dim)}
+main nav{padding:12px 16px; gap:12px 16px; align-items:center}
+main .navgrp{gap:4px; min-width:0}
+main nav button{height:36px; padding:0 12px; border-radius:8px; background:transparent; font-size:12px}
+main nav button:hover:not(:disabled){background:var(--panel-2); border-color:var(--accent)}
+main #layerControls button.primary{background:color-mix(in srgb,var(--accent) 14%,var(--panel)); color:var(--ink); box-shadow:inset 0 -2px var(--accent)}
+main #pageControls :is(#btn-story,#btn-info){background:transparent; border-color:var(--line); color:var(--dim); font-weight:400}
+main #pageControls #btn-results{background:var(--accent); border-color:var(--accent); color:var(--bg)}
+html[data-theme="light"] main #pageControls #btn-results{color:#fff}
+main .navsep{display:none}
+main nav .demo-help-host{padding-right:36px}
+main nav .demo-help{top:4px; width:28px; height:28px; line-height:24px; padding:0; color:var(--dim); border-color:var(--line)}
+main #viewControls{margin-left:0; gap:8px; flex:1 1 auto}
+main #viewKnob{gap:0}
+main #viewKnob button{height:36px; padding:0 12px; font-size:12px}
+main #viewKnob button+button{margin-left:-1px}
+main #viewKnob button.on{background:var(--panel-2); border-color:var(--accent); color:var(--ink); position:relative; font-weight:400}
+main #vexagBox{padding:0; gap:8px; min-height:36px}
+main #vexagBox input{width:80px; margin:0}
+main #themeBtn{height:36px; margin-left:auto; padding:0 12px}
+main #mapControls{top:24px; right:8px; gap:8px; padding:0; max-width:calc(100% - 16px)}
+main #mapControls button{height:36px; flex:none; padding:0 12px; border-radius:8px; background:var(--panel); box-shadow:var(--control-shadow); color:var(--dim)}
+main #mapControls #btn-compass{width:36px; padding:4px; border-radius:8px}
+main #mapControls .demo-help{position:static; order:3; width:36px; min-width:36px; padding:0; line-height:32px; border-radius:8px; border-color:var(--line)}
+main .tab{background:var(--panel); color:var(--dim)}
+main #topTab{height:16px}
+main #mapFoot{position:relative; flex:none; max-height:24dvh; overflow-y:auto; overscroll-behavior:contain; pointer-events:auto; background:var(--panel); text-shadow:none}
+main #mapFoot:has(.legend:not([hidden])){border-top:1px solid var(--line)}
+main .legend{padding:12px 16px; gap:8px 16px; color:var(--dim); font-size:12px; line-height:1.5}
+main .legend b{color:var(--ink)}
+main .legend .grp{gap:8px 16px; min-width:0; max-width:100%}
+main .legend .grp>span{max-width:100%; overflow-wrap:anywhere}
+main :is(#areasKeyList, #coverKeyList){gap:8px 16px}
+main :is(#areasKeyList, #coverKeyList) span{white-space:normal}
+main .chip{min-height:28px; padding:4px 8px}
+main #scale{padding:0 16px 8px; color:var(--dim); text-shadow:none}
+main #scale:empty{display:none}
+main #inWords{left:24px; bottom:8px; max-width:calc(100% - 48px); max-height:calc(100% - 80px); overflow-y:auto; padding:12px 80px 12px 12px; background:var(--panel); color:var(--ink); text-shadow:none; border:1px solid var(--line); border-radius:8px}
+main #inWords b, main #homesLine strong{color:var(--ink)}
+main #homesLine, main #homesLine .hd, main #homesLine .quiet2{color:var(--dim)}
+main #inWords.collapsed{padding:8px 80px 8px 12px; min-height:44px}
+main #inWords :is(.demo-help,#wordsTab){top:8px; width:28px; height:28px; min-width:28px; padding:0; line-height:24px; border-radius:8px; border-color:var(--line)}
+main #inWords .demo-help{right:44px}
+main #inWords #wordsTab{right:8px}
+main #panelNudge{right:24px; padding:8px 12px; gap:8px; border-radius:8px}
+#mhSide>.demo-help{top:8px; right:8px; width:28px; height:28px; line-height:24px; border-color:var(--line); color:var(--dim)}
+#mhSide h4{padding-right:28px}
+#mhSide #rbBack{min-height:36px; padding:8px 12px; margin-bottom:8px; background:transparent; color:var(--dim)}
+#mhSide .covwhy{border:0; border-top:1px solid var(--line); border-radius:0; padding:12px 0; margin:12px 0 0}
+#demoCard{padding:16px; border-radius:8px}
+#demoCard h2{margin-bottom:8px}
+#demoCard .demo-actions{gap:8px}
+#demoCard .demo-actions button{min-height:36px; padding:8px 12px; background:transparent}
+#demoCard #demoNext{background:var(--accent); color:var(--bg); border-color:var(--accent)}
+html[data-theme="light"] #demoCard #demoNext{color:#fff}
+:is(#side,main,#mhSide,#demoCard) :is(button,a,input,select,summary,[tabindex]):focus-visible{
+  outline:2px solid var(--accent); outline-offset:2px;
+}
+#side .card-header:focus-visible{outline-offset:-3px}
+@media (prefers-reduced-motion:reduce){
+  :is(#side,main,#mhSide,#demoCard) *, :is(#side,main,#mhSide,#demoCard) *::before, :is(#side,main,#mhSide,#demoCard) *::after{animation:none!important; transition:none!important; scroll-behavior:auto!important}
+}
+@media (min-width:821px) and (max-width:1200px){
+  body:not(.lbHidden):not(.rbHidden){grid-template-columns:minmax(220px,min(var(--side),30vw)) 6px minmax(0,1fr) minmax(220px,25vw)}
+}
+@media (max-width:820px){
+  body, body.lbHidden, body.rbHidden, body.lbHidden.rbHidden{overflow-y:auto; grid-template-columns:minmax(0,1fr)}
+  body{grid-template-rows:auto minmax(360px,1fr) auto}
+  body.lbHidden{grid-template-rows:minmax(360px,1fr) auto}
+  body.rbHidden{grid-template-rows:auto minmax(360px,1fr)}
+  body.lbHidden.rbHidden{grid-template-rows:minmax(360px,1fr)}
+  #side{max-height:26dvh; padding:12px 16px}
+  #mhSide{max-height:20dvh; padding:12px 16px}
+  main{min-height:360px}
+  main #top{max-height:min(28dvh,calc(100% - 224px)); overflow-y:auto; flex:none; overscroll-behavior:contain}
+  main nav{padding:12px; gap:8px}
+  main #stageWrap{min-height:180px}
+  main #mapFoot{max-height:20dvh; flex-shrink:1}
+  main .legend{padding:8px 12px}
+  main #viewControls{gap:8px; width:100%}
+  main #themeBtn{margin-left:0}
+}
+@media (max-width:480px){
+  main nav .navgrp{width:100%}
+  main #vexagBox{order:4; flex-basis:100%}
+  main #vexagBox input{flex:1; min-width:0; max-width:160px}
+  main .legend .grp{gap:8px}
+  main .legend .grp>b{flex-basis:100%}
+  main #mapControls{gap:8px}
+}
 </style>
 <!-- live presentation sync -->
 <script>(function(){var l=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),s=document.createElement("script");s.src=(l?"http://localhost:8787":"https://capstone-live.sidcode3535.workers.dev")+"/present.js";s.defer=true;document.head.appendChild(s)})();</script>
 </head>
-<body class="simple">
+<body class="simple rbHidden">
 
 <aside id="side">
   <h1>Sim 4 explorer: every case, rule and region</h1>
-  <div id="strip" class="s">
-    <div class="step">
-      <div class="t"><span class="n">1</span>Where do the new homes go <i class="info-i" data-tip="Infill: new homes spread through one region of the suburb in proportion to the homes already there (a block split in two, a backyard subdivision). Greenfield: a new estate joining the sewer at one manhole; click a manhole on the map to place it. Nowhere: the suburb as it is today.">i</i></div>
-      <div class="selwrap"><button class="arrow" data-for="whereSel" data-step="-1" title="Previous">&#9664;</button><select id="whereSel"></select><button class="arrow" data-for="whereSel" data-step="1" title="Next">&#9654;</button></div>
-      <div class="quiet" id="whereHint"></div>
-    </div>
-    <div class="step" id="howStep">
-      <div class="t"><span class="n">2</span>How much growth <i class="info-i" id="howInfo" data-tip="">i</i></div>
-      <div class="big" id="howLbl"></div>
-      <input type="range" id="howRange" min="0" max="6" step="1">
-    </div>
-    <div class="step">
-      <div class="t"><span class="n">3</span>Weather <i class="info-i" data-tip="Rain and groundwater leak into old sewers, so a wet day carries far more flow than a dry one and the same new homes raise the water further. Dry: sewage only. Wet: the leak rate at which the pipes reach what they were designed for. The sensors are chosen for the worst of all the model's cases, not for the one shown.">i</i></div>
-      <div class="knob" id="wxKnob"><button data-w="dry">Dry</button><button data-w="wet">Wet</button></div>
-      <div class="quiet" id="wxHint"></div>
-    </div>
-    <div class="step">
-      <div class="t"><span class="n">4</span>Sensors <i class="info-i" id="kInfo" data-tip="">i</i></div>
-      <div class="selwrap"><button class="arrow" id="kDown" title="One sensor fewer">&#9664;</button><div class="big" id="kBig"></div><button class="arrow" id="kUp" title="One sensor more">&#9654;</button></div>
-      <div class="quiet" id="kHint"></div>
-    </div>
-  </div>
-  <div id="expertSide" class="x">
-  <p class="sub">Where would new homes show up in the sewer's water level, and where would a few
-  sensors see most of that growth, whatever the unknowns turn out to be?</p>
-
+  <div id="expertSide">
+  <section class="section-card demo-help-host" data-card="growth">
+    <button type="button" class="demo-help" data-demo="growth" aria-label="Show how Growth works">?</button>
+    <button type="button" class="card-header" aria-expanded="false" aria-controls="growthContent"><span class="card-title">Growth<span id="startHere">Start here</span></span><span class="card-summary" id="growthSummary"></span><span class="card-chevron" aria-hidden="true">&#9656;</span></button>
+    <div class="card-content" id="growthContent" hidden>
   <label class="fld">What kind of growth <i class="info-i" id="famInfo" data-tip="">i</i></label>
   <div class="knob" id="famKnob">
     <button data-f="infill" title="New homes spread through a region, in proportion to the homes already there">Infill: a region densifies</button>
@@ -491,20 +719,35 @@ nav button.info:hover{background:var(--accent); color:#06131f}
     <div class="selwrap"><button class="arrow" data-for="site" data-step="-1" title="Previous manhole">&#9664;</button><select id="site"></select><button class="arrow" data-for="site" data-step="1" title="Next manhole">&#9654;</button></div>
   </div>
 
-  <label class="fld">Weather: what cannot be measured yet <i class="info-i" id="iiInfo" data-tip="">i</i></label>
-  <div class="knob x" id="iiKnob"></div>
-  <div id="iiBadge"></div>
-
-  <label class="fld">A sensor sees growth when <i class="info-i" id="ruleInfo" data-tip="">i</i></label>
-  <div class="knob x" id="ruleKnob"></div>
-
   <div id="siteFacts"></div>
   <div id="tipList"></div>
   <div id="baseNote"></div>
-
+    </div>
+  </section>
+  <section class="section-card demo-help-host" data-card="weather">
+    <button type="button" class="demo-help" data-demo="weather" aria-label="Show how Weather works">?</button>
+    <button type="button" class="card-header" aria-expanded="false" aria-controls="weatherContent"><span class="card-title">Weather</span><span class="card-summary" id="weatherSummary"></span><span class="card-chevron" aria-hidden="true">&#9656;</span></button>
+    <div class="card-content" id="weatherContent" hidden>
+      <label class="fld">Weather <i class="info-i" id="iiInfo" data-tip="">i</i></label>
+      <div class="knob" id="iiKnob"></div>
+      <div id="iiBadge"></div>
+    </div>
+  </section>
+  <section class="section-card demo-help-host x" data-card="detection">
+    <button type="button" class="demo-help" data-demo="detection" aria-label="Show how Detection rule works">?</button>
+    <button type="button" class="card-header" aria-expanded="false" aria-controls="detectionContent"><span class="card-title">Detection rule</span><span class="card-summary" id="detectionSummary"></span><span class="card-chevron" aria-hidden="true">&#9656;</span></button>
+    <div class="card-content" id="detectionContent" hidden>
+      <label class="fld">A sensor sees growth when <i class="info-i" id="ruleInfo" data-tip="">i</i></label>
+      <div class="knob x" id="ruleKnob"></div>
+    </div>
+  </section>
+  <section class="section-card demo-help-host" data-card="sensors">
+    <button type="button" class="demo-help" data-demo="sensors" aria-label="Show how Sensors works">?</button>
+    <button type="button" class="card-header" aria-expanded="false" aria-controls="sensorsContent"><span class="card-title">Sensors</span><span class="card-summary" id="sensorsSummary"></span><span class="card-chevron" aria-hidden="true">&#9656;</span></button>
+    <div class="card-content" id="sensorsContent" hidden>
   <div id="sensorBox">
     <h4><span id="sensHead">Sensors, scored on the story's test</span> <i class="info-i" id="sensInfo" data-tip="">i</i></h4>
-    <div id="scopeBox">
+    <div id="scopeBox" class="x">
       <label class="fld">Scored on <i class="info-i" data-tip="The story's test is the default: the 7 wet cases, the regions the story monitors or watches, and build-out up to 100% (the 2041 homes). On it, the story's five sensors score as the story says. The broader test is wider than the story: it adds Dry, the regions the story leaves, and the 150% and 300% stress steps, so every set's shares are lower there. Exact, greedy and the other comparison sets were solved on the broader test; on the story's test they are scored afresh, except the exact optimum at the 10 mm rule, which is the story test's own.">i</i></label>
       <div class="knob" id="scopeKnob">
         <button data-s="story" title="The 7 wet cases, the regions to monitor or watch, build-out up to 100%">The story's test</button>
@@ -529,6 +772,9 @@ nav button.info:hover{background:var(--accent); color:#06131f}
     <div id="curve" class="x"></div>
     <div id="sensorList"></div>
   </div>
+    </div>
+  </section>
+  <button type="button" id="restartTour">Restart tour</button>
   </div>
 </aside>
 
@@ -537,36 +783,50 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 <main>
   <div id="top">
   <nav>
-    <div class="navgrp">
+    <div class="navgrp demo-help-host" id="layerControls">
       <button id="toggleSensors" class="primary" title="Show or hide the recommended sensors">Sensors</button>
       <button id="togglePumps" title="Highlight the pump stations, their rising mains and the pipes that drain to them">Pumps</button>
       <button id="toggleHeat" class="x" title="Colour every manhole by how much growth it would see on its own">Heatmap</button>
+      <button id="toggleEstates" hidden title="Draw distinct imaginary estates at their largest sizes. Edge manholes sharing the same land show it once.">Estates</button>
       <button id="toggleConn" class="x" title="Draw every connection pipe at its bore">Connections</button>
       <button id="toggleIds" class="x" title="Label every manhole with its number">Manhole ids</button>
       <button id="toggleLegend" title="Show what the colours mean">Legend</button>
       <button id="toggleAreas" title="See how the suburb is divided into regions, each in its own colour; click again to come back">Regions</button>
+      <button type="button" class="demo-help" data-demo="layers" aria-label="Show how Map layers works">?</button>
       <button id="toggleCover" title="Colour the map by which sensor sees growth where. It follows the growth, weather, rule, method and number of sensors on the left; the detail opens on the right">Coverage</button>
     </div>
     <span class="navsep"></span>
-    <div class="navgrp">
+    <div class="navgrp demo-help-host" id="pageControls">
+      <button type="button" class="demo-help" data-demo="pages" aria-label="Show how Page buttons works">?</button>
       <button id="btn-story" class="primary" onclick="location.href='index.html'" title="Back to Simulation 4's six-step story">&#9664; Story</button>
       <button id="btn-results" class="primary" title="Warning, room for new homes, level or float, fewest sensors needed, limits and findings">Results</button>
       <button id="tab-ref">Assumptions</button>
       <button id="btn-info" class="info" title="What this model is and the numbers behind it">About</button>
       <button id="btn-full" title="Full screen" aria-label="Full screen"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg></button>
     </div>
+    <div id="viewControls" class="demo-help-host">
+    <button type="button" class="demo-help" data-demo="view" aria-label="Show how View controls works">?</button>
     <div class="knob" id="viewKnob">
       <button data-v="simple" title="The map, the recommended sensors and one sentence">Simple</button>
       <button data-v="expert" title="Every case, rule, placement method and check">Expert</button>
+    </div>
+    <label id="vexagBox" title="Vertical exaggeration: how many times heights are stretched against distances on the ground. 1x is true scale">Vertical <input id="vexag" type="range" min="1" max="40" step="1" value="22"> <span id="vexagVal">22×</span></label>
+    <button id="themeBtn" title="Switch between the dark and the light theme">Light</button>
     </div>
   </nav>
   </div>
   <div id="stageWrap">
     <div id="stage"></div>
+    <div id="mapControls" role="group" aria-label="Map view">
+      <button type="button" class="demo-help" data-demo="map" aria-label="Show how Map controls works">?</button>
+      <button id="btn-recentre" title="Recentre on the selected estate, all estates when shown, the picked manhole, or the whole network">Recentre</button>
+      <button id="btn-compass" title="Top-down view, north up" aria-label="Top-down view, north up" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><text x="12" y="7" text-anchor="middle" fill="currentColor" font-size="7">N</text><path d="M12 9L18 21L12 18L6 21Z" fill="currentColor"/></svg></button>
+    </div>
     <button class="tab" id="topTab" title="Fold the top bar away">&#9650;</button>
-    <button class="tab" id="rTab" title="Fold the right panel away">&#9654;</button>
+    <button class="tab" id="rTab" title="Bring the right panel back">&#9664;</button>
+    <div id="panelNudge" hidden><span>Click a manhole or open this panel to see details</span><button type="button" id="dismissNudge" aria-label="Dismiss hint">&#215;</button></div>
     <button class="tab" id="lTab" title="Fold the left panel away">&#9664;</button>
-    <div id="inWords"><button id="wordsTab" title="Fold the summary away">&#9662;</button><span id="wordsMini">Summary</span><div id="wordsText"></div><div id="homesLine"></div></div>
+    <div id="inWords" class="collapsed"><button type="button" class="demo-help" data-demo="summary" aria-label="Show how Summary works">?</button><button id="wordsTab" title="Fold the summary away">&#9662;</button><span id="wordsMini">Summary</span><div id="wordsText"></div><div id="homesLine"></div></div>
   </div>
 
   <div id="mapFoot">
@@ -574,6 +834,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
     <div class="grp" id="areasKey" hidden><b>Regions</b><span id="areasKeyList"></span></div>
     <div class="grp" id="coverKey" hidden><b>Coverage</b><span id="coverKeyList"></span></div>
     <div class="grp s" id="simpleKey"><b>Map</b>
+      <span class="eligibleKey" hidden><span class="k" style="background:#d66be8"></span>Edge manhole that can take an estate</span>
       <span><span class="k" style="background:#2ef56b"></span>recommended sensor, numbered as in the list</span>
       <span><span class="k" style="background:#ff2d55"></span>sees this growth</span>
       <span><span class="k" style="background:#ffa500"></span>over the alarm before any growth</span>
@@ -590,6 +851,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
       <span><span class="kl" style="background:#ff2d55"></span>sees this growth</span>
     </div>
     <div class="grp lg-results x"><b>Manholes</b>
+      <span class="eligibleKey" hidden><span class="k" style="background:#d66be8"></span>Edge manhole that can take an estate</span>
       <span><span class="k" style="background:#ff2d55"></span>sees the growth (the selected rule)</span>
       <span><span class="k" style="background:#fff176"></span>rises 10 mm or more, below the rule</span>
       <span><span class="k" style="background:#ffa500"></span>over the alarm before growth</span>
@@ -611,6 +873,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
       <span><span class="kdl"></span>no connection published: joined to its nearest main, a guess (<span id="connGuess"></span>)</span>
     </div>
     <div class="grp lg-network" hidden><b>Points</b>
+      <span class="eligibleKey" hidden><span class="k" style="background:#d66be8"></span>Edge manhole that can take an estate</span>
       <span><span class="k" style="background:#c9d1d9"></span>manhole, a sensor could go here</span>
       <span><span class="k" style="background:#30363d"></span>pipe end, no manhole recorded</span>
       <span><span class="k" style="background:#ff6f9c"></span>connected property</span>
@@ -623,6 +886,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 </main>
 
 <aside id="mhSide" aria-label="The recommended sensors, or the selected manhole">
+  <button type="button" class="demo-help" data-demo="panel" aria-label="Show how Right panel works">?</button>
   <div id="rightSensors" class="s"></div>
   <div id="rightCover" hidden></div>
   <div id="mhFacts"></div>
@@ -634,14 +898,20 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 <script src="../simulation3/data/growth.js?v=9"></script>
 <script src="data/regions.js?v=1"></script>
 <script src="../simulation3/data/index.js?v=9"></script>
-<script src="../simulation35/growth_3d.js?v=3"></script>
+<script src="data/osm_buildings.js?v=1"></script>
+<script src="data/msft_buildings.js?v=1"></script>
+<script src="footprints.js?v=1"></script>
+<script src="../simulation35/growth_3d.js?v=12"></script>
 <script src="../simulation3/osp_core.js?v=9"></script>
 <script src="../simulation3/placement.js?v=9"></script>
 <script src="data/explore.js?v=5"></script>
 <script src="data/sim4.js?v=7"></script>
+<script src="data/greenfield.js?v=1"></script>
+<script src="data/estates.js?v=5"></script>
+<script src="greenfield_runs.js?v=1"></script>
 <script src="../simulation35/data/room.js?v=1"></script>
 <script src="../simulation35/room_calc.js?v=2"></script>
-<script src="explore_ui.js?v=5"></script>
+<script src="explore_ui.js?v=16"></script>
 <script type="module">
   Sim35UI.init();
 </script>

@@ -1,0 +1,7539 @@
+{
+  "family": "sim4_greenfield",
+  "candidate_count": 328,
+  "candidate_ids": [
+    1623436,
+    1623725,
+    1623826,
+    1623928,
+    1623974,
+    1624017,
+    1624138,
+    1624202,
+    1624494,
+    1624769,
+    1625316,
+    1625395,
+    1625959,
+    1626189,
+    1626450,
+    1626578,
+    1627084,
+    1627682,
+    1627986,
+    1629073,
+    1629194,
+    1629281,
+    1629888,
+    1630330,
+    1630702,
+    1630926,
+    1631057,
+    1631514,
+    1632309,
+    1632398,
+    1790382,
+    1790845,
+    4320104,
+    4320244,
+    4426188,
+    4426673,
+    4426728,
+    4426971,
+    4426979,
+    4427095,
+    4427309,
+    4427312,
+    4427425,
+    4427588,
+    4427659,
+    4427688,
+    4427714,
+    4427741,
+    4427849,
+    4428026,
+    4428067,
+    4428096,
+    4428117,
+    4428137,
+    4428139,
+    4428146,
+    4428188,
+    4428245,
+    4428268,
+    4428320,
+    4428367,
+    4428426,
+    4428524,
+    4428583,
+    4428606,
+    4428636,
+    4428638,
+    4428713,
+    4428765,
+    4428797,
+    4428800,
+    4428836,
+    4428920,
+    4428968,
+    4428995,
+    4429013,
+    4429019,
+    4429035,
+    4429086,
+    4429107,
+    4429136,
+    4429179,
+    4429268,
+    4429312,
+    4429320,
+    4429323,
+    4429357,
+    4429411,
+    4429420,
+    4429468,
+    4429471,
+    4429499,
+    4429503,
+    4429527,
+    4429544,
+    4429584,
+    4429645,
+    4429656,
+    4446824,
+    4446883,
+    4447128,
+    4447346,
+    4447351,
+    4447355,
+    4447369,
+    4447394,
+    4447397,
+    4447416,
+    4447452,
+    4447506,
+    4447602,
+    4447643,
+    4447668,
+    4447684,
+    4447691,
+    4447726,
+    4447880,
+    4448029,
+    4448345,
+    4448392,
+    4448419,
+    4448474,
+    4448509,
+    4448626,
+    4448662,
+    4448753,
+    4448762,
+    4448796,
+    4448813,
+    4448853,
+    4448929,
+    4449011,
+    4449083,
+    4449103,
+    4449118,
+    4449173,
+    4449321,
+    4449330,
+    4449436,
+    4449485,
+    4449503,
+    4449510,
+    4449635,
+    4449704,
+    4449778,
+    4449785,
+    4449796,
+    4449806,
+    4449849,
+    4449860,
+    4449866,
+    4449882,
+    4449913,
+    4449920,
+    4449977,
+    4450077,
+    4450100,
+    4450137,
+    4450167,
+    4450170,
+    4450180,
+    4450193,
+    4450207,
+    4450211,
+    4450219,
+    4450269,
+    4450314,
+    4450332,
+    4450378,
+    4450391,
+    4450396,
+    4450449,
+    4450531,
+    4450554,
+    4450581,
+    4450617,
+    4450757,
+    4450776,
+    4450787,
+    4450802,
+    4450847,
+    4450920,
+    4450922,
+    4450975,
+    4451058,
+    4451092,
+    4451113,
+    4451143,
+    4451207,
+    4451287,
+    4451333,
+    4451468,
+    4451516,
+    4451531,
+    4451576,
+    4451673,
+    4451759,
+    4451823,
+    4451840,
+    4451870,
+    4451871,
+    4451886,
+    4451945,
+    4451967,
+    4451971,
+    4452011,
+    4452032,
+    4452071,
+    4452081,
+    4452110,
+    4452154,
+    4452189,
+    4452217,
+    4452397,
+    4452462,
+    4452527,
+    4452538,
+    4452541,
+    4452632,
+    4452680,
+    4452721,
+    4452724,
+    4452760,
+    4452809,
+    4452902,
+    4452919,
+    4452946,
+    4452952,
+    4452977,
+    4452980,
+    4452994,
+    4453031,
+    4453047,
+    4453095,
+    4453098,
+    4453124,
+    4453133,
+    4453185,
+    4453213,
+    4453315,
+    4453489,
+    4453512,
+    4453553,
+    4453579,
+    4453740,
+    4453748,
+    4453770,
+    4453788,
+    4453837,
+    4453850,
+    4453931,
+    4453970,
+    4453981,
+    4454009,
+    4454116,
+    4454125,
+    4454195,
+    4454209,
+    4454312,
+    4454376,
+    4454395,
+    4454398,
+    4454411,
+    4454490,
+    4454629,
+    4454640,
+    4454643,
+    4454657,
+    4454674,
+    4454718,
+    4454744,
+    4454876,
+    4454901,
+    4454993,
+    4455121,
+    4455191,
+    4455429,
+    4455516,
+    4455602,
+    4455762,
+    4455780,
+    4455808,
+    4455813,
+    4455909,
+    4455943,
+    4456108,
+    4456372,
+    4456468,
+    4456532,
+    4456551,
+    4456553,
+    4456777,
+    4498291,
+    4498407,
+    4498454,
+    4499048,
+    4499059,
+    4499116,
+    4499323,
+    4499406,
+    4499417,
+    4499632,
+    4499729,
+    4500035,
+    4500043,
+    4500254,
+    4500422,
+    4500625,
+    4500689,
+    4500902,
+    4501201,
+    4501544,
+    4501851,
+    4501866,
+    4502097,
+    4502186,
+    5118586,
+    5164627,
+    5216010,
+    5228371,
+    5233531,
+    5241467,
+    5286735,
+    6042164,
+    6153571,
+    7465841,
+    8707824,
+    8963773
+  ],
+  "eligible_count": 6,
+  "eligible": [
+    {
+      "manhole_id": 1625959,
+      "node_id": 757,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        1495435
+      ],
+      "headroom": 311.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 959,
+      "limiting_pipe": 1495435,
+      "limiting_pipe_id": 1495435,
+      "limiting_pipe_dn": 143.0,
+      "open_sector_deg": 227.46748842074328,
+      "open_bearing_deg": 111.84386185289344,
+      "edge_stretch": 1625959,
+      "steps": [
+        10,
+        30,
+        80,
+        150,
+        300,
+        311
+      ],
+      "ceiling": 311,
+      "pumped": true,
+      "pumped_known": true,
+      "connection_class": "reticulation",
+      "region": "R8"
+    },
+    {
+      "manhole_id": 1630702,
+      "node_id": 884,
+      "in_degree": 0,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        1495347
+      ],
+      "headroom": 349.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 687,
+      "limiting_pipe": 1495347,
+      "limiting_pipe_id": 1495347,
+      "limiting_pipe_dn": 143.0,
+      "open_sector_deg": 139.91284886895,
+      "open_bearing_deg": 75.0341687129787,
+      "edge_stretch": 1630702,
+      "steps": [
+        10,
+        30,
+        80,
+        150,
+        300,
+        349
+      ],
+      "ceiling": 349,
+      "pumped": true,
+      "pumped_known": true,
+      "connection_class": "reticulation",
+      "region": "R8"
+    },
+    {
+      "manhole_id": 1631057,
+      "node_id": 443,
+      "in_degree": 1,
+      "outgoing_dn": [
+        375.0
+      ],
+      "outgoing_pipe_ids": [
+        1495343
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "open_sector_deg": 164.38384515473,
+      "open_bearing_deg": 238.33898233802148,
+      "edge_stretch": 1631057,
+      "steps": [
+        10,
+        30,
+        80,
+        150,
+        300,
+        600,
+        1000
+      ],
+      "ceiling": 1000,
+      "pumped": true,
+      "pumped_known": true,
+      "connection_class": "trunk",
+      "region": "R8"
+    },
+    {
+      "manhole_id": 4320104,
+      "node_id": 506,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4310720
+      ],
+      "headroom": 895.2,
+      "no_table_cap": false,
+      "limiting_pipe_index": 691,
+      "limiting_pipe": 4476322,
+      "limiting_pipe_id": 4476322,
+      "limiting_pipe_dn": 225.0,
+      "open_sector_deg": 180.2772202238966,
+      "open_bearing_deg": 198.60325958641283,
+      "edge_stretch": 4320104,
+      "steps": [
+        10,
+        30,
+        80,
+        150,
+        300,
+        600,
+        895
+      ],
+      "ceiling": 895,
+      "pumped": true,
+      "pumped_known": true,
+      "connection_class": "reticulation",
+      "region": "R5"
+    },
+    {
+      "manhole_id": 4449485,
+      "node_id": 684,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433275
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "open_sector_deg": 173.8297682012235,
+      "open_bearing_deg": 314.985454689318,
+      "edge_stretch": 4449485,
+      "steps": [
+        10,
+        30,
+        80,
+        125
+      ],
+      "ceiling": 125,
+      "pumped": false,
+      "pumped_known": true,
+      "connection_class": "reticulation",
+      "region": "R2"
+    },
+    {
+      "manhole_id": 4456468,
+      "node_id": 68,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433059
+      ],
+      "headroom": 390.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 80,
+      "limiting_pipe": 4433084,
+      "limiting_pipe_id": 4433084,
+      "limiting_pipe_dn": 150.0,
+      "open_sector_deg": 176.9521126374034,
+      "open_bearing_deg": 46.57768881916354,
+      "edge_stretch": 4456468,
+      "steps": [
+        10,
+        30,
+        80,
+        150,
+        300,
+        390
+      ],
+      "ceiling": 390,
+      "pumped": true,
+      "pumped_known": true,
+      "connection_class": "reticulation",
+      "region": "R6"
+    }
+  ],
+  "excluded": [
+    {
+      "manhole_id": 1623436,
+      "node_id": 900,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        1495467
+      ],
+      "headroom": 311.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 959,
+      "limiting_pipe": 1495435,
+      "limiting_pipe_id": 1495435,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1623725,
+      "node_id": 452,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        1495462
+      ],
+      "headroom": 324.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 394,
+      "limiting_pipe": 4433055,
+      "limiting_pipe_id": 4433055,
+      "limiting_pipe_dn": 150.0,
+      "reason": "receives pumped or outside flow"
+    },
+    {
+      "manhole_id": 1623826,
+      "node_id": 41,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        1495445
+      ],
+      "headroom": 378.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 88,
+      "limiting_pipe": 1495443,
+      "limiting_pipe_id": 1495443,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1623928,
+      "node_id": 415,
+      "in_degree": 1,
+      "outgoing_dn": [
+        450.0
+      ],
+      "outgoing_pipe_ids": [
+        1495447
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1623974,
+      "node_id": 313,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        1495455
+      ],
+      "headroom": 382.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 756,
+      "limiting_pipe": 1495453,
+      "limiting_pipe_id": 1495453,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1624017,
+      "node_id": 40,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        1495444
+      ],
+      "headroom": 378.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 88,
+      "limiting_pipe": 1495443,
+      "limiting_pipe_id": 1495443,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1624138,
+      "node_id": 308,
+      "in_degree": 2,
+      "outgoing_dn": [
+        450.0
+      ],
+      "outgoing_pipe_ids": [
+        1495418
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1624202,
+      "node_id": 613,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        1495468
+      ],
+      "headroom": 311.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 959,
+      "limiting_pipe": 1495435,
+      "limiting_pipe_id": 1495435,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1624494,
+      "node_id": 373,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        1495465
+      ],
+      "headroom": 311.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 959,
+      "limiting_pipe": 1495435,
+      "limiting_pipe_id": 1495435,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1624769,
+      "node_id": 370,
+      "in_degree": 2,
+      "outgoing_dn": [
+        450.0
+      ],
+      "outgoing_pipe_ids": [
+        1495417
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1625316,
+      "node_id": 535,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        1495434
+      ],
+      "headroom": 311.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 959,
+      "limiting_pipe": 1495435,
+      "limiting_pipe_id": 1495435,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1625395,
+      "node_id": 288,
+      "in_degree": 3,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        1495420
+      ],
+      "headroom": 374.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 169,
+      "limiting_pipe": 1495446,
+      "limiting_pipe_id": 1495446,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1626189,
+      "node_id": 776,
+      "in_degree": 1,
+      "outgoing_dn": [
+        450.0
+      ],
+      "outgoing_pipe_ids": [
+        1495384
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1626450,
+      "node_id": 622,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        1495386
+      ],
+      "headroom": 393.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 494,
+      "limiting_pipe": 1495386,
+      "limiting_pipe_id": 1495386,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1626578,
+      "node_id": 624,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        1495390
+      ],
+      "headroom": 378.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 46,
+      "limiting_pipe": 1495393,
+      "limiting_pipe_id": 1495393,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1627084,
+      "node_id": 146,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        1495397
+      ],
+      "headroom": 926.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 723,
+      "limiting_pipe": 1495344,
+      "limiting_pipe_id": 1495344,
+      "limiting_pipe_dn": 224.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1627682,
+      "node_id": 90,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        1495392
+      ],
+      "headroom": 958.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 517,
+      "limiting_pipe": 1495353,
+      "limiting_pipe_id": 1495353,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1627986,
+      "node_id": 120,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        1495394
+      ],
+      "headroom": 926.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 723,
+      "limiting_pipe": 1495344,
+      "limiting_pipe_id": 1495344,
+      "limiting_pipe_dn": 224.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1629073,
+      "node_id": 481,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        1495358
+      ],
+      "headroom": 382.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 83,
+      "limiting_pipe": 1495357,
+      "limiting_pipe_id": 1495357,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1629281,
+      "node_id": 129,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        1495367
+      ],
+      "headroom": 926.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 723,
+      "limiting_pipe": 1495344,
+      "limiting_pipe_id": 1495344,
+      "limiting_pipe_dn": 224.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1629888,
+      "node_id": 718,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        1495368
+      ],
+      "headroom": 926.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 723,
+      "limiting_pipe": 1495344,
+      "limiting_pipe_id": 1495344,
+      "limiting_pipe_dn": 224.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1630330,
+      "node_id": 707,
+      "in_degree": 2,
+      "outgoing_dn": [
+        224.0
+      ],
+      "outgoing_pipe_ids": [
+        1495346
+      ],
+      "headroom": 926.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 723,
+      "limiting_pipe": 1495344,
+      "limiting_pipe_id": 1495344,
+      "limiting_pipe_dn": 224.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1630926,
+      "node_id": 708,
+      "in_degree": 1,
+      "outgoing_dn": [
+        224.0
+      ],
+      "outgoing_pipe_ids": [
+        1495344
+      ],
+      "headroom": 926.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 723,
+      "limiting_pipe": 1495344,
+      "limiting_pipe_id": 1495344,
+      "limiting_pipe_dn": 224.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1632309,
+      "node_id": 177,
+      "in_degree": 1,
+      "outgoing_dn": [
+        450.0
+      ],
+      "outgoing_pipe_ids": [
+        1495332
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1632398,
+      "node_id": 316,
+      "in_degree": 1,
+      "outgoing_dn": [
+        450.0
+      ],
+      "outgoing_pipe_ids": [
+        1495295
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1790382,
+      "node_id": 663,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        1675043
+      ],
+      "headroom": 336.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 422,
+      "limiting_pipe": 4432827,
+      "limiting_pipe_id": 4432827,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1790845,
+      "node_id": 245,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4432827
+      ],
+      "headroom": 336.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 422,
+      "limiting_pipe": 4432827,
+      "limiting_pipe_id": 4432827,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4426188,
+      "node_id": 742,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404924
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "headroom below 10"
+    },
+    {
+      "manhole_id": 4426673,
+      "node_id": 514,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0,
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405152,
+        4405151
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4426728,
+      "node_id": 848,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404914
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4426971,
+      "node_id": 384,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0,
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405156,
+        4405129
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4426979,
+      "node_id": 743,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404896
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4427095,
+      "node_id": 448,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404888
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "headroom below 10"
+    },
+    {
+      "manhole_id": 4427309,
+      "node_id": 531,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405125
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4427312,
+      "node_id": 648,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404893
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4427425,
+      "node_id": 213,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405131
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4427588,
+      "node_id": 969,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404859
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "headroom below 10"
+    },
+    {
+      "manhole_id": 4427659,
+      "node_id": 793,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0,
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405134,
+        4405130
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4427688,
+      "node_id": 86,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405097
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4427714,
+      "node_id": 721,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404864
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4427741,
+      "node_id": 850,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405105
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4427849,
+      "node_id": 752,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405109
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428026,
+      "node_id": 114,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405101
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428067,
+      "node_id": 946,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0,
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405107,
+        4405108
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428096,
+      "node_id": 701,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404848
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "headroom below 10"
+    },
+    {
+      "manhole_id": 4428117,
+      "node_id": 104,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404855
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428137,
+      "node_id": 883,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404867
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428139,
+      "node_id": 105,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404854
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428146,
+      "node_id": 696,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404863
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428188,
+      "node_id": 953,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404868
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428245,
+      "node_id": 438,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405086
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "headroom below 10"
+    },
+    {
+      "manhole_id": 4428268,
+      "node_id": 167,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405099
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428320,
+      "node_id": 315,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404827
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428367,
+      "node_id": 11,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405103
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428426,
+      "node_id": 437,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0,
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405111,
+        4405083
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428524,
+      "node_id": 144,
+      "in_degree": 3,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404819
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428583,
+      "node_id": 843,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404837
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428606,
+      "node_id": 12,
+      "in_degree": 3,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405089
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428636,
+      "node_id": 169,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405074
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428638,
+      "node_id": 824,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0,
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4404823,
+        4404825
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428713,
+      "node_id": 253,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404832
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428765,
+      "node_id": 304,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404834
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428797,
+      "node_id": 543,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405078
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428800,
+      "node_id": 588,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0,
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405082,
+        4405085
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428836,
+      "node_id": 520,
+      "in_degree": 3,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405071
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428920,
+      "node_id": 417,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404826
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428968,
+      "node_id": 897,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404806
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4428995,
+      "node_id": 254,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404796
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429013,
+      "node_id": 326,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405077
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429019,
+      "node_id": 428,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0,
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        7465834,
+        4404777
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429035,
+      "node_id": 123,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405081
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429086,
+      "node_id": 918,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404778
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429107,
+      "node_id": 521,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404802
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429136,
+      "node_id": 42,
+      "in_degree": 3,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405064
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429179,
+      "node_id": 360,
+      "in_degree": 3,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404789
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429268,
+      "node_id": 936,
+      "in_degree": 0,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4404794
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429312,
+      "node_id": 24,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405057
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429320,
+      "node_id": 484,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405054
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429323,
+      "node_id": 657,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404767
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "headroom below 10"
+    },
+    {
+      "manhole_id": 4429357,
+      "node_id": 264,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4404800
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429411,
+      "node_id": 627,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405065
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429420,
+      "node_id": 810,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4404774
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429468,
+      "node_id": 329,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4404795
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429471,
+      "node_id": 669,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405052
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429499,
+      "node_id": 680,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405060
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429503,
+      "node_id": 395,
+      "in_degree": 2,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4433559
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429527,
+      "node_id": 351,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433558
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429544,
+      "node_id": 538,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4404797
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429584,
+      "node_id": 537,
+      "in_degree": 0,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4404793
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429645,
+      "node_id": 396,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4405066
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4429656,
+      "node_id": 523,
+      "in_degree": 2,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433563
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4446824,
+      "node_id": 60,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433557
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4446883,
+      "node_id": 330,
+      "in_degree": 2,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4404798
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447128,
+      "node_id": 160,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433763
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447346,
+      "node_id": 790,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433766
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447351,
+      "node_id": 256,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433550
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447355,
+      "node_id": 867,
+      "in_degree": 0,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433547
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447369,
+      "node_id": 74,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433313
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447394,
+      "node_id": 433,
+      "in_degree": 3,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433768
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447397,
+      "node_id": 289,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        5241462
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447416,
+      "node_id": 199,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433764
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447452,
+      "node_id": 965,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433742
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447506,
+      "node_id": 679,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433307
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447602,
+      "node_id": 23,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433777
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "headroom below 10"
+    },
+    {
+      "manhole_id": 4447643,
+      "node_id": 320,
+      "in_degree": 2,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4433562
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447668,
+      "node_id": 910,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433566
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447684,
+      "node_id": 233,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433553
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447691,
+      "node_id": 681,
+      "in_degree": 1,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4433564
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447726,
+      "node_id": 161,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433745
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4447880,
+      "node_id": 189,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433760
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4448029,
+      "node_id": 868,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433548
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4448345,
+      "node_id": 75,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433753
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4448392,
+      "node_id": 525,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433762
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4448419,
+      "node_id": 76,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433748
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4448474,
+      "node_id": 917,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433531
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4448509,
+      "node_id": 141,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433541
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4448662,
+      "node_id": 262,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433274
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4448753,
+      "node_id": 88,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433520
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4448762,
+      "node_id": 604,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433536
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4448796,
+      "node_id": 335,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433290
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4448813,
+      "node_id": 526,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433761
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4448853,
+      "node_id": 96,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433743
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4448929,
+      "node_id": 911,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433757
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449011,
+      "node_id": 905,
+      "in_degree": 1,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4433540
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449083,
+      "node_id": 78,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433524
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449103,
+      "node_id": 400,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433746
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449118,
+      "node_id": 127,
+      "in_degree": 3,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433751
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449173,
+      "node_id": 235,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433728
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449321,
+      "node_id": 140,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433542
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449330,
+      "node_id": 342,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433519
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449436,
+      "node_id": 463,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433528
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449503,
+      "node_id": 949,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433740
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449510,
+      "node_id": 252,
+      "in_degree": 3,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433276
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449635,
+      "node_id": 584,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433258
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449704,
+      "node_id": 126,
+      "in_degree": 3,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433752
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449778,
+      "node_id": 955,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433510
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449785,
+      "node_id": 196,
+      "in_degree": 3,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433723
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449796,
+      "node_id": 859,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433502
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449806,
+      "node_id": 102,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433512
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449849,
+      "node_id": 423,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433729
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449860,
+      "node_id": 273,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433735
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449866,
+      "node_id": 904,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433719
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449882,
+      "node_id": 480,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433738
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "headroom below 10"
+    },
+    {
+      "manhole_id": 4449913,
+      "node_id": 529,
+      "in_degree": 2,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4433515
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449920,
+      "node_id": 661,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433487
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4449977,
+      "node_id": 551,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433739
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "headroom below 10"
+    },
+    {
+      "manhole_id": 4450077,
+      "node_id": 516,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        6045143
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450100,
+      "node_id": 653,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433734
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450137,
+      "node_id": 103,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433508
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450167,
+      "node_id": 703,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433725
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450170,
+      "node_id": 257,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433256
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450180,
+      "node_id": 654,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433732
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450193,
+      "node_id": 583,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433721
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450207,
+      "node_id": 358,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433514
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450211,
+      "node_id": 344,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433499
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450219,
+      "node_id": 138,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433260
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450269,
+      "node_id": 866,
+      "in_degree": 0,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433497
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450314,
+      "node_id": 5,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433248
+      ],
+      "headroom": 292.8,
+      "no_table_cap": false,
+      "limiting_pipe_index": 289,
+      "limiting_pipe": 4433185,
+      "limiting_pipe_id": 4433185,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450332,
+      "node_id": 724,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433730
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450378,
+      "node_id": 441,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433717
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450391,
+      "node_id": 546,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433506
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450396,
+      "node_id": 818,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433490
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450449,
+      "node_id": 283,
+      "in_degree": 2,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4433513
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450531,
+      "node_id": 547,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433505
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450554,
+      "node_id": 442,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433718
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450581,
+      "node_id": 284,
+      "in_degree": 1,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4433511
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450617,
+      "node_id": 524,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433495
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450757,
+      "node_id": 226,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433236
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450776,
+      "node_id": 981,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433713
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "headroom below 10"
+    },
+    {
+      "manhole_id": 4450787,
+      "node_id": 111,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433473
+      ],
+      "headroom": 385.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 340,
+      "limiting_pipe": 4433470,
+      "limiting_pipe_id": 4433470,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450802,
+      "node_id": 678,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433220
+      ],
+      "headroom": 343.7,
+      "no_table_cap": false,
+      "limiting_pipe_index": 294,
+      "limiting_pipe": 4433166,
+      "limiting_pipe_id": 4433166,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450847,
+      "node_id": 841,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433468
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450920,
+      "node_id": 475,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433219
+      ],
+      "headroom": 343.7,
+      "no_table_cap": false,
+      "limiting_pipe_index": 294,
+      "limiting_pipe": 4433166,
+      "limiting_pipe_id": 4433166,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450922,
+      "node_id": 377,
+      "in_degree": 2,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4433481
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4450975,
+      "node_id": 355,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433480
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451058,
+      "node_id": 241,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433232
+      ],
+      "headroom": 292.8,
+      "no_table_cap": false,
+      "limiting_pipe_index": 289,
+      "limiting_pipe": 4433185,
+      "limiting_pipe_id": 4433185,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451092,
+      "node_id": 333,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433231
+      ],
+      "headroom": 292.8,
+      "no_table_cap": false,
+      "limiting_pipe_index": 289,
+      "limiting_pipe": 4433185,
+      "limiting_pipe_id": 4433185,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451113,
+      "node_id": 651,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433218
+      ],
+      "headroom": 343.7,
+      "no_table_cap": false,
+      "limiting_pipe_index": 294,
+      "limiting_pipe": 4433166,
+      "limiting_pipe_id": 4433166,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451143,
+      "node_id": 376,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433478
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451207,
+      "node_id": 378,
+      "in_degree": 2,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4433484
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451287,
+      "node_id": 132,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433206
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "receives pumped or outside flow"
+    },
+    {
+      "manhole_id": 4451333,
+      "node_id": 312,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433227
+      ],
+      "headroom": 328.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 806,
+      "limiting_pipe": 4433129,
+      "limiting_pipe_id": 4433129,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451468,
+      "node_id": 545,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433439
+      ],
+      "headroom": 944.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 848,
+      "limiting_pipe": 4433422,
+      "limiting_pipe_id": 4433422,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451516,
+      "node_id": 476,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433199
+      ],
+      "headroom": 292.8,
+      "no_table_cap": false,
+      "limiting_pipe_index": 289,
+      "limiting_pipe": 4433185,
+      "limiting_pipe_id": 4433185,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451531,
+      "node_id": 195,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433447
+      ],
+      "headroom": 338.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 689,
+      "limiting_pipe": 4433448,
+      "limiting_pipe_id": 4433448,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451576,
+      "node_id": 572,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433205
+      ],
+      "headroom": 292.8,
+      "no_table_cap": false,
+      "limiting_pipe_index": 289,
+      "limiting_pipe": 4433185,
+      "limiting_pipe_id": 4433185,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451673,
+      "node_id": 784,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433461
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451759,
+      "node_id": 182,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433450
+      ],
+      "headroom": 338.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 689,
+      "limiting_pipe": 4433448,
+      "limiting_pipe_id": 4433448,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451823,
+      "node_id": 110,
+      "in_degree": 2,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433448
+      ],
+      "headroom": 338.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 689,
+      "limiting_pipe": 4433448,
+      "limiting_pipe_id": 4433448,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451840,
+      "node_id": 243,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433465
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451870,
+      "node_id": 943,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433452
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451871,
+      "node_id": 399,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433464
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451886,
+      "node_id": 671,
+      "in_degree": 3,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4433454
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451945,
+      "node_id": 485,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433437
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4451967,
+      "node_id": 948,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0,
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433443,
+        4433446
+      ],
+      "headroom": 338.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 689,
+      "limiting_pipe": 4433448,
+      "limiting_pipe_id": 4433448,
+      "limiting_pipe_dn": 143.0,
+      "reason": "receives pumped or outside flow"
+    },
+    {
+      "manhole_id": 4451971,
+      "node_id": 223,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433160
+      ],
+      "headroom": 328.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 806,
+      "limiting_pipe": 4433129,
+      "limiting_pipe_id": 4433129,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452011,
+      "node_id": 398,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433463
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452032,
+      "node_id": 242,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433696
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452071,
+      "node_id": 594,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433204
+      ],
+      "headroom": 292.8,
+      "no_table_cap": false,
+      "limiting_pipe_index": 289,
+      "limiting_pipe": 4433185,
+      "limiting_pipe_id": 4433185,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452081,
+      "node_id": 323,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433198
+      ],
+      "headroom": 343.7,
+      "no_table_cap": false,
+      "limiting_pipe_index": 294,
+      "limiting_pipe": 4433166,
+      "limiting_pipe_id": 4433166,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452110,
+      "node_id": 896,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433697
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "headroom below 10"
+    },
+    {
+      "manhole_id": 4452154,
+      "node_id": 57,
+      "in_degree": 3,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433442
+      ],
+      "headroom": 944.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 848,
+      "limiting_pipe": 4433422,
+      "limiting_pipe_id": 4433422,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452189,
+      "node_id": 479,
+      "in_degree": 2,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4433453
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452217,
+      "node_id": 58,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433444
+      ],
+      "headroom": 944.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 848,
+      "limiting_pipe": 4433422,
+      "limiting_pipe_id": 4433422,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452397,
+      "node_id": 19,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433152
+      ],
+      "headroom": 328.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 806,
+      "limiting_pipe": 4433129,
+      "limiting_pipe_id": 4433129,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452462,
+      "node_id": 876,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433460
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452527,
+      "node_id": 368,
+      "in_degree": 2,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4433425
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452538,
+      "node_id": 91,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433153
+      ],
+      "headroom": 328.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 806,
+      "limiting_pipe": 4433129,
+      "limiting_pipe_id": 4433129,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452541,
+      "node_id": 856,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433421
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452632,
+      "node_id": 494,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433432
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452680,
+      "node_id": 369,
+      "in_degree": 2,
+      "outgoing_dn": [
+        375.0
+      ],
+      "outgoing_pipe_ids": [
+        4433423
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452721,
+      "node_id": 156,
+      "in_degree": 3,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433169
+      ],
+      "headroom": 897.7,
+      "no_table_cap": false,
+      "limiting_pipe_index": 237,
+      "limiting_pipe": 4433116,
+      "limiting_pipe_id": 4433116,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452724,
+      "node_id": 93,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433164
+      ],
+      "headroom": 328.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 806,
+      "limiting_pipe": 4433129,
+      "limiting_pipe_id": 4433129,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452760,
+      "node_id": 907,
+      "in_degree": 0,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433175
+      ],
+      "headroom": 350.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 732,
+      "limiting_pipe": 4433175,
+      "limiting_pipe_id": 4433175,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452809,
+      "node_id": 493,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433434
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452902,
+      "node_id": 309,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432943
+      ],
+      "headroom": 353.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 170,
+      "limiting_pipe": 4432943,
+      "limiting_pipe_id": 4432943,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452919,
+      "node_id": 282,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433177
+      ],
+      "headroom": 394.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 155,
+      "limiting_pipe": 4433177,
+      "limiting_pipe_id": 4433177,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452946,
+      "node_id": 541,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433170
+      ],
+      "headroom": 897.7,
+      "no_table_cap": false,
+      "limiting_pipe_index": 237,
+      "limiting_pipe": 4433116,
+      "limiting_pipe_id": 4433116,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452952,
+      "node_id": 730,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432944
+      ],
+      "headroom": 383.9,
+      "no_table_cap": false,
+      "limiting_pipe_index": 712,
+      "limiting_pipe": 4432944,
+      "limiting_pipe_id": 4432944,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452977,
+      "node_id": 173,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433428
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "headroom below 10"
+    },
+    {
+      "manhole_id": 4452980,
+      "node_id": 310,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4432942
+      ],
+      "headroom": 876.4,
+      "no_table_cap": false,
+      "limiting_pipe_index": 96,
+      "limiting_pipe": 4476368,
+      "limiting_pipe_id": 4476368,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4452994,
+      "node_id": 478,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433185
+      ],
+      "headroom": 292.8,
+      "no_table_cap": false,
+      "limiting_pipe_index": 289,
+      "limiting_pipe": 4433185,
+      "limiting_pipe_id": 4433185,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453031,
+      "node_id": 773,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433179
+      ],
+      "headroom": 390.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 223,
+      "limiting_pipe": 4433134,
+      "limiting_pipe_id": 4433134,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453047,
+      "node_id": 565,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433118
+      ],
+      "headroom": 353.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 954,
+      "limiting_pipe": 4433074,
+      "limiting_pipe_id": 4433074,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453095,
+      "node_id": 983,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433405
+      ],
+      "headroom": 393.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 92,
+      "limiting_pipe": 4433401,
+      "limiting_pipe_id": 4433401,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453098,
+      "node_id": 797,
+      "in_degree": 3,
+      "outgoing_dn": [
+        375.0
+      ],
+      "outgoing_pipe_ids": [
+        4433418
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453124,
+      "node_id": 203,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433127
+      ],
+      "headroom": 328.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 806,
+      "limiting_pipe": 4433129,
+      "limiting_pipe_id": 4433129,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453133,
+      "node_id": 21,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433176
+      ],
+      "headroom": 897.7,
+      "no_table_cap": false,
+      "limiting_pipe_index": 237,
+      "limiting_pipe": 4433116,
+      "limiting_pipe_id": 4433116,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453185,
+      "node_id": 835,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433424
+      ],
+      "headroom": 398.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 769,
+      "limiting_pipe": 4433424,
+      "limiting_pipe_id": 4433424,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453213,
+      "node_id": 945,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4432915
+      ],
+      "headroom": 876.4,
+      "no_table_cap": false,
+      "limiting_pipe_index": 96,
+      "limiting_pipe": 4476368,
+      "limiting_pipe_id": 4476368,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453315,
+      "node_id": 435,
+      "in_degree": 0,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433122
+      ],
+      "headroom": 350.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 259,
+      "limiting_pipe": 4433122,
+      "limiting_pipe_id": 4433122,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453489,
+      "node_id": 462,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433398
+      ],
+      "headroom": 879.8,
+      "no_table_cap": false,
+      "limiting_pipe_index": 300,
+      "limiting_pipe": 4433398,
+      "limiting_pipe_id": 4433398,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453512,
+      "node_id": 54,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433133
+      ],
+      "headroom": 897.7,
+      "no_table_cap": false,
+      "limiting_pipe_index": 237,
+      "limiting_pipe": 4433116,
+      "limiting_pipe_id": 4433116,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453553,
+      "node_id": 436,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433120
+      ],
+      "headroom": 353.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 954,
+      "limiting_pipe": 4433074,
+      "limiting_pipe_id": 4433074,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453579,
+      "node_id": 193,
+      "in_degree": 3,
+      "outgoing_dn": [
+        375.0
+      ],
+      "outgoing_pipe_ids": [
+        4433392
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453740,
+      "node_id": 359,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433092
+      ],
+      "headroom": 353.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 954,
+      "limiting_pipe": 4433074,
+      "limiting_pipe_id": 4433074,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453748,
+      "node_id": 643,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433141
+      ],
+      "headroom": 395.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 754,
+      "limiting_pipe": 4433139,
+      "limiting_pipe_id": 4433139,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453770,
+      "node_id": 348,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432880
+      ],
+      "headroom": 314.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 361,
+      "limiting_pipe": 4476393,
+      "limiting_pipe_id": 4476393,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453788,
+      "node_id": 27,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433410
+      ],
+      "headroom": 343.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 607,
+      "limiting_pipe": 4433408,
+      "limiting_pipe_id": 4433408,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453837,
+      "node_id": 947,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433130
+      ],
+      "headroom": 887.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 165,
+      "limiting_pipe": 4433080,
+      "limiting_pipe_id": 4433080,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453850,
+      "node_id": 769,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433409
+      ],
+      "headroom": 343.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 607,
+      "limiting_pipe": 4433408,
+      "limiting_pipe_id": 4433408,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453931,
+      "node_id": 65,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432882
+      ],
+      "headroom": 376.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 694,
+      "limiting_pipe": 4432888,
+      "limiting_pipe_id": 4432888,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453970,
+      "node_id": 386,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433403
+      ],
+      "headroom": 976.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 104,
+      "limiting_pipe": 4433402,
+      "limiting_pipe_id": 4433402,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4453981,
+      "node_id": 500,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433123
+      ],
+      "headroom": 328.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 806,
+      "limiting_pipe": 4433129,
+      "limiting_pipe_id": 4433129,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454009,
+      "node_id": 770,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433408
+      ],
+      "headroom": 343.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 607,
+      "limiting_pipe": 4433408,
+      "limiting_pipe_id": 4433408,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454116,
+      "node_id": 891,
+      "in_degree": 2,
+      "outgoing_dn": [
+        375.0
+      ],
+      "outgoing_pipe_ids": [
+        4433117
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454125,
+      "node_id": 558,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433407
+      ],
+      "headroom": 976.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 104,
+      "limiting_pipe": 4433402,
+      "limiting_pipe_id": 4433402,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454195,
+      "node_id": 617,
+      "in_degree": 3,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433406
+      ],
+      "headroom": 976.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 104,
+      "limiting_pipe": 4433402,
+      "limiting_pipe_id": 4433402,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454209,
+      "node_id": 39,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4432886
+      ],
+      "headroom": 876.4,
+      "no_table_cap": false,
+      "limiting_pipe_index": 96,
+      "limiting_pipe": 4476368,
+      "limiting_pipe_id": 4476368,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454312,
+      "node_id": 747,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433112
+      ],
+      "headroom": 387.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 953,
+      "limiting_pipe": 4433111,
+      "limiting_pipe_id": 4433111,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454376,
+      "node_id": 409,
+      "in_degree": 2,
+      "outgoing_dn": [
+        375.0
+      ],
+      "outgoing_pipe_ids": [
+        4433115
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454395,
+      "node_id": 901,
+      "in_degree": 0,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433087
+      ],
+      "headroom": 351.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 719,
+      "limiting_pipe": 4433087,
+      "limiting_pipe_id": 4433087,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454398,
+      "node_id": 831,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        4433093
+      ],
+      "headroom": 350.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 164,
+      "limiting_pipe": 4433088,
+      "limiting_pipe_id": 4433088,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454411,
+      "node_id": 2,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433105
+      ],
+      "headroom": 887.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 165,
+      "limiting_pipe": 4433080,
+      "limiting_pipe_id": 4433080,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454490,
+      "node_id": 185,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433098
+      ],
+      "headroom": 353.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 954,
+      "limiting_pipe": 4433074,
+      "limiting_pipe_id": 4433074,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454629,
+      "node_id": 371,
+      "in_degree": 3,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4433103
+      ],
+      "headroom": 887.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 165,
+      "limiting_pipe": 4433080,
+      "limiting_pipe_id": 4433080,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454640,
+      "node_id": 52,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4432884
+      ],
+      "headroom": 876.4,
+      "no_table_cap": false,
+      "limiting_pipe_index": 96,
+      "limiting_pipe": 4476368,
+      "limiting_pipe_id": 4476368,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454643,
+      "node_id": 381,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432883
+      ],
+      "headroom": 376.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 694,
+      "limiting_pipe": 4432888,
+      "limiting_pipe_id": 4432888,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454657,
+      "node_id": 586,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432858
+      ],
+      "headroom": 314.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 361,
+      "limiting_pipe": 4476393,
+      "limiting_pipe_id": 4476393,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454674,
+      "node_id": 84,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432876
+      ],
+      "headroom": 314.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 361,
+      "limiting_pipe": 4476393,
+      "limiting_pipe_id": 4476393,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454718,
+      "node_id": 130,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433085
+      ],
+      "headroom": 367.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 225,
+      "limiting_pipe": 4433047,
+      "limiting_pipe_id": 4433047,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454744,
+      "node_id": 14,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433100
+      ],
+      "headroom": 393.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 598,
+      "limiting_pipe": 4433107,
+      "limiting_pipe_id": 4433107,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454876,
+      "node_id": 601,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433066
+      ],
+      "headroom": 367.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 225,
+      "limiting_pipe": 4433047,
+      "limiting_pipe_id": 4433047,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454901,
+      "node_id": 608,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433095
+      ],
+      "headroom": 353.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 954,
+      "limiting_pipe": 4433074,
+      "limiting_pipe_id": 4433074,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4454993,
+      "node_id": 710,
+      "in_degree": 2,
+      "outgoing_dn": [
+        250.0
+      ],
+      "outgoing_pipe_ids": [
+        5272292
+      ],
+      "headroom": 1250.4,
+      "no_table_cap": false,
+      "limiting_pipe_index": 708,
+      "limiting_pipe": 4433075,
+      "limiting_pipe_id": 4433075,
+      "limiting_pipe_dn": 250.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4455121,
+      "node_id": 301,
+      "in_degree": 3,
+      "outgoing_dn": [
+        375.0
+      ],
+      "outgoing_pipe_ids": [
+        4433078
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4455191,
+      "node_id": 746,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4432859
+      ],
+      "headroom": 876.4,
+      "no_table_cap": false,
+      "limiting_pipe_index": 96,
+      "limiting_pipe": 4476368,
+      "limiting_pipe_id": 4476368,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4455429,
+      "node_id": 602,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433067
+      ],
+      "headroom": 367.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 225,
+      "limiting_pipe": 4433047,
+      "limiting_pipe_id": 4433047,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4455516,
+      "node_id": 451,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432847
+      ],
+      "headroom": 314.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 361,
+      "limiting_pipe": 4476393,
+      "limiting_pipe_id": 4476393,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4455602,
+      "node_id": 667,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432855
+      ],
+      "headroom": 314.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 361,
+      "limiting_pipe": 4476393,
+      "limiting_pipe_id": 4476393,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4455762,
+      "node_id": 152,
+      "in_degree": 1,
+      "outgoing_dn": [
+        224.0
+      ],
+      "outgoing_pipe_ids": [
+        8608638
+      ],
+      "headroom": 981.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 147,
+      "limiting_pipe": 8608639,
+      "limiting_pipe_id": 8608639,
+      "limiting_pipe_dn": 224.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4455780,
+      "node_id": 425,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432854
+      ],
+      "headroom": 314.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 361,
+      "limiting_pipe": 4476393,
+      "limiting_pipe_id": 4476393,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4455808,
+      "node_id": 469,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432850
+      ],
+      "headroom": 314.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 361,
+      "limiting_pipe": 4476393,
+      "limiting_pipe_id": 4476393,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4455813,
+      "node_id": 568,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432835
+      ],
+      "headroom": 314.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 361,
+      "limiting_pipe": 4476393,
+      "limiting_pipe_id": 4476393,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4455909,
+      "node_id": 107,
+      "in_degree": 3,
+      "outgoing_dn": [
+        450.0
+      ],
+      "outgoing_pipe_ids": [
+        4433050
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4455943,
+      "node_id": 846,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432829
+      ],
+      "headroom": 359.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 386,
+      "limiting_pipe": 4476346,
+      "limiting_pipe_id": 4476346,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4456108,
+      "node_id": 29,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        5146425
+      ],
+      "headroom": 367.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 225,
+      "limiting_pipe": 4433047,
+      "limiting_pipe_id": 4433047,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4456372,
+      "node_id": 638,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432830
+      ],
+      "headroom": 370.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 405,
+      "limiting_pipe": 4476342,
+      "limiting_pipe_id": 4476342,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4456532,
+      "node_id": 407,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4432840
+      ],
+      "headroom": 876.4,
+      "no_table_cap": false,
+      "limiting_pipe_index": 96,
+      "limiting_pipe": 4476368,
+      "limiting_pipe_id": 4476368,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4456551,
+      "node_id": 459,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433054
+      ],
+      "headroom": 324.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 394,
+      "limiting_pipe": 4433055,
+      "limiting_pipe_id": 4433055,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4456553,
+      "node_id": 249,
+      "in_degree": 1,
+      "outgoing_dn": [
+        450.0
+      ],
+      "outgoing_pipe_ids": [
+        4433048
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4456777,
+      "node_id": 821,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4476394
+      ],
+      "headroom": 314.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 361,
+      "limiting_pipe": 4476393,
+      "limiting_pipe_id": 4476393,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4498291,
+      "node_id": 765,
+      "in_degree": 0,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4476375
+      ],
+      "headroom": 370.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 405,
+      "limiting_pipe": 4476342,
+      "limiting_pipe_id": 4476342,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4498407,
+      "node_id": 641,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4476376
+      ],
+      "headroom": 370.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 405,
+      "limiting_pipe": 4476342,
+      "limiting_pipe_id": 4476342,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4498454,
+      "node_id": 390,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4476374
+      ],
+      "headroom": 370.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 405,
+      "limiting_pipe": 4476342,
+      "limiting_pipe_id": 4476342,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4499048,
+      "node_id": 402,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4476389
+      ],
+      "headroom": 390.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 454,
+      "limiting_pipe": 4476391,
+      "limiting_pipe_id": 4476391,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4499059,
+      "node_id": 782,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4476371
+      ],
+      "headroom": 370.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 405,
+      "limiting_pipe": 4476342,
+      "limiting_pipe_id": 4476342,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4499116,
+      "node_id": 80,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4476380
+      ],
+      "headroom": 359.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 386,
+      "limiting_pipe": 4476346,
+      "limiting_pipe_id": 4476346,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4499323,
+      "node_id": 413,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4476357
+      ],
+      "headroom": 389.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 188,
+      "limiting_pipe": 4476355,
+      "limiting_pipe_id": 4476355,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4499406,
+      "node_id": 820,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4476353
+      ],
+      "headroom": 359.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 386,
+      "limiting_pipe": 4476346,
+      "limiting_pipe_id": 4476346,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4499417,
+      "node_id": 190,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4476366
+      ],
+      "headroom": 885.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 812,
+      "limiting_pipe": 4476330,
+      "limiting_pipe_id": 4476330,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4499729,
+      "node_id": 404,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4476347
+      ],
+      "headroom": 359.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 386,
+      "limiting_pipe": 4476346,
+      "limiting_pipe_id": 4476346,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4500035,
+      "node_id": 179,
+      "in_degree": 1,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4476369
+      ],
+      "headroom": 1667.4,
+      "no_table_cap": false,
+      "limiting_pipe_index": 232,
+      "limiting_pipe": 4476334,
+      "limiting_pipe_id": 4476334,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4500254,
+      "node_id": 259,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4476361
+      ],
+      "headroom": 386.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 971,
+      "limiting_pipe": 4476359,
+      "limiting_pipe_id": 4476359,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4500625,
+      "node_id": 805,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4476362
+      ],
+      "headroom": 394.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 850,
+      "limiting_pipe": 4476331,
+      "limiting_pipe_id": 4476331,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4500689,
+      "node_id": 898,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4476363
+      ],
+      "headroom": 885.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 812,
+      "limiting_pipe": 4476330,
+      "limiting_pipe_id": 4476330,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4500902,
+      "node_id": 338,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4476354
+      ],
+      "headroom": 895.2,
+      "no_table_cap": false,
+      "limiting_pipe_index": 691,
+      "limiting_pipe": 4476322,
+      "limiting_pipe_id": 4476322,
+      "limiting_pipe_dn": 225.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4501544,
+      "node_id": 48,
+      "in_degree": 2,
+      "outgoing_dn": [
+        450.0
+      ],
+      "outgoing_pipe_ids": [
+        4476338
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4501851,
+      "node_id": 629,
+      "in_degree": 2,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4476328
+      ],
+      "headroom": 1562.2,
+      "no_table_cap": false,
+      "limiting_pipe_index": 692,
+      "limiting_pipe": 4476326,
+      "limiting_pipe_id": 4476326,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4501866,
+      "node_id": 115,
+      "in_degree": 2,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4476327
+      ],
+      "headroom": 1562.2,
+      "no_table_cap": false,
+      "limiting_pipe_index": 692,
+      "limiting_pipe": 4476326,
+      "limiting_pipe_id": 4476326,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 4502097,
+      "node_id": 70,
+      "in_degree": 2,
+      "outgoing_dn": [
+        450.0
+      ],
+      "outgoing_pipe_ids": [
+        4476335
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 5118586,
+      "node_id": 92,
+      "in_degree": 3,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433159
+      ],
+      "headroom": 328.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 806,
+      "limiting_pipe": 4433129,
+      "limiting_pipe_id": 4433129,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 5164627,
+      "node_id": 767,
+      "in_degree": 0,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        5164624
+      ],
+      "headroom": 350.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 551,
+      "limiting_pipe": 5164624,
+      "limiting_pipe_id": 5164624,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 5216010,
+      "node_id": 639,
+      "in_degree": 0,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        5216009
+      ],
+      "headroom": 328.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 806,
+      "limiting_pipe": 4433129,
+      "limiting_pipe_id": 4433129,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 5228371,
+      "node_id": 204,
+      "in_degree": 1,
+      "outgoing_dn": [
+        143.0
+      ],
+      "outgoing_pipe_ids": [
+        5228367
+      ],
+      "headroom": 349.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 110,
+      "limiting_pipe": 5228367,
+      "limiting_pipe_id": 5228367,
+      "limiting_pipe_dn": 143.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 5233531,
+      "node_id": 689,
+      "in_degree": 2,
+      "outgoing_dn": [
+        250.0
+      ],
+      "outgoing_pipe_ids": [
+        5272291
+      ],
+      "headroom": 1250.4,
+      "no_table_cap": false,
+      "limiting_pipe_index": 708,
+      "limiting_pipe": 4433075,
+      "limiting_pipe_id": 4433075,
+      "limiting_pipe_dn": 250.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 5241467,
+      "node_id": 290,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        5241463
+      ],
+      "headroom": -325.5,
+      "no_table_cap": false,
+      "limiting_pipe_index": 246,
+      "limiting_pipe": 4433482,
+      "limiting_pipe_id": 4433482,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 5286735,
+      "node_id": 266,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4432849
+      ],
+      "headroom": 314.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 361,
+      "limiting_pipe": 4476393,
+      "limiting_pipe_id": 4476393,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 6042164,
+      "node_id": 286,
+      "in_degree": 2,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4476382
+      ],
+      "headroom": 359.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 386,
+      "limiting_pipe": 4476346,
+      "limiting_pipe_id": 4476346,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 6153571,
+      "node_id": 207,
+      "in_degree": 2,
+      "outgoing_dn": [
+        450.0
+      ],
+      "outgoing_pipe_ids": [
+        1495450
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 7465841,
+      "node_id": 219,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        7465833
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 8707824,
+      "node_id": 826,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433051
+      ],
+      "headroom": 324.0,
+      "no_table_cap": false,
+      "limiting_pipe_index": 394,
+      "limiting_pipe": 4433055,
+      "limiting_pipe_id": 4433055,
+      "limiting_pipe_dn": 150.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 8963773,
+      "node_id": 380,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        8963767
+      ],
+      "headroom": -56.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 208,
+      "limiting_pipe": 4433425,
+      "limiting_pipe_id": 4433425,
+      "limiting_pipe_dn": 300.0,
+      "reason": "not on the network's edge"
+    },
+    {
+      "manhole_id": 1629194,
+      "node_id": 548,
+      "in_degree": 2,
+      "outgoing_dn": [
+        450.0
+      ],
+      "outgoing_pipe_ids": [
+        1495355
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "open_sector_deg": 134.08712985778277,
+      "open_bearing_deg": 230.4567892957025,
+      "edge_stretch": 1631057,
+      "reason": "same edge stretch as MH1631057"
+    },
+    {
+      "manhole_id": 1631514,
+      "node_id": 444,
+      "in_degree": 2,
+      "outgoing_dn": [
+        375.0
+      ],
+      "outgoing_pipe_ids": [
+        1495345
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "open_sector_deg": 152.61417516666614,
+      "open_bearing_deg": 236.07642157535298,
+      "edge_stretch": 1631057,
+      "reason": "same edge stretch as MH1631057"
+    },
+    {
+      "manhole_id": 4502186,
+      "node_id": 800,
+      "in_degree": 2,
+      "outgoing_dn": [
+        450.0
+      ],
+      "outgoing_pipe_ids": [
+        4476336
+      ],
+      "headroom": null,
+      "no_table_cap": true,
+      "limiting_pipe_index": null,
+      "limiting_pipe": null,
+      "limiting_pipe_id": null,
+      "limiting_pipe_dn": null,
+      "open_sector_deg": 144.57330901971883,
+      "open_bearing_deg": 198.12270663532308,
+      "edge_stretch": 1631057,
+      "reason": "same edge stretch as MH1631057"
+    },
+    {
+      "manhole_id": 4320244,
+      "node_id": 920,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4310722
+      ],
+      "headroom": 895.2,
+      "no_table_cap": false,
+      "limiting_pipe_index": 691,
+      "limiting_pipe": 4476322,
+      "limiting_pipe_id": 4476322,
+      "limiting_pipe_dn": 225.0,
+      "open_sector_deg": 179.99871147618737,
+      "open_bearing_deg": 198.4647514927965,
+      "edge_stretch": 4320104,
+      "reason": "same edge stretch as MH4320104"
+    },
+    {
+      "manhole_id": 4499632,
+      "node_id": 121,
+      "in_degree": 2,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4476340
+      ],
+      "headroom": 895.2,
+      "no_table_cap": false,
+      "limiting_pipe_index": 691,
+      "limiting_pipe": 4476322,
+      "limiting_pipe_id": 4476322,
+      "limiting_pipe_dn": 225.0,
+      "open_sector_deg": 180.00042672550313,
+      "open_bearing_deg": 197.69901094299823,
+      "edge_stretch": 4320104,
+      "reason": "same edge stretch as MH4320104"
+    },
+    {
+      "manhole_id": 4500043,
+      "node_id": 709,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4476344
+      ],
+      "headroom": 895.2,
+      "no_table_cap": false,
+      "limiting_pipe_index": 691,
+      "limiting_pipe": 4476322,
+      "limiting_pipe_id": 4476322,
+      "limiting_pipe_dn": 225.0,
+      "open_sector_deg": 179.99281658516344,
+      "open_bearing_deg": 197.7015845226973,
+      "edge_stretch": 4320104,
+      "reason": "same edge stretch as MH4320104"
+    },
+    {
+      "manhole_id": 4500422,
+      "node_id": 99,
+      "in_degree": 1,
+      "outgoing_dn": [
+        225.0
+      ],
+      "outgoing_pipe_ids": [
+        4476348
+      ],
+      "headroom": 895.2,
+      "no_table_cap": false,
+      "limiting_pipe_index": 691,
+      "limiting_pipe": 4476322,
+      "limiting_pipe_id": 4476322,
+      "limiting_pipe_dn": 225.0,
+      "open_sector_deg": 155.5749317392161,
+      "open_bearing_deg": 200.6776811256865,
+      "edge_stretch": 4320104,
+      "reason": "same edge stretch as MH4320104"
+    },
+    {
+      "manhole_id": 4501201,
+      "node_id": 44,
+      "in_degree": 1,
+      "outgoing_dn": [
+        300.0
+      ],
+      "outgoing_pipe_ids": [
+        4476324
+      ],
+      "headroom": 1562.2,
+      "no_table_cap": false,
+      "limiting_pipe_index": 692,
+      "limiting_pipe": 4476326,
+      "limiting_pipe_id": 4476326,
+      "limiting_pipe_dn": 300.0,
+      "open_sector_deg": 158.10194941759562,
+      "open_bearing_deg": 192.65758708682017,
+      "edge_stretch": 4320104,
+      "reason": "same edge stretch as MH4320104"
+    },
+    {
+      "manhole_id": 4448626,
+      "node_id": 879,
+      "in_degree": 1,
+      "outgoing_dn": [
+        150.0
+      ],
+      "outgoing_pipe_ids": [
+        4433277
+      ],
+      "headroom": 125.1,
+      "no_table_cap": false,
+      "limiting_pipe_index": 654,
+      "limiting_pipe": 4433419,
+      "limiting_pipe_id": 4433419,
+      "limiting_pipe_dn": 150.0,
+      "open_sector_deg": 172.91794449856866,
+      "open_bearing_deg": 316.2283875636525,
+      "edge_stretch": 4449485,
+      "reason": "same edge stretch as MH4449485"
+    }
+  ],
+  "excluded_counts": {
+    "receives pumped or outside flow": 3,
+    "not on the network's edge": 298,
+    "unknown diameter": 0,
+    "headroom below 10": 12,
+    "same edge stretch as MH1631057": 3,
+    "same edge stretch as MH4320104": 5,
+    "same edge stretch as MH4449485": 1
+  },
+  "config": {
+    "_note": "Sim 4 greenfield: an understanding-only transfer test of the infill-chosen sensors against imaginary edge estates; not a planning or capacity study. One representative per edge stretch, with at least min_homes of downstream property headroom on every route, including relief pipes.",
+    "table_4_4_max_properties": {
+      "150": 400,
+      "225": 1000,
+      "300": 1800
+    },
+    "_source": "SA Water Sewerage Code Supplement Pt 1, cl 4.5.5 and Table 4.4 (Amdt Jun09): maximum allowable EP 1000/2500/4500 for DN150/225/300, equivalent properties 400/1000/1800.",
+    "_property_limits": "SA Water Supplement Table 4.4 limits apply only to reticulation sewers, DN150-300. Above DN300 (branch and trunk sewers, DN375+), there is no property limit; capacity is left to SWMM. Below DN150 use 400 x (D/0.150)^(8/3), a team scaling assumption. Other unlisted reticulation diameters scale from the nearest table DN at equal slope and roughness; within 5 mm of a listed DN use that entry. D is in metres.",
+    "_assumptions": "Estate sizes and the short edge connection are team assumptions. Every site's ceiling is the smaller of floored property headroom and the largest configured step; a path with no Table 4.4 cap uses that largest step. Retain every smaller configured step plus the ceiling.",
+    "_edge": "Open sector beside the manhole, using all gravity pipes held by Network sampled every 10 m and existing homes/connections; its middle must have 60 m clearance towards open land. Cluster sites sharing a non-null limiting pipe or lying within cluster_radius_m with bearings within cluster_angle_deg; keep the largest sector, then lowest manhole id.",
+    "edge_open_deg": 120,
+    "edge_radius_m": 200,
+    "edge_clear_m": 400,
+    "cluster_radius_m": 300,
+    "cluster_angle_deg": 45,
+    "_estate_ii": "Team assumption: add sewage only, exactly as Sim25Model greenfield growth does, with no extra infiltration for the estate's own new pipes. No public data gives estate pipe lengths or infiltration.",
+    "steps": [
+      10,
+      30,
+      80,
+      150,
+      300,
+      600,
+      1000
+    ],
+    "min_homes": 10
+  },
+  "study_area": "whole",
+  "case_set": "eight",
+  "case_config": {
+    "case_set": "eight",
+    "weather": [
+      {
+        "ii": 0.0,
+        "label": "Dry",
+        "note": "Sewage only, no infiltration: a genuinely dry day."
+      },
+      {
+        "ii": 0.11,
+        "label": "Design wet",
+        "note": "Infiltration at the level that just meets the utility's own design rating for these pipes."
+      },
+      {
+        "ii": 0.25,
+        "label": "Beyond design",
+        "note": "1.7 times the design envelope: a wet day on a leaky network."
+      },
+      {
+        "ii": 0.4,
+        "label": "Severe",
+        "note": "2.4 times the design envelope: a heavy wet period."
+      }
+    ],
+    "sensitivity": {
+      "at_ii": [
+        0.11,
+        0.25
+      ],
+      "variants": [
+        {
+          "label": "age-weighted I&I",
+          "set": {
+            "age": "weighted"
+          }
+        },
+        {
+          "label": "outside inflow x1.5",
+          "set": {
+            "bfac": 1.5
+          }
+        }
+      ]
+    },
+    "study_area": "whole"
+  },
+  "cases": [
+    {
+      "tag": "ii0.00_flat_uniform_b1_sfree",
+      "ii": 0.0,
+      "pf": "flat",
+      "age": "uniform",
+      "bfac": 1.0,
+      "stage": null,
+      "hour": "peak",
+      "variant": "primary"
+    },
+    {
+      "tag": "ii0.11_flat_uniform_b1_sfree",
+      "ii": 0.11,
+      "pf": "flat",
+      "age": "uniform",
+      "bfac": 1.0,
+      "stage": null,
+      "hour": "peak",
+      "variant": "primary"
+    },
+    {
+      "tag": "ii0.25_flat_uniform_b1_sfree",
+      "ii": 0.25,
+      "pf": "flat",
+      "age": "uniform",
+      "bfac": 1.0,
+      "stage": null,
+      "hour": "peak",
+      "variant": "primary"
+    },
+    {
+      "tag": "ii0.40_flat_uniform_b1_sfree",
+      "ii": 0.4,
+      "pf": "flat",
+      "age": "uniform",
+      "bfac": 1.0,
+      "stage": null,
+      "hour": "peak",
+      "variant": "primary"
+    },
+    {
+      "tag": "ii0.11_flat_weighted_b1_sfree",
+      "ii": 0.11,
+      "pf": "flat",
+      "age": "weighted",
+      "bfac": 1.0,
+      "stage": null,
+      "hour": "peak",
+      "variant": "primary"
+    },
+    {
+      "tag": "ii0.11_flat_uniform_b1.5_sfree",
+      "ii": 0.11,
+      "pf": "flat",
+      "age": "uniform",
+      "bfac": 1.5,
+      "stage": null,
+      "hour": "peak",
+      "variant": "primary"
+    },
+    {
+      "tag": "ii0.25_flat_weighted_b1_sfree",
+      "ii": 0.25,
+      "pf": "flat",
+      "age": "weighted",
+      "bfac": 1.0,
+      "stage": null,
+      "hour": "peak",
+      "variant": "primary"
+    },
+    {
+      "tag": "ii0.25_flat_uniform_b1.5_sfree",
+      "ii": 0.25,
+      "pf": "flat",
+      "age": "uniform",
+      "bfac": 1.5,
+      "stage": null,
+      "hour": "peak",
+      "variant": "primary"
+    },
+    {
+      "tag": "ii0.11_flat_uniform_b1_sfree_pumprate",
+      "ii": 0.11,
+      "pf": "flat",
+      "age": "uniform",
+      "bfac": 1,
+      "stage": null,
+      "hour": "peak",
+      "variant": "pumprate"
+    },
+    {
+      "tag": "ii0.11_flat_uniform_b1_sfree_together",
+      "ii": 0.11,
+      "pf": "flat",
+      "age": "uniform",
+      "bfac": 1,
+      "stage": null,
+      "hour": "peak",
+      "variant": "together"
+    },
+    {
+      "tag": "ii0.11_flat_uniform_b1_sfree_with_infill",
+      "ii": 0.11,
+      "pf": "flat",
+      "age": "uniform",
+      "bfac": 1,
+      "stage": null,
+      "hour": "peak",
+      "variant": "with_infill",
+      "background_nodes": {
+        "0": 1.0205741626794258,
+        "28": 1.5308612440191387,
+        "38": 1.5308612440191387,
+        "41": 1.5308612440191387,
+        "47": 0.5102870813397129,
+        "65": 3.0617224880382774,
+        "69": 0.5102870813397129,
+        "81": 2.0411483253588516,
+        "89": 2.0411483253588516,
+        "109": 4.592583732057416,
+        "119": 2.5514354066985643,
+        "145": 0.5102870813397129,
+        "146": 1.5308612440191387,
+        "153": 3.57200956937799,
+        "157": 0.5102870813397129,
+        "159": 3.57200956937799,
+        "120": 0.5102870813397129,
+        "48": 1.5308612440191387,
+        "46": 1.0205741626794258,
+        "176": 1.0205741626794258,
+        "178": 2.5514354066985643,
+        "194": 1.0205741626794258,
+        "210": 1.5308612440191387,
+        "228": 0.5102870813397129,
+        "230": 1.0205741626794258,
+        "246": 2.5514354066985643,
+        "268": 1.5308612440191387,
+        "287": 0.5102870813397129,
+        "293": 2.0411483253588516,
+        "313": 2.5514354066985643,
+        "331": 1.5308612440191387,
+        "372": 2.0411483253588516,
+        "375": 0.5102870813397129,
+        "66": 3.0617224880382774,
+        "29": 2.5514354066985643,
+        "389": 0.5102870813397129,
+        "401": 0.5102870813397129,
+        "414": 3.0617224880382774,
+        "308": 1.5308612440191387,
+        "443": 1.5308612440191387,
+        "207": 3.0617224880382774,
+        "455": 3.0617224880382774,
+        "72": 2.0411483253588516,
+        "457": 2.0411483253588516,
+        "473": 2.0411483253588516,
+        "481": 3.57200956937799,
+        "415": 0.5102870813397129,
+        "532": 3.0617224880382774,
+        "1": 1.0205741626794258,
+        "549": 1.0205741626794258,
+        "288": 1.0205741626794258,
+        "559": 3.57200956937799,
+        "561": 2.0411483253588516,
+        "592": 1.0205741626794258,
+        "560": 2.5514354066985643,
+        "597": 4.082296650717703,
+        "614": 2.0411483253588516,
+        "211": 1.0205741626794258,
+        "621": 3.57200956937799,
+        "623": 1.0205741626794258,
+        "630": 1.5308612440191387,
+        "650": 1.0205741626794258,
+        "668": 0.5102870813397129,
+        "707": 4.592583732057416,
+        "229": 2.5514354066985643,
+        "411": 3.0617224880382774,
+        "719": 1.0205741626794258,
+        "247": 1.0205741626794258,
+        "756": 0.5102870813397129,
+        "767": 1.0205741626794258,
+        "776": 2.0411483253588516,
+        "777": 1.0205741626794258,
+        "624": 0.5102870813397129,
+        "801": 1.5308612440191387,
+        "804": 3.57200956937799,
+        "808": 2.5514354066985643,
+        "294": 1.0205741626794258,
+        "602": 0.5102870813397129,
+        "195": 1.0205741626794258,
+        "332": 2.0411483253588516,
+        "854": 1.5308612440191387,
+        "533": 0.5102870813397129,
+        "373": 2.5514354066985643,
+        "871": 1.0205741626794258,
+        "884": 1.5308612440191387,
+        "90": 2.5514354066985643,
+        "893": 2.5514354066985643,
+        "382": 4.082296650717703,
+        "900": 5.613157894736841,
+        "901": 0.5102870813397129,
+        "708": 1.5308612440191387,
+        "154": 1.5308612440191387,
+        "919": 1.0205741626794258,
+        "314": 1.0205741626794258,
+        "746": 2.5514354066985643,
+        "929": 1.0205741626794258,
+        "939": 0.5102870813397129,
+        "945": 2.5514354066985643,
+        "718": 1.5308612440191387,
+        "814": 1.0205741626794258,
+        "960": 3.57200956937799,
+        "147": 1.5308612440191387,
+        "961": 3.0617224880382774,
+        "809": 0.5102870813397129,
+        "840": 2.5514354066985643,
+        "179": 2.0411483253588516,
+        "130": 1.5308612440191387,
+        "535": 2.5514354066985643,
+        "456": 3.0617224880382774,
+        "985": 1.0205741626794258,
+        "381": 1.5308612440191387,
+        "631": 3.0617224880382774,
+        "444": 0.5102870813397129,
+        "757": 0.5102870813397129,
+        "999": 3.0617224880382774,
+        "162": 2.5514354066985643,
+        "948": 0.5102870813397129,
+        "44": 0.5098712446351932,
+        "61": 2.549356223175966,
+        "83": 1.5296137339055795,
+        "98": 1.5296137339055795,
+        "100": 2.0394849785407727,
+        "115": 2.0394849785407727,
+        "84": 1.0197424892703864,
+        "148": 0.5098712446351932,
+        "149": 0.5098712446351932,
+        "190": 0.5098712446351932,
+        "221": 2.0394849785407727,
+        "244": 1.5296137339055795,
+        "248": 1.5296137339055795,
+        "259": 2.0394849785407727,
+        "266": 1.5296137339055795,
+        "45": 1.5296137339055795,
+        "125": 1.5296137339055795,
+        "285": 1.5296137339055795,
+        "317": 2.549356223175966,
+        "337": 1.0197424892703864,
+        "347": 2.549356223175966,
+        "390": 1.0197424892703864,
+        "278": 1.0197424892703864,
+        "404": 0.5098712446351932,
+        "412": 2.549356223175966,
+        "425": 0.5098712446351932,
+        "222": 2.0394849785407727,
+        "450": 3.059227467811159,
+        "469": 1.0197424892703864,
+        "471": 2.549356223175966,
+        "498": 0.5098712446351932,
+        "506": 2.549356223175966,
+        "426": 1.5296137339055795,
+        "62": 1.0197424892703864,
+        "567": 1.5296137339055795,
+        "574": 1.0197424892703864,
+        "581": 0.5098712446351932,
+        "286": 1.0197424892703864,
+        "191": 1.0197424892703864,
+        "405": 1.0197424892703864,
+        "615": 1.5296137339055795,
+        "260": 0.5098712446351932,
+        "245": 3.5690987124463525,
+        "318": 2.0394849785407727,
+        "662": 2.0394849785407727,
+        "666": 2.0394849785407727,
+        "672": 0.5098712446351932,
+        "348": 1.0197424892703864,
+        "150": 0.5098712446351932,
+        "709": 1.0197424892703864,
+        "472": 1.5296137339055795,
+        "765": 2.0394849785407727,
+        "391": 0.5098712446351932,
+        "783": 1.5296137339055795,
+        "667": 1.0197424892703864,
+        "796": 1.0197424892703864,
+        "413": 0.5098712446351932,
+        "805": 1.5296137339055795,
+        "402": 1.5296137339055795,
+        "451": 2.549356223175966,
+        "782": 1.0197424892703864,
+        "820": 0.5098712446351932,
+        "101": 1.0197424892703864,
+        "845": 3.5690987124463525,
+        "663": 1.0197424892703864,
+        "855": 3.5690987124463525,
+        "887": 1.0197424892703864,
+        "116": 2.0394849785407727,
+        "122": 0.5098712446351932,
+        "899": 1.0197424892703864,
+        "903": 1.0197424892703864,
+        "267": 2.0394849785407727,
+        "589": 1.0197424892703864,
+        "941": 1.0197424892703864,
+        "586": 1.0197424892703864,
+        "35": 0.5098712446351932,
+        "507": 1.0197424892703864,
+        "806": 0.5098712446351932,
+        "470": 0.5098712446351932,
+        "807": 2.0394849785407727,
+        "821": 0.5098712446351932,
+        "568": 1.5296137339055795,
+        "846": 1.0197424892703864,
+        "80": 0.5098712446351932,
+        "620": 1.0197424892703864,
+        "638": 1.5296137339055795,
+        "4": 0.5101045296167247,
+        "26": 3.0606271777003484,
+        "63": 2.040418118466899,
+        "87": 1.0202090592334494,
+        "131": 1.0202090592334494,
+        "137": 3.570731707317073,
+        "170": 1.5303135888501742,
+        "192": 0.5101045296167247,
+        "208": 1.5303135888501742,
+        "216": 2.040418118466899,
+        "225": 3.0606271777003484,
+        "240": 2.040418118466899,
+        "251": 0.5101045296167247,
+        "257": 2.040418118466899,
+        "261": 1.5303135888501742,
+        "280": 3.0606271777003484,
+        "138": 4.080836236933798,
+        "335": 1.0202090592334494,
+        "262": 1.5303135888501742,
+        "386": 1.5303135888501742,
+        "226": 1.0202090592334494,
+        "431": 2.040418118466899,
+        "432": 1.0202090592334494,
+        "476": 0.5101045296167247,
+        "478": 3.0606271777003484,
+        "485": 2.040418118466899,
+        "336": 2.550522648083623,
+        "522": 1.0202090592334494,
+        "193": 1.0202090592334494,
+        "557": 0.5101045296167247,
+        "572": 4.080836236933798,
+        "511": 2.040418118466899,
+        "587": 1.5303135888501742,
+        "302": 1.0202090592334494,
+        "477": 0.5101045296167247,
+        "596": 1.0202090592334494,
+        "616": 0.5101045296167247,
+        "625": 0.5101045296167247,
+        "642": 0.5101045296167247,
+        "661": 0.5101045296167247,
+        "664": 0.5101045296167247,
+        "673": 2.040418118466899,
+        "281": 2.550522648083623,
+        "715": 1.0202090592334494,
+        "252": 1.0202090592334494,
+        "753": 3.0606271777003484,
+        "755": 2.040418118466899,
+        "427": 3.0606271777003484,
+        "643": 0.5101045296167247,
+        "769": 0.5101045296167247,
+        "787": 2.040418118466899,
+        "795": 1.5303135888501742,
+        "797": 2.550522648083623,
+        "342": 0.5101045296167247,
+        "770": 1.0202090592334494,
+        "817": 2.040418118466899,
+        "792": 1.0202090592334494,
+        "834": 1.0202090592334494,
+        "837": 1.0202090592334494,
+        "674": 1.0202090592334494,
+        "64": 1.5303135888501742,
+        "865": 2.550522648083623,
+        "869": 2.550522648083623,
+        "891": 1.0202090592334494,
+        "333": 2.550522648083623,
+        "365": 0.5101045296167247,
+        "584": 2.550522648083623,
+        "550": 3.0606271777003484,
+        "594": 0.5101045296167247,
+        "818": 2.550522648083623,
+        "132": 2.040418118466899,
+        "573": 1.0202090592334494,
+        "758": 1.5303135888501742,
+        "952": 0.5101045296167247,
+        "962": 1.5303135888501742,
+        "963": 0.5101045296167247,
+        "966": 2.550522648083623,
+        "822": 4.080836236933798,
+        "766": 1.5303135888501742,
+        "983": 2.040418118466899,
+        "990": 2.040418118466899,
+        "626": 2.040418118466899,
+        "798": 3.0606271777003484,
+        "1000": 3.0606271777003484,
+        "665": 4.080836236933798,
+        "856": 1.0202090592334494,
+        "14": 0.5105113636363636,
+        "18": 0.5105113636363636,
+        "20": 0.5105113636363636,
+        "30": 2.552556818181818,
+        "32": 0.5105113636363636,
+        "49": 3.0630681818181813,
+        "53": 0.5105113636363636,
+        "67": 1.0210227272727272,
+        "91": 0.5105113636363636,
+        "33": 1.5315340909090907,
+        "106": 2.0420454545454545,
+        "108": 0.5105113636363636,
+        "185": 1.0210227272727272,
+        "204": 1.0210227272727272,
+        "223": 1.5315340909090907,
+        "232": 1.0210227272727272,
+        "238": 0.5105113636363636,
+        "249": 1.5315340909090907,
+        "263": 0.5105113636363636,
+        "270": 4.594602272727273,
+        "92": 2.552556818181818,
+        "282": 3.0630681818181813,
+        "300": 1.5315340909090907,
+        "311": 2.0420454545454545,
+        "321": 2.0420454545454545,
+        "323": 0.5105113636363636,
+        "339": 1.0210227272727272,
+        "340": 1.0210227272727272,
+        "353": 1.5315340909090907,
+        "359": 2.552556818181818,
+        "362": 2.552556818181818,
+        "371": 1.5315340909090907,
+        "383": 0.5105113636363636,
+        "387": 0.5105113636363636,
+        "408": 1.0210227272727272,
+        "203": 1.5315340909090907,
+        "435": 1.0210227272727272,
+        "445": 0.5105113636363636,
+        "452": 2.552556818181818,
+        "458": 1.5315340909090907,
+        "341": 0.5105113636363636,
+        "482": 1.0210227272727272,
+        "499": 3.0630681818181813,
+        "500": 2.552556818181818,
+        "354": 0.5105113636363636,
+        "436": 1.5315340909090907,
+        "156": 0.5105113636363636,
+        "564": 0.5105113636363636,
+        "609": 1.0210227272727272,
+        "15": 1.5315340909090907,
+        "31": 1.0210227272727272,
+        "54": 1.0210227272727272,
+        "632": 2.0420454545454545,
+        "633": 1.0210227272727272,
+        "639": 1.5315340909090907,
+        "324": 1.0210227272727272,
+        "645": 0.5105113636363636,
+        "107": 2.0420454545454545,
+        "651": 1.5315340909090907,
+        "677": 2.0420454545454545,
+        "652": 2.0420454545454545,
+        "68": 1.0210227272727272,
+        "704": 0.5105113636363636,
+        "706": 1.5315340909090907,
+        "710": 0.5105113636363636,
+        "714": 2.552556818181818,
+        "720": 1.5315340909090907,
+        "717": 0.5105113636363636,
+        "453": 2.552556818181818,
+        "728": 1.0210227272727272,
+        "734": 3.573579545454545,
+        "747": 1.0210227272727272,
+        "749": 2.0420454545454545,
+        "93": 3.573579545454545,
+        "459": 0.5105113636363636,
+        "205": 0.5105113636363636,
+        "608": 0.5105113636363636,
+        "501": 2.0420454545454545,
+        "409": 0.5105113636363636,
+        "611": 1.0210227272727272,
+        "815": 1.0210227272727272,
+        "19": 1.0210227272727272,
+        "828": 1.0210227272727272,
+        "830": 1.0210227272727272,
+        "836": 0.5105113636363636,
+        "838": 1.0210227272727272,
+        "224": 0.5105113636363636,
+        "565": 3.573579545454545,
+        "768": 1.0210227272727272,
+        "873": 1.5315340909090907,
+        "694": 1.0210227272727272,
+        "322": 1.0210227272727272,
+        "690": 2.0420454545454545,
+        "907": 1.0210227272727272,
+        "618": 1.5315340909090907,
+        "827": 2.0420454545454545,
+        "926": 1.5315340909090907,
+        "773": 2.0420454545454545,
+        "475": 0.5105113636363636,
+        "908": 1.0210227272727272,
+        "942": 3.573579545454545,
+        "705": 1.0210227272727272,
+        "301": 2.552556818181818,
+        "951": 1.0210227272727272,
+        "947": 1.5315340909090907,
+        "735": 2.552556818181818,
+        "791": 1.5315340909090907,
+        "970": 2.0420454545454545,
+        "972": 0.5105113636363636,
+        "312": 0.5105113636363636,
+        "794": 3.0630681818181813,
+        "780": 2.0420454545454545,
+        "446": 2.0420454545454545,
+        "979": 4.594602272727273,
+        "874": 0.5105113636363636,
+        "875": 2.0420454545454545,
+        "678": 0.5105113636363636,
+        "971": 3.573579545454545,
+        "748": 0.5105113636363636,
+        "186": 1.5315340909090907,
+        "692": 2.552556818181818,
+        "998": 0.5105113636363636,
+        "239": 0.5105113636363636,
+        "968": 0.5105113636363636
+      },
+      "infill_regions": {
+        "R8": {
+          "step": 3.0,
+          "dwellings": 213.29999999999998
+        },
+        "R5": {
+          "step": 3.0,
+          "dwellings": 118.80000000000001
+        },
+        "R2": {
+          "step": 3.0,
+          "dwellings": 146.39999999999998
+        },
+        "R6": {
+          "step": 3.0,
+          "dwellings": 179.7
+        }
+      }
+    }
+  ],
+  "case_count": 11,
+  "primary_case_count": 8,
+  "clusters": [
+    {
+      "representative": 1625959,
+      "members": [
+        1625959
+      ]
+    },
+    {
+      "representative": 1631057,
+      "members": [
+        1629194,
+        1631057,
+        1631514,
+        4502186
+      ]
+    },
+    {
+      "representative": 1630702,
+      "members": [
+        1630702
+      ]
+    },
+    {
+      "representative": 4320104,
+      "members": [
+        4320104,
+        4320244,
+        4499632,
+        4500043,
+        4500422,
+        4501201
+      ]
+    },
+    {
+      "representative": 4449485,
+      "members": [
+        4448626,
+        4449485
+      ]
+    },
+    {
+      "representative": 4456468,
+      "members": [
+        4456468
+      ]
+    }
+  ],
+  "edge_sensitivity": [
+    {
+      "edge_open_deg": 90,
+      "edge_radius_m": 150,
+      "before_clustering": 15,
+      "after_clustering": 6
+    },
+    {
+      "edge_open_deg": 90,
+      "edge_radius_m": 200,
+      "before_clustering": 15,
+      "after_clustering": 6
+    },
+    {
+      "edge_open_deg": 90,
+      "edge_radius_m": 300,
+      "before_clustering": 15,
+      "after_clustering": 6
+    },
+    {
+      "edge_open_deg": 120,
+      "edge_radius_m": 150,
+      "before_clustering": 15,
+      "after_clustering": 6
+    },
+    {
+      "edge_open_deg": 120,
+      "edge_radius_m": 200,
+      "before_clustering": 15,
+      "after_clustering": 6
+    },
+    {
+      "edge_open_deg": 120,
+      "edge_radius_m": 300,
+      "before_clustering": 13,
+      "after_clustering": 6
+    },
+    {
+      "edge_open_deg": 150,
+      "edge_radius_m": 150,
+      "before_clustering": 14,
+      "after_clustering": 7
+    },
+    {
+      "edge_open_deg": 150,
+      "edge_radius_m": 200,
+      "before_clustering": 12,
+      "after_clustering": 5
+    },
+    {
+      "edge_open_deg": 150,
+      "edge_radius_m": 300,
+      "before_clustering": 9,
+      "after_clustering": 3
+    }
+  ],
+  "eligible_before_clustering": [
+    1625959,
+    1629194,
+    1630702,
+    1631057,
+    1631514,
+    4320104,
+    4320244,
+    4448626,
+    4449485,
+    4456468,
+    4499632,
+    4500043,
+    4500422,
+    4501201,
+    4502186
+  ],
+  "obstacle_change": {
+    "clipped_eligible": [
+      1625959,
+      1629194,
+      1630702,
+      1631057,
+      1631514,
+      4320104,
+      4320244,
+      4448626,
+      4449485,
+      4450802,
+      4456468,
+      4499632,
+      4500043,
+      4500422,
+      4501201,
+      4502186
+    ],
+    "all_network_eligible": [
+      1625959,
+      1629194,
+      1630702,
+      1631057,
+      1631514,
+      4320104,
+      4320244,
+      4448626,
+      4449485,
+      4456468,
+      4499632,
+      4500043,
+      4500422,
+      4501201,
+      4502186
+    ],
+    "removed": [
+      4450802
+    ],
+    "added": [],
+    "domain_pipes": 890,
+    "network_pipes": 1001
+  },
+  "pump_rate_lps": 7.853981633974484,
+  "growth_runs_per_case": 36,
+  "baseline_runs": 11,
+  "run_count": 339,
+  "data_notes": [
+    "A greenfield estate joins a manhole on the network's edge, where open land lies beside it (an open sector of at least 120 degrees with no pipes or homes within 200 m, clear for 400 m along its middle); an estate in the middle of the built network would need a second sewer under existing streets.",
+    "This family is for understanding whether the infill-chosen sensors notice hypothetical growth at an edge connection. It is not a planning, serviceability or capacity study; geometric openness does not establish access, land availability or a feasible receiving invert.",
+    "Geometry uses every gravity pipe held by Network, including non-domain/statewide pipes if held, sampled every 10 m, and all retained homes and property connection points. It does not import extra surrounding GIS. The sector ignores points within 15 m; the 60 m clearance is checked along the ray from 60 m to its configured end, allowing the short connection beside the existing pipe.",
+    "outgoing_dn is a list of recorded diameters in mm, in outgoing pipe order; limiting_pipe_dn is also in mm. Pipe ids are published asset ids; pipe indices are Network indices.",
+    "At splits, every downstream route must have headroom. Shared upstream properties are counted once per pipe, including relief loops; no hydraulic flow split is assumed.",
+    "Limits are from SA Water Supplement Table 4.4 for reticulation sewers (DN150-300). Only pipes DN <= 300 constrain property headroom on each downstream path. Branch and trunk capacity (DN375+) is left to SWMM, with no property limit above DN300.",
+    "Below DN150 the limit scales from DN150; other unlisted reticulation diameters scale from the nearest Table 4.4 DN at equal slope and roughness. This is a team calculation.",
+    "Estate sizes, the short connection at the network edge and estate infiltration are team assumptions because no public data gives them. The estate adds sewage only, with no extra infiltration for its own new pipes, exactly as Sim25Model growth does. For paths without a reticulation constraint, the largest configured estate size caps the ladder only.",
+    "Table 4.4 limits apply to total EP on a pipe, expressed here as equivalent properties using the configured Table 4.4 property limits; they are not an allowance for new properties alone.",
+    "Boundary conversion is a team estimate: use Sim25's estimated/countable connections, not total boundary L/s divided by sewage per property. Boundary L/s includes both sewage and I&I, on the nominal Sim25 case basis.",
+    "Counts include unique upstream Pipe.dwellings, boundary properties at their joins and wet-well catchments transferred at pump discharges. Downstream checks follow pumps as well as gravity pipes. Hydraulic constraints are tested by the SWMM run stage.",
+    "Headroom is displayed to one decimal; integer steps use floor of unrounded headroom, capped at the largest configured step for every site. All smaller configured steps are retained. 'No table cap' means no Table 4.4 property limit above DN300, not unlimited hydraulic capacity.",
+    "Existing dwellings use 2.81 people per connection; new dwellings use 2.3, both at the same configured peaking factor (2 for these peak-hour cases). b1.5 multiplies boundary sewage AND boundary I&I by 1.5; it does not multiply existing in-domain sewage, in-domain I&I or estate sewage. Estates add no infiltration: a sewage-only control. Pumped estates use their smoothed peak-hour flow in the primary cases.",
+    "The _pumprate bracket uses max(estate peak-hour flow, 7.8540 L/s), from 1 m/s in the smallest published rising main DN100, only for sites flagged levels.pumped in simulation4/data/estates.js. Gravity estates are unchanged. This is steady depth while the pump runs, an upper bound, not a volume-preserving duty-cycle model.",
+    "Missing pumped flags are treated as gravity: none.",
+    "The _together case loads all representatives at once at 30, 80 and 150 homes each, capped individually. The _with_infill case loads every representative at 150 homes (or its ceiling) on top of the largest Sim4 infill step in each distinct containing region. Its baseline includes that same infill background, so rises isolate the additional estates.",
+    "Exclusion order: receives pumped or outside flow, not on the network's edge, unknown diameter, headroom below minimum, then same edge stretch. Clusters are connected components sharing a non-null limiting pipe or within the configured distance and bearing difference; the largest open sector wins, then the lowest manhole id. Counts are exclusive.",
+    "Remaining limits: no pump duty-cycle bursts; free outfall (no tailwater); steady peak hour only (no trough, diurnal or wet-weather timing); relief inlets as configured (published).",
+    "The gravity domain has 6 terminals, including pump wet wells and relief exits; all reachable downstream gravity paths are checked."
+  ],
+  "boundary_entries": [
+    {
+      "id": 1675029,
+      "kind": "statewide",
+      "node": 995,
+      "manhole": null,
+      "length_m": 68.02662743024793,
+      "flow_lps": 0.13755781874587883,
+      "sewage_lps": 0.06272852857260611,
+      "ii_lps": 0.07482929017327272,
+      "equivalent_properties": 4.821837071773281,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4404822,
+      "kind": "statewide",
+      "node": 403,
+      "manhole": null,
+      "length_m": 1072.679796400396,
+      "flow_lps": 2.1690843509317,
+      "sewage_lps": 0.989136574891264,
+      "ii_lps": 1.1799477760404358,
+      "equivalent_properties": 76.03327408416834,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4404916,
+      "kind": "statewide",
+      "node": 858,
+      "manhole": null,
+      "length_m": 685.9280545751528,
+      "flow_lps": 1.3870269711769874,
+      "sewage_lps": 0.6325061111443193,
+      "ii_lps": 0.7545208600326682,
+      "equivalent_properties": 48.619686835292875,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4404918,
+      "kind": "statewide",
+      "node": 858,
+      "manhole": null,
+      "length_m": 3757.370211399628,
+      "flow_lps": 7.5978432273574015,
+      "sewage_lps": 3.4647359948178114,
+      "ii_lps": 4.13310723253959,
+      "equivalent_properties": 266.32846081161824,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4405068,
+      "kind": "statewide",
+      "node": 924,
+      "manhole": null,
+      "length_m": 660.9944311134078,
+      "flow_lps": 1.3366082603516487,
+      "sewage_lps": 0.6095143861269002,
+      "ii_lps": 0.7270938742247486,
+      "equivalent_properties": 46.85235138911404,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4405092,
+      "kind": "statewide",
+      "node": 644,
+      "manhole": null,
+      "length_m": 2523.942408367023,
+      "flow_lps": 5.103707554680437,
+      "sewage_lps": 2.3273709054767115,
+      "ii_lps": 2.776336649203725,
+      "equivalent_properties": 178.9011087483878,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4405113,
+      "kind": "statewide",
+      "node": 779,
+      "manhole": null,
+      "length_m": 41.3169956923942,
+      "flow_lps": 0.0835478108981112,
+      "sewage_lps": 0.038099115636477575,
+      "ii_lps": 0.04544869526163362,
+      "equivalent_properties": 2.928615294476568,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4405181,
+      "kind": "statewide",
+      "node": 741,
+      "manhole": null,
+      "length_m": 148.2785616559944,
+      "flow_lps": 0.2998366416016893,
+      "sewage_lps": 0.13673022378009547,
+      "ii_lps": 0.16310641782159385,
+      "equivalent_properties": 10.510223607295595,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4432947,
+      "kind": "statewide",
+      "node": 668,
+      "manhole": null,
+      "length_m": 641.7644194199194,
+      "flow_lps": 1.2977229214345263,
+      "sewage_lps": 0.5917820600726149,
+      "ii_lps": 0.7059408613619114,
+      "equivalent_properties": 45.489297144371825,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4433213,
+      "kind": "statewide",
+      "node": 474,
+      "manhole": null,
+      "length_m": 441.60823259432783,
+      "flow_lps": 0.8929836375937629,
+      "sewage_lps": 0.4072145817400023,
+      "ii_lps": 0.48576905585376057,
+      "equivalent_properties": 31.301903792114057,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4433217,
+      "kind": "council branch via missing link",
+      "node": 474,
+      "manhole": null,
+      "length_m": 134.15442500214945,
+      "flow_lps": 0.1475698675023644,
+      "sewage_lps": 0.0,
+      "ii_lps": 0.1475698675023644,
+      "equivalent_properties": 0.0,
+      "method": "Sim25 connections: counted council branch properties"
+    },
+    {
+      "id": 4433246,
+      "kind": "statewide",
+      "node": 723,
+      "manhole": null,
+      "length_m": 468.44385664090146,
+      "flow_lps": 0.9472484166659902,
+      "sewage_lps": 0.43196017436099865,
+      "ii_lps": 0.5152882423049916,
+      "equivalent_properties": 33.204056107464666,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4433252,
+      "kind": "statewide",
+      "node": 634,
+      "manhole": null,
+      "length_m": 82.73167436332484,
+      "flow_lps": 0.16729314823496655,
+      "sewage_lps": 0.07628830643530923,
+      "ii_lps": 0.09100484179965733,
+      "equivalent_properties": 5.8641545160237705,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4433272,
+      "kind": "statewide",
+      "node": 634,
+      "manhole": null,
+      "length_m": 389.4223291294187,
+      "flow_lps": 0.7874576204870564,
+      "sewage_lps": 0.35909305844469575,
+      "ii_lps": 0.4283645620423606,
+      "equivalent_properties": 27.602882784360954,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4433283,
+      "kind": "statewide",
+      "node": 987,
+      "manhole": null,
+      "length_m": 977.3448209688294,
+      "flow_lps": 1.9763058498365957,
+      "sewage_lps": 0.9012265467708837,
+      "ii_lps": 1.0750793030657122,
+      "equivalent_properties": 69.27577726068003,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4433308,
+      "kind": "statewide",
+      "node": 73,
+      "manhole": null,
+      "length_m": 206.9063691337634,
+      "flow_lps": 0.41838894412123573,
+      "sewage_lps": 0.190791938074096,
+      "ii_lps": 0.22759700604713975,
+      "equivalent_properties": 14.665857161567523,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 4441442,
+      "kind": "statewide",
+      "node": 832,
+      "manhole": null,
+      "length_m": 227.39909437749452,
+      "flow_lps": 0.4598276379264915,
+      "sewage_lps": 0.20968863411124758,
+      "ii_lps": 0.25013900381524395,
+      "equivalent_properties": 16.118414579369922,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 9042678,
+      "kind": "statewide",
+      "node": 789,
+      "manhole": null,
+      "length_m": 12.833433231145603,
+      "flow_lps": 0.025950707083154764,
+      "sewage_lps": 0.0118339305288946,
+      "ii_lps": 0.014116776554260163,
+      "equivalent_properties": 0.9096544463491935,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    },
+    {
+      "id": 9046148,
+      "kind": "statewide",
+      "node": 132,
+      "manhole": 4451287,
+      "length_m": 148.35036926380093,
+      "flow_lps": 0.2999818450061849,
+      "sewage_lps": 0.1367964388160039,
+      "ii_lps": 0.16318540619018101,
+      "equivalent_properties": 10.515313446354748,
+      "method": "Sim25 connections: council connection-density estimate by pipe size"
+    }
+  ],
+  "most_loaded_pipes": [
+    {
+      "asset_id": 1495295,
+      "dn": 450.0,
+      "limit": null,
+      "counted_properties": 3454.9428690807836,
+      "headroom": null
+    },
+    {
+      "asset_id": 1495331,
+      "dn": 375.0,
+      "limit": null,
+      "counted_properties": 3454.9428690807836,
+      "headroom": null
+    },
+    {
+      "asset_id": 1495332,
+      "dn": 450.0,
+      "limit": null,
+      "counted_properties": 3454.9428690807836,
+      "headroom": null
+    },
+    {
+      "asset_id": 1495345,
+      "dn": 375.0,
+      "limit": null,
+      "counted_properties": 3452.9428690807836,
+      "headroom": null
+    },
+    {
+      "asset_id": 1495343,
+      "dn": 375.0,
+      "limit": null,
+      "counted_properties": 3377.9428690807836,
+      "headroom": null
+    },
+    {
+      "asset_id": 1495342,
+      "dn": 450.0,
+      "limit": null,
+      "counted_properties": 3374.9428690807836,
+      "headroom": null
+    },
+    {
+      "asset_id": 1495341,
+      "dn": 450.0,
+      "limit": null,
+      "counted_properties": 3372.9428690807836,
+      "headroom": null
+    },
+    {
+      "asset_id": 1495356,
+      "dn": 450.0,
+      "limit": null,
+      "counted_properties": 3369.9428690807836,
+      "headroom": null
+    },
+    {
+      "asset_id": 1495355,
+      "dn": 450.0,
+      "limit": null,
+      "counted_properties": 3351.9428690807836,
+      "headroom": null
+    },
+    {
+      "asset_id": 1495352,
+      "dn": 450.0,
+      "limit": null,
+      "counted_properties": 3309.9428690807836,
+      "headroom": null
+    }
+  ],
+  "domain": {
+    "pipe_count": 890,
+    "outlet_node_ids": [
+      183,
+      385,
+      570,
+      606,
+      902,
+      997
+    ],
+    "unknown_diameter_pipe_ids": [],
+    "scaled_diameters": [
+      {
+        "diameter_mm": 143.0,
+        "pipe_count": 78
+      },
+      {
+        "diameter_mm": 250.0,
+        "pipe_count": 5
+      }
+    ],
+    "relief_pipe_ids": [
+      4433446,
+      4404777,
+      4404825
+    ],
+    "pump_links": [
+      [
+        "P4433449",
+        "N183",
+        "MH4451967"
+      ],
+      [
+        "P1495438",
+        "N997",
+        "MH1623725"
+      ]
+    ]
+  }
+}
