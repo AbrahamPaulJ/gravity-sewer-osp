@@ -218,9 +218,25 @@ window.Growth3D = (function () {
       renderer.domElement.addEventListener("pointermove", onMove);
       renderer.domElement.addEventListener("pointerleave", () => hoverTo(null));
       window.addEventListener("resize", () => resize(container));
+      /* Frame budget. The camera moves at the display's full rate; when it is still, the
+         ambient animations (blinks, sewer flow) are drawn at IDLE_FPS, which they do not need
+         more than, so a 120 Hz screen does a quarter of the work while nothing is touched. */
+      const IDLE_FPS = 30, lastCam = new Float64Array(6);
+      let lastDraw = 0, activeUntil = 0;
+      const wake = () => { activeUntil = performance.now() + 800; };
+      ["pointerdown", "pointermove", "wheel"].forEach(ev => renderer.domElement.addEventListener(ev, wake, { passive: true }));
+      window.addEventListener("resize", wake);
       (function loop() {
         requestAnimationFrame(loop);
         controls.update();
+        const now = performance.now();
+        const cp = camera.position, ct = controls.target;
+        if (cp.x !== lastCam[0] || cp.y !== lastCam[1] || cp.z !== lastCam[2] || ct.x !== lastCam[3] || ct.y !== lastCam[4] || ct.z !== lastCam[5]) {
+          lastCam[0] = cp.x; lastCam[1] = cp.y; lastCam[2] = cp.z; lastCam[3] = ct.x; lastCam[4] = ct.y; lastCam[5] = ct.z;
+          wake();
+        }
+        if (now >= activeUntil && now - lastDraw < 1000 / IDLE_FPS - 2) return;
+        lastDraw = now;
         // The blink. One shared clock so every pulsing thing stays in phase rather than
         // drifting against each other, which read as flicker rather than a deliberate beat.
         const t = (performance.now() - clock.t0) / 1000, beat = Math.sin(t * 3.4);
@@ -1008,6 +1024,7 @@ window.Growth3D = (function () {
   /* SIM4: optional background streets, one-pixel lines on the datum plane.
      Imaginary estate streets are drawn separately at their own ground level. */
   let streetLines = null, gridLines = null;
+  const streetFade = new WeakMap();
   function setStreets(lines, opacity) {
     if (!built) return;
     if (streetLines) { scene.remove(streetLines); streetLines.geometry.dispose(); streetLines.material.dispose(); streetLines = null; }
@@ -1015,10 +1032,40 @@ window.Growth3D = (function () {
     const sp = [];
     (lines || []).forEach(l => { for (let k = 0; k < l.length - 1; k++) sp.push(l[k][0], -0.4, -l[k][1], l[k + 1][0], -0.4, -l[k + 1][1]); });
     if (!sp.length) return;
+    // Fade with distance from the network: full strength at the network's edge, gone by
+    // STREET_FADE metres out (own choice), so the map dissolves into the background
+    // instead of ending at a hard edge.
+    const STREET_FADE = 1200;
+    // The fade depends only on the lines, so it is worked out once per street map and reused
+    // when the page switches family.
+    let alpha = streetFade.get(lines);
+    if (!alpha) {
+    const nx = G().nodes.map(n => n.x / 10), ny = G().nodes.map(n => n.y / 10);
+    alpha = new Float32Array(sp.length / 3);
+    for (let v = 0; v < alpha.length; v++) {
+      const x = sp[v * 3], y = -sp[v * 3 + 2];
+      let d2 = Infinity;
+      for (let i = 0; i < nx.length; i++) {
+        const dx = nx[i] - x, dy = ny[i] - y, e = dx * dx + dy * dy;
+        if (e < d2) d2 = e;
+      }
+      const t = Math.min(1, Math.sqrt(d2) / STREET_FADE);
+      alpha[v] = 1 - t * t * (3 - 2 * t);                  // smoothstep: a soft fall-off
+    }
+    streetFade.set(lines, alpha);
+    }
     const sg = new THREE.BufferGeometry();
     sg.setAttribute("position", new THREE.Float32BufferAttribute(sp, 3));
-    streetLines = new THREE.LineSegments(sg, new THREE.LineBasicMaterial({ color: B_EDGE, transparent: true, opacity: opacity == null ? 0.55 : opacity, depthWrite: false }));
-    themed.streets = streetLines.material;
+    sg.setAttribute("fade", new THREE.Float32BufferAttribute(alpha, 1));
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { uColor: { value: new THREE.Color(B_EDGE) }, uOpacity: { value: opacity == null ? 0.55 : opacity } },
+      vertexShader: "attribute float fade; varying float vFade;" +
+        "void main(){ vFade = fade; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+      fragmentShader: "uniform vec3 uColor; uniform float uOpacity; varying float vFade;" +
+        "void main(){ if (vFade <= 0.0) discard; gl_FragColor = vec4(min(uColor * 1.6, vec3(1.0)), uOpacity * vFade); }",
+      transparent: true, depthWrite: false });
+    streetLines = new THREE.LineSegments(sg, mat);
+    themed.streets = { color: mat.uniforms.uColor.value };   // setTheme recolours it
     scene.add(streetLines);
   }
   function showGrid(on) {

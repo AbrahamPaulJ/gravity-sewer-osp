@@ -116,7 +116,8 @@ These change only how the map is drawn. No result changes.
   - along the 3 rising mains, from the pump;
   - through the drawn estate sewers, downhill to the estate's well and on to the network manhole.
   - Each square is twice the drawn pipe's thickness and scales with zoom. Speed and spacing are for display only. Lift mains inside estates are not animated.
-- The imaginary street map on the open land stays as faint background, fainter in infill. Each estate draws its own streets at full strength.
+- The imaginary street map on the open land stays as background. It fades out with distance from the network, reaching nothing 1,200 m away (own choice), and is fainter in infill. Each estate draws its own streets at full strength. The flat datum grid is hidden while the street map is shown.
+- When nothing moves, the 3D view redraws at most 30 times a second, with or without Sewer flow. Dragging, zooming or resizing returns it to the screen's full rate for 0.8 s. On a 120 Hz screen, idle drawing fell from 120 to 30 frames a second, and camera moves stayed at 120 (measured). The street fade is computed once per street map.
 - The legend is open by default, in the bottom-right corner. The summary sits above the layer buttons, so neither covers the other.
 - A refresh keeps the mode, family, choices, layers, Vertical slider and camera. A new visit (tab closed and reopened) starts at the defaults. Simple or Expert is no longer remembered between visits. The theme still is.
 
@@ -133,6 +134,7 @@ These change only how the map is drawn. No result changes.
 | `verify_demo` | 53 passed |
 | Browser: Explore with all 9 estates | draws correctly; no new console errors |
 | Browser: Sewer flow, refresh and fresh open, legend and foot layout | as described in section 8 |
+| Browser: frame rate, 120 Hz screen | idle 30 per second (was 120), moving 120 |
 
 ## 10. Still open
 

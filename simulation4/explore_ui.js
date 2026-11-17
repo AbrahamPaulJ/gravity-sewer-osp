@@ -815,11 +815,13 @@ window.Sim35UI = (function () {
   }
   function syncGround() {
     const gf = st.fam === "one";
-    // The imaginary street map on the open land around the network stays as faint context:
-    // each estate draws its own streets at full strength, so the rest is faded under them,
-    // and fainter still in infill, where no estate is built.
-    if (Growth3D.setStreets) Growth3D.setStreets(EST() ? EST().streets : [], gf ? 0.28 : 0.16);
-    if (Growth3D.showGrid) Growth3D.showGrid(!gf);
+    // The imaginary street map on the open land around the network stays as faint context,
+    // fading out with distance from the network. Each estate draws its own streets at full
+    // strength; in infill, where no estate is built, the map is fainter still. It replaces
+    // the datum grid, so the ground shows one pattern, not two.
+    const streets = EST() ? EST().streets : [];
+    if (Growth3D.setStreets) Growth3D.setStreets(streets, gf ? 0.9 : 0.6);
+    if (Growth3D.showGrid) Growth3D.showGrid(!streets.length);
   }
   function setFamily(f) {
     st.fam = f; st.pick = null; st.hover = null;
