@@ -84,7 +84,7 @@ function connect(url) {
   ok('the map fills the whole screen', layout.full);
   const clutter = await ev(`[...document.querySelectorAll('.labels .lbl.scale,.labels .lbl.outlet')].filter(e=>getComputedStyle(e).display!=='none').length`);
   ok("the map code's own scale and outlet labels are hidden", clutter === 0, clutter);
-  ok('the only controls are Back, Next, Hide, Behind this step and Explore', layout.controls.sort().join() === 'back,btnExplore,btnFold,btnNotes,next', layout.controls.join());
+  ok('the only controls are Back, Next, Behind this step and Explore (no Hide)', layout.controls.sort().join() === 'back,btnExplore,btnNotes,next', layout.controls.join());
   ok('the card leaves the map clear', layout.cardShare < .22, pc(layout.cardShare));
 
   // Walk every step with the Next button
@@ -96,6 +96,13 @@ function connect(url) {
     ok(`step ${s.id}: under 65 words`, s.body.split(/\s+/).length <= 65, s.body.split(/\s+/).length);
     const sl = await ev('document.querySelector("#homes").getClientRects().length>0');
     ok(`step ${s.id}: slider only on step 3`, sl === s.slider);
+    // 18 Nov: the step's text, its slider and its legend show as the step opens, with every fold shut, never inside one.
+    const vis = await ev(`(()=>{const card=document.querySelector('#card').getBoundingClientRect(), n=document.querySelector('#notes');
+      const seen=e=>{if(!e||!e.getClientRects().length)return false;const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&r.top>=card.top-1&&r.bottom<=Math.min(card.bottom,innerHeight)+1&&r.left>=0&&r.right<=innerWidth+1&&!n.contains(e)};
+      return {notesShut:n.hidden, body:seen(document.querySelector('#stepBody')), slider:seen(document.querySelector('#homes')),
+        legend:[...document.querySelectorAll('#legend span')].map(seen), legendN:document.querySelectorAll('#legend span').length}})()`);
+    const wantLegend = (await ev(`(window.SIM4.steps[${i}].legend||[]).length`));
+    ok(`step ${s.id}: text${s.slider ? ', slider' : ''} and legend in view with the folds shut`, vis.notesShut && vis.body && (!s.slider || vis.slider) && vis.legend.every(Boolean) && (!wantLegend || vis.legendN > 0), JSON.stringify(vis));
     const sens = await ev('Sim4.sensors()');
     ok(`step ${s.id}: ${s.k} sensors on the map`, sens.length === s.k && (!s.k || sens.join() === L(s.k).chosen.join()), sens.join());
     if (s.slider) await wait(4000);
@@ -241,6 +248,15 @@ function connect(url) {
   const narrow = await ev(`(()=>{const r=document.querySelector('#card').getBoundingClientRect();return{fit:r.left>=0&&r.right<=innerWidth,bottom:r.bottom,h:innerHeight,scroll:document.documentElement.scrollWidth<=innerWidth}})()`);
   ok('phone width: the card fits', narrow.fit && narrow.scroll);
   ok('phone width: the card leaves map to see', narrow.bottom < narrow.h * .62, Math.round(narrow.bottom));
+  const phoneMiss = [];
+  for (const sx of steps) {
+    await load('#step=' + sx.id + '&still=1');
+    const v = await ev(`(()=>{const card=document.querySelector('#card').getBoundingClientRect(), n=document.querySelector('#notes');
+      const seen=e=>{if(!e||!e.getClientRects().length)return false;const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&r.top>=card.top-1&&r.bottom<=Math.min(card.bottom,innerHeight)+1&&r.left>=0&&r.right<=innerWidth+1&&!n.contains(e)};
+      return n.hidden&&seen(document.querySelector('#stepBody'))&&(document.querySelector('#sliderRow').hidden||seen(document.querySelector('#homes')))&&[...document.querySelectorAll('#legend span')].every(seen)})()`);
+    if (!v) phoneMiss.push(sx.id);
+  }
+  ok('phone width: every step shows its text, slider and legend with the folds shut', phoneMiss.length === 0, phoneMiss.join());
   await shot('phone_5b');
 
   ok('no exception in the whole run', c.errors.length === 0, c.errors[0]);

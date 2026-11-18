@@ -44,8 +44,8 @@ body{background:var(--bg); color:var(--ink); font:14px/1.5 system-ui,-apple-syst
 .labels .lbl.region{color:#04140a; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px;
   transform:translate(-50%,-50%); text-shadow:none; box-shadow:0 0 0 2px #0d1117; opacity:.95}
 
-/* The one card: wide and flat, so it covers as little of the map as it can. The header row (step, title, Back and Next,
-   Hide) is all that stays when the reader folds it; the map shifts down by half the card's height so it centres in the
+/* The one card: wide and flat, so it covers as little of the map as it can. Its text, slider and legend always show
+   (18 Nov: no Hide; only "Behind this step" folds); the map shifts down by half the card's height so it centres in the
    space below (sim4_story.js sets --map-shift). The right 112px are kept clear for Explore. A tall card (its fold
    open) scrolls inside itself rather than running off the screen. */
 #card{--cw:min(900px, calc(100vw - 128px)); position:fixed; top:16px; width:var(--cw); z-index:10;
@@ -63,10 +63,6 @@ body{background:var(--bg); color:var(--ink); font:14px/1.5 system-ui,-apple-syst
 #dots{display:flex; gap:6px; margin-right:6px}
 #dots i{width:8px; height:8px; border-radius:50%; background:var(--line)}
 #dots i.on{background:var(--accent)}
-#btnFold{flex:none; display:inline-flex; align-items:center; gap:5px; font-size:12.5px; padding:4px 9px; color:var(--dim); background:transparent}
-#btnFold:hover{color:var(--ink)}
-#btnFold svg{width:12px; height:12px; transition:transform .2s}
-#btnFold[aria-expanded="false"] svg{transform:rotate(180deg)}
 #cardMore{margin-top:5px; padding-right:4px}
 #bodyRow{margin:0; font-size:15px; line-height:1.42}
 #stepBody{display:inline; margin:0; font-size:15px; line-height:1.42; color:var(--ink)}
@@ -110,7 +106,9 @@ button:disabled{opacity:.35; cursor:default}
 /* "Behind this step": its button ends the card text, on the text's last line, so the card is no taller for it. The fold
    opens under the card's controls, closed by default: four short rows, the tables behind the step in a second fold, and
    one link to the redo guide. It scrolls inside itself, so an open fold covers no more map than it must. */
-#notesBar{display:inline-block; margin-left:6px; white-space:nowrap; vertical-align:baseline}
+/* 18 Nov: the fold's button sits under the slider and legend, right above what it opens, so nothing the step needs is
+   under it. */
+#notesBar{display:block; margin-top:10px; white-space:nowrap}
 #btnNotes{display:inline-flex; align-items:center; gap:5px; font-size:12px; line-height:16px; padding:1px 8px; color:var(--dim); background:transparent; vertical-align:baseline}
 #btnNotes:hover{color:var(--ink)}
 #btnNotes svg{width:11px; height:11px; transition:transform .2s}
@@ -131,7 +129,7 @@ button:disabled{opacity:.35; cursor:default}
 #notes th{color:var(--faint); text-align:left; font-weight:600; border-bottom:1px solid var(--line); padding:3px 8px 3px 0; vertical-align:bottom}
 #notes td{border-bottom:1px solid #1a2840; padding:3px 8px 3px 0; vertical-align:top}
 #notes .redo{display:inline-block; margin-top:9px; font-size:13px; color:var(--accent)}
-@media (prefers-reduced-motion:reduce){#card.in{animation:none} body[data-ready] #stage{transition:none} #btnFold svg,#btnNotes svg{transition:none}}
+@media (prefers-reduced-motion:reduce){#card.in{animation:none} body[data-ready] #stage{transition:none} #btnNotes svg{transition:none}}
 @media (max-width:640px){#card{--cw:calc(100vw - 16px); left:8px; top:8px; padding:8px 10px 9px 12px} #bodyRow,#stepBody{font-size:14px} #stepTitle{font-size:17px} #btnExplore{top:auto; bottom:16px} #notes{max-height:38vh} #notes dl{grid-template-columns:1fr; gap:0 0} #notes dd{margin-bottom:6px} #pop{width:min(310px, calc(100vw - 24px))}}
 
 /* One reading surface, with quiet supporting controls. */
@@ -144,7 +142,6 @@ button:disabled{opacity:.35; cursor:default}
 #back{background:transparent; color:var(--dim)}
 #next{background:var(--accent); border-color:var(--accent); color:var(--bg); font-weight:600}
 #dots{gap:8px; margin-right:8px}
-#btnFold{min-height:36px; gap:8px; padding:4px 8px; border-color:transparent}
 #cardMore{margin-top:12px; padding:0}
 #bodyRow, #stepBody{font-size:15px; line-height:1.6}
 #controls{gap:12px 24px; margin-top:16px}
@@ -155,8 +152,8 @@ button:disabled{opacity:.35; cursor:default}
 #legend span{gap:8px; white-space:normal}
 #btnRegions{min-height:32px; padding:4px 12px; background:transparent}
 #btnRegions[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 14%,var(--panel-solid)); border-color:var(--accent); color:var(--ink)}
-#notesBar{margin-left:8px; max-width:100%}
-#btnNotes{min-height:28px; gap:8px; padding:4px 8px; border-color:transparent}
+#notesBar{margin-left:0; max-width:100%}
+#btnNotes{min-height:28px; gap:8px; padding:4px 8px; margin-left:-8px; border-color:transparent}
 #btnNotes[aria-expanded="true"]{border-color:var(--line)}
 #notes{margin-top:16px; padding:16px 0 0; border:0; border-top:1px solid var(--line); border-radius:0; background:transparent}
 #notes dl{gap:8px 16px; line-height:1.5}
@@ -200,10 +197,9 @@ button:disabled{opacity:.35; cursor:default}
       <button id="back" type="button">Back</button>
       <button id="next" type="button">Next</button>
     </div>
-    <button id="btnFold" type="button" aria-expanded="true" aria-controls="cardMore" aria-label="Hide step details" title="Hide the step's text and controls, to see more of the map"><span>Hide</span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 8l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
   <div id="cardMore">
-    <div id="bodyRow"><p id="stepBody"></p> <span id="notesBar"><button id="btnNotes" type="button" aria-expanded="false" aria-controls="notes" title="What this step assumes, its sources, its limits and what comes next">Behind this step<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></span></div>
+    <div id="bodyRow"><p id="stepBody"></p></div>
     <div id="controls">
       <div id="sliderRow" hidden>
         <input id="homes" type="range" min="0" max="5" step="1" value="5" aria-label="Share of each region's 2041 homes">
@@ -214,6 +210,7 @@ button:disabled{opacity:.35; cursor:default}
         <button id="btnRegions" type="button" aria-pressed="false" title="Show each region in its own colour, without the surcharge colours" hidden>Regions</button>
       </div>
     </div>
+    <div id="notesBar"><button id="btnNotes" type="button" aria-expanded="false" aria-controls="notes" title="What this step assumes, its sources, its limits and what comes next">Behind this step<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div id="notes" hidden></div>
   </div>
 </section>
@@ -228,7 +225,7 @@ button:disabled{opacity:.35; cursor:default}
 <script src="../simulation3/data/index.js?v=9"></script>
 <script src="../simulation35/growth_3d.js?v=32"></script>
 <script src="data/sim4.js?v=8"></script>
-<script src="sim4_story.js?v=6"></script>
+<script src="sim4_story.js?v=7"></script>
 <script type="module">
   Sim4.init();
 </script>

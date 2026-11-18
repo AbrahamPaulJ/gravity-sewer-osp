@@ -17,9 +17,8 @@ const Sim4 = (() => {
   const SWEEP_MS = 3200;
   // regions: the Regions view is on (step 3 only; off again on leaving the step or reloading).
   // onMap: the legend keys whose colour the map shows right now, so the legend lists only those.
-  // folded: the reader has folded the card to its header row; it stays folded across steps until they open it again.
   // notes: the "Behind this step" fold is open; closed by default, it stays as the reader left it across steps.
-  const st = { i: 0, level: 5, pick: null, sweep: null, popAt: null, popSide: "right", regions: false, onMap: new Set(), folded: false, notes: false };
+  const st = { i: 0, level: 5, pick: null, sweep: null, popAt: null, popSide: "right", regions: false, onMap: new Set(), notes: false };
 
   /* The region each map point is painted in: the same rule as Sim 3.5, so regions look the same on both pages. */
   let _paint = null;
@@ -201,18 +200,6 @@ const Sim4 = (() => {
     if (!on) $("#notes").scrollTop = 0;
     placeMap();
   }
-  // Folding the card hides the body, slider and legend, and keeps the step, the title and Back and Next.
-  function setFold(on) {
-    st.folded = on;
-    const b = $("#btnFold");
-    $("#card").classList.toggle("folded", on);
-    $("#cardMore").hidden = on;
-    b.setAttribute("aria-expanded", String(!on));
-    b.setAttribute("aria-label", on ? "Show step details" : "Hide step details");
-    b.title = on ? "Show the step's text and controls" : "Hide the step's text and controls, to see more of the map";
-    b.querySelector("span").textContent = on ? "Show" : "Hide";
-    placeMap();
-  }
   // The map moves down by half the card's height, so it centres in the space below the card at the same scale.
   // A shift, not a smaller canvas: the stage keeps its size, so nothing is resized and the reader's view is kept.
   // An open "Behind this step" fold is read and closed again, so it lies over the map rather than moving it.
@@ -380,7 +367,6 @@ const Sim4 = (() => {
     $("#homes").onkeydown = stopSweep;
     $("#homes").oninput = e => { stopSweep(); hidePop(); st.level = +e.target.value; renderLevel(); paintMap(); };
     $("#btnRegions").onclick = () => { hidePop(); st.regions = !st.regions; paintMap(); };
-    $("#btnFold").onclick = () => setFold(!st.folded);
     $("#btnNotes").onclick = () => setNotes(!st.notes);
     if (window.ResizeObserver) new ResizeObserver(placeMap).observe($("#card"));
     addEventListener("keydown", e => {
@@ -394,5 +380,5 @@ const Sim4 = (() => {
     addEventListener("resize", () => { Growth3D.resize($("#stage")); placeMap(); });
   }
   return { init, state: st, step, levels: LEVELS, sensors: sensorNames, growthState, regionPaint, regionTints, actionLabels, regionOf, overlayNote,
-           openPop, hidePop, esc, ACTION_COL, LEGEND, REGION_COLS, setFold, setNotes, declutter };
+           openPop, hidePop, esc, ACTION_COL, LEGEND, REGION_COLS, setNotes, declutter };
 })();
