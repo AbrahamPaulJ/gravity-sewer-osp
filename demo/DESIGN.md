@@ -120,9 +120,9 @@ Why two levels: guidance that helps beginners slows experts down (the expertise 
 | 1 | Experts cannot see their own jargon (the curse of knowledge) | Heath & Heath | Plain words everywhere in Simple. A jargon list is checked automatically (`tools/verify_demo.js`) |
 | 2 | Everyday words, written to "you" | US federal plain-language guidelines; Mayer's personalisation principle | "Backing up", not "surcharged"; "rain leaking in", not "infiltration" |
 | 3 | Teach a few key words first | Mayer's pre-training principle | Five words with small pictures on page 1 |
-| 4 | Concrete first, then abstract | Concreteness fading (Fyfe et al. 2014) | One manhole, one street, one day, then 504 futures, then counts |
-| 5 | Walk through one example | Worked-example effect (Sweller) | One future followed through the demo: R3's 2041 homes on a very wet day |
-| 6 | Counts, not percentages; show them as icons | Natural frequencies (Gigerenzer & Hoffrage 1995); icon arrays (Galesic et al. 2009) | "14 of 16 futures", drawn as 16 dots |
+| 4 | Concrete first, then abstract | Concreteness fading (Fyfe et al. 2014) | One manhole, one street, one day, then 504 growth scenarios, then counts |
+| 5 | Walk through one example | Worked-example effect (Sweller) | One growth scenario followed through the demo: R3's 2041 homes on a very wet day |
+| 6 | Counts, not percentages; show them as icons | Natural frequencies (Gigerenzer & Hoffrage 1995); icon arrays (Galesic et al. 2009) | "14 of 16 scenarios", drawn as 16 dots |
 | 7 | Put numbers in familiar terms | Barrio, Goldstein & Hofman 2016 | 1 cm is about a fingernail's width; a 150 mm pipe is about a side plate |
 | 8 | The headline states the message; people remember the headline | Borkin et al. 2015; Kong et al. 2018, 2019 | Each page states its finding in its first lines (titles stay short names, at the team's request). It never claims more than the chart shows |
 | 9 | Novices look at what stands out, not at what matters | Hegarty, Canham & Fabrikant 2010 | A "How to read the map" note on the map; one callout; the Homes layer off by default; no street basemap |
@@ -131,7 +131,7 @@ Why two levels: guidance that helps beginners slows experts down (the expertise 
 | 12 | An analogy maps relationships, and says where it stops | Gentner 1983 | Roads and traffic; "sewage only flows downhill, so a jam lower down backs up everything above it" |
 | 13 | Saying how sure you are barely costs trust | van der Bles et al. 2020, PNAS | "Model results, not yet checked against real readings" on every page; ranges and ties stated |
 | 14 | Tie it to consequences | Utility communication guides | "A spill puts sewage into streets and creeks; a fix takes years" |
-| 15 | Outcomes as dots help decisions | Kay et al. 2016; Fernandes et al. 2018 | Dots for counts of futures |
+| 15 | Outcomes as dots help decisions | Kay et al. 2016; Fernandes et al. 2018 | Dots for counts of scenarios |
 
 Plain words used in Simple (map text is translated by `WORDS` in `simple.js`):
 
@@ -140,10 +140,10 @@ Plain words used in Simple (map text is translated by `WORDS` in `simple.js`):
 | surcharged | backing up (water rises up the manhole) |
 | overflow / spill | spills out of the lid |
 | infiltration | rain and groundwater leaking in |
-| run, scenario | a possible future |
+| run, case | a growth scenario: one area's new homes, at one size, on one kind of day ("future" was tried and dropped: readers found it unclear) |
 | seen (10 mm rise) | notices (water rises 1 cm) |
 | worst case | the hardest weather we tested |
-| scenario coverage | how many futures the sensors notice |
+| scenario coverage | how many growth scenarios the sensors notice |
 | Design wet / Beyond design / Severe | wet day / very wet day / extreme wet day |
 | Monitor / Watch / Leave | monitor / keep an eye on / room to spare |
 
@@ -157,7 +157,7 @@ Rules for Simple pages:
 
 Done in this draft:
 - The Simple reading level (§10): all 12 pages in plain words, the road analogy, five key words, counts as dots,
-  one future followed through, everyday comparisons, "How to read the map" notes, and a jargon check in the tests.
+  one growth scenario followed through, everyday comparisons, "How to read the map" notes, and a jargon check in the tests.
 - Three themes with one palette system (`THEMES` in app.js, CSS tokens in index.html).
 - Presentation mode.
 - Short page titles, as in the original demo (the generated finding headlines were dropped at the team's request).

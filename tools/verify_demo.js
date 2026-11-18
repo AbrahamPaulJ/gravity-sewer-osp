@@ -34,6 +34,12 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   // The site tab
   await send("Page.navigate", { url: `http://127.0.0.1:${HTTP}/index.html` }); await wait(1500);
   ok("navbar has Product demo after Overview", await ev(`[...document.querySelectorAll('#tabs button')].slice(0,2).map(b=>b.textContent).join('|')`) === "Overview|Product demo");
+  ok("navbar: story pages on the left, tools and archives on the right", await ev(`(()=>{const g=document.querySelectorAll('#tabs .tabs-side');if(g.length!==2)return false;
+    const a=g[0].getBoundingClientRect(),b=g[1].getBoundingClientRect();return a.right<b.left && innerWidth-b.right<40 && /Sandbox/.test(g[1].innerText)})()`));
+  await click('#simulations-toggle'); await wait(200); await shot("00_nav_menu");
+  ok("navbar: a menu opens under its own button", await ev(`(()=>{const t=document.querySelector('#simulations-toggle').getBoundingClientRect(),m=document.querySelector('#simulations-menu'),r=m.getBoundingClientRect();
+    return !m.hidden && Math.abs(r.right-t.right)<2 && r.top>=t.bottom && r.left>=0})()`));
+  await click('#simulations-toggle'); await wait(100);
   await click('#tabs button[data-tab="demo"]');
   let ready = false; for (let i = 0; i < 60 && !ready; i++) { await wait(250); ready = await ev(`(()=>{const f=document.querySelector('#pane-demo iframe');return !!(f && f.contentDocument && f.contentDocument.body && f.contentDocument.body.dataset.ready==='1')})()`); }
   ok("demo tab loads the demo in its pane", ready);
@@ -76,7 +82,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   ok("approach: the detail link opens that view", await ev(`App.st.sec==='network'`));
   // 3 Simulate
   await click('#secs button[data-sec="simulate"]'); await wait(300);
-  ok("simulate: 504 simulated futures", /504/.test(await panel()));
+  ok("simulate: 504 simulated scenarios", /504/.test(await panel()));
   await click('[data-preset="2"]'); await wait(200);
   ok("simulate preset: the corridor on a wetter day spills", /\b1 newly spilling/.test(await panel()));
   await click('[data-stage="3"]'); await wait(150);
@@ -128,6 +134,18 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await click("#rRun"); for (let i = 0; i < 40; i++) { await wait(250); if (/of your 5 are in/.test(await panel())) break; }
   ok("repeat: placing sensors scores them and compares with the recommendation", /of your 5 are in the recommended five/.test(await panel()));
   await shot("09_repeat");
+  await ev(`App.go('network')`); await wait(300);
+  ok("network: pipes take several colours from the ramp, and the legend shows them", await ev(`(()=>{const sw=[...document.querySelectorAll('#legend i')].map(e=>getComputedStyle(e).backgroundColor);return new Set(sw).size>4})()`));
+  await ev(`(()=>{App.st.network.by='flow';App.st.network.bin=null;App._.refresh()})()`); await wait(250);
+  await shot("network_flow");
+  ok("network: opens on flow today ÷ capacity (homes' peak flow ÷ 70% of full capacity)", await ev(`App._.load(0)===App._.homeFlow(0)/(0.7*App._.G().pcap[0])`));
+  ok("network: pipes can be coloured by flow today, beside capacity and flow ÷ capacity", /Flow today/.test(await panel()) && await ev(`document.querySelectorAll('svg.hist g.click').length===7`));
+  const worstRed = await ev(`(()=>{const s=App._.pal().seq,last=s[s.length-1],first=s[0];return ['load','util','flow','cap','size','age','slope','depth'].every(k=>{App.st.network.by=k;App.st.network.bin=null;App._.refresh();
+    const sw=[...document.querySelectorAll('svg.hist g.click rect+rect')].map(r=>r.getAttribute('fill'));const bad={load:sw.length-1,util:sw.length-1,flow:sw.length-1,slope:0,depth:0,cap:0,size:0,age:0}[k];return sw[bad]===last&&sw[sw.length-1-bad]===first;})})()`);
+  ok("network: on every measure, red is the worse end (full, flat, shallow, small, low capacity, old)", worstRed);
+  for (const th of ["night", "clear", "paper"]) { await ev(`(()=>{App.setTheme('${th}');App.st.network.by='age';App.st.network.bin=null;App._.refresh()})()`); await wait(250); await shot("network_age_" + th); }
+  ok("network: no pink or purple in the pipe colour scale, in any theme", await ev(`Object.values(App.THEMES).every(t=>t.seq.every(c=>{const [r,g,b]=[1,3,5].map(k=>parseInt(c.slice(k,k+2),16));return !(r>200&&b>150&&g<120)&&!(b>r&&r>g+40)}))`));
+  await ev(`(()=>{App.st.network.by='util';App._.refresh()})()`); await wait(200);
   // 10 Future
   await click('#secs button[data-sec="future"]'); await wait(800);
   ok("future: virtual coverage figure", /virtually covered/.test(await panel()));
@@ -153,7 +171,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await ev(`App.go('conclude')`); await wait(300);
   // Simple reading level: every page in plain words
   await ev(`App.setMode('simple')`); await wait(300);
-  const JARGON = /surcharg|infiltrat|spearman|\u03c1|greedy|heuristic|quantile|worst case|scenario|manning|I&I|d\/D|exact solver|heat map/i;
+  const JARGON = /surcharg|infiltrat|spearman|\u03c1|greedy|heuristic|quantile|worst case|manning|future|I&I|d\/D|exact solver|heat map/i;
   let plainOk = true, plainBad = "", plainHeads = true;
   for (const v of await ev(`App.SECTIONS.map(s=>s[0])`)) {
     await ev(`App.go('${v}')`); await wait(v === "compare" || v === "check" || v === "future" ? 900 : 250);
@@ -167,11 +185,11 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await ev(`App.go('setting')`); await wait(250);
   ok("Simple: the first page has the road analogy and the five words", /roads for wastewater/.test(await panel()) && await ev(`document.querySelectorAll('.words > div').length===5`));
   await ev(`App.go('algorithms')`); await wait(250);
-  ok("Simple: 5 sensors notice 14 of 16 futures in the hardest weather, as dots", /14 of 16/.test(await panel()) && await ev(`document.querySelectorAll('svg.dots circle').length===16`));
+  ok("Simple: 5 sensors notice 14 of 16 scenarios in the hardest weather, as dots", /14 of 16/.test(await panel()) && await ev(`document.querySelectorAll('svg.dots circle').length===16`));
   await ev(`(()=>{const e=document.querySelector('#alK');e.value=1;e.dispatchEvent(new Event('input'))})()`); await wait(250);
   ok("Simple: with 1 sensor, 2 of 16", /2 of 16/.test(await panel()));
   await ev(`App.go('simulate')`); await wait(250); await click('[data-sp="1"]'); await wait(300);
-  ok("Simple: the followed future appears, with its early warning", /future we follow/.test(await panel()) && /already risen/.test(await panel()));
+  ok("Simple: the followed scenario appears, with its early warning", /scenario we follow/.test(await panel()) && /already risen/.test(await panel()));
   await ev(`App.go('compare')`); await wait(800);
   ok("Simple: compare shows four rows of dots (ours 14, desk 4)", await ev(`document.querySelectorAll('.rowwrap svg.dots').length===4`) && /14 of 16/.test(await panel()) && /4 of 16/.test(await panel()));
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "d", code: "KeyD", windowsVirtualKeyCode: 68 }); await wait(300);

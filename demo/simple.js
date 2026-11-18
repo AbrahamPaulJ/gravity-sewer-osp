@@ -1,7 +1,7 @@
 /* The demo in plain words: the "Simple" reading level, for readers who are not engineers.
    Each page is built on the same engine, map and state as app.js (App._); only the words, the amount shown and the
    charts change. Rules (demo/DESIGN.md §11): one concrete case first; counts as dots, not percentages; everyday
-   comparisons; no jargon (tools/verify_demo.js checks a list); one future followed through the whole demo. */
+   comparisons; no jargon (tools/verify_demo.js checks a list); one scenario followed through the whole demo. */
 (() => {
   const _ = App._, { $, S, D, C, COL, pct, money, list, regionLabel, regionIndex, rowAt, riseAt, baseMm, wetTags, allTags, caseLabel,
     score, SIM4_TEST, planIdx, st, chips, stat, fold, nextBtn, on, refresh, cutaway, manholeFacts, nameOf, HANDLERS, FULL, stepLabel } = _;
@@ -17,9 +17,9 @@
     [/Surcharged by infiltration alone/g, "Already backing up from rain leaking in"], [/Surcharged before growth/g, "Already backing up today"],
     [/surcharged before growth/g, "already backing up today"], [/Newly surcharged/g, "Starts backing up"], [/newly surcharged/g, "starts backing up"],
     [/Newly spilling/g, "Spills from the lid"], [/newly spilling/g, "spills from the lid"], [/[Ss]urcharged/g, "backing up"],
-    [/10 mm \+: noticeable/g, "1 cm or more: a sensor notices"], [/Rises 10 mm or more in (\d+) runs/g, "Rises 1 cm or more in $1 futures"],
-    [/Rises 10 mm in few runs/g, "Notices few futures"], [/In many runs/g, "Notices many futures"], [/Responds in few runs/g, "Notices few futures"],
-    [/Responds in many \(up to (\d+)\)/g, "Notices many (up to $1)"], [/in (\d+) runs/g, "in $1 futures"], [/(\d+) runs/g, "$1 futures"],
+    [/10 mm \+: noticeable/g, "1 cm or more: a sensor notices"], [/Rises 10 mm or more in (\d+) runs/g, "Rises 1 cm or more in $1 scenarios"],
+    [/Rises 10 mm in few runs/g, "Notices few scenarios"], [/In many runs/g, "Notices many scenarios"], [/Responds in few runs/g, "Notices few scenarios"],
+    [/Responds in many \(up to (\d+)\)/g, "Notices many (up to $1)"], [/in (\d+) runs/g, "in $1 scenarios"], [/(\d+) runs/g, "$1 scenarios"],
     [/the worst case drops to/g, "one kind of wet weather drops to"], [/in the worst weather\)/g, "in one kind of wet weather)"], [/worst case/gi, "hardest weather"], [/in the worst weather/g, "in the hardest weather"],
     [/Monitor region/g, "Area to monitor"], [/Watch region/g, "Area to watch"], [/Exact search/g, "Our search"],
     [/Desk heuristic: flow\/capacity/g, "Desk study: fullest pipes"], [/Desk heuristic: most homes upstream/g, "Rule of thumb: most homes upstream"],
@@ -39,7 +39,7 @@
     return `<svg class="dots" viewBox="0 0 ${w} ${h}" width="${Math.min(100, w / 3.6)}%" role="img" aria-label="${hit} of ${n}">${c}</svg>`;
   }
   const dotRow = (label, hit, n, colour, key) => `<div class="dotrow ${key ? "click" : ""}" ${key ? `data-alt="${key}"` : ""}><div class="dl"><b>${hit} of ${n}</b> ${label}</div>${dots(hit, n, colour)}</div>`;
-  const thread = text => `<div class="thread"><span>Following one future</span>${text}</div>`;
+  const thread = text => `<div class="thread"><span>Following one scenario</span>${text}</div>`;
   const words = items => `<div class="words">${items.map(([icon, w, d]) => `<div>${ICONS[icon]}<b>${w}</b><span>${d}</span></div>`).join("")}</div>`;
   const ICONS = {
     manhole: `<svg viewBox="0 0 40 40"><rect x="14" y="6" width="12" height="26" fill="none" stroke="currentColor" stroke-width="2"/><rect x="11" y="4" width="18" height="3" fill="currentColor"/><rect x="2" y="30" width="36" height="7" fill="none" stroke="currentColor" stroke-width="2"/></svg>`,
@@ -55,7 +55,7 @@
     if (F) return F;
     const o = SIM4_TEST(), plan = planIdx(5), sc = score(plan, o), hard = sc.per.reduce((a, c) => c.share < a.share ? c : a, sc.per[0]);
     const on = (set, tag) => score(set, { ...o, cases: [tag] }).per[0];
-    // The future we follow: one area's 2041 homes on a very wet day, where one manhole starts backing up.
+    // The scenario we follow: one area's 2041 homes on a very wet day, where one manhole starts backing up.
     const r = regionIndex("R3"), tag = wetTags()[1], rows = _.stepsTo(1).map(s => rowAt(tag, r, s)), k = rows.findIndex(x => x.sur.length);
     const row = rows[rows.length - 1], warnRow = rows[Math.max(0, k - 1)], warnRise = plan.map(i => riseAt(warnRow, i)), ws = warnRise.indexOf(Math.max(...warnRise));
     let all = 0, allN = 0; sc.per.forEach(c => { all += c.hit; allN += c.n; });
@@ -96,19 +96,24 @@
     },
     network: {
       panel() {
-        const n = st.network; if (!["age", "size", "util"].includes(n.by)) n.by = "util";
+        const n = st.network; n.bin = null; if (!["load", "flow", "cap", "size", "age"].includes(n.by)) n.by = "load"; // Simple has no bars to pick a band with
         const g = _.G(), km = (g.plen.reduce((t, v) => t + v, 0) / 1000).toFixed(0), small = g.dia.filter(d => d <= 150).length;
         return `
           <p class="lede">We built a computer model of every pipe and manhole from public maps.</p>
           <div class="stats">${stat(km + " km", "of pipe")}${stat(S().councilConnections.toLocaleString("en-AU"), "homes connected")}</div>
           <h3>Colour the pipes by</h3>
-          ${chips([["util", "How full on a wet day"], ["size", "Size"], ["age", "Age"]], k => k === n.by, "by")}
+          ${chips([["load", "How full (flow ÷ capacity)"], ["flow", "Flow from homes"], ["cap", "Pipe capacity"], ["size", "Size"], ["age", "Age"]], k => k === n.by, "by")}
           <div class="hint">${{ util: "Most pipes have plenty of room. A few near the bottom of the network are close to full on a wet day: that is where trouble starts.",
-            size: `${small} of ${g.nPipes} pipes are 150 mm across, about the width of a side plate: sized for the suburb as it was.`,
-            age: "Much of it was laid before 1950. Old pipes let more rain and groundwater leak in." }[n.by]}</div>
+            load: "Sewage from the homes upstream at the busiest time of day, against the 70% of each pipe we count as usable. Hover a pipe for its numbers.",
+            flow: "Litres a second from the homes upstream at the busiest time of day. It builds up downhill: the pipes along the bottom carry everything from above.",
+            cap: "The most each pipe can carry, in litres a second, from its size and slope. Red: the pipes that can carry least.",
+            size: `${small} of ${g.nPipes} pipes are 150 mm across, about the width of a side plate: sized for the suburb as it was. Red: the smallest.`,
+            age: "Much of it was laid before 1950 (red). Old pipes let more rain and groundwater leak in." }[n.by]}</div>
           ${nextBtn()}`;
       },
-      wire() { on("[data-by]", "onclick", e => { st.network.by = e.currentTarget.dataset.by; st.network.bin = null; refresh(); }); },
+      wire() {
+        on("[data-by]", "onclick", e => { st.network.by = e.currentTarget.dataset.by; st.network.bin = null; refresh(); });
+      },
     },
     approach: {
       panel() {
@@ -117,16 +122,16 @@
           ["2a", "Where new homes go", "The homes expected by 2041, added one area at a time, in small steps. The sensors were picked on this, then tried on new estates at the edge of the network.", "simulate"],
           ["2b", "What each home sends", "About 460 litres a day from a typical home (2.3 people), more at peak times.", "simulate"],
           ["2c", "How wet it is", `From a dry day to an extreme wet one. On a normal wet day, rain leaks in at about half a running garden tap for every 100 m of pipe.`, "simulate"],
-          ["3", "Run the model", "504 possible futures, each giving the water level in every manhole.", "insights"],
-          ["4", "Pick the sensors", "Search all 328 manholes for the 5 that notice the most futures.", "algorithms"],
-          ["5", "Check the pick", "Count how many futures they notice, even in the hardest weather.", "compare"]];
+          ["3", "Run the model", "504 possible growth scenarios (an area, a number of new homes, a kind of weather), each giving the water level in every manhole.", "insights"],
+          ["4", "Pick the sensors", "Search all 328 manholes for the 5 that notice the most scenarios.", "algorithms"],
+          ["5", "Check the pick", "Count how many scenarios they notice, even in the hardest weather.", "compare"]];
         if (!STEPS.some(z => z[0] === a.step)) a.step = "1";
         const cur = STEPS.find(z => z[0] === a.step), btn = ([id, t]) => `<button type="button" data-ap="${id}" class="${!a.alt && a.step === id ? "on" : ""} ${+id[0] <= 3 ? "sim" : "alg"}"><i>${id.length > 1 ? id.slice(1) : id}</i>${t}</button>`;
         return `
-          <div class="pipe6">${btn(STEPS[0])}<div class="nest"><div class="nesth"><i>2</i>Set up the futures to test</div>${STEPS.slice(1, 4).map(btn).join("")}</div>${STEPS.slice(4).map(btn).join("")}</div>
+          <div class="pipe6">${btn(STEPS[0])}<div class="nest"><div class="nesth"><i>2</i>Set up the growth scenarios to test</div>${STEPS.slice(1, 4).map(btn).join("")}</div>${STEPS.slice(4).map(btn).join("")}</div>
           <div class="card"><b>${cur[1]}</b><div>${cur[2]}</div><button type="button" class="link" data-go="${cur[3]}">See this step →</button></div>
           <h3>Why a model? <small>(5 sensors each; click to see them)</small></h3>
-          <div class="hint">How many of the ${x.n} growth futures each way would notice, in the hardest weather we tested:</div>
+          <div class="hint">How many of the ${x.n} growth scenarios each way would notice, in the hardest weather we tested:</div>
           ${dotRow("Where problems are today", x.today, x.n, _.pal().orange, "judgement")}
           ${dotRow("A desk study of the fullest pipes", x.desk, x.n, _.pal().yellow, "desk")}
           ${dotRow("Our model", x.hard.hit, x.n, COL.sensor, "ours")}
@@ -138,7 +143,7 @@
     simulate: {
       panel() {
         const p = st.simulate, row = HANDLERS.simulate.row(), up = row ? row.rise.filter(([, m]) => m >= 10).length : 0;
-        const presets = [["2041 homes, wet day", "R3", _.S().ladder.indexOf(1), D().design], ["2041 homes, very wet day (the future we follow)", "R3", _.S().ladder.indexOf(1), wetTags()[1]], ["Three times the homes, wet day", "R3", _.S().ladder.indexOf(3), D().design]];
+        const presets = [["2041 homes, wet day", "R3", _.S().ladder.indexOf(1), D().design], ["2041 homes, very wet day (the scenario we follow)", "R3", _.S().ladder.indexOf(1), wetTags()[1]], ["Three times the homes, wet day", "R3", _.S().ladder.indexOf(3), D().design]];
         const isFollow = p.r === fol().r && p.s === FULL() && p.tag === fol().tag;
         return `
           <p class="lede">Choose where new homes go, how many and how wet it is. The map shows how much the water rises in every manhole.</p>
@@ -147,7 +152,7 @@
           <h3>How many new homes</h3><div class="slider"><input id="pStep" type="range" min="-1" max="${S().ladder.length - 1}" value="${p.s}"><span>${p.s < 0 ? "None" : stepLabel(p.s).replace("(stress)", "(test)")}${row ? ` · +${Math.round(row.dw)}` : ""}</span></div>
           <h3>How wet</h3>${chips(allTags().slice(1, 4).map(t => [t, weather(t)]), k => k === p.tag, "stc")}
           <div class="stats">${stat(up, `manholes rise ${CM} or more`)}${stat(row ? row.sur.length : 0, "start backing up", row && row.sur.length ? "bad" : "")}</div>
-          ${isFollow ? thread(`This is the future we follow: one manhole starts backing up. One step earlier, at ${pct(fol().warnStep)} of the homes, Sensor ${fol().warnSensor + 1} of our plan has already risen ${(fol().warnMm / 10).toFixed(0)} cm.`) : ""}
+          ${isFollow ? thread(`This is the scenario we follow: one manhole starts backing up. One step earlier, at ${pct(fol().warnStep)} of the homes, Sensor ${fol().warnSensor + 1} of our plan has already risen ${(fol().warnMm / 10).toFixed(0)} cm.`) : ""}
           ${nextBtn()}`;
       },
       wire() {
@@ -164,10 +169,10 @@
         const { c } = HANDLERS.insights.counts(), n = c.filter(Boolean).length, top = c.map((v, i) => [v, i]).filter(x => x[0]).sort((a, b) => b[0] - a[0]).slice(0, 3);
         const sel = q.cases.size === 1 ? [...q.cases][0] : "all";
         return `
-          <p class="lede">All the futures at once: the bigger and darker the dot, the more futures that manhole notices (water rises ${CM}).</p>
+          <p class="lede">All the scenarios at once: the bigger and darker the dot, the more scenarios that manhole notices (water rises ${CM}).</p>
           <h3>Which weather</h3>
           ${chips([[D().design, "Wet day"], [wetTags()[1], "Very wet day"], ["all", "All weather"]], k => k === sel, "iw")}
-          <div class="stats">${stat(`${n} of ${_.R().chambers.length}`, "manholes notice the new homes at all")}${stat(top.length ? top[0][0] : 0, "futures noticed by the busiest manhole")}</div>
+          <div class="stats">${stat(`${n} of ${_.R().chambers.length}`, "manholes notice the new homes at all")}${stat(top.length ? top[0][0] : 0, "scenarios noticed by the busiest manhole")}</div>
           <div class="hint">So where you measure matters: most manholes would never see the growth. The busiest ones sit just below where several areas join. <button type="button" class="link" data-find="${top.length ? top[0][1] : 0}">Show the busiest</button></div>
           ${nextBtn()}`;
       },
@@ -181,12 +186,12 @@
       panel() {
         const a = st.algorithms; a.method = "exact"; a.show = false; const x = facts(), hit = x.byK[a.k - 1];
         return `
-          <p class="lede">A sensor <b>notices</b> a future if its water rises ${CM}. We let the computer try combinations of the 328 manholes and keep the set that notices the most futures in the hardest weather.</p>
+          <p class="lede">A sensor <b>notices</b> a scenario if its water rises ${CM}. We let the computer try combinations of the 328 manholes and keep the set that notices the most scenarios in the hardest weather.</p>
           <h3>How many sensors</h3>
           <div class="slider"><input id="alK" type="range" min="1" max="8" value="${a.k}"><span>${a.k} sensor${a.k > 1 ? "s" : ""} · ${money(a.k * _.PRICE)}</span></div>
-          ${dotRow("futures noticed in the hardest weather", hit, x.n, COL.sensor)}
+          ${dotRow("scenarios noticed in the hardest weather", hit, x.n, COL.sensor)}
           <div class="hint">${a.k < 5 ? `Add sensors and watch the dots fill.` : a.k === 5 ? `<b>Five is where it levels off:</b> a sixth sensor adds one more dot, the seventh none.` : "Past five, each sensor adds little."} Many nearby manholes would do almost as well, so the sites are areas, not exact lids.</div>
-          ${thread(`In the future we follow, Sensor ${fol().warnSensor + 1} rises ${(fol().riseMm / 10).toFixed(0)} cm: it notices.`)}
+          ${thread(`In the scenario we follow, Sensor ${fol().warnSensor + 1} rises ${(fol().riseMm / 10).toFixed(0)} cm: it notices.`)}
           ${nextBtn()}`;
       },
       wire() { $("#alK").oninput = e => { st.algorithms.k = +e.target.value; refresh(); }; },
@@ -196,14 +201,14 @@
         const c = st.compare; c.k = 5; c.mm = 10; if (!["exact", "hydraulic", "homes"].includes(c.method)) c.method = "exact"; const x = facts();
         const after = x.plan.map(i => score(x.plan.filter(j => j !== i), SIM4_TEST()).per.reduce((a, q) => q.share < a.share ? q : a)), weak = after.reduce((b, q, k) => q.share < after[b].share ? k : b, 0), wq = after[weak];
         return `
-          <p class="lede">Five sensors each, placed four ways, counted on the same ${x.n} futures in the hardest weather. Click a row to see its sensors.</p>
+          <p class="lede">Five sensors each, placed four ways, counted on the same ${x.n} scenarios in the hardest weather. Click a row to see its sensors.</p>
           <div data-row="exact" class="rowwrap ${c.method === "exact" ? "on" : ""}">${dotRow("Our 5 sensors", x.hard.hit, x.n, COL.sensor)}</div>
           <div data-row="hydraulic" class="rowwrap ${c.method === "hydraulic" ? "on" : ""}">${dotRow("A desk study: the 5 fullest pipes", x.desk, x.n, _.pal().yellow)}</div>
           <div data-row="homes" class="rowwrap ${c.method === "homes" ? "on" : ""}">${dotRow("Rule of thumb: most homes upstream", x.homes, x.n, _.pal().pink)}</div>
           <div class="rowwrap">${dotRow("5 manholes picked at random (typical)", x.random, x.n, _.pal().failed)}</div>
-          <div class="hint">Across all ${allTags().length - 1} kinds of wet weather, our 5 notice <b>${x.all} of ${x.allN}</b> futures.</div>
-          <div class="hint"><b>New estates:</b> we also tried a new estate joining at the edge of the network, in 510 more futures (separate from the 504 used to pick the 5). Our 5 notice 6 of 55 on a wet day, 2 from the estate's own flow and 4 as water backing up from downstream, and 23 of 55 on an extreme wet day. The 5 were picked on homes in existing streets and are unchanged. Picking for both kinds of growth would give a different 5: it notices fewer in the streets (50% in the hardest weather, against 81%) and more at the edge (53%, against 17%).</div>
-          <div class="hint"><b>One weak spot:</b> if Sensor ${weak + 1} fails, the other four notice only ${wq.hit} of ${wq.n} futures on a ${weather(wq.tag).toLowerCase()}. Check it first, or put two there.</div>
+          <div class="hint">Across all ${allTags().length - 1} kinds of wet weather, our 5 notice <b>${x.all} of ${x.allN}</b> scenarios.</div>
+          <div class="hint"><b>New estates:</b> we also tried a new estate joining at the edge of the network, in 510 more scenarios (separate from the 504 used to pick the 5). Our 5 notice 6 of 55 on a wet day, 2 from the estate's own flow and 4 as water backing up from downstream, and 23 of 55 on an extreme wet day. The 5 were picked on homes in existing streets and are unchanged. Picking for both kinds of growth would give a different 5: it notices fewer in the streets (50% in the hardest weather, against 81%) and more at the edge (53%, against 17%).</div>
+          <div class="hint"><b>One weak spot:</b> if Sensor ${weak + 1} fails, the other four notice only ${wq.hit} of ${wq.n} scenarios on a ${weather(wq.tag).toLowerCase()}. Check it first, or put two there.</div>
           ${nextBtn()}`;
       },
       wire() { on("[data-row]", "onclick", e => { st.compare.method = e.currentTarget.dataset.row; st.compare.failed.clear(); refresh(); }); },
@@ -229,7 +234,7 @@
           ${chips([["ultra", "Water-level sensor", _.pal().sensor], ["float", "Float switch", _.pal().orange]], k => k === s.type, "sty")}
           <div class="cutwrap">${cutaway({ depthM, dia: f.dia, water: s.water, base, sensor: t.id, title: t.name })}</div>
           <div class="slider"><input id="snW" type="range" min="0" max="${Math.round(Math.min(depthM * 1000, f.dia * 4))}" value="${Math.round(s.water)}"><span>Reads: <b>${reading}</b></span></div>
-          <div class="hint">${t.id === "ultra" ? "A level sensor reports the height every few minutes, so you can see the rise coming over months." : "A float only switches when the water reaches it: by then the pipe is already in trouble. For the same money, floats noticed none of the hardest-weather futures in our tests."}</div>
+          <div class="hint">${t.id === "ultra" ? "A level sensor reports the height every few minutes, so you can see the rise coming over months." : "A float only switches when the water reaches it: by then the pipe is already in trouble. For the same money, floats noticed none of the hardest-weather scenarios in our tests."}</div>
           ${fold("Who uses water-level sensors", `<ul class="lit"><li><b>Sydney Water</b>: more than 8,000, catching hundreds of blockages before they spill.</li><li><b>United Utilities</b> (UK): about 20,000.</li><li><b>An Australian trial</b>: 62 of 82 still working after a year, so plan for some to fail.</li></ul>`)}
           ${nextBtn()}`;
       },
@@ -242,10 +247,10 @@
         return `
           <p class="lede">The method carries over to any suburb; this list of sites does not. What another suburb needs:</p>
           <table class="mini"><tr><td><b>1</b></td><td>Maps of the pipes and manholes, and the homes connected</td></tr><tr><td><b>2</b></td><td>Where new homes are expected</td></tr>
-            <tr><td><b>3</b></td><td>Ideally, a few weeks of water-level readings on a normal day</td></tr><tr><td><b>4</b></td><td>A few hours of computer time to run the futures</td></tr><tr><td><b>5</b></td><td>This page's steps, on the new results</td></tr></table>
+            <tr><td><b>3</b></td><td>Ideally, a few weeks of water-level readings on a normal day</td></tr><tr><td><b>4</b></td><td>A few hours of computer time to run the scenarios</td></tr><tr><td><b>5</b></td><td>This page's steps, on the new results</td></tr></table>
           <h3>What can you afford?</h3>
           <div class="slider"><input id="rpK" type="range" min="1" max="8" value="${k}"><span>${k} sensor${k > 1 ? "s" : ""} · ${money(k * _.PRICE)}</span></div>
-          ${dotRow("futures noticed in the hardest weather", x.byK[k - 1], x.n, COL.sensor)}
+          ${dotRow("scenarios noticed in the hardest weather", x.byK[k - 1], x.n, COL.sensor)}
           <div class="hint">Want to change the areas, the weather or the rules? <button type="button" class="link" data-mode="detailed">Switch to Detailed</button></div>
           ${nextBtn()}`;
       },
@@ -267,7 +272,7 @@
         const x = facts(); st.conclude.k = 5;
         const groups = [["monitor", "Monitor"], ["watch", "Keep an eye on"], ["leave", "Room to spare"]].map(([t, l]) => [t, l, Object.keys(D().triage).filter(r => D().triage[r] === t)]);
         return `
-          ${dotRow("futures noticed in the hardest weather", x.hard.hit, x.n, COL.sensor)}
+          ${dotRow("scenarios noticed in the hardest weather", x.hard.hit, x.n, COL.sensor)}
           <div class="hint">and <b>${x.all} of ${x.allN}</b> across all the wet weather we tested.</div>
           <div class="tri">${groups.map(([t, l, rs]) => `<div class="${t}"><b>${l}</b>${rs.join(", ")}</div>`).join("")}</div>
           <h3>What we recommend</h3>
@@ -286,7 +291,7 @@
     network: "Each line is a pipe, coloured by what you picked. Rings: manholes already backing up on a wet day.",
     approach: "The map follows the step you pick on the left.",
     simulate: "Bigger, brighter dots: more rise. Red dots start backing up. Rings were already backing up before the new homes.",
-    insights: "Dot size and colour: how many futures each manhole notices. Most manholes have no dot at all.",
+    insights: "Dot size and colour: how many scenarios each manhole notices. Most manholes have no dot at all.",
     algorithms: "Numbered dots: the sensors. Coloured pipes: areas to monitor (red) or watch (amber).",
     compare: "Filled dots: the selected row's sensors. Rings: our 5, for comparison.",
     check: "Darker dots: fuller pipes on paper. Numbered dots: our sensors.",

@@ -18,15 +18,18 @@ header.top{padding:16px 24px;border-bottom:1px solid var(--line);background:var(
   display:flex;align-items:center;flex-wrap:wrap;gap:8px 24px;position:relative;z-index:2}
 header.top .brand{font-size:14.5px;font-weight:650;letter-spacing:-.1px;min-width:0}
 #liveSlot{flex:0 0 auto;margin-right:auto}
-.tabs{display:flex;gap:8px;flex-wrap:wrap;position:relative;flex-basis:100%;min-width:0}
+.tabs{display:flex;gap:8px 24px;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;flex-basis:100%;min-width:0}
+.tabs-side{display:flex;gap:8px;flex-wrap:wrap;min-width:0}
+.tab-group{position:relative}
 .tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--ink-dim);
   padding:8px 16px;font:inherit;font-size:13px;cursor:pointer;border-radius:8px 8px 0 0;
   min-height:40px;text-align:left}
 .tabs button:hover,.tabs button[aria-expanded="true"]{color:var(--ink);background:var(--panel-2)}
 .tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
-.group-toggle::after{content:"⌄";display:inline-block;margin-left:8px}
-.group-toggle[aria-expanded="true"]::after{transform:rotate(180deg)}
-.tab-menu{position:absolute;right:0;top:calc(100% + 8px);width:min(336px,100%);
+.group-toggle::after{content:"";display:inline-block;width:6px;height:6px;margin:0 0 3px 10px;
+  border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);vertical-align:middle}
+.group-toggle[aria-expanded="true"]::after{transform:rotate(-135deg);margin-bottom:-1px}
+.tab-menu{position:absolute;right:0;top:calc(100% + 8px);width:min(336px,calc(100vw - 32px));
   max-height:min(60vh,520px);overflow-y:auto;padding:8px;background:var(--panel);
   border:1px solid var(--line);border-radius:8px;z-index:3}
 .tab-menu button{display:block;width:100%;border-radius:4px;padding:8px 16px}
@@ -90,6 +93,7 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);
   header.top{padding:16px;gap:8px}
   .tabs{gap:8px 0}
   .tabs button{padding:8px 12px}
+  .tabs{gap:8px}
   .wrap{padding:32px 16px 64px}
   h1{font-size:24px}
   .cards{grid-template-columns:minmax(0,1fr)}
@@ -110,8 +114,11 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);
   <span class="brand">Optimal sensor placement in gravity sewers</span>
   <span id="liveSlot" aria-hidden="true"></span>
   <nav class="tabs" id="tabs" aria-label="Pages">
+    <div class="tabs-side">
     <button data-tab="overview" class="on">Overview</button>
     <button data-tab="demo">Product demo</button>
+    </div>
+    <div class="tabs-side">
     <button data-tab="sandbox">Sandbox</button>
     <div class="tab-group" data-group="Background">
       <button class="group-toggle" id="background-toggle" aria-expanded="false" aria-controls="background-menu">Background</button>
@@ -134,6 +141,7 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);
         <div class="menu-divider">Earlier versions</div>
         <button data-tab="sim25legacy">Simulation 2.5 (legacy)</button>
       </div>
+    </div>
     </div>
   </nav>
 </header>
@@ -373,7 +381,7 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
      document across a normal reload of this page, so a visitor who saw an earlier
      version keeps seeing it after a deploy. Changing the number is what forces the
      refetch. Bump it whenever an embedded page changes. -->
-<div class="pane" id="pane-demo" hidden><iframe data-src="demo/index.html?v=9" title="Product demo: the problem, the data, the method, the results and what comes next"></iframe></div>
+<div class="pane" id="pane-demo" hidden><iframe data-src="demo/index.html?v=16" title="Product demo: the problem, the data, the method, the results and what comes next"></iframe></div>
 <div class="pane" id="pane-sandbox" hidden><iframe data-src="osp_sandbox.html?v=34#sandbox" title="OSP Sandbox"></iframe></div>
 <div class="pane" id="pane-anatomy" hidden><iframe data-src="manhole_anatomy.html?v=32" title="What a maintenance hole is"></iframe></div>
 <div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html?v=32" title="Why observability is limited"></iframe></div>

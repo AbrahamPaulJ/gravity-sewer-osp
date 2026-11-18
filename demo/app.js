@@ -19,7 +19,7 @@ const App = (() => {
       corridor: "#8f8270", orange: "#c27a2c", yellow: "#a8741f", blue: "#5f9690", lightblue: "#a9c7bf", pink: "#a8577e", clay: "#b5763c", purple: "#6c5a9e", cover: "#2c7f95", grey: "#d3c7b1",
       dimPipe: "#e4d8c4", nullPipe: "#d8ccb6", barOff: "#e4d8c4", barBase: "#9a8d78", cutBg: "#efe3cf", cutLine: "#94866e", lid: "#36332e", levelAvg: "#5f9690", floatAvg: "#d39a45",
       rise: ["#ecd39a", "#d39a45", "#b8523b", "#6e2417"],
-      seq: ["#e6d7b6", "#d6bd86", "#c9a05a", "#c27a2c", "#b8523b", "#8a3424", "#5b1f16"],
+      seq: ["#9cc0cf", "#5f97b0", "#2f6f8f", "#c9a05a", "#c27a2c", "#b8523b", "#6e2417"],
       heat: ["#e6d2a2", "#d39a45", "#b8523b", "#5b1f16"],
       regions: { R1: "#2f6f8f", R2: "#b8523b", R3: "#557f3a", R4: "#a8577e", R5: "#2d8a73", R6: "#3c8f9e", R7: "#8a6a3b", R8: "#6c5a9e", R9: "#7a6e5c" },
     },
@@ -29,7 +29,7 @@ const App = (() => {
       corridor: "#c9d1d9", orange: "#ff9f43", yellow: "#ffd166", blue: "#4f86c6", lightblue: "#9fd3ff", pink: "#e87ba4", clay: "#d9a066", purple: "#b38cff", cover: "#39c5cf", grey: "#4a5568",
       dimPipe: "#253148", nullPipe: "#444c5c", barOff: "#2a3a58", barBase: "#3c5a85", cutBg: "#1a2436", cutLine: "#4a5b7a", lid: "#a9b8d4", levelAvg: "#1f9e4c", floatAvg: "#b36a20",
       rise: ["#2c4f80", "#4f86c6", "#9fd3ff", "#fff176"],
-      seq: ["#2c4f80", "#4f86c6", "#9fd3ff", "#ffd166", "#ff9f43", "#ff5c7a", "#ff3df5"],
+      seq: ["#3b6ea8", "#5b93cf", "#8dbbe8", "#e9b46a", "#e8893a", "#d9602e", "#bf3b2b"],
       heat: ["#1f4f8f", "#3fa0d8", "#ffd166", "#ff9f43"],
       regions: { R1: "#3987e5", R2: "#d95926", R3: "#20a320", R4: "#e87ba4", R5: "#199e70", R6: "#39c5cf", R7: "#b08457", R8: "#9085e9", R9: "#c9d1d9" },
     },
@@ -39,7 +39,7 @@ const App = (() => {
       corridor: "#64748b", orange: "#ea580c", yellow: "#ca8a04", blue: "#2563eb", lightblue: "#93c5fd", pink: "#db2777", clay: "#a16207", purple: "#7c3aed", cover: "#0891b2", grey: "#cbd5e1",
       dimPipe: "#e2e8f0", nullPipe: "#cbd5e1", barOff: "#e2e8f0", barBase: "#64748b", cutBg: "#f1f5f9", cutLine: "#64748b", lid: "#334155", levelAvg: "#059669", floatAvg: "#d97706",
       rise: ["#bfdbfe", "#60a5fa", "#2563eb", "#1e3a8a"],
-      seq: ["#dbeafe", "#93c5fd", "#60a5fa", "#2563eb", "#1d4ed8", "#be123c", "#7e22ce"],
+      seq: ["#93c5fd", "#60a5fa", "#2563eb", "#f59e0b", "#ea580c", "#dc2626", "#991b1b"],
       heat: ["#bfdbfe", "#3b82f6", "#f59e0b", "#b91c1c"],
       regions: { R1: "#2563eb", R2: "#ea580c", R3: "#4d7c0f", R4: "#db2777", R5: "#0d9488", R6: "#0891b2", R7: "#a16207", R8: "#7c3aed", R9: "#64748b" },
     },
@@ -243,6 +243,8 @@ const App = (() => {
   }
   const flowEst = (p, ii, extra = 0) => (H.pH[p] + extra) * H.lps + ii * H.pL[p] / 100;
   const util = (p, ii, extra = 0) => flowEst(p, ii, extra) / G().pcap[p];
+  // Today's load as the team defines it: peak sewage from the homes connected upstream, against the usable 70% of full capacity.
+  const homeFlow = p => H.pH[p] * H.lps, USABLE = 0.7, load = p => homeFlow(p) / (USABLE * G().pcap[p]);
   const nOf = p => (G().manning.byMaterial[G().pmat[p]] || G().manning.fallback);
   // Per-manhole screens, for the cross-check and the desk-study baselines.
   const SCREENS = {
@@ -284,7 +286,7 @@ const App = (() => {
   const st = {
     sec: "setting", sel: null, selPipe: null, hover: null, hoverPipe: null,
     setting: { mh: null, tag: null, s: null, r: null },
-    network: { by: "util", bin: null },
+    network: { by: "load", bin: null },
     approach: { step: "1", alt: null },
     simulate: { stage: 1, r: null, s: null, tag: null, playing: null },
     insights: { measure: "r10", cases: null, max: 1 },
@@ -580,13 +582,15 @@ const App = (() => {
 
   // ------------------------------------------------------------------ 2 NETWORK
   const ATTRS = {
-    util: { label: "Flow / capacity today", unit: "estimated peak flow ÷ Manning full capacity, design wet day", v: p => util(p, caseOf(D().design).ii), edges: [0, 0.05, 0.1, 0.2, 0.4, 0.7, 1], fmt: v => pct(v) },
-    cap: { label: "Full capacity", unit: "L/s, Manning", v: p => G().pcap[p], edges: [0, 10, 20, 40, 80, 160], fmt: v => v.toFixed(0) },
-    size: { label: "Size", unit: "mm diameter", v: p => G().dia[p], cats: [[150, "≤150"], [225, "225"], [300, "250–300"], [Infinity, "375+"]] },
-    age: { label: "Age", unit: "year laid", v: p => G().pyr[p] || null, edges: [1900, 1930, 1950, 1970, 1990, 2010], fmt: v => v },
+    load: { label: "Flow today ÷ capacity", unit: "peak flow from homes ÷ 70% of Manning full capacity", v: p => load(p), edges: [0, 0.05, 0.1, 0.2, 0.4, 0.7, 1], fmt: v => pct(v) },
+    util: { label: "Wet-day flow ÷ full capacity", unit: "estimated peak flow ÷ Manning full capacity, design wet day", v: p => util(p, caseOf(D().design).ii), edges: [0, 0.05, 0.1, 0.2, 0.4, 0.7, 1], fmt: v => pct(v) },
+    flow: { label: "Flow today", unit: "L/s, peak flow from the homes upstream (2.3 people × 200 L a day × peak 2)", v: p => homeFlow(p), edges: [0, 0.1, 0.25, 0.5, 1, 2.5, 5], fmt: v => v },
+    cap: { label: "Full capacity", unit: "L/s, Manning", v: p => G().pcap[p], edges: [0, 10, 20, 40, 80, 160], fmt: v => v.toFixed(0), rev: true },
+    size: { label: "Size", unit: "mm diameter", v: p => G().dia[p], cats: [[150, "≤150"], [225, "225"], [300, "250–300"], [Infinity, "375+"]], rev: true },
+    age: { label: "Age", unit: "year laid", v: p => G().pyr[p] || null, edges: [1900, 1930, 1950, 1970, 1990, 2010], fmt: v => v, rev: true },
     material: { label: "Material", unit: "", v: p => G().pmat[p], names: { VC: "Clay", PVCU: "PVC", RC: "Concrete" } },
     slope: { label: "Slope", unit: "% fall", v: p => G().pslope[p], edges: [0, 0.5, 1, 2, 5, 10], fmt: v => v, rev: true },
-    depth: { label: "Depth", unit: "m, manhole at the top of the pipe", v: p => G().nodes[G().up[p]].depth, edges: [0, 1, 1.5, 2, 3, 4], fmt: v => v },
+    depth: { label: "Manhole depth", unit: "m, lid to floor, manhole at the top of the pipe", v: p => G().nodes[G().up[p]].depth, edges: [0, 1, 1.5, 2, 3, 4], fmt: v => v, rev: true },
   };
   function binsOf(id) {
     const a = ATTRS[id], g = G(), vals = Array.from({ length: g.nPipes }, (_, p) => a.v(p));
@@ -594,7 +598,7 @@ const App = (() => {
     if (a.names) defs = Object.keys(a.names).map(k => ({ key: k, label: a.names[k], test: v => v === k }));
     else if (a.cats) defs = a.cats.map(([hi, l], k) => ({ key: String(k), label: l, test: v => v <= hi && (k === 0 || v > a.cats[k - 1][0]) }));
     else defs = a.edges.map((lo, k) => { const hi = a.edges[k + 1]; return { key: String(k), label: hi === undefined ? `${a.fmt(lo)}+` : `${a.fmt(lo)}–${a.fmt(hi)}`, test: v => v != null && v >= lo && (hi === undefined || v < hi) }; });
-    const colours = a.names ? [PAL.clay, PAL.sim4, PAL.corridor] : SEQ.slice(0, defs.length);
+    const sq = PAL.seq, colours = a.names ? [PAL.clay, PAL.sim4, PAL.corridor] : defs.map((_, k) => sq[defs.length < 2 ? 0 : Math.round(k * (sq.length - 1) / (defs.length - 1))]);
     if (a.rev) colours.reverse();
     const of = vals.map(v => defs.findIndex(d => d.test(v)));
     return { defs: defs.map((d, k) => ({ ...d, colour: colours[k], n: of.filter(x => x === k).length })), of };
@@ -607,7 +611,8 @@ const App = (() => {
         pipe: p => { const k = b.of[p]; if (k < 0) return [PAL.nullPipe, 1]; const d = b.defs[k], hit = on === null || d.key === on; return [hit ? d.colour : PAL.dimPipe, hit ? (on === null ? 1.8 : 3) : 1]; },
         node: i => S().base[D().design].surcharged.includes(i) ? { ring: COL.was, r: 4.5 } : null,
         legend: [...b.defs.map(d => [d.colour, `${d.label} ${ATTRS[n.by].unit ? "" : ""}`]), [COL.was, "Surcharged before growth (model)", "ring"]],
-        pipeTip: p => n.by === "util" ? `Flow / capacity ≈ ${pct(util(p, caseOf(D().design).ii))} on a design wet day` : "",
+        pipeTip: p => n.by === "util" ? `Wet-day flow ${flowEst(p, caseOf(D().design).ii).toFixed(1)} of ${G().pcap[p].toFixed(1)} L/s full capacity: ${pct(util(p, caseOf(D().design).ii))}`
+          : ["load", "flow", "cap"].includes(n.by) ? `Flow from ${Math.round(H.pH[p])} homes ${homeFlow(p).toFixed(2)} L/s, of ${(USABLE * G().pcap[p]).toFixed(1)} L/s usable (70% of ${G().pcap[p].toFixed(1)}): ${pct(load(p))}` : "",
       };
     },
     panel() {
@@ -618,16 +623,18 @@ const App = (() => {
         <div class="stats four">${stat(g.nPipes, "pipes")}${stat(R().chambers.length, "manholes")}${stat((total / 1000).toFixed(1) + " km", "of pipe")}${stat(S().councilConnections.toLocaleString("en-AU"), "homes connected")}</div>
         <h3>Colour the pipes by</h3>
         ${chips(Object.entries(ATTRS).map(([k, a]) => [k, a.label]), k => k === n.by, "by")}
-        <h3>${ATTRS[n.by].label} <small>${ATTRS[n.by].unit} · click a bar to pick those pipes out</small></h3>
+        <h3>${ATTRS[n.by].label} <small>${ATTRS[n.by].unit} · ${ATTRS[n.by].names ? "" : "red: more of a concern · "}click a bar to pick those pipes out</small></h3>
         ${histogram(b.defs.map(d => ({ ...d, on: n.bin === d.key })))}
         <div class="hint">${{
           util: "Most pipes run far below capacity; a handful near the bottom of the network run close to full on a wet day.",
-          cap: "Capacity comes from Manning's equation: size, slope and roughness.",
+          load: "Peak flow from the homes connected upstream, against 70% of each pipe's full capacity. Dry-weather sewage alone uses little of most pipes; rain leaking in is what fills them (see Wet-day flow).",
+          flow: "Peak flow from the homes connected upstream. It builds up downhill: the pipes along the bottom carry everything from above.",
+          cap: "Capacity comes from Manning's equation: size, slope and roughness. Red: the pipes that can carry least.",
           size: "Mostly 150 mm: small pipes, sized for the homes that were there.",
           age: "Much of it laid before 1950: old pipes leak more in wet weather.",
           material: `${Math.round(clay / total * 100)}% of the length is clay.`,
           slope: "A hillside network: steep pipes drain fast, flat ones near the bottom back up first.",
-          depth: "Manhole depth: how far the water can rise before it reaches the lid.",
+          depth: "How far the water can rise before it reaches the lid. Shallow manholes (red) spill soonest; deep ones have room to spare.",
         }[n.by]}</div>
         ${this.pipeCard()}
         ${fold("What we have, what we assumed, what is missing", `<table class="mini"><tr><th>Have (public)</th><th>Assumed</th><th>Missing</th></tr>
@@ -676,7 +683,7 @@ const App = (() => {
       marks: ["✓", "~", "✗", "~", "✓"], picks: () => C().methods.hydraulic.sets[4] },
     { id: "ml", label: "Learn from sensor data", get colour() { return PAL.purple; }, note: "Train a model on years of level records. Not possible yet: there are no records, and the growth has not happened. Becomes possible after a pilot (Next research).",
       marks: ["✗", "✗", "✓", "~", "✗"], picks: () => null },
-    { id: "ours", label: "Simulation + search (ours)", get colour() { return COL.sensor; }, note: "Many futures simulated on the whole network, then the sites that see most of them, chosen exactly.",
+    { id: "ours", label: "Simulation + search (ours)", get colour() { return COL.sensor; }, note: "Many growth scenarios simulated on the whole network, then the sites that see most of them, chosen exactly.",
       marks: ["✓", "✓", "✓", "✓", "✓"], picks: () => planIdx(5) },
   ];
   const CRITERIA = ["Works before any sensor exists", "Tests growth that has not happened", "Sees water backing up through the network", "Copes with unknown weather", "Gives a reason for each site"];
@@ -714,12 +721,12 @@ const App = (() => {
       const mark = m => `<td class="mk ${m === "✓" ? "y" : m === "✗" ? "n" : "p"}">${m}</td>`;
       const alt = a.alt && ALTERNATIVES.find(x => x.id === a.alt);
       return `
-        <p class="lede">Two parts. <b>Simulate</b> many possible futures on a model of the whole network, then <b>search</b> those runs for the few manholes that would see the most of them.</p>
+        <p class="lede">Two parts. <b>Simulate</b> many possible growth scenarios on a model of the whole network, then <b>search</b> those runs for the few manholes that would see the most of them.</p>
         <div class="pipe6">${(() => { const btn = ([id, t, , , part]) => `<button type="button" data-ap="${id}" class="${!a.alt && a.step === id ? "on" : ""} ${part}"><i>${id.length > 1 ? id.slice(1) : id}</i>${t}</button>`;
           return btn(PIPELINE[0]) + `<div class="nest"><div class="nesth"><i>2</i>Design the simulation scenarios</div>${PIPELINE.slice(1, 4).map(btn).join("")}</div>` + PIPELINE.slice(4).map(btn).join(""); })()}</div>
         <div class="pipekey"><span class="sim">Simulation (steps 1–3)</span><span class="alg">Algorithm and evaluation (steps 4–5)</span></div>
         <div class="card"><b>${a.step}. ${step[1]}</b><div>${step[2]}</div><button type="button" class="link" data-go="${step[3]}">In detail: ${target[1]} →</button></div>
-        <div class="matrix3">${stat(nRuns, "simulated futures")}<i>→</i>${stat(R().chambers.length, "candidate manholes")}<i>→</i>${stat(5, "sensors", "big")}</div>
+        <div class="matrix3">${stat(nRuns, "simulated scenarios")}<i>→</i>${stat(R().chambers.length, "candidate manholes")}<i>→</i>${stat(5, "sensors", "big")}</div>
         <h3>Why simulate? <small>(click an approach to map its five sites)</small></h3>
         <table class="alts"><tr><th></th>${CRITERIA.map((c, k) => `<th title="${c}">${["Before sensors", "Future growth", "Backwater", "Unknown weather", "Reasons"][k]}</th>`).join("")}<th title="Worst weather case, 5 sites, on the same runs">Worst</th></tr>
           ${rows.map(({ x, sc }) => `<tr data-alt="${x.id}" class="${a.alt === x.id ? "on" : ""}"><td><i class="sw" style="background:${x.colour}"></i>${x.label}</td>${x.marks.map(mark).join("")}<td class="num">${sc ? pct(sc.worst) : "–"}</td></tr>`).join("")}</table>
@@ -732,7 +739,7 @@ const App = (() => {
           <li><b>It plans for any weather:</b> chosen for the worst of ${o.cases.length} wet cases, ${pct(rec.worst)} seen there.</li>
           <li><b>Level is the signal,</b> and a 10 mm rise is what a level sensor can pick up.</li>
           <li><b>It can be re-run</b> as approvals come in, or for another suburb.</li></ul>
-        ${fold("What it costs us", `<ul class="plain"><li>The model is uncalibrated: it ranks where to look; it does not forecast levels.</li><li>Flows are steady, not storms.</li><li>Building the model and running 504 futures takes hours, once per suburb.</li></ul>`)}
+        ${fold("What it costs us", `<ul class="plain"><li>The model is uncalibrated: it ranks where to look; it does not forecast levels.</li><li>Flows are steady, not storms.</li><li>Building the model and running 504 scenarios takes hours, once per suburb.</li></ul>`)}
         ${nextBtn()}`;
     },
     wire() {
@@ -788,7 +795,7 @@ const App = (() => {
         <p class="lede">Two parts: simulate what growth does to the water level everywhere, then search those runs for sensor sites.</p>
         <div class="flow">${STAGES.map(([t], k) => `<button type="button" data-stage="${k + 1}" class="${p.stage === k + 1 ? "on" : ""} ${k === 4 ? "two" : ""}">${t}</button>${k < 4 ? "<i>→</i>" : ""}`).join("")}</div>
         <div class="hint stagetext">${STAGES[p.stage - 1][1]}</div>
-        <div class="matrix3">${stat(nR, "regions grown one at a time")}<i>×</i>${stat(nS, "build-out steps, 10% to 300%")}<i>×</i>${stat(nC, "weather cases")}<i>=</i>${stat(nR * nS * nC, "simulated futures", "big")}</div>
+        <div class="matrix3">${stat(nR, "regions grown one at a time")}<i>×</i>${stat(nS, "build-out steps, 10% to 300%")}<i>×</i>${stat(nC, "weather cases")}<i>=</i>${stat(nR * nS * nC, "simulated scenarios", "big")}</div>
         ${fold("The weather cases", `<table class="mini"><tr><th>Case</th><th>Leakage, L/s per 100 m</th><th>Surcharged before growth</th></tr>${allTags().map(t => `<tr><td>${caseLabel(t)}</td><td>${caseOf(t).ii}</td><td>${S().base[t].surcharged.length}</td></tr>`).join("")}</table>
           <div class="hint">Design wet: the leakage at which these pipes just meet their design rating. The others test wetter days, old pipes leaking more, and more water arriving from outside.</div>`)}
         <h3>Try a run</h3>
@@ -1400,7 +1407,7 @@ const App = (() => {
   const _ = { $, $$, G, R, S, D, C, COL, pal: () => PAL, heat, rgba, nameOf, regionId, regionIndex, caseOf, caseLabel, wetTags, allTags, stepsTo, FULL, pct, money, list,
     regionLabel, rowAt, riseAt, baseMm, stepLabel, table, trow, tcol, seenSet, score, SIM4_TEST, planIdx, ladderIdx, H: () => H, util, SCREENS, responseAt, spearman, st,
     focus, manholeFacts, bars, lineChart, cutaway, stat, chips, fold, nextBtn, on, refresh, draw, go, HANDLERS, ALTERNATIVES, PIPELINE, SENSOR_TYPES, METHODS, methodSets,
-    triagePipe, sensorLabels, regionLabels, REGION_COLS, riseColour, riseScale, sensorWhy, stopPlay, play, PRICE, SECTIONS, setMode, isSimple };
+    triagePipe, sensorLabels, load, homeFlow, regionLabels, REGION_COLS, riseColour, riseScale, sensorWhy, stopPlay, play, PRICE, SECTIONS, setMode, isSimple };
   const registerPlain = o => { Object.assign(PLAIN.pages, o.pages || {}); Object.assign(PLAIN.read, o.read || {}); PLAIN.words.push(...(o.words || [])); };
   return { _, registerPlain, setMode, isSimple: () => isSimple(), init, prepare, go, st, toScreen, setTheme, togglePresent, THEMES, score, greedy, ladderIdx, planIdx, SIM4_TEST, unseenWeather, screenOf, chamberName: i => R().chambers[i], targetPool, screenRank, spearman, responseAt, SCREENS, util, H: () => H, SECTIONS };
 })();
