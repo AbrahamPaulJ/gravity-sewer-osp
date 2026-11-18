@@ -34,8 +34,8 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   // The site tab
   await send("Page.navigate", { url: `http://127.0.0.1:${HTTP}/index.html` }); await wait(1500);
   ok("navbar: Overview, Background, Product demo, Simulation 4 | Archived", await ev(`[...document.querySelectorAll('#tabs > .tabs-side > button, #tabs > .tabs-side > .tab-group > .group-toggle')].map(b=>b.textContent).join('|')`) === "Overview|Background|Product demo|Simulation 4|Archived");
-  ok("navbar: one row, the title on the left and the pages on the right, Archived after a divider", await ev(`(()=>{const t=document.querySelector('header.top .brand').getBoundingClientRect(),n=document.querySelector('#tabs').getBoundingClientRect(),s=document.querySelector('.tabs-sep').getBoundingClientRect(),g=document.querySelectorAll('#tabs .tabs-side');
-    return Math.abs((t.top+t.bottom)/2-(n.top+n.bottom)/2)<12 && t.right<n.left && innerWidth-n.right<40 && g[0].getBoundingClientRect().right<=s.left && s.right<=g[1].getBoundingClientRect().left && !!document.querySelector('#archived-menu [data-tab="sandbox"]')})()`));
+  ok("navbar: one row, the title on the left and the pages on the right, then the light/dark switch, Archived after a divider", await ev(`(()=>{const t=document.querySelector('header.top .brand').getBoundingClientRect(),n=document.querySelector('#tabs').getBoundingClientRect(),s=document.querySelector('.tabs-sep').getBoundingClientRect(),g=document.querySelectorAll('#tabs .tabs-side'),m=document.querySelector('#themeToggle').getBoundingClientRect();
+    return Math.abs((t.top+t.bottom)/2-(n.top+n.bottom)/2)<12 && Math.abs((m.top+m.bottom)/2-(n.top+n.bottom)/2)<12 && t.right<n.left && n.right<=m.left && innerWidth-m.right<40 && g[0].getBoundingClientRect().right<=s.left && s.right<=g[1].getBoundingClientRect().left && !!document.querySelector('#archived-menu [data-tab="sandbox"]')})()`));
   await click('#archived-toggle'); await wait(200); await shot("00_nav_menu");
   ok("navbar: a menu opens under its own button", await ev(`(()=>{const t=document.querySelector('#archived-toggle').getBoundingClientRect(),m=document.querySelector('#archived-menu'),r=m.getBoundingClientRect();
     return !m.hidden && Math.abs(r.right-t.right)<2 && r.top>=t.bottom && r.left>=0})()`));
@@ -107,7 +107,8 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   ok("compare: seven methods in the table", await ev(`document.querySelectorAll('table.cmp tr[data-row]').length===7`));
   const row = id => ev(`[...document.querySelectorAll('table.cmp tr[data-row="${id}"] td')].map(x=>x.textContent).join('|')`);
   ok("compare: recommended row reads 94% / 88% / 11/11 / 75%", /^[^|]*\|94%\|88%\|11\/11\|75%/.test(await row("exact")), await row("exact"));
-  ok("compare: nested list row reads 94% / 81% / 11/11 / 77%", /^[^|]*\|94%\|81%\|11\/11\|77%/.test(await row("sim4")), await row("sim4"));
+  // 19 Nov: the story quotes unseen weather as the average over the cases (75%), so the demo, which reads the story's table, does too.
+  ok("compare: nested list row reads 94% / 81% / 11/11 / 75%", /^[^|]*\|94%\|81%\|11\/11\|75%/.test(await row("sim4")), await row("sim4"));
   await clickSensor(0); await wait(300);
   ok("compare: failing Sensor 1 drops the worst case to 0%", /1 failed/.test(await panel()) && await ev(`document.querySelectorAll('.stats .stat b')[1].textContent==='0%'`));
   await click('tr[data-row="hydraulic"]'); await wait(1000);

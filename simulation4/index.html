@@ -48,6 +48,9 @@ body{background:var(--bg); color:var(--ink); font:14px/1.5 system-ui,-apple-syst
 .labels .lbl.sensor{color:#04140a; background:#2ef56b; font-weight:700; font-size:11.5px;
   padding:1px 6px; border-radius:4px; transform:translate(-50%,-140%); box-shadow:0 0 0 2px #0d1117; z-index:3}
 .labels .lbl.sensor.sel{font-size:15px; padding:2px 9px; z-index:6}
+/* 19 Nov: a sensor's pin is a button too (sim4_story.js), so S3 can be picked beside S1 even where their manholes sit a
+   few pixels apart, as on a phone. */
+.labels .lbl.sensor{pointer-events:auto; cursor:pointer}
 .labels .lbl.pumprate{color:#e3b341; font-weight:600; transform:translate(-50%,160%)}
 .labels .lbl.scale,.labels .lbl.outlet{display:none !important}
 .labels .lbl.region{color:#04140a; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px;
@@ -104,11 +107,26 @@ button:disabled{opacity:.35; cursor:default}
 #btnExplore{background:var(--panel); font-size:13px; padding:5px 12px; color:var(--dim);
   border:1px solid var(--line); border-radius:8px; text-decoration:none; line-height:1.5}
 #btnExplore:hover,#themeBtn:hover{color:var(--ink)}
-#themeBtn{min-height:36px; padding:8px 12px; font-size:13px; line-height:18px; color:var(--dim); background:var(--panel-solid)}
+/* Light or dark: one icon button, the sun in the dark theme (switch to light) and the moon in the light one. Inside the
+   landing page the page's own header carries the switch, so this one hides there (sim4_story.js). */
+#themeBtn{width:36px; height:36px; min-height:36px; padding:0; display:grid; place-items:center; color:var(--dim); background:var(--panel-solid)}
+#themeBtn svg{width:18px; height:18px}
+/* 19 Nov: the map controls card (map_help.js) opens from this "?", under it, or above it at phone width. */
+#btnMapHelp{width:36px; height:36px; min-height:36px; padding:0; display:grid; place-items:center; border-radius:50%; font-weight:700; font-size:15px; color:var(--dim); background:var(--panel-solid)}
+#btnMapHelp:hover{color:var(--ink)}
+#why .gfLink{margin:8px 0 0} #why .gfLink a{color:var(--accent)}
+#themeBtn .moon, html[data-theme="light"] #themeBtn .sun{display:none}
+html[data-theme="light"] #themeBtn .moon{display:block}
 
 /* The popup */
-#pop{position:fixed; z-index:11; width:310px; background:var(--panel-solid); border:1px solid #2e4470; border-radius:10px; padding:11px 14px;
+/* The box docks in a corner free of sensors (sim4_story.js dockSide), never beside the manhole clicked; at phone width it
+   is a sheet of fixed height along the bottom, and the map moves up to centre above it. */
+#pop{position:fixed; z-index:11; width:330px; max-height:300px; overflow-y:auto; background:var(--panel-solid); border:1px solid #2e4470; border-radius:10px; padding:11px 14px;
   font-size:13px; line-height:1.4; box-shadow:0 8px 28px #0009}
+#pop b{padding-right:28px}
+#popX{position:absolute; top:6px; right:6px; width:28px; height:28px; padding:0; display:grid; place-items:center; font-size:18px; line-height:1;
+  background:transparent; border-color:transparent; color:var(--dim)}
+#popX:hover{color:var(--ink); border-color:var(--line)}
 #pop b{display:block; font-size:14px; margin-bottom:6px}
 #pop dl{margin:0; display:grid; grid-template-columns:auto 1fr; gap:4px 10px}
 #pop dt{color:var(--faint); white-space:nowrap}
@@ -142,7 +160,10 @@ button:disabled{opacity:.35; cursor:default}
 #notes td{border-bottom:1px solid #1a2840; padding:3px 8px 3px 0; vertical-align:top}
 #notes .redo{display:inline-block; margin-top:9px; font-size:13px; color:var(--accent)}
 @media (prefers-reduced-motion:reduce){#card.in{animation:none} body[data-ready] #stage{transition:none} #btnNotes svg{transition:none}}
-@media (max-width:640px){#card{--cw:calc(100vw - 16px); left:8px; top:8px; padding:8px 10px 9px 12px} #bodyRow,#stepBody{font-size:14px} #stepTitle{font-size:17px} #corner{top:auto; bottom:16px} #notes{max-height:38vh} #notes dl{grid-template-columns:1fr; gap:0 0} #notes dd{margin-bottom:6px} #pop{width:min(310px, calc(100vw - 24px))}}
+@media (max-width:640px){#card{--cw:calc(100vw - 16px); left:8px; top:8px; padding:8px 10px 9px 12px} #bodyRow,#stepBody{font-size:14px} #stepTitle{font-size:17px} #corner{top:auto; bottom:16px} #notes{max-height:38vh} #notes dl{grid-template-columns:1fr; gap:0 0} #notes dd{margin-bottom:6px}
+  #pop[data-dock="sheet"]{left:8px !important; right:8px; bottom:8px; top:auto !important; width:auto; height:min(28vh, 210px); max-height:none}
+  body.docked #corner{display:none}
+  body.docked #stage .mapCredit{display:none}}
 
 /* One reading surface, with quiet supporting controls. */
 #card{padding:16px; border-radius:12px; max-height:calc(100dvh - 32px); scrollbar-gutter:stable}
@@ -192,8 +213,75 @@ html[data-theme="light"] #stage .mapCredit{color:#57606a !important}
 #notes h3{margin:16px 0 8px; font-weight:600}
 #notes th, #notes td{padding:4px 8px 4px 0}
 #notes .redo{margin-top:16px}
+/* Step 5b's "Why not the exact best set?": its button ends the step's text, and the fold opens under the text, closed by
+   default. Like "Behind this step", an open fold lies over the map rather than moving it. */
+#btnWhy{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; line-height:16px; min-height:26px; padding:3px 8px; margin-left:2px;
+  color:var(--accent); background:transparent; border-color:transparent; vertical-align:baseline; white-space:nowrap}
+#btnWhy:hover{border-color:var(--line)}
+#btnWhy svg{width:11px; height:11px; transition:transform .2s}
+#btnWhy[aria-expanded="true"]{border-color:var(--line)}
+#btnWhy[aria-expanded="true"] svg{transform:rotate(180deg)}
+#why{margin-top:10px; padding-top:10px; border-top:1px solid var(--line); font-size:13px; line-height:1.5}
+#why p{margin:0 0 8px; color:var(--dim)}
+#why .tscroll{overflow-x:auto; max-width:100%}
+#why table{border-collapse:collapse; width:100%; font-size:12.5px}
+#why th{color:var(--faint); text-align:left; font-weight:600; border-bottom:1px solid var(--line); padding:4px 10px 4px 0; vertical-align:bottom}
+#why td{border-bottom:1px solid var(--line); padding:4px 10px 4px 0; vertical-align:top}
+#why td:first-child{color:var(--dim)}
+#why th:nth-child(2), #why td:nth-child(2){color:var(--ink); font-weight:600}
+@media (prefers-reduced-motion:reduce){#btnWhy svg{transition:none}}
+/* "More on this step" (closed by default) and the links to the team's paper library. */
+#notes a.lib, #why a.lib{color:var(--accent); text-decoration:underline; text-decoration-style:dotted; text-underline-offset:2px}
+#notes a.lib:hover, #why a.lib:hover{text-decoration-style:solid}
+#notes .more{margin-top:4px}
+#notes .more h3{margin:14px 0 6px}
+#notes .more p{margin:0 0 6px; color:var(--dim)}
+#notes .more ul{margin:4px 0 6px; padding-left:18px; color:var(--ink)}
+#notes .more li{margin:2px 0}
+#notes h4{font-size:12.5px; margin:10px 0 4px; font-weight:600}
+#notes .stats{display:flex; flex-wrap:wrap; gap:8px 24px; margin:6px 0 8px}
+#notes .stats div{display:flex; flex-direction:column; min-width:0}
+#notes .stats b{font-size:18px; line-height:1.3; font-variant-numeric:tabular-nums}
+#notes .stats span{font-size:12px; color:var(--dim)}
+#notes .chips{display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 8px}
+#notes .chips button{font-size:12px; line-height:16px; padding:4px 10px; min-height:28px; background:transparent; color:var(--dim)}
+#notes .chips button[aria-pressed="true"]{color:var(--ink); border-color:var(--accent); background:color-mix(in srgb,var(--accent) 14%,transparent)}
+#notes .pipesWrap{display:grid; grid-template-columns:minmax(0,380px) minmax(0,1fr); gap:16px; align-items:start}
+#notes .pipemap{display:block; width:100%; height:auto; border:1px solid var(--line); border-radius:6px}
+#notes .bands .unit{font-size:11.5px; color:var(--faint); margin-bottom:4px}
+#notes .band{display:grid; grid-template-columns:12px minmax(0,1fr) minmax(40px,72px) 32px; gap:6px; align-items:center; font-size:12px; margin:3px 0}
+#notes .band i{width:12px; height:4px; border-radius:2px}
+#notes .band .bar{display:block; height:6px; background:var(--line); border-radius:3px; overflow:hidden}
+#notes .band .bar span{display:block; height:100%}
+#notes .band b{text-align:right; font-variant-numeric:tabular-nums; font-weight:600}
+#notes .wnote{margin:6px 0 0}
+#notes .cutRow{display:grid; grid-template-columns:minmax(0,340px) minmax(0,1fr); gap:14px; align-items:start}
+#notes svg.cut{display:block; width:100%; height:auto}
+#notes svg.cut .ground{fill:color-mix(in srgb,var(--faint) 24%,transparent)}
+#notes svg.cut .void{fill:var(--panel-solid); stroke:var(--faint)}
+#notes svg.cut .water{fill:#3d8bd4; opacity:.8}
+#notes svg.cut .base{stroke:var(--ink); stroke-dasharray:2 3}
+#notes svg.cut line.lim{stroke:#d29922; stroke-dasharray:5 4} #notes svg.cut text.lim{fill:#d29922}
+#notes svg.cut line.top{stroke:#f85149; stroke-dasharray:5 4} #notes svg.cut text.top{fill:#f85149}
+#notes svg.cut .lid{fill:var(--ink)}
+#notes svg .ax{font-size:10.5px; fill:var(--dim)}
+#notes .cutCtl{display:flex; flex-direction:column; align-items:flex-start; gap:10px; font-size:12.5px; color:var(--dim)}
+#notes .cutCtl select{font:inherit; color:var(--ink); background:var(--panel-solid); border:1px solid var(--line); border-radius:6px; padding:3px 6px; margin-left:6px; min-height:28px}
+#notes .cutCtl .chips{margin:0}
+#notes .slide{display:flex; flex-direction:column; gap:4px; width:100%}
+#notes .slide input{accent-color:var(--accent); min-height:24px; max-width:260px}
+#notes .slide span{color:var(--ink)}
+#notes .badge{display:inline-block; padding:3px 10px; border-radius:99px; font-size:12px; font-weight:600; border:1px solid}
+#notes .badge.ok{color:#3fb950; border-color:#3fb95066} #notes .badge.warn{color:#d29922; border-color:#d2992266} #notes .badge.bad{color:#f85149; border-color:#f8514966}
+#notes svg.xc{display:block; width:100%; max-width:440px; height:auto; margin:4px 0 2px}
+#notes svg.xc .grid{stroke:var(--line)}
+#notes svg.xc .d{fill:var(--accent); opacity:.55}
+#notes svg.xc .s{fill:var(--green); stroke:var(--panel-solid); stroke-width:1}
+#notes .mk{font-weight:700} #notes .mk.y{color:#3fb950} #notes .mk.p{color:#d29922} #notes .mk.n{color:#f85149}
+#notes .more td:first-child{color:var(--ink)}
+@media (max-width:640px){#notes .pipesWrap, #notes .cutRow{grid-template-columns:1fr} #notes .cutRow svg.cut{max-width:340px}}
 #btnExplore{min-height:36px; padding:8px 12px; line-height:18px; background:var(--panel-solid)}
-#pop{padding:16px; border-radius:8px; max-height:calc(100dvh - 32px); overflow-y:auto}
+#pop{padding:16px; border-radius:8px; max-height:300px; overflow-y:auto}
 #pop b{margin-bottom:8px}
 #pop dl{gap:8px 12px}
 #pop dt{color:var(--dim)}
@@ -214,17 +302,28 @@ html[data-theme="light"] #stage .mapCredit{color:#57606a !important}
 
 /* The light theme (the Light/Dark switch, top right), as Explore's: the same layout and result colours; only the ground,
    the card and the text change. The map's own colours follow it in growth_3d.js (setTheme). */
+/* 19 Nov: warm paper rather than white, so the light theme is less bright: the ground #f4f1ea, the card a shade lighter,
+   borders and buttons in the same warm family. Text contrast on the card: ink 15:1, dim 7.3:1, faint 4.6:1. */
 html[data-theme="light"]{
-  --bg:#f6f8fa; --panel:#ffffffee; --panel-solid:#ffffff; --ink:#1f2328; --dim:#47536a; --faint:#6e7781;
-  --line:#d0d7de; --accent:#0969da; --green:#1a7f37; color-scheme:light}
-html[data-theme="light"] button{background:#eef2f7}
+  --bg:#f4f1ea; --panel:#fbf9f4f2; --panel-solid:#fbf9f4; --ink:#1f2328; --dim:#4a5163; --faint:#676d78;
+  --line:#ddd6c8; --accent:#0969da; --green:#1a7f37; color-scheme:light}
+html[data-theme="light"] button{background:#f0ece3}
 html[data-theme="light"] #next{color:#fff}
-html[data-theme="light"] #card{box-shadow:0 4px 18px #1f23281f}
-html[data-theme="light"] #btnExplore, html[data-theme="light"] #themeBtn{background:var(--panel-solid); box-shadow:0 2px 10px #1f23281a}
+html[data-theme="light"] #card{box-shadow:0 4px 18px #3b30201a}
+html[data-theme="light"] #btnExplore, html[data-theme="light"] #themeBtn, html[data-theme="light"] #btnMapHelp{background:var(--panel-solid); box-shadow:0 2px 10px #1f23281a}
 html[data-theme="light"] #pop{border-color:var(--line); box-shadow:0 8px 28px #1f232833}
-html[data-theme="light"] #notes td{border-bottom-color:#eaeef2}
+html[data-theme="light"] #notes td{border-bottom-color:#ebe5d9}
+html[data-theme="light"] #why td{border-bottom-color:#ebe5d9}
+html[data-theme="light"] #notes .badge.ok, html[data-theme="light"] #notes .mk.y{color:#1a7f37}
+html[data-theme="light"] #notes .badge.warn, html[data-theme="light"] #notes .mk.p, html[data-theme="light"] #notes svg.cut text.lim{color:#9a6700; fill:#9a6700}
+html[data-theme="light"] #notes svg.cut line.lim{stroke:#bf8700}
+html[data-theme="light"] #notes .badge.bad, html[data-theme="light"] #notes .mk.n, html[data-theme="light"] #notes svg.cut text.top{color:#cf222e; fill:#cf222e}
+html[data-theme="light"] #notes svg.cut line.top{stroke:#cf222e}
+html[data-theme="light"] #notes svg.cut .water{fill:#2f7fc9}
+html[data-theme="light"] #notes svg.xc .d{opacity:.5}
+html[data-theme="light"] #notes .chips button[aria-pressed="false"]{background:transparent}
 html[data-theme="light"] #legend i{box-shadow:0 0 0 1px #1f232840}
-html[data-theme="light"] .labels .lbl{color:#5a32a3; text-shadow:0 0 3px #f3f0e8, 0 0 3px #f3f0e8, 0 1px 2px #f3f0e8}
+html[data-theme="light"] .labels .lbl{color:#5a32a3; text-shadow:0 0 3px #f4f1ea, 0 0 3px #f4f1ea, 0 1px 2px #f4f1ea}
 html[data-theme="light"] .labels .lbl.site{color:#0969da}
 html[data-theme="light"] .labels .lbl.scn{color:#0550ae}
 html[data-theme="light"] .labels .lbl.pump, html[data-theme="light"] .labels .lbl.pumprate{color:#9a6700}
@@ -248,7 +347,8 @@ html[data-theme="light"] body{background:#f3f0e8}
     </div>
   </div>
   <div id="cardMore">
-    <div id="bodyRow"><p id="stepBody"></p></div>
+    <div id="bodyRow"><p id="stepBody"></p> <button id="btnWhy" type="button" aria-expanded="false" aria-controls="why" hidden><span></span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div id="why" hidden></div></div>
     <div id="controls">
       <div id="sliderRow" hidden>
         <input id="homes" type="range" min="0" max="5" step="1" value="5" aria-label="Share of each region's 2041 homes">
@@ -268,16 +368,19 @@ html[data-theme="light"] body{background:#f3f0e8}
 
 <div id="corner">
   <a id="btnExplore" href="explore.html" title="Every weather case, rule, region and sensor method on these regions, in Sim 3.5's full view">Explore</a>
-  <button id="themeBtn" type="button" title="Switch between the dark and the light theme">Light</button>
+  <button id="btnMapHelp" type="button" aria-label="Map controls">?</button>
+  <button id="themeBtn" type="button" aria-label="Switch to the light theme" title="Switch to the light theme"><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z" fill="currentColor"/></svg></button>
 </div>
 
 <script src="../simulation3/data/catchment.js?v=9"></script>
 <script src="../simulation3/data/growth.js?v=9"></script>
 <script src="data/regions.js?v=1"></script>
 <script src="../simulation3/data/index.js?v=9"></script>
-<script src="../simulation35/growth_3d.js?v=32"></script>
-<script src="data/sim4.js?v=8"></script>
-<script src="sim4_story.js?v=8"></script>
+<script src="../simulation35/growth_3d.js?v=34"></script>
+<script src="data/sim4.js?v=11"></script>
+<script src="library.js?v=1"></script>
+<script src="map_help.js?v=1"></script>
+<script src="sim4_story.js?v=12"></script>
 <script type="module">
   Sim4.init();
 </script>

@@ -130,12 +130,13 @@ window.Sim35UI = (function () {
     region: 0, step: 4,                 // infill: region index, ladder index (100%)
     site: null, add: 1,                 // greenfield: chamber index, growth size index
     caseTag: null,                      // the uncertainty case, by tag (shared by the families)
-    rule: "r10", k: 5, method: "story", obj: "worst",
+    rule: "r10", k: 5, method: "story",
+    showW: true, showA: true,           // the chart and the figures: worst case, average, or both (19 Nov; at least one on)
     scope: "story",                     // the test sets are scored on: the story's (default) or the broader one (TEST_NOTE)
     showSensors: true, showHeat: false, showPumps: false, showConn: false,
     showEstates: false,                 // greenfield: every edge connection's estate at its largest size
     hover: null, pick: null,            // hovered / clicked manhole NAME for the right panel
-    legend: true,                       // the colour key, shown from the start
+    legend: false,                      // the colour key: off at the start (19 Nov), the Legend button shows it
     areasView: false,                   // every region in its colour, nothing else
     coverView: false,                   // the map coloured by which sensor sees growth where
     rb: true, lb: true, top: true,      // right panel, left panel, top bar shown
@@ -223,7 +224,7 @@ window.Sim35UI = (function () {
       "Chosen without the part tested: <b>" + e.plausible_unseen_weather + " of " + W.plausible_total + "</b> on unseen weather, <b>" + e.plausible_unseen_region + " of " + W.plausible_total + "</b> on an unseen region. " +
       "They also see " + pct(e.detect_worst) + " of detectable growth in the worst wet case.</p>";
   }
-  /* Sim 4's list: the story's nested sensors (data/sim4.js, explore.ladder), the default here so that the explorer and
+  /* Nested beam search (called Sim 4's list before 19 Nov): the story's nested sensors (data/sim4.js, explore.ladder), the default here so that the explorer and
      the story recommend the same manholes. The other methods stay as comparisons.
      The test every infill set is scored on (st.scope):
        story  the default, the story's own test: the 7 wet cases, the regions it monitors or watches (explore.targets),
@@ -236,8 +237,28 @@ window.Sim35UI = (function () {
      On the story's test they are scored afresh, and only the exact optimum at 10 mm is that test's own (explore.exact,
      from sim4_numbers.py). The panel says which. */
   const X4 = () => (window.SIM4 || {}).explore || {};
+  // A cited source in the team's paper library becomes a link to it (library.js), on text already escaped. Never on tooltips.
+  const cite = html => window.SIM4_LIBRARY ? window.SIM4_LIBRARY.link(html) : html;
+  // What the nested beam search does (simulation_src/sim4_numbers.py: design_seeds, value, beam_ladder, WIDTH 1500).
+  const NESTED_HOW = "It starts from the one manhole that sees all the design wet growth (" + ((((window.SIM4 || {}).explore || {}).ladder || [])[0] || ["MH4450531"])[0] +
+    "), then adds one sensor at a time, keeping the best 1,500 part-built sets at each count, scored on the worst case plus the average over the 7 wet cases plus the share of overloads warned; the 25 mm rule breaks ties. " +
+    "So the 5 contain the 1 and the 8 contain the 5: no sensor moves as more are added. Checked by brute force against every 5-sensor set that keeps the first sensor.";
   const STORY = () => X4().ladder || (((window.SIM4 || {}).play || {}).ladder) || [];
   const storyScope = () => st.scope !== "broad";
+  /* 19 Nov: Greedy is two methods, one sensor at a time for the best worst case ("greedy") or for the best average
+     ("greedy-avg"). Worst case and Average are display toggles for every method (st.showW, st.showA, at least one on):
+     they pick the chart's lines and the figures quoted, not the set. */
+  const isGreedy = m => m === "greedy" || m === "greedy-avg";
+  const greedyObj = () => (st.method === "greedy-avg" ? "mean" : "worst");
+  const heatObj = () => (st.showW ? "worst" : "mean");     // the heatmap and a manhole's rank follow the figure shown
+  // "81% in the worst case and 94% on average", or just the one shown; fmt wraps each number.
+  function figs(w, a, fmt = v => pct(v)) {
+    const out = [];
+    if (st.showW && w != null) out.push(fmt(w) + " in the worst case");
+    if (st.showA && a != null) out.push(fmt(a) + " on average");
+    if (!out.length && w != null) out.push(fmt(w) + " in the worst case");
+    return out.join(" and ");
+  }
   // Pin prefix: S for the story's list (the recommendation), C for a comparison set, so S1 always means the story's S1.
   const SP = () => (st.method === "story" ? "S" : "C");
   const TEST_NOTE = {
@@ -363,8 +384,37 @@ window.Sim35UI = (function () {
       const c = rr.risk && (rr.risk.compare || []).find(x => x.k === e.k);
       return { chosen: e.chosen.slice(), worst: e.worst, average: e.average, status: e.status, riskWorst: c && c.plain_set ? c.plain_set.risk : null, compare: c };
     }
-    const c = rr.greedy.curve[Math.min(st.k, rr.greedy.curve.length) - 1] || {};
-    return { chosen: rr.greedy.chosen.slice(0, st.k), worst: c.worst, average: c.average, chosenOn: "broad" };
+    const g = st.method === "greedy-avg" ? greedyAvg(st.rule) : rr.greedy;
+    const c = g.curve[Math.min(st.k, g.curve.length) - 1] || {};
+    return { chosen: g.chosen.slice(0, st.k), worst: c.worst, average: c.average, chosenOn: "broad" };
+  }
+  /* Greedy for the best average (19 Nov), on the broader test like the published greedy (regions.js rules.*.greedy,
+     which is for the worst case): each sensor added is the manhole that most raises the average share of detectable
+     runs seen over the cases; ties go to the better worst case, then the lower index. Worked out here, once per rule. */
+  function greedyAvg(rule) {
+    return remember("gavg|" + rule, () => {
+      const cases = scopeCases("broad").map(c => detRuns(c.tag, rule, "broad")).filter(d => d.length);
+      const n = names().length, K = Math.min(R().maxSensors || 10, 10), byCand = Array.from({ length: n }, () => []);
+      cases.forEach((runs, ci) => runs.forEach((who, ri) => who.forEach(i => byCand[i].push([ci, ri]))));
+      const covered = cases.map(runs => runs.map(() => false)), seen = cases.map(() => 0), chosen = [], curve = [];
+      for (let k = 0; k < K; k++) {
+        let best = -1, bestA = -1, bestW = -1;
+        for (let i = 0; i < n; i++) {
+          if (chosen.includes(i) || !byCand[i].length) continue;
+          const add = cases.map(() => 0);
+          byCand[i].forEach(([ci, ri]) => { if (!covered[ci][ri]) add[ci]++; });
+          const per = cases.map((runs, ci) => (seen[ci] + add[ci]) / runs.length);
+          const a = per.reduce((x, y) => x + y, 0) / per.length, w = Math.min(...per);
+          if (a > bestA + 1e-12 || (Math.abs(a - bestA) <= 1e-12 && w > bestW + 1e-12)) { best = i; bestA = a; bestW = w; }
+        }
+        if (best < 0) break;
+        chosen.push(best);
+        byCand[best].forEach(([ci, ri]) => { if (!covered[ci][ri]) { covered[ci][ri] = true; seen[ci]++; } });
+        const sc = infillScore(new Set(chosen), rule, "broad");
+        curve.push({ k: k + 1, worst: sc.worst, average: sc.average });
+      }
+      return { chosen, curve };
+    });
   }
   // Each candidate's own coverage of the infill scenarios (worst and mean over cases), for the
   // heatmap and the cards. Computed once per rule from the same rows the map paints.
@@ -458,7 +508,7 @@ window.Sim35UI = (function () {
     if (st.method === "story") return storyPlacement("one");
     // The greenfield grid publishes greedy only (nested, by objective). The exact solver has
     // run on the infill family; for greenfield the greedy set stands in and the note says so.
-    const pl = R().sensors[st.rule][st.obj];
+    const pl = R().sensors[st.rule][greedyObj()];
     const k = Math.min(st.k, pl.order.length);
     return { chosen: pl.order.slice(0, k), worst: pl.worst[k - 1], average: pl.mean[k - 1], curveWorst: pl.worst, curveMean: pl.mean };
   }
@@ -479,7 +529,7 @@ window.Sim35UI = (function () {
   function heatValues() {
     if (!st.showHeat) return null;
     const h = st.fam === "infill" ? infillHeat() : R().heat[st.rule];
-    const v = h[st.obj], levels = [...new Set(v)].sort((a, b) => a - b), n = levels.length, out = {};
+    const v = h[heatObj()], levels = [...new Set(v)].sort((a, b) => a - b), n = levels.length, out = {};
     v.forEach((x, i) => { out[nameOf(i)] = n > 1 ? levels.indexOf(x) / (n - 1) : 1; });
     return out;
   }
@@ -546,7 +596,7 @@ window.Sim35UI = (function () {
     renderCover();
     renderWords();
     legendKeys();
-    $("#heatWhich").textContent = (st.obj === "worst" ? "worst of the " : "average of the ") + scoredCases().length +
+    $("#heatWhich").textContent = (heatObj() === "worst" ? "worst of the " : "average of the ") + scoredCases().length +
       " cases, " + ruleOf(st.rule).label.toLowerCase() + (st.fam === "infill" ? ", infill scenarios" : ", greenfield scenarios");
   }
 
@@ -694,8 +744,8 @@ window.Sim35UI = (function () {
     $("#wxHint").textContent = c.label + (c.settled === false ? " (480-minute runs)" : "");
     $("#kBig").textContent = st.k + " sensor" + (st.k === 1 ? "" : "s");
     const pl = placement();
-    $("#kHint").textContent = pl.warn ? "warn of " + pl.warn.plausible_warned + " of " + WARN(st.rule).plausible_total + " overloads by 100% build-out" : pl.worst != null ? "catch " + pct(pl.worst) + " of detectable growth, worst case" : "";
-    $("#kInfo").dataset.tip = pl.warn ? WARN_TIP : st.method === "story" ? "The story's first " + st.k + " sensor" + (st.k === 1 ? "" : "s") + ", in its order (Sim 4's list, up to " + storyMax() + "). " +
+    $("#kHint").textContent = pl.warn ? "warn of " + pl.warn.plausible_warned + " of " + WARN(st.rule).plausible_total + " overloads by 100% build-out" : pl.worst != null ? "catch " + figs(pl.worst, pl.average) : "";
+    $("#kInfo").dataset.tip = pl.warn ? WARN_TIP : st.method === "story" ? "The story's first " + st.k + " sensor" + (st.k === 1 ? "" : "s") + ", in its order (nested beam search, up to " + storyMax() + "). " +
       "A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth. The percentage is the share of the detectable growth the set notices, on " +
       (st.fam === "one" ? (GF() ? "the greenfield runs." : "the greenfield grid.") : storyScope() ? TEST_NOTE.story.charAt(0).toLowerCase() + TEST_NOTE.story.slice(1) : TEST_NOTE.broad.charAt(0).toLowerCase() + TEST_NOTE.broad.slice(1))
       : st.fam !== "one" && storyScope() ? "This many level sensors, by the method chosen, scored on " + TEST_NOTE.story.charAt(0).toLowerCase() + TEST_NOTE.story.slice(1) +
@@ -729,9 +779,14 @@ window.Sim35UI = (function () {
     $("#areasKeyList").innerHTML = regionOrder().filter(i => !isOverlay(i)).map(i => { const r = S().regions[i]; return '<span><span class="k" style="background:' + regionCol(i) + '"></span>' + esc(r.id + " " + shortName(r)) + "</span>"; }).join("") +
       regionOrder().filter(isOverlay).map(i => '<span class="quiet">' + esc(S().regions[i].id + ", " + shortName(S().regions[i]).replace(/ \(.*\)$/, "")) + ", overlaps the regions above, so it is not shaded.</span>").join("");
     on("#addKnob", b => { st.add = +b.dataset.i; repaint(); });
-    on("#methKnob", b => { st.method = b.dataset.m; st.pickedGreedy = b.dataset.m === "greedy"; repaint(); });
+    on("#methKnob", b => { st.method = b.dataset.m; st.pickedGreedy = isGreedy(b.dataset.m); repaint(); });
     on("#scopeKnob", b => { st.scope = b.dataset.s === "broad" ? "broad" : "story"; repaint(); });
-    on("#objKnob", b => { st.obj = b.dataset.o; repaint(); });
+    // Worst case and Average: either or both, never neither (pressing the only one on leaves it on).
+    on("#objKnob", b => {
+      const k = b.dataset.o === "mean" ? "showA" : "showW", other = k === "showA" ? "showW" : "showA";
+      if (st[k] && !st[other]) return;
+      st[k] = !st[k]; repaint();
+    });
     $("#region").onchange = () => { st.region = +$("#region").value; st.pick = null; repaint(); };
     $("#stepRange").oninput = () => { st.step = +$("#stepRange").value; repaint(); };
     $("#kRange").oninput = () => { st.k = +$("#kRange").value; repaint(); };
@@ -757,7 +812,7 @@ window.Sim35UI = (function () {
     if (GF()) $("#addKnob").innerHTML = R().growthLevels.map((g, i) => "<button data-i=" + JSON.stringify(String(i)) + ">+" + g + "</button>").join("");
     $$("#addKnob button").forEach(b => b.classList.toggle("on", +b.dataset.i === st.add));
     $$("#methKnob button").forEach(b => b.classList.toggle("on", b.dataset.m === st.method));
-    $$("#objKnob button").forEach(b => b.classList.toggle("on", b.dataset.o === st.obj));
+    $$("#objKnob button").forEach(b => { const on = b.dataset.o === "mean" ? st.showA : st.showW; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
     $("#famInfo").dataset.tip = FAM_NOTE[st.fam];
     $("#infillBox").hidden = st.fam !== "infill";
     $("#oneBox").hidden = st.fam !== "one";
@@ -783,27 +838,33 @@ window.Sim35UI = (function () {
         " today. 25% is roughly the first year or two; 300% is a stress test. The growth is added all at once to today's network, with no pipe upgrades; " +
         "in reality the dwellings arrive over three to five years, which is why the time-to-notice figures matter as much as the millimetres.";
     }
-    $("#objKnob").style.display = st.method !== "greedy" ? "none" : "";
-    $("#methKnob").style.display = "";      // greenfield: Sim 4's list, or the greenfield grid's greedy order
+    $("#methKnob").style.display = "";      // greenfield: the nested beam search list, or the greenfield grid's greedy order
     $("#methNote").hidden = st.fam !== "one";
     const hasRisk = st.fam !== "one" && !!((S().rules[st.rule] || {}).risk);
     $("#methRisk").hidden = !hasRisk;
     if (!hasRisk && st.method === "risk") st.method = "story";
     const methText = st.method === "story"
       ? (st.fam !== "one"
-        ? "Sim 4's list: the story's sensors, in the story's order. The recommendation. Chosen in Sim 4 for the regions to monitor or watch, up to the 2041 homes, and scored here on " + (storyScope() ? "that same test" : "the broader test, which adds Dry, the regions the story leaves and the stress steps") + ". The other methods are comparisons."
-        : "Sim 4's list: the story's sensors, chosen for infill growth, tested here on new estates joining at the 9 edge connections. The placement does not change. Greedy is the greenfield runs' own order, as a comparison.")
+        ? "Nested beam search: the story's sensors, in the story's order. The recommendation. " + NESTED_HOW + " Chosen for the regions to monitor or watch, up to the 2041 homes, and scored here on " + (storyScope() ? "that same test" : "the broader test, which adds Dry, the regions the story leaves and the stress steps") + ". The other methods are comparisons."
+        : "Nested beam search: the story's sensors, chosen for infill growth, tested here on new estates joining at the 9 edge connections. The placement does not change. Greedy is the greenfield runs' own order, as a comparison.")
       : st.fam !== "one"
       ? (st.method === "warn" ? "Warn before surcharge: the best set of this size for warning at least one build-out step before the first new surcharge, worst of the 7 wet cases." : st.method === "exact" ? (storyScope() && storyExact(st.k)
-           ? "Exact: the best set of this size on the story's own test, solved exactly for the worst case (sim4_numbers.py, HiGHS). A comparison: the recommendation is Sim 4's list, which is nested and keeps step 5a's sensor."
-           : "Exact: the best set of this size, solved exactly over all cases for the worst case (PuLP + HiGHS). A comparison: the recommendation is Sim 4's list.")
+           ? "Exact: the best set of this size on the story's own test, solved exactly for the worst case (sim4_numbers.py, HiGHS). A comparison: the recommendation is the nested beam search list, which keeps step 5a's sensor and grows without moving one."
+           : "Exact: the best set of this size, solved exactly over all cases for the worst case (PuLP + HiGHS). A comparison: the recommendation is the nested beam search list.")
          : st.method === "risk" ? "Risk-weighted: a severity x occurrence score of the kind Kimbrough (2019) uses, with this page's own scales. Severity is homes draining through the manhole where it bites; occurrence is how far it pushes that manhole towards 0.7 of its bore. The set that notices the most risk, solved exactly. A comparison, not the recommendation: it pulls sensors towards trunk mains already near capacity."
-                               : "Greedy: each sensor is the best addition to the ones before it. Up to 10 points below the exact optimum at the same size.")
-      : "Greedy is the greenfield runs' own order, a comparison only; the exact solver has run on the infill family.";
-    const objText = st.method !== "greedy" ? "" : (st.obj === "worst"
-      ? " Best worst case: each sensor added is the one that most raises the worst of the cases, so whatever the unknowns turn out to be at least this much is caught."
-      : " Best average: each sensor added is the one that most raises the average over the cases; catches more on average, but can leave one case poorly covered.");
+                               : st.method === "greedy-avg" ? "Greedy, average: each sensor is the best addition to the ones before it for the average over the cases, worked out on this page on the broader test. Catches more on average, but can leave one case poorly covered."
+                               : "Greedy, worst case: each sensor is the best addition to the ones before it for the worst of the cases. Up to 10 points below the exact optimum at the same size.")
+      : "Greedy is the greenfield runs' own order, " + (st.method === "greedy-avg" ? "for the best average" : "for the best worst case") + ", a comparison only; the exact solver has run on the infill family.";
+    const objText = " Worst case and Average choose what the chart and the figures show, either or both; they do not change the set.";
     const scopeText = st.fam === "infill" && st.method !== "story" ? (storyScope() ? (storyExact(st.k) && st.method === "exact" ? "" : " Chosen on the broader test, scored here on the story's.") : " Scored on the broader test.") : "";
+    // The selected method in one visible line, under its buttons (expert view).
+    $("#methSay").innerHTML = st.method === "story" ? "<b>Nested beam search</b>: " + esc(NESTED_HOW) + " The recommendation."
+      : st.fam === "one" ? "<b>" + esc(methodName()) + "</b>: the greenfield runs' own order, one sensor at a time, each the one that most raises the " + (st.method === "greedy-avg" ? "average" : "worst case") + ". A comparison."
+      : st.method === "exact" ? "<b>Exact optimum</b>: the best set at each count, solved on its own by an integer program, so the sets change from one count to the next. A comparison."
+      : st.method === "greedy" ? "<b>Greedy: worst case</b>: one sensor at a time, each the one that most raises the worst case, with no look-ahead. A comparison."
+      : st.method === "greedy-avg" ? "<b>Greedy: average</b>: one sensor at a time, each the one that most raises the average over the cases, with no look-ahead. A comparison."
+      : st.method === "warn" ? "<b>Warn before surcharge</b>: the set that warns of the most overloads a build-out step before the first new surcharge. A comparison."
+      : st.method === "risk" ? "<b>Risk-weighted</b>: the set that notices the most severity x occurrence (" + cite("Kimbrough 2019") + "). A comparison." : "";
     $("#sensInfo").dataset.tip = methText + objText + scopeText + " Detectable growth: scenarios that at least one manhole sees. This scores whether a sensor would notice growth, not whether it watches a choke point; the choke points are under No growth.";
   }
 
@@ -834,7 +895,7 @@ window.Sim35UI = (function () {
   function setFamily(f) {
     st.fam = f; st.pick = null; st.hover = null;
     if (f === "one" && (st.method === "exact" || st.method === "warn")) st.method = "greedy";
-    if (f !== "one" && st.method === "greedy" && !st.pickedGreedy) st.method = "story";
+    if (f !== "one" && isGreedy(st.method) && !st.pickedGreedy) st.method = "story";
     syncGround();
     buildCaseKnobs();
     repaint();           // the camera stays where the reader left it
@@ -993,10 +1054,18 @@ window.Sim35UI = (function () {
     const tr = ((S().timeRule || {})[tag] || {})[reg.id];
     const pi = ((S().pumpIndicator || {})[tag] || {})[reg.id];
     const stepPct = f => Math.round(f * 100) + "%";
+    // On the story's test, what lies outside it is greyed: Dry, and any first sighting past 100% build-out (19 Nov: the
+    // panel showed Dry at 300% beside the story's test, which reads as a contradiction).
+    const inStory = storyScope(), target = targetIdx().has(st.region);
     const seenTable = '<table class="sm"><tr><th>Case</th><th>First seen</th><th>By</th></tr>' + S().cases.map(c => {
-      const v = fd[c.tag];
-      return "<tr><td>" + esc(c.label) + "</td>" + (v ? '<td class="hi">' + stepPct(v[1]) + "</td><td>" + mhOf(v[0]) + "</td>" : '<td class="never">never</td><td class="never">none</td>') + "</tr>";
-    }).join("") + "</table>";
+      const v = fd[c.tag], outCase = inStory && !(c.ii > 0), late = inStory && v && v[1] > 1 + 1e-9;
+      const cells = !v ? '<td class="never">never</td><td class="never">none</td>'
+        : late ? '<td class="never" title="' + stepPct(v[1]) + ' build-out, past the story&#39;s test">not seen by 100%</td><td class="never">' + mhOf(v[0]) + "</td>"
+        : '<td class="hi">' + stepPct(v[1]) + "</td><td>" + mhOf(v[0]) + "</td>";
+      return '<tr' + (outCase || late ? ' class="outside" title="Outside the story&#39;s test"' : "") + "><td>" + esc(c.label) + (outCase ? ' <span class="quiet">(not in the story&#39;s test)</span>' : "") + "</td>" + cells + "</tr>";
+    }).join("") + "</table>" +
+      (inStory ? "<p class='quiet' id='seenScope'>The story's test is the " + scopeCases("story").length + " wet cases up to 100% build-out" +
+        (target ? "" : ", in the regions to monitor or watch; " + esc(region().id) + " is not one of them, so it is outside that test") + ". Greyed rows lie outside it.</p>" : "");
     const days = tr && tr.days ? Object.entries(tr.days).map(([sg, d]) => "<tr><td>" + (+sg).toFixed(0) + " mm</td><td" + (d >= 1825 ? ' class="never"' : "") + ">" + (d >= 1825 ? "over 5 years" : d + " day" + (d === 1 ? "" : "s")) + "</td></tr>").join("") : "";
     const rw = st.view === "expert" && S().riskWeights && S().riskWeights[tag] ? S().riskWeights[tag][reg.id + "|" + ladder()[st.step]] : null;
     const h4i = (t, tip) => "<h4>" + t + ' <i class="info-i left" data-tip="' + esc(tip).replace(/"/g, "&quot;") + '">i</i></h4>';
@@ -1073,7 +1142,7 @@ window.Sim35UI = (function () {
     }
     const h = st.fam === "one" ? R().heat[st.rule] : infillHeat();
     const chosen = placement().chosen, k = chosen.indexOf(i);
-    const rank = 1 + h[st.obj].filter(x => x > h[st.obj][i]).length;
+    const rank = 1 + h[heatObj()].filter(x => x > h[heatObj()][i]).length;
     const ri = regionOf[i] != null ? regionOf[i] : -1, chamber = n.kind === "chamber";   // a Sim 4 pipe-end connection is not a chamber
     box.innerHTML = '<h4>' + (chamber ? "This manhole" : "This connection") + ' <i class="info-i left" data-tip="' + esc("Water and headroom are for " + curCase().label + ". Click empty ground, or Back, to leave it.") + '">i</i></h4>' +
       row2("Asset", chamber ? "MH " + n.mh + (n.yr ? ", built " + n.yr : ", year not recorded") : "pipe end " + esc(nm) + ", no manhole on record, so not a sensor site") +
@@ -1089,6 +1158,19 @@ window.Sim35UI = (function () {
   }
 
   /* -------------------------------------------------------------- sensors */
+  // "<b>81%</b> of detectable infill growth in the worst case and <b>94%</b> on average", or the one figure shown.
+  function figsOf(pl, what) {
+    const b = v => "<b>" + pct(v) + "</b>", g = " of detectable " + what + " growth";
+    const w = st.showW || pl.average == null, a = st.showA && pl.average != null;
+    return w ? b(pl.worst) + g + " in the worst case" + (a ? " and " + b(pl.average) + " on average" : "") : b(pl.average) + g + " on average";
+  }
+  // A greedy card's own figure: the share its first j+1 sensors catch, by the greedy's own aim.
+  function greedyCardCov(rr, j) {
+    const gc = st.method === "greedy-avg" ? greedyAvg(st.rule) : rr.greedy;
+    if (!gc || !gc.curve[j]) return "";
+    const v = storyScope() ? scoreOn(gc.chosen.slice(0, j + 1), st.rule) : gc.curve[j];
+    return st.method === "greedy-avg" ? "average " + pct(v.average) : "worst " + pct(v.worst);
+  }
   function renderSensors() {
     const pl = placement(), chosen = pl.chosen, k = chosen.length, isIn = st.fam !== "one";
     renderCurve();
@@ -1097,8 +1179,7 @@ window.Sim35UI = (function () {
     const row = st.fam === "infill" ? curRow() : null, seen = isIn ? new Set(seers(row, st.rule)) : null;
     const oneRow = !isIn && st.fam === "one" && st.site != null ? rowFor(cell(), st.site) : null;
     const type = st.rule === "alarm" ? "float switch at the alarm level" : "level sensor";
-    const lead = "<p><b>" + k + "</b> sensor" + (k === 1 ? "" : "s") + (pl.worst != null ? " catch <b>" + pct(pl.worst) + "</b> of detectable " + (isIn ? "infill" : "greenfield") +
-      " growth in the worst case" + (pl.average != null ? " and <b>" + pct(pl.average) + "</b> on average" : "") : "") +
+    const lead = "<p><b>" + k + "</b> sensor" + (k === 1 ? "" : "s") + (pl.worst != null ? " catch " + figsOf(pl, isIn ? "infill" : "greenfield") : "") +
       (pl.riskWorst != null ? ", and <b>" + pct(pl.riskWorst) + "</b> of the risk-weighted total" : "") + ".</p>";
     const cards = chosen.map((i, j) => {
       const nm = nameOf(i), ri = regionOf[i];
@@ -1123,7 +1204,7 @@ window.Sim35UI = (function () {
       const miss = sees.includes("miss");
       return '<div class="why' + (miss ? " miss" : "") + '"><div class="hd"><span class="pin">' + SP() + (j + 1) + "</span>" + esc(label(i)) +
         (ri >= 0 ? ' <span class="quiet">' + esc(S().regions[ri].id) + "</span>" : "") +
-        '<span class="cov">' + (isIn && st.method === "greedy" && rr.greedy && rr.greedy.curve[j] ? "worst " + pct(storyScope() ? scoreOn(rr.greedy.chosen.slice(0, j + 1), st.rule).worst : rr.greedy.curve[j].worst) : "") + "</span></div>" +
+        '<span class="cov">' + (isIn && isGreedy(st.method) ? greedyCardCov(rr, j) : "") + "</span></div>" +
         "<p>" + watch + "Watches <b>" + upc.chambers + "</b> manholes and " + upc.homes + " homes draining through it. A " + type + ". " + sees + "</p></div>";
     }).join("");
     let extra = "";
@@ -1139,7 +1220,7 @@ window.Sim35UI = (function () {
       const ho = (X4().heldOut || []).find(h => h.k === hk);
       extra += "<h4>Leave one case out (" + hk + " sensors, the story's test) <i class='info-i left' data-tip='For each wet case, the story&#39;s method picks " + hk + " sensors without that case, then they are scored on it (sim4_numbers.py). It tests the method, so it is the same whichever set is selected above.'>i</i></h4><table class='sm'><tr><th>Held out</th><th>Score on it</th></tr>" +
         S().cases.filter(c => hoc[c.label]).map(c => { const v = hoc[c.label][String(hk)]; return "<tr><td>" + esc(c.label) + "</td><td" + (v < 0.5 ? ' class="hi"' : "") + ">" + pct(v) + "</td></tr>"; }).join("") +
-        "</table>" + (ho ? "<p class='quiet'>All held-out runs together: " + pct(ho.weather[0] / ho.weather[1]) + ", the story's unseen-weather figure.</p>" : "");
+        "</table>" + (ho ? "<p class='quiet'>Average of the cases: " + pct(ho.weatherAvg) + ", the story's unseen-weather figure.</p>" : "");
     } else if (isIn && st.view === "expert" && !storyScope() && rr.loo && Object.keys(rr.loo).length) {
       const n0 = Object.values(rr.loo)[0].chosen.length;
       extra += "<h4>Leave one case out (" + n0 + " sensors, broader test, exact method; the same whichever set is selected) <i class='info-i left' data-tip='Sensors chosen on the other cases, scored on the one held out: how much the recommendation depends on any single assumption about the weather.'>i</i></h4><table class='sm'><tr><th>Held out</th><th>Score on it</th></tr>" +
@@ -1154,60 +1235,76 @@ window.Sim35UI = (function () {
         "The worst case is the lowest share over the " + scoredCases().length + (scoredCases().length < famCases().length ? " wet" : " weather and leakage") + " cases" + (st.method === "story" ? ". " : "; the set is chosen to make that worst case as high as possible. ") +
         "Each card names the regions this sensor is the first to notice, and how many manholes and homes drain past it.";
       $("#rightSensors").innerHTML = "<h4 style='margin-top:0'>Where to put " + k + " sensor" + (k === 1 ? "" : "s") + ' <i class="info-i left" data-tip="' + esc(tip) + '">i</i></h4>' +
-        (pl.warn ? warnLead : pl.worst != null ? "<p style='margin:0 0 8px;color:var(--dim)'>Together they notice <b>" + pct(pl.worst) + "</b> of detectable " + (isIn ? "infill" : "greenfield") + " growth in the worst case.</p>" : "") +
+        (pl.warn ? warnLead : pl.worst != null ? "<p style='margin:0 0 8px;color:var(--dim)'>Together they notice " + figsOf(pl, isIn ? "infill" : "greenfield") + ".</p>" : "") +
         (showScope ? storySentence(pl) : "") + cards + "<p class='quiet'>Click a pin or any manhole for its details.</p>";
     }
   }
+  /* The curve: share of detectable growth caught against the number of sensors, one colour per method. Worst case and
+     Average (the toggles above it, either or both) choose the lines: worst cases solid, averages dashed, each method in its
+     own colour. The selected method is bold, the others faded, and it pulses three times when the method changes.
+     19 Nov: the toggles were Greedy's aim and showed for Greedy alone; Greedy is now two methods. */
+  const CURVE_COL = { story: "var(--c-nested)", exact: "var(--c-exact)", greedy: "var(--c-greedy)", "greedy-avg": "var(--c-greedy-avg)", warn: "var(--c-warn)", risk: "var(--c-risk)" };
+  const CURVE_NAME = { story: "Nested beam search", exact: "Exact optimum", greedy: "Greedy: worst case", "greedy-avg": "Greedy: average", warn: "Warn before surcharge", risk: "Risk-weighted" };
+  let curvePulsed = null;
   function renderCurve() {
     const el = $("#curve");
     if (st.view !== "expert") { el.innerHTML = ""; return; }
+    const ser = (id, rows, worst = r => r.worst, avg = r => r.average) => ({ id, name: CURVE_NAME[id], col: CURVE_COL[id], w: rows.map(worst), a: rows.map(avg) });
     let series = [], note = "";
+    const hasRisk = !$("#methRisk").hidden;
     if (st.fam !== "one" && storyScope()) {
       // On the story's test every curve is scored here; the exact sets are that test's own at 10 mm, the broad test's otherwise.
       const rr = S().rules[st.rule];
       if (!rr) { el.innerHTML = ""; return; }
       const ownEx = st.rule === "r10" && (X4().exact || []).length;
       const exSets = ownEx ? X4().exact.map((_, j) => storyExact(j + 1)) : (rr.exact || []).map(e => e.chosen);
-      const exS = exSets.map(c => scoreOn(c, st.rule)), grS = (rr.greedy.curve || []).map((_, j) => scoreOn(rr.greedy.chosen.slice(0, j + 1), st.rule));
-      series = [{ name: "Exact, worst case", col: "var(--worst)", v: exS.map(e => e.worst) },
-                { name: "Exact, average", col: "var(--mean)", v: exS.map(e => e.average) },
-                { name: "Greedy, worst case", col: "var(--greedy)", v: grS.map(c => c.worst), dash: true }];
-      if (st.method === "story") series.push({ name: "Sim 4's list, worst case", col: "var(--selset)", v: storyCurve("infill", st.rule).map(c => c.worst) });
-      if (st.method === "warn" && WARN(st.rule)) series.push({ name: "Warn before surcharge, worst case", col: "var(--selset)", v: WARN(st.rule).sets.map(e => scoreOn(e.chosen, st.rule).worst) });
-      if (st.method === "risk" && rr.risk && rr.risk.exact) series.push({ name: "Risk-weighted, worst case", col: "var(--selset)", v: rr.risk.exact.slice().sort((a, b) => a.k - b.k).map(e => scoreOn(e.chosen, st.rule).worst) });
-      note = "Selected set: " + methodName() + ". Every curve scored on the story's test" + (ownEx ? "; the exact sets are its own, the greedy ones the broader test's." : "; the exact and greedy sets were solved on the broader test.");
+      const ga = greedyAvg(st.rule);
+      series = [ser("story", storyCurve("infill", st.rule)),
+                ser("exact", exSets.map(c => scoreOn(c, st.rule))),
+                ser("greedy", (rr.greedy.curve || []).map((_, j) => scoreOn(rr.greedy.chosen.slice(0, j + 1), st.rule))),
+                ser("greedy-avg", ga.curve.map((_, j) => scoreOn(ga.chosen.slice(0, j + 1), st.rule)))];
+      if (WARN(st.rule)) series.push(ser("warn", WARN(st.rule).sets.map(e => scoreOn(e.chosen, st.rule))));
+      if (hasRisk && rr.risk && rr.risk.exact) series.push(ser("risk", rr.risk.exact.slice().sort((a, b) => a.k - b.k).map(e => scoreOn(e.chosen, st.rule))));
+      note = "Every curve scored on the story's test" + (ownEx ? "; the exact sets are its own, the others were solved on the broader test." : "; the comparison sets were solved on the broader test.");
     } else if (st.fam !== "one") {
       const rr = S().rules[st.rule];
       if (!rr) { el.innerHTML = ""; return; }
-      const ex = rr.exact || [], gr = rr.greedy.curve || [];
-      series = [{ name: "Exact, worst case", col: "var(--worst)", v: ex.map(e => e.worst) },
-                { name: "Exact, average", col: "var(--mean)", v: ex.map(e => e.average) },
-                { name: "Greedy, worst case", col: "var(--greedy)", v: gr.map(c => c.worst), dash: true }];
-      if (st.method === "story") series.push({ name: "Sim 4's list, worst case", col: "var(--selset)", v: storyCurve("infill", st.rule).map(c => c.worst) });
-      if (st.method === "warn" && WARN(st.rule)) series.push({ name: "Warn before surcharge, worst case", col: "var(--selset)", v: WARN(st.rule).sets.map(e => e.detect_worst) });
-      if (st.method === "risk" && rr.risk && rr.risk.compare) series.push({ name: "Risk-weighted, worst case", col: "var(--selset)", v: rr.risk.compare.slice().sort((a, b) => a.k - b.k).map(c => c.risk_set.plain) });
-      note = "Selected set: " + methodName() + ". Scored on the broader test.";
+      series = [ser("story", storyCurve("infill", st.rule)), ser("exact", rr.exact || []), ser("greedy", rr.greedy.curve || []), ser("greedy-avg", greedyAvg(st.rule).curve)];
+      if (WARN(st.rule)) series.push(ser("warn", WARN(st.rule).sets, e => e.detect_worst, e => e.detect_average));
+      if (hasRisk && rr.risk && rr.risk.exact) series.push(ser("risk", rr.risk.exact.slice().sort((a, b) => a.k - b.k).map(e => scoreOn(e.chosen, st.rule))));
+      note = "Scored on the broader test.";
     } else {
-      const pl = R().sensors[st.rule][st.obj];
-      series = [{ name: "Greedy, worst case", col: "var(--worst)", v: pl.worst }, { name: "Greedy, average", col: "var(--mean)", v: pl.mean }];
-      if (st.method === "story") series.push({ name: "Sim 4's list, worst case", col: "var(--selset)", v: storyCurve("one", st.rule).map(c => c.worst) });
-      note = st.method === "story" ? "Selected set: Sim 4's list, against the greenfield runs' greedy order." : "Greedy: each sensor is the one that most raises the " + (st.obj === "worst" ? "worst case" : "average") + ". Greenfield publishes greedy only.";
+      const gw = R().sensors[st.rule].worst, gm = R().sensors[st.rule].mean;
+      series = [ser("story", storyCurve("one", st.rule)),
+                { id: "greedy", name: CURVE_NAME.greedy, col: CURVE_COL.greedy, w: gw.worst || [], a: gw.mean || [] },
+                { id: "greedy-avg", name: CURVE_NAME["greedy-avg"], col: CURVE_COL["greedy-avg"], w: gm.worst || [], a: gm.mean || [] }];
+      note = "On the greenfield runs; the two greedy orders are their own.";
     }
-    series = series.filter(s => s.v && s.v.length);
+    series = series.filter(s => s.w && s.w.some(v => v != null));
     if (!series.length) { el.innerHTML = ""; return; }
-    const n = Math.max(...series.map(s => s.v.length)), k = st.k;
+    const sel = series.find(s => s.id === st.method) || series[0];
+    const pulse = curvePulsed !== null && curvePulsed !== sel.id + "|" + st.fam;
+    curvePulsed = sel.id + "|" + st.fam;
+    const n = Math.max(...series.map(s => s.w.length)), k = st.k;
     const W = 300, H = 132, L = 30, Rr = 14, T = 8, B = 22;
     const x = i => L + (W - L - Rr) * i / Math.max(1, n - 1), y = v => T + (H - T - B) * (1 - v);
-    const line = arr => arr.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1)).join(" ");
-    const grid = [0, 0.5, 1].map(v => '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="#22314d"/><text x="' + (L - 5) + '" y="' + (y(v) + 3.5) + '" text-anchor="end" font-size="10" fill="#6f81a3">' + (v * 100) + "%</text>").join("");
-    const ticks = Array.from({ length: n }, (_, i) => '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="' + (i === k - 1 ? "#e7edf7" : "#6f81a3") + '">' + (i + 1) + "</text>").join("");
-    el.innerHTML = '<div class="lg">' + series.map(s => "<span><i style=\"background:" + s.col + '"></i>' + esc(s.name) + "</span>").join("") + "</div>" +
-      '<p class="quiet" id="curveNote">' + esc(note) + "</p>" +
-      '<svg viewBox="0 0 ' + W + " " + (H + 10) + '" role="img" aria-label="Share of detectable growth caught against number of sensors">' + grid +
-      '<line x1="' + x(k - 1) + '" x2="' + x(k - 1) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="#a9b8d4" stroke-dasharray="3 3"/>' +
-      series.map(s => '<path d="' + line(s.v) + '" fill="none" stroke="' + s.col + '" stroke-width="2"' + (s.dash ? ' stroke-dasharray="4 3"' : "") + "/>" +
-        s.v.map((v, i) => '<circle cx="' + x(i) + '" cy="' + y(v) + '" r="' + (i === k - 1 ? 4.5 : 2.5) + '" fill="' + s.col + '" stroke="#16233a" stroke-width="2"/>').join("")).join("") +
-      ticks + '<text x="' + ((L + W - Rr) / 2) + '" y="' + (H + 7) + '" text-anchor="middle" font-size="10" fill="#6f81a3">sensors</text>' +
+    const line = arr => { let d = "", pen = false; arr.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1); pen = true; }); return d; };
+    const dots = (arr, col, big, small) => arr.map((v, i) => v == null || (i !== k - 1 && !small) ? "" : '<circle cx="' + x(i) + '" cy="' + y(v) + '" r="' + (i === k - 1 ? big : small) + '" fill="' + col + '" stroke="var(--panel-2)" stroke-width="1.5"/>').join("");
+    const grid = [0, 0.5, 1].map(v => '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--line)"/><text x="' + (L - 5) + '" y="' + (y(v) + 3.5) + '" text-anchor="end" font-size="10" fill="var(--faint)">' + (v * 100) + "%</text>").join("");
+    const ticks = Array.from({ length: n }, (_, i) => '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="' + (i === k - 1 ? "var(--ink)" : "var(--faint)") + '">' + (i + 1) + "</text>").join("");
+    const hasA = s => s.a && s.a.some(v => v != null);
+    // One method's lines: its average dashed (when shown and it has one), its worst case solid (when shown).
+    const lines = (s, mine) => (st.showA && hasA(s) ? '<path class="cv-avg" d="' + line(s.a) + '" fill="none" stroke="' + s.col + '" stroke-width="' + (mine ? 2.2 : 1.4) + '" stroke-dasharray="5 4"/>' + dots(s.a, s.col, mine ? 3.5 : 2.5, mine ? 2 : 0) : "") +
+      (st.showW ? '<path class="cv-worst" d="' + line(s.w) + '" fill="none" stroke="' + s.col + '" stroke-width="' + (mine ? 3 : 1.6) + '"/>' + dots(s.w, s.col, mine ? 4.5 : 3, mine ? 2.5 : 0) : "");
+    const others = series.filter(s => s !== sel).map(s => '<g class="cv-other" data-m="' + s.id + '">' + lines(s, false) + "</g>").join("");
+    const mine = '<g class="cv-sel' + (pulse ? " pulse" : "") + '" data-m="' + sel.id + '">' + lines(sel, true) + "</g>";
+    const shows = (st.showW ? "worst case solid" : "") + (st.showW && st.showA ? ", " : "") + (st.showA ? "average dashed" : "");
+    el.innerHTML = '<div class="lg">' + series.map(s => '<span class="' + (s === sel ? "on" : "") + '"><i style="background:' + s.col + '"></i>' + esc(s.name) + "</span>").join("") + "</div>" +
+      '<p class="quiet" id="curveNote"><b>' + esc(sel.name) + "</b> in bold, the other methods faded: " + shows + ". " + esc(note) + "</p>" +
+      '<svg viewBox="0 0 ' + W + " " + (H + 10) + '" role="img" aria-label="Share of detectable growth caught against number of sensors, ' + esc(shows) + ", " + esc(sel.name) + ' highlighted">' + grid +
+      '<line x1="' + x(k - 1) + '" x2="' + x(k - 1) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--dim)" stroke-dasharray="3 3"/>' +
+      others + mine +
+      ticks + '<text x="' + ((L + W - Rr) / 2) + '" y="' + (H + 7) + '" text-anchor="middle" font-size="10" fill="var(--faint)">sensors</text>' +
       Array.from({ length: n }, (_, i) => '<rect class="hit" data-i="' + i + '" x="' + (x(i) - 12) + '" y="' + T + '" width="24" height="' + (H - T - B + 16) + '" fill="transparent" style="cursor:pointer"/>').join("") +
       "</svg>";
     el.querySelectorAll(".hit").forEach(r => { r.onclick = () => { st.k = +r.dataset.i + 1; repaint(); }; });
@@ -1216,7 +1313,7 @@ window.Sim35UI = (function () {
   /* ------------------------------------------------------ documents, modal */
   function markdown(md_) {
     const out = []; let inTable = false;
-    const inline = t => esc(t).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    const inline = t => cite(esc(t)).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
     const closeT = () => { if (inTable) { out.push("</tbody></table>"); inTable = false; } };
     for (const raw of String(md_ || "").split("\n")) {
       const line = raw.replace(/\s+$/, "");
@@ -1393,7 +1490,7 @@ window.Sim35UI = (function () {
   const info = t => ' <i class="info-i left" data-tip="' + esc(t) + '">i</i>';
   // Where a tab's numbers come from, beside the table. The text is in the data, written by the builder.
   const sources = (key, extra) => "<div class='src'><b>Where these numbers come from</b>" + window.SIM4_EXPLORE.sources[key].concat(extra || []).map(([tag, t]) =>
-    "<div><span class='srctag'>" + esc(tag) + "</span> " + esc(t) + "</div>").join("") + "</div>";
+    "<div><span class='srctag'>" + esc(tag) + "</span> " + cite(esc(t)) + "</div>").join("") + "</div>";
   const say = html => "<p class='say'>" + html + "</p>";
   const head = (t, sub) => esc(t) + "<span class='thsub'>" + esc(sub) + "</span>";
   const listAnd = a => a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1];
@@ -1402,7 +1499,8 @@ window.Sim35UI = (function () {
   const scopeSeg = () => seg("scope", storyScope() ? "story" : "broad", [["story", "The story's test"], ["broad", "Broader test"]]);
   const scopeLine = () => "<p class='quiet'>" + esc(TEST_NOTE[storyScope() ? "story" : "broad"]) + "</p>";
 
-  const heldOutText = k => { const h = (X4().heldOut || []).find(x => x.k === k); return h ? h.weather[0] + " of " + h.weather[1] + " (" + pct(h.weather[0] / h.weather[1]) + ")" : "n/a"; };
+  // Unseen weather, as the story quotes it: each wet case scored by sensors chosen without it, averaged over the cases.
+  const heldOutText = k => { const h = (X4().heldOut || []).find(x => x.k === k); return h ? pct(h.weatherAvg) + ", average of the cases" : "n/a"; };
   function ladderTab() {
     const X = window.SIM4_EXPLORE, rule = RES.rule === "r25" ? "r25" : "r10", W = X.warn[rule], lad = S().ladder;
     const story = storyScope(), useStory = st.method === "story", kk = useStory ? Math.min(st.k, storyMax()) : st.k, e = W.sets[kk - 1];
@@ -1452,7 +1550,7 @@ window.Sim35UI = (function () {
           (story ? "over the " + scopeCases("story").length + " wet cases in the regions to monitor or watch, the story's test" : "over all " + S().cases.length + " cases and every region, the broader test") + " (" + esc(methodName()) + ")</div>" +
           (useStory
             ? (story ? "<div><b>" + heldOutText(kk) + "</b>growth runs seen on weather the list was not chosen for: the story's unseen-weather figure</div>"
-                     : "<div><b>Not held out</b>Sim 4's list was chosen in the story, on its regions to monitor or watch, so it has no held-out figure on this test; the story gives its own</div>")
+                     : "<div><b>Not held out</b>The nested beam search list was chosen in the story, on its regions to monitor or watch, so it has no held-out figure on this test; the story gives its own</div>")
             : "<div><b>Chosen on the broader test</b>scored here on the story's; its held-out figures are on the broader test</div>") + "</div>"
         : "<div class='kpis'><div><b>" + e.plausible_warned + " of " + W.plausible_total + "</b>overloads by 100% build-out warned, on the runs the sensors were chosen on</div><div><b>" + e.plausible_unseen_weather + " of " + W.plausible_total + "</b>on unseen weather: chosen without that weather case</div><div><b>" + e.plausible_unseen_region + " of " + W.plausible_total + "</b>on an unseen region: chosen without that region</div><div><b>" + e.warned + " of " + W.total + "</b>on the runs chosen on, adding the 150% and 300% stress steps</div></div>") +
       sources("warn");
@@ -1520,7 +1618,7 @@ window.Sim35UI = (function () {
 
   function floatStory() {
     const F = X4().float || [], P = X4().price || { level: 25000, float: 1000 }, rec = X4().recommend || 5, pc = v => v == null ? "n/a" : pct(v);
-    const un = x => pc(x.unseen_weather[0] / x.unseen_weather[1]);
+    const un = x => pc(x.unseen_avg);   // each wet case scored by a set chosen without it, averaged over the cases
     const bought = x => [x.level ? x.level + " level" : "", x.float ? x.float + " float" + (x.float === 1 ? "" : "s") : ""].filter(Boolean).join(" + ") + (x.float ? ", " + usd(x.cost) : "") || "none";
     const at = b => F.find(r => r.budget === b);
     const one = at(P.level), five = at(rec * P.level);
@@ -1533,7 +1631,7 @@ window.Sim35UI = (function () {
       say(line) +
       "<div class='resctl'>" + scopeSeg() + "</div>" + scopeLine() +
       "<p class='quiet'>The story's own table (step 6): the 10 mm rule, seeing growth. The broader test adds the 25 mm rule and warning before surcharge.</p>" +
-      "<div class='tscroll'><table class='rtab'><thead><tr><th class='r'>Budget</th><th class='r'>" + head("Level, the list", "worst / average") + "</th><th class='r'>" + head("Unseen weather", "higher is better") +
+      "<div class='tscroll'><table class='rtab'><thead><tr><th class='r'>Budget</th><th class='r'>" + head("Level, the list", "worst / average") + "</th><th class='r'>" + head("Unseen weather", "average of the cases") +
       "</th><th class='r'>Floats only: bought</th><th class='r'>" + head("Floats", "worst / average") + "</th><th class='r'>" + head("Unseen weather", "higher is better") +
       "</th><th class='r'>Free mix: bought</th><th class='r'>" + head("Free mix", "worst / average") + "</th><th class='r'>" + head("Unseen weather", "higher is better") + "</th></tr></thead><tbody>" + rows + "</tbody></table></div>" +
       "<p class='quiet'>Prices assumed: " + usd(P.level) + " a level sensor, " + usd(P.float) + " a float. The free mix maximises the worst case and is not nested, so its sets differ from the list.</p>" +
@@ -1603,7 +1701,7 @@ window.Sim35UI = (function () {
   const COV_SEQ = ["#184f95", "#3987e5", "#9ec5f4"], COV_LEVEL = "#3987e5", COV_FLOAT = "#c98500";
   const COV_MISS = "#e7edf7", COV_NONE = "#3a4350", COV_DIM = "#262d38";
   const coverOn = () => st.coverView && st.fam !== "none";
-  const methodName = () => st.method === "story" ? "Sim 4's list" : st.fam === "one" ? "Greedy" : { warn: "Warn before surcharge", exact: "Exact optimum", greedy: "Greedy", risk: "Risk-weighted" }[st.method] || "";
+  const methodName = () => st.method === "story" ? "Nested beam search" : st.fam === "one" ? (st.method === "greedy-avg" ? "Greedy: average" : "Greedy: worst case") : { warn: "Warn before surcharge", exact: "Exact optimum", greedy: "Greedy: worst case", "greedy-avg": "Greedy: average", risk: "Risk-weighted" }[st.method] || "";
   // One unit per region (infill) or per manhole the estate could join at (greenfield): who sees growth there.
   function coverData() {
     const pl = placement(), placed = pl.chosen, units = [];
@@ -2007,7 +2105,7 @@ window.Sim35UI = (function () {
      itself; this carries what it cannot see (a manhole picked on the map, a dropdown option,
      the Pumps toggle, whose "Highlight" title it reads as a private action, a popup closed
      with Esc) and gives a viewer who joins late the presenter's whole view. */
-  const LIVE = ["region", "step", "site", "add", "caseTag", "rule", "k", "method", "obj", "pickedGreedy", "pick", "scope"];
+  const LIVE = ["region", "step", "site", "add", "caseTag", "rule", "k", "method", "showW", "showA", "pickedGreedy", "pick", "scope"];
   const LIVE_TOGGLES = { showSensors: "#toggleSensors", showHeat: "#toggleHeat", showPumps: "#togglePumps", showEstates: "#toggleEstates",
                          showConn: "#toggleConn", legend: "#toggleLegend", areasView: "#toggleAreas", coverView: "#toggleCover" };
   const docOpen = () => $("#modal").hidden ? null : $("#modalBox .docbody > .lead") ? "ref" : $("#modalBox").classList.contains("wide") ? "qa" : "about";
@@ -2065,7 +2163,9 @@ window.Sim35UI = (function () {
     if (hp.get("case")) st.caseTag = hp.get("case");
     if (hp.get("rule") && ruleOf(hp.get("rule"))) st.rule = hp.get("rule");
     if (hp.get("k")) st.k = Math.max(1, Math.min(10, +hp.get("k") || st.k));
-    if (["story", "warn", "greedy", "risk", "exact"].includes(hp.get("method"))) st.method = hp.get("method");
+    if (["story", "warn", "greedy", "greedy-avg", "risk", "exact"].includes(hp.get("method"))) st.method = hp.get("method");
+    if (st.method === "greedy" && hp.get("obj") === "mean") st.method = "greedy-avg";     // old links: Greedy with Best average
+    if (hp.get("show") === "worst") st.showA = false; else if (hp.get("show") === "average") st.showW = false;     // #show=worst|average|both
     if (hp.get("test") === "broad") st.scope = "broad";       // #test=broad: the broader test; the story's is the default
     if (hp.get("site") != null && names()[+hp.get("site")]) st.site = +hp.get("site");
     if (st.fam === "one" && (st.method === "exact" || st.method === "warn")) st.method = "greedy";
@@ -2090,19 +2190,25 @@ window.Sim35UI = (function () {
       coverHoverLine();
     }).then(() => {
       // Homes are building outlines, never dots; the Houses button shows or hides them with
-      // their connection pipes. On at the start.
+      // their connection pipes. 19 Nov: off at the start, as Legend is, so the first view is the network alone; a
+      // refresh still brings back what the reader had on (the saved state below).
       if (Growth3D.setHouseShapes) {
         Growth3D.setHouseShapes(true);
-        st.showConn = true;
-        $("#toggleConn").classList.add("primary");
+        Growth3D.showConnections(false);
+        st.showConn = false;
+        $("#toggleConn").classList.remove("primary");
         legendGroups();
       }
+      // 19 Nov: the map opens straight down, north up; the compass turns it to the tilted 3D view and back.
+      if (Growth3D.setTopDefault) Growth3D.setTopDefault(true);
       $("#kRange").max = String(R().maxSensors || 10);
       const applyTheme = t => {
         document.documentElement.dataset.theme = t;
         if (Growth3D.setTheme) Growth3D.setTheme(t);
-        $("#themeBtn").textContent = t === "light" ? "Dark" : "Light";
-        $("#themeBtn").title = "Switch to the " + (t === "light" ? "dark" : "light") + " theme";
+        // A sun/moon icon (explore.html): the CSS shows the one for the theme it switches to; the words go in its label.
+        const say = "Switch to the " + (t === "light" ? "dark" : "light") + " theme";
+        $("#themeBtn").title = say;
+        $("#themeBtn").setAttribute("aria-label", say);
       };
       if (window.self !== window.top) $("#themeBtn").hidden = true;
       applyTheme(theme0);
@@ -2158,6 +2264,7 @@ window.Sim35UI = (function () {
         compass.setAttribute("aria-label", compass.title);
       });
       compass.onclick = () => { if (Growth3D.isTop()) Growth3D.viewTilt(); else Growth3D.viewTop(); };
+      if (window.MapHelp) MapHelp.attach($("#btn-maphelp"));     // the map controls card, beside the compass
       // A refresh keeps the page as it was: mode, choices, layers and camera. A new visit (the
       // tab closed and the site opened again) starts at the defaults, because sessionStorage
       // lasts exactly as long as the tab. A link opened fresh still follows its hash.

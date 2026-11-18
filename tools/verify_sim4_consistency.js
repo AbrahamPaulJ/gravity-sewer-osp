@@ -4,7 +4,10 @@
    Results tabs and the side panel give the story's own figures, read from the files the story is built from:
    simulation_src/results/sim4/numbers.json, float.json, capacity.json and simulation4/data/sim4.js.
 
-     Warning          overloads warned = the ladder's warned_target, of the story's total; held out = held_out weather_runs
+     Warning          overloads warned = the ladder's warned_target, of the story's total; held out = held_out_by_case averaged
+     Unseen weather   one measure everywhere (19 Nov): each wet case scored by sensors chosen without it, averaged over the cases
+     Source links     the citations in Explore's texts link to the team's paper library (library.js); tooltips do not
+     More folds       the story's "More on this step" figures against numbers.json and a recount from the runs
      Room for homes   each region's band and 10th to 90th range = numbers.json triage (step 4), at the published settings
      Level or float   every budget row = float.json (step 6)
      Fewest sensors   every cell = numbers.json fewest (step 5a), exact and on the list
@@ -79,14 +82,17 @@ const server = http.createServer((q, s) => {
   const looOk = Object.entries(hoc).every(([c, v]) => loo.some(r => r[0] === c && pcs(v[String(rec)]).has(r[1])));
   ok("leave one case out = the story's held-out score per case", looOk && side.includes("the story's test"), JSON.stringify(loo).slice(0, 160));
   const h5 = X.held_out.find(h => h.k === rec);
-  ok("leave one case out: the pooled figure is the story's unseen weather", hasPc(side.slice(side.toLowerCase().indexOf("leave one case out")).split("All held-out runs together")[1] || "", h5.weather_runs[0] / h5.weather_runs[1]));
+  const uavg = k => Object.values(hoc).reduce((a, v) => a + v[String(k)], 0) / Object.keys(hoc).length;
+  ok("leave one case out: the average of the cases is the story's unseen weather", hasPc(side.slice(side.toLowerCase().indexOf("leave one case out")).split("Average of the cases")[1] || "", uavg(rec)));
+  ok("unseen weather: the story's 5b sentence, its comparison table and Explore all give the average of the cases", hasPc(D.steps.find(s => s.id === "5b").body, uavg(rec)) &&
+     hasPc(D.steps.find(s => s.id === "5b").notes.more.blocks[1].html, uavg(rec)) && !hasPc(D.steps.find(s => s.id === "5b").body, h5.weather_runs[0] / h5.weather_runs[1]));
 
   // ---- Results: Warning
   await click("#btn-results"); await wait(1500);
   let t = await tab("warn");
   ok("Warning: opens on the story's test", t.includes("The story's test") && /story's test/.test(t));
   ok("Warning: overloads warned = the story's", t.includes(`${L[rec].warned_target} of ${wt}`), (t.match(/\d+ of \d+\s*\n?overloads/) || [""])[0]);
-  ok("Warning: held out = the story's unseen weather", t.includes(`${h5.weather_runs[0]} of ${h5.weather_runs[1]}`));
+  ok("Warning: held out = the story's unseen weather, average of the cases", hasPc(t.split("average of the cases")[0].slice(-12), uavg(rec)), (t.match(/\d+%, average of the cases/) || [""])[0]);
   const warnRegs = (await rows("#modalBox table.ladder tbody tr")).map(r => r[0]);
   ok("Warning: only the regions to monitor or watch", JSON.stringify(warnRegs) === JSON.stringify(X.targets), warnRegs.join(","));
   const warnCols = (await rows("#modalBox table.ladder thead tr"))[0].slice(1, -1);
@@ -111,7 +117,7 @@ const server = http.createServer((q, s) => {
   t = await tab("float");
   const fr = await rows("#modalBox table.rtab tbody tr");
   const usd = v => "$" + v.toLocaleString("en-AU");
-  const un = x => x.unseen_weather[0] / x.unseen_weather[1];
+  const un = x => Object.values(x.unseen_by_case).reduce((a, v) => a + v, 0) / Object.keys(x.unseen_by_case).length;
   const floatOk = FL.budgets.map(b => {
     const r = fr.find(x => x[0] === usd(b.budget));
     const wa = (x, s) => [...pcs(x.worst)].some(a => [...pcs(x.average)].some(c => s === a + " / " + c));
@@ -153,7 +159,7 @@ const server = http.createServer((q, s) => {
   ok("Exact optimum: pins and cards are C1, C2, ...", pins.length && pins.every(p => /^C\d$/.test(p)) && cards.every(p => /^C\d$/.test(p)), pins.join(",") + " / " + cards.join(","));
   await click('#methKnob button[data-m="story"]'); await wait(2500);
   pins = await ev('[...document.querySelectorAll(".labels .lbl.sensor")].map(e=>e.textContent)');
-  ok("Sim 4's list: pins are S1, S2, ...", pins.length && pins.every(p => /^S\d$/.test(p)), pins.join(","));
+  ok("Nested beam search: pins are S1, S2, ...", pins.length && pins.every(p => /^S\d$/.test(p)), pins.join(","));
 
   // ---- greedy: the running worst case on a card equals the panel's figure at that count
   await click('#methKnob button[data-m="greedy"]'); await wait(2500);
@@ -161,6 +167,48 @@ const server = http.createServer((q, s) => {
   const glead = await ev('document.getElementById("sensorList").innerText.split("\\n")[0]');
   ok("Greedy: the last card's running worst case = the panel's worst case", g.length && glead.includes(g[g.length - 1].replace("worst ", "")), g.join(",") + " / " + glead);
   await click('#methKnob button[data-m="story"]'); await wait(1500);
+
+  // ---- 19 Nov: the recommendation is named for its algorithm, and explained where it is chosen
+  const btnName = await ev('document.querySelector(\'#methKnob button[data-m="story"]\').textContent');
+  const say = await ev('document.getElementById("methSay").innerText');
+  const src = fs.readFileSync(path.join(PUB, "simulation_src/sim4_numbers.py"), "utf8");
+  const width = (src.match(/^WIDTH = (\d+)/m) || [])[1];
+  ok("method: the recommendation is called Nested beam search, nowhere Sim 4's list", btnName === "Nested beam search" &&
+     !/Sim 4's list/.test(fs.readFileSync(path.join(PUB, "simulation4/explore.html"), "utf8")) && !/"Sim 4's list|Sim 4's list[:,]/.test(fs.readFileSync(path.join(PUB, "simulation4/explore_ui.js"), "utf8")), btnName);
+  ok("method: the line under it explains it (seed, beam width from sim4_numbers.py, score, nested, brute force)",
+     say.includes(L[1].chosen[0]) && width && say.includes(Number(width).toLocaleString("en-AU")) && /worst case plus the average/.test(say) && /25 mm rule breaks ties/.test(say) && /no sensor moves/.test(say) && /brute force/.test(say), say.slice(0, 200));
+
+  // ---- the chart: one line per method, the selected one bold with its average dashed, pulsing when the method changes
+  const chart = () => ev(`(()=>{const c=document.getElementById("curve");return{sel:(c.querySelector(".cv-sel")||{}).dataset?.m||null,avg:!!c.querySelector(".cv-sel .cv-avg"),
+    dash:(c.querySelector(".cv-sel .cv-avg")||{getAttribute:()=>null}).getAttribute("stroke-dasharray"),same:(()=>{const a=c.querySelector(".cv-sel .cv-avg"),w=c.querySelector(".cv-sel .cv-worst");return!!a&&!!w&&a.getAttribute("stroke")===w.getAttribute("stroke")})(),
+    others:[...c.querySelectorAll(".cv-other")].map(g=>g.dataset.m).sort().join(),otherAvg:c.querySelectorAll(".cv-other .cv-avg").length,pulse:!!c.querySelector(".cv-sel.pulse"),
+    fade:+getComputedStyle(c.querySelector(".cv-other")||c).opacity,legend:(c.querySelector(".lg span.on")||{}).textContent||""}})()`);
+  let ch = await chart();
+  ok("chart: the nested beam search is drawn bold, its average dashed in the same colour", ch.sel === "story" && ch.avg && ch.dash && ch.same && ch.legend === "Nested beam search", JSON.stringify(ch));
+  ok("chart: every other method drawn faded, with Worst case and Average both on its average dashed too", /exact/.test(ch.others) && /greedy-avg/.test(ch.others) && /warn/.test(ch.others) && ch.otherAvg >= 3 && ch.fade < 0.6, JSON.stringify(ch));
+  const pulses = [];
+  for (const m of ["exact", "greedy", "warn", "story"]) {
+    await click(`#methKnob button[data-m="${m}"]`); await wait(1200);
+    ch = await chart();
+    pulses.push(ch.sel === m && ch.avg && ch.pulse && !ch.others.split(",").includes(m));
+  }
+  ok("chart: each method selected in turn is the bold one, with its average, and pulses as it changes", pulses.every(Boolean), pulses.join());
+  await click('#scopeKnob button[data-s="broad"]'); await wait(1500);
+  ch = await chart();
+  ok("chart: on the broader test too, the selected method shows its average", ch.sel === "story" && ch.avg, JSON.stringify(ch));
+  ok("chart: changing the test is not a method change, so no pulse", !ch.pulse);
+  ok("chart: the pulse respects reduced motion", /prefers-reduced-motion:reduce\)\{#curve \.cv-sel\.pulse\{animation:none\}/.test(fs.readFileSync(path.join(PUB, "simulation4/explore.html"), "utf8")));
+
+  // ---- the region panel: on the story's test, what lies outside it is greyed
+  const seenRows = () => ev(`[...document.querySelector("#mhFacts table.sm").querySelectorAll("tr")].slice(1).map(r=>({c:r.children[0].innerText,v:r.children[1].innerText,out:r.classList.contains("outside")}))`);
+  let sr = await seenRows();
+  ok("region panel, broader test: every case as it was, nothing greyed", sr.length === REG.cases.length && sr.every(r => !r.out) && !(await ev('!!document.getElementById("seenScope")')), JSON.stringify(sr).slice(0, 200));
+  await click('#scopeKnob button[data-s="story"]'); await wait(1500);
+  sr = await seenRows();
+  const dry = sr.find(r => /^Dry/.test(r.c));
+  ok("region panel, story's test: Dry is greyed and marked outside the test", dry && dry.out && /not in the story's test/.test(dry.c), JSON.stringify(dry));
+  ok("region panel, story's test: nothing past 100% shows as a build-out; it reads 'not seen by 100%', greyed", sr.every(r => r.out || (!/^(150|300)%$/.test(r.v))) && sr.filter(r => /not seen by 100%/.test(r.v)).every(r => r.out), JSON.stringify(sr).slice(0, 300));
+  ok("region panel, story's test: a quiet note says what the test is", /wet cases up to 100% build-out/.test(await ev('(document.getElementById("seenScope")||{}).innerText||""')));
 
   // ---- the map card's homes = the model's count
   const card = await ev('document.getElementById("homesLine").innerText');
@@ -174,6 +222,108 @@ const server = http.createServer((q, s) => {
   const m = s5b.match(/see (\d+%) of growth runs on average and (\d+%) in the worst wet case \(Explore, Greenfield\)/);
   ok("greenfield: Explore's figures = step 5b's sentence", m && new RegExp("catch " + m[2] + " of detectable greenfield growth in the worst case and " + m[1] + " on average").test(gs), (m ? m.slice(1).join(" / ") : "no sentence") + " vs " + gs.split("\n").find(l => /greenfield growth in the worst/.test(l)));
   ok("greenfield: scored on the wet cases", /scored on the 7 wet cases/i.test(await ev('document.getElementById("sensHead").innerText')));
+
+  // ---- 19 Nov: the story's "More on this step" figures, recounted here from the runs (regions.js), not from the builder
+  {
+    const G = (() => { global.window = global; eval(fs.readFileSync(path.join(PUB, "simulation3/data/growth.js"), "utf8")); return window.GROWTH_RUNS; })();
+    const idx = Object.fromEntries(G.chambers.map((n, i) => [n, i]));
+    const wet = REG.cases.filter(c => c.ii > 0), steps = REG.ladder.map((v, s) => [v, s]).filter(([v]) => v <= 1 + 1e-9).map(([, s]) => s);
+    const tg = REG.regions.map((r, i) => [r.id, i]).filter(([id]) => X.targets.includes(id)).map(([, i]) => i);
+    // Per case: the runs that count (some manhole rises 10 mm or more), and which of them each manhole sees.
+    const sees = wet.map(c => {
+      const rows = new Map(REG.rows[c.tag].map(x => [x.r + ":" + x.s, x])), runs = [];
+      for (const ri of tg) for (const s of steps) { const x = rows.get(ri + ":" + s); if (x.rise.some(([, v]) => v >= 10)) runs.push(new Set(x.rise.filter(([, v]) => v >= 10).map(([j]) => j))); }
+      return runs;
+    });
+    const score = S => { const per = sees.map(runs => runs.filter(r => S.some(m => r.has(idx[m]))).length / runs.length); return { per, worst: Math.min(...per), average: per.reduce((a, b) => a + b, 0) / per.length }; };
+    ok("recount: each wet case's runs = numbers.json's universe", wet.every((c, k) => sees[k].length === X.universe[c.label]), wet.map((c, k) => sees[k].length).join(","));
+    const more5 = D.steps.find(s => s.id === "5b").notes.more.blocks;
+    const cells = h => [...h.matchAll(/<tr>(.*?)<\/tr>/g)].map(m => [...m[1].matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1].replace(/<[^>]+>/g, ""))).filter(r => r.length);
+    const alone = cells(more5[0].html), five = L[rec].chosen;
+    ok("5b fold: each sensor alone, case by case, = a recount from the runs", five.every((m, k) => { const s = score([m]); return alone[k] && alone[k][0].endsWith(m) && s.per.every((v, j) => pcs(v).has(alone[k][j + 1])); }),
+       JSON.stringify(alone[0]));
+    const cmp = cells(more5[1].html);
+    const rowOk = (name, set) => { const r = cmp.find(x => x[0].startsWith(name)), s = score(set); return r && pcs(s.worst).has(r[1]) && pcs(s.average).has(r[2]); };
+    ok("5b fold: the nested and exact rows = a recount from the runs", rowOk("Nested", five) && rowOk("Exact", L[rec].exact_set), JSON.stringify(cmp.slice(0, 2)));
+    const ex = cmp.find(x => x[0].startsWith("Exact")), ne = cmp.find(x => x[0].startsWith("Nested"));
+    ok("5b fold: unseen weather, nested and exact both on the case average", ne && pcs(uavg(rec)).has(ne[4]) && ex && ex[4] === ne[4], `${ne && ne[4]} / ${ex && ex[4]}`);
+    const m6 = D.steps.find(s => s.id === "6").notes.more.blocks.map(b => b.html).join("");
+    const fl0 = FL.budgets.map(b => Object.values(b.float.unseen_by_case).reduce((a, v) => a + v, 0) / 7);
+    ok("6 fold: the float figure = float.json, averaged by case", [...new Set(fl0.map(v => [...pcs(v)][0]))].every(p => m6.includes(p)));
+    const m1 = D.steps.find(s => s.id === "1").notes.more.blocks[0];
+    ok("1 fold: council and model homes = regions.js and catchment.js", m1.intro.includes(REG.councilConnections.toLocaleString("en-AU")));
+  }
+
+  // ---- 19 Nov (third pass): the first view, the Show toggles, Greedy in two, the map controls card
+  {
+    await load();
+    const first = await ev(`({top:Growth3D.isTop(), houses:document.querySelector("#toggleConn").classList.contains("primary"), housesShown:!!document.querySelector("#toggleConn").getClientRects().length,
+      legend:document.querySelector("#toggleLegend").classList.contains("primary"), legendBox:!document.querySelector("#legend").hidden})`);
+    ok("first load: the map straight down, Houses and Legend off (the Houses button shown)", first.top && !first.houses && first.housesShown && !first.legend && !first.legendBox, JSON.stringify(first));
+    await click("#btn-compass"); await wait(1500);
+    const tilted = await ev("Growth3D.isTop()");
+    await click("#btn-compass"); await wait(1500);
+    ok("first load: the compass still turns it to the tilted view and back", !tilted && await ev("Growth3D.isTop()"), tilted);
+    await click('#viewKnob button[data-v="expert"]'); await wait(1500);
+    const tog = () => ev('[...document.querySelectorAll("#objKnob button")].map(b=>(b.classList.contains("on")&&b.getAttribute("aria-pressed")==="true"?"1":"0")).join("")');
+    const lines = () => ev('({w:document.querySelectorAll("#curve .cv-worst").length,a:document.querySelectorAll("#curve .cv-avg").length,lead:document.getElementById("sensorList").innerText.split("\\n")[0]})');
+    const shown = [];
+    for (const m of ["story", "exact", "warn"]) { await click(`#methKnob button[data-m="${m}"]`); await wait(900); shown.push(await ev('!!document.querySelector("#objKnob").getClientRects().length') && await tog() === "11"); }
+    ok("Show: Worst case and Average show for every method, both on to start", shown.every(Boolean), shown.join());
+    await click('#methKnob button[data-m="story"]'); await wait(1200);
+    const both = await lines();
+    await click('#objKnob button[data-o="worst"]'); await wait(900);
+    const aOnly = await lines(), t1 = await tog();
+    await click('#objKnob button[data-o="mean"]'); await wait(900);
+    const t2 = await tog();
+    ok("Show: Worst case off leaves the dashed averages only, and the figures say average", t1 === "01" && aOnly.w === 0 && aOnly.a >= 4 && /average/.test(aOnly.lead) && !/worst/.test(aOnly.lead), JSON.stringify(aOnly));
+    ok("Show: the last one on cannot be turned off", t2 === "01", t2);
+    await click('#objKnob button[data-o="worst"]'); await click('#objKnob button[data-o="mean"]'); await wait(900);
+    const wOnly = await lines();
+    ok("Show: Average off leaves the solid worst cases only, and the figures say worst", await tog() === "10" && wOnly.a === 0 && wOnly.w >= 4 && /worst/.test(wOnly.lead) && !/average/.test(wOnly.lead), JSON.stringify(wOnly));
+    await click('#objKnob button[data-o="mean"]'); await wait(900);
+    ok("Show: both on draws both", both.w >= 4 && both.a >= 4 && await tog() === "11", JSON.stringify(both));
+    const names = await ev('[...document.querySelectorAll("#methKnob button")].filter(b=>!b.hidden).map(b=>b.textContent)');
+    ok('Greedy is two methods: "Greedy: worst case" and "Greedy: average"', names.includes("Greedy: worst case") && names.includes("Greedy: average") && !names.some(n => /one at a time/.test(n)), names.join(" | "));
+    await click('#scopeKnob button[data-s="broad"]'); await wait(1200);
+    const gavg = [];
+    for (const m of ["greedy", "greedy-avg"]) { await click(`#methKnob button[data-m="${m}"]`); await ev('(()=>{const r=document.getElementById("kRange");r.value="1";r.dispatchEvent(new Event("input"))})()'); await wait(1200); gavg.push(await ev('({pins:[...document.querySelectorAll(".labels .lbl.sensor")].length, lead:document.getElementById("sensorList").innerText.split("\\n")[0]})')); }
+    const avgOf = t => +(((t.lead.match(/(\d+)% on average|average (\d+)%/) || []).slice(1).find(Boolean)) || -1);
+    ok("Greedy: average at one sensor catches at least as much on average as Greedy: worst case", gavg[1].pins === 1 && avgOf(gavg[1]) >= avgOf(gavg[0]) && avgOf(gavg[0]) >= 0, gavg.map(g => g.lead).join(" / "));
+    await send("Page.navigate", { url: "about:blank" }); await wait(150);
+    await send("Page.navigate", { url: `http://127.0.0.1:${HTTP}/simulation4/explore.html#view=expert&method=greedy&obj=mean&show=average` });
+    for (let i = 0; i < 240; i++) { await wait(250); if (await ev('!!(document.querySelector("#sensorList") && document.querySelector("#sensorList").innerText.length > 50)')) break; }
+    await wait(1500);
+    ok("hash: an old Greedy + Best average link opens Greedy: average; #show=average opens Average only", await ev('document.querySelector("#methKnob button.on").dataset.m') === "greedy-avg" && await tog() === "01");
+    // The map controls card
+    const help = await ev(`(()=>{const b=document.querySelector("#btn-maphelp"),c=document.querySelector("#btn-compass").getBoundingClientRect(),r=b.getBoundingClientRect();
+      return{next:Math.abs(r.top-c.top)<4&&Math.abs(r.left-c.right)<24,label:b.getAttribute("aria-label"),pop:!!document.querySelector("#btn-maphelpPop")}})()`);
+    ok("map help: a ? button beside the compass, labelled", help.next && help.label === "Map controls" && help.pop, JSON.stringify(help));
+    const hb = await ev('(()=>{const r=document.querySelector("#btn-maphelp").getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()');
+    await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: hb.x, y: hb.y, button: "none" }); await wait(400);
+    const open = await ev(`(()=>{const p=document.querySelector("#btn-maphelpPop"),r=p.getBoundingClientRect(),c=document.querySelector("#btn-compass").getBoundingClientRect(),b=document.querySelector("#btn-maphelp").getBoundingClientRect();
+      const hit=q=>!(q.right<=r.left||q.left>=r.right||q.bottom<=r.top||q.top>=r.bottom);
+      return{shown:!p.hidden,w:Math.round(r.width),fits:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,clear:!hit(c)&&!hit(b),exp:document.querySelector("#btn-maphelp").getAttribute("aria-expanded"),t:p.innerText}})()`);
+    ok("map help: hovering opens the card, about 360 px, on screen, clear of the compass and its own button", open.shown && open.w >= 340 && open.w <= 380 && open.fits && open.clear && open.exp === "true", JSON.stringify({ ...open, t: undefined }));
+    ok("map help: left drag turns, right drag moves, scroll zooms, touch named; no pinch claimed", /Left click/.test(open.t) && /turn/.test(open.t) && /Right click/.test(open.t) && /move/.test(open.t) && /Scroll/.test(open.t) && /touch/i.test(open.t) && !/pinch/i.test(open.t + fs.readFileSync(path.join(PUB, "simulation4/map_help.js"), "utf8").replace(/no pinch zoom/g, "")));
+    await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 }); await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 }); await wait(300);
+    ok("map help: Escape closes it", await ev('document.querySelector("#btn-maphelpPop").hidden && document.querySelector("#btn-maphelp").getAttribute("aria-expanded")==="false"'));
+  }
+
+  // ---- 19 Nov: Explore's citations link to the team's paper library; its tooltips stay plain
+  {
+    await load();
+    await click("#btn-results"); await wait(1200);
+    const lib = {};
+    for (const tb of await ev('[...document.querySelectorAll("#modalBox .restabs button")].map(b=>b.dataset.tab)')) {
+      await tab(tb);
+      for (const a of await ev('[...document.querySelectorAll("#modalBox a.lib")].map(a=>({t:a.textContent,h:a.getAttribute("href"),tg:a.target,r:a.rel}))')) lib[a.t + "|" + a.h] = a;
+    }
+    await click("#modalClose");
+    const A = Object.values(lib), V = "https://siddhu-123.github.io/waste_water_network_sensor-papers/pdf-viewer.html?paper=";
+    ok("Explore: the cited sources in Results link to the library viewer, new tab, rel=noopener", A.length >= 2 && A.every(a => a.h.startsWith(V) && a.tg === "_blank" && a.r === "noopener"), A.map(a => a.t).join(" ; ").slice(0, 170));
+    ok("Explore: no tooltip holds a link", await ev('![...document.querySelectorAll("[data-tip]")].some(e=>/<a /.test(e.getAttribute("data-tip")))'));
+  }
 
   ok("no page errors", errors.length === 0, errors.join(" | "));
   console.log(`\n${pass} passed, ${fail} failed`);
