@@ -23,7 +23,7 @@ The 6-site version was replaced after six independent reviews. The decisions are
 |---|---|---|
 | Nodes that may take an estate | every edge manhole and pipe end; 887 tested | own choice |
 | The edge | an open sector of at least 120° with no pipe or home within 200 m, and clear for 400 m along its middle; points within 15 m are ignored | own choice |
-| Homes a connection can take | sewer supplement Table 4.4 (DN150–300), log-log between anchors, applied to the total load on every downstream reticulation pipe; DN375 and above are left to SWMM | Table 4.4 sourced; the interpolation is own choice |
+| Homes a connection can take | sewer supplement Table 4.4 (DN150 to 300), log-log between anchors, applied to the total load on every downstream reticulation pipe; DN375 and above are left to SWMM | Table 4.4 sourced; the interpolation is own choice |
 | Grouping | edge points on the same land with the same downstream sensors share one connection | own choice |
 | Estate sizes | 10 to 1,000 homes, capped by each connection's room | own choice |
 | Estate load | sewage only, 2.3 people per new home, peaking factor 2, no infiltration from the new pipes | own choice |
@@ -95,7 +95,7 @@ An independent checker, `tools/check_sim4_estates.py`, tests every estate size a
 |---|---|---|---|
 | Real network | 1.51 | 11.9 | 7.9 |
 | All 9 estates | 1.43 | 11.0 | 7.7 |
-| Range across estates | 1.14–1.71 | 10.1–11.9 | 5.9–10.4 |
+| Range across estates | 1.14 to 1.71 | 10.1 to 11.9 | 5.9 to 10.4 |
 
 Manholes fell from 329 to 130 at MH4452680. All 9 estates are pumped, so the plan, which reads only the pumped flag, is unchanged.
 
