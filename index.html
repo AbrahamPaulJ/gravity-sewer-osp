@@ -514,7 +514,15 @@ function showTab(name){
   if (want && frame && frame.hasAttribute('data-src')) { frame.src = want; frame.removeAttribute('data-src'); }
   else if (want && frame && subOf(tab, frame) !== sub) { frame.src = want; }
   else if (frame && frame.hasAttribute('data-src')) { frame.src = frame.dataset.src; frame.removeAttribute('data-src'); }
+  else if (frame) refit(frame);
   return true;
+}
+// A frame shown again after its tab was hidden can keep the width it had before, and the browser leaves the rest
+// of the pane unpainted (a white margin). Resize the frame by a pixel for a moment and back, so the browser
+// re-measures it and the page's own resize handlers (its layout, its 3D map) run at the full pane.
+function refit(frame){
+  frame.style.width = 'calc(100% - 1px)';
+  setTimeout(function(){ frame.style.width = ''; }, 60);
 }
 document.querySelectorAll('#tabs button[data-tab]').forEach(function(b){
   b.addEventListener('click', function(){
