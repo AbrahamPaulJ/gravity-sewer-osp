@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sim 4 Sensor Story</title>
+<script>
+/* The theme before the first paint, as Explore picks it: #theme=light|dark, else what this browser chose last (the same
+   "sim4Theme" key as Explore, so the choice carries between the two), else dark. */
+(function () {
+  var t = (location.hash.match(/(?:^|[#&])theme=(light|dark)/) || [])[1];
+  if (!t) { try { t = localStorage.getItem("sim4Theme"); } catch (e) { /* storage blocked: dark */ } }
+  document.documentElement.dataset.theme = t === "light" ? "light" : "dark";
+})();
+</script>
 <script type="importmap">
 {
   "imports": {
@@ -44,11 +53,11 @@ body{background:var(--bg); color:var(--ink); font:14px/1.5 system-ui,-apple-syst
 .labels .lbl.region{color:#04140a; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px;
   transform:translate(-50%,-50%); text-shadow:none; box-shadow:0 0 0 2px #0d1117; opacity:.95}
 
-/* The one card: wide and flat, so it covers as little of the map as it can. The header row (step, title, Back and Next,
-   Hide) is all that stays when the reader folds it; the map shifts down by half the card's height so it centres in the
+/* The one card: wide and flat, so it covers as little of the map as it can. Its text, controls and legend always show
+   (18 Nov: no Hide; only "Behind this step" folds); the map shifts down by half the card's height so it centres in the
    space below (sim4_story.js sets --map-shift). The right 112px are kept clear for Explore. A tall card (its fold
    open) scrolls inside itself rather than running off the screen. */
-#card{--cw:min(900px, calc(100vw - 128px)); position:fixed; top:16px; width:var(--cw); z-index:10;
+#card{--cw:min(1320px, calc(100vw - 144px)); position:fixed; top:16px; width:var(--cw); z-index:10;
   left:clamp(16px, calc((100vw - var(--cw)) / 2), calc(100vw - 112px - var(--cw)));
   max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px); overflow-y:auto; overscroll-behavior:contain;
   background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:9px 12px 10px 16px; backdrop-filter:blur(6px);
@@ -63,10 +72,6 @@ body{background:var(--bg); color:var(--ink); font:14px/1.5 system-ui,-apple-syst
 #dots{display:flex; gap:6px; margin-right:6px}
 #dots i{width:8px; height:8px; border-radius:50%; background:var(--line)}
 #dots i.on{background:var(--accent)}
-#btnFold{flex:none; display:inline-flex; align-items:center; gap:5px; font-size:12.5px; padding:4px 9px; color:var(--dim); background:transparent}
-#btnFold:hover{color:var(--ink)}
-#btnFold svg{width:12px; height:12px; transition:transform .2s}
-#btnFold[aria-expanded="false"] svg{transform:rotate(180deg)}
 #cardMore{margin-top:5px; padding-right:4px}
 #bodyRow{margin:0; font-size:15px; line-height:1.42}
 #stepBody{display:inline; margin:0; font-size:15px; line-height:1.42; color:var(--ink)}
@@ -94,9 +99,12 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 button:disabled{opacity:.35; cursor:default}
 #next{background:#0e4f6e; border-color:#16709b}
 
-#btnExplore{position:fixed; top:16px; right:16px; z-index:12; background:var(--panel); font-size:13px; padding:5px 12px; color:var(--dim);
+/* Explore and the theme switch, top right, in the 112px the card keeps clear; at phone width they sit bottom right. */
+#corner{position:fixed; top:16px; right:16px; z-index:12; display:flex; flex-direction:column; align-items:flex-end; gap:8px}
+#btnExplore{background:var(--panel); font-size:13px; padding:5px 12px; color:var(--dim);
   border:1px solid var(--line); border-radius:8px; text-decoration:none; line-height:1.5}
-#btnExplore:hover{color:var(--ink)}
+#btnExplore:hover,#themeBtn:hover{color:var(--ink)}
+#themeBtn{min-height:36px; padding:8px 12px; font-size:13px; line-height:18px; color:var(--dim); background:var(--panel-solid)}
 
 /* The popup */
 #pop{position:fixed; z-index:11; width:310px; background:var(--panel-solid); border:1px solid #2e4470; border-radius:10px; padding:11px 14px;
@@ -110,7 +118,9 @@ button:disabled{opacity:.35; cursor:default}
 /* "Behind this step": its button ends the card text, on the text's last line, so the card is no taller for it. The fold
    opens under the card's controls, closed by default: four short rows, the tables behind the step in a second fold, and
    one link to the redo guide. It scrolls inside itself, so an open fold covers no more map than it must. */
-#notesBar{display:inline-block; margin-left:6px; white-space:nowrap; vertical-align:baseline}
+/* 18 Nov: the fold's button sits under the slider and legend, right above what it opens, so nothing the step needs is
+   under it; the step's text, slider and legend always show. */
+#notesBar{display:block; margin-top:10px; white-space:nowrap}
 #btnNotes{display:inline-flex; align-items:center; gap:5px; font-size:12px; line-height:16px; padding:1px 8px; color:var(--dim); background:transparent; vertical-align:baseline}
 #btnNotes:hover{color:var(--ink)}
 #btnNotes svg{width:11px; height:11px; transition:transform .2s}
@@ -131,8 +141,8 @@ button:disabled{opacity:.35; cursor:default}
 #notes th{color:var(--faint); text-align:left; font-weight:600; border-bottom:1px solid var(--line); padding:3px 8px 3px 0; vertical-align:bottom}
 #notes td{border-bottom:1px solid #1a2840; padding:3px 8px 3px 0; vertical-align:top}
 #notes .redo{display:inline-block; margin-top:9px; font-size:13px; color:var(--accent)}
-@media (prefers-reduced-motion:reduce){#card.in{animation:none} body[data-ready] #stage{transition:none} #btnFold svg,#btnNotes svg{transition:none}}
-@media (max-width:640px){#card{--cw:calc(100vw - 16px); left:8px; top:8px; padding:8px 10px 9px 12px} #bodyRow,#stepBody{font-size:14px} #stepTitle{font-size:17px} #btnExplore{top:auto; bottom:16px} #notes{max-height:38vh} #notes dl{grid-template-columns:1fr; gap:0 0} #notes dd{margin-bottom:6px} #pop{width:min(310px, calc(100vw - 24px))}}
+@media (prefers-reduced-motion:reduce){#card.in{animation:none} body[data-ready] #stage{transition:none} #btnNotes svg{transition:none}}
+@media (max-width:640px){#card{--cw:calc(100vw - 16px); left:8px; top:8px; padding:8px 10px 9px 12px} #bodyRow,#stepBody{font-size:14px} #stepTitle{font-size:17px} #corner{top:auto; bottom:16px} #notes{max-height:38vh} #notes dl{grid-template-columns:1fr; gap:0 0} #notes dd{margin-bottom:6px} #pop{width:min(310px, calc(100vw - 24px))}}
 
 /* One reading surface, with quiet supporting controls. */
 #card{padding:16px; border-radius:12px; max-height:calc(100dvh - 32px); scrollbar-gutter:stable}
@@ -144,7 +154,6 @@ button:disabled{opacity:.35; cursor:default}
 #back{background:transparent; color:var(--dim)}
 #next{background:var(--accent); border-color:var(--accent); color:var(--bg); font-weight:600}
 #dots{gap:8px; margin-right:8px}
-#btnFold{min-height:36px; gap:8px; padding:4px 8px; border-color:transparent}
 #cardMore{margin-top:12px; padding:0}
 #bodyRow, #stepBody{font-size:15px; line-height:1.6}
 #controls{gap:12px 24px; margin-top:16px}
@@ -155,8 +164,24 @@ button:disabled{opacity:.35; cursor:default}
 #legend span{gap:8px; white-space:normal}
 #btnRegions{min-height:32px; padding:4px 12px; background:transparent}
 #btnRegions[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 14%,var(--panel-solid)); border-color:var(--accent); color:var(--ink)}
-#notesBar{margin-left:8px; max-width:100%}
-#btnNotes{min-height:28px; gap:8px; padding:4px 8px; border-color:transparent}
+#notesBar{margin-left:0; max-width:100%}
+/* 18 Nov: wide and short. On a wide card the step's text takes the left column at the same line length as before, and
+   the slider, legend and "Behind this step" sit beside it on the right, so the card is about half as tall and more of
+   the map shows. The fold opens across the full width below both. */
+@container (min-width:1000px){
+  #cardMore{display:grid; grid-template-columns:minmax(0,1fr) minmax(300px,34%); column-gap:32px; align-items:start; margin-top:8px}
+  #bodyRow{grid-column:1; grid-row:1 / span 2}
+  #controls{grid-column:2; grid-row:1; margin-top:2px; flex-direction:column; align-items:stretch; gap:10px}
+  #controls #sliderRow, #controls #legendRow{flex:none}
+  #notesBar{grid-column:2; grid-row:2; margin-top:8px}
+  #notes{grid-column:1 / -1}
+}
+/* The map credit (ODbL) sits bottom left, clear of the wide card; the stage is shifted down by --map-shift, so the
+   offset adds it back to keep the credit on screen. At phone width it stops short of Explore and Light or Dark. */
+#stage .mapCredit{top:auto !important; bottom:calc(8px + var(--map-shift, 0px)); max-width:calc(100vw - 32px); line-height:12px}
+@media (max-width:640px){#stage .mapCredit{max-width:calc(100vw - 200px)}}
+html[data-theme="light"] #stage .mapCredit{color:#57606a !important}
+#btnNotes{min-height:28px; gap:8px; padding:4px 8px; margin-left:-8px; border-color:transparent}
 #btnNotes[aria-expanded="true"]{border-color:var(--line)}
 #notes{margin-top:16px; padding:16px 0 0; border:0; border-top:1px solid var(--line); border-radius:0; background:transparent}
 #notes dl{gap:8px 16px; line-height:1.5}
@@ -184,8 +209,29 @@ button:disabled{opacity:.35; cursor:default}
   #notesBar{margin-left:0}
   #notes dl{gap:4px}
   #notes dd{margin-bottom:8px}
-  #btnExplore{right:8px; bottom:16px}
+  #corner{right:8px; bottom:16px; flex-direction:row-reverse; align-items:center}
 }
+
+/* The light theme (the Light/Dark switch, top right), as Explore's: the same layout and result colours; only the ground,
+   the card and the text change. The map's own colours follow it in growth_3d.js (setTheme). */
+html[data-theme="light"]{
+  --bg:#f6f8fa; --panel:#ffffffee; --panel-solid:#ffffff; --ink:#1f2328; --dim:#47536a; --faint:#6e7781;
+  --line:#d0d7de; --accent:#0969da; --green:#1a7f37; color-scheme:light}
+html[data-theme="light"] button{background:#eef2f7}
+html[data-theme="light"] #next{color:#fff}
+html[data-theme="light"] #card{box-shadow:0 4px 18px #1f23281f}
+html[data-theme="light"] #btnExplore, html[data-theme="light"] #themeBtn{background:var(--panel-solid); box-shadow:0 2px 10px #1f23281a}
+html[data-theme="light"] #pop{border-color:var(--line); box-shadow:0 8px 28px #1f232833}
+html[data-theme="light"] #notes td{border-bottom-color:#eaeef2}
+html[data-theme="light"] #legend i{box-shadow:0 0 0 1px #1f232840}
+html[data-theme="light"] .labels .lbl{color:#5a32a3; text-shadow:0 0 3px #f3f0e8, 0 0 3px #f3f0e8, 0 1px 2px #f3f0e8}
+html[data-theme="light"] .labels .lbl.site{color:#0969da}
+html[data-theme="light"] .labels .lbl.scn{color:#0550ae}
+html[data-theme="light"] .labels .lbl.pump, html[data-theme="light"] .labels .lbl.pumprate{color:#9a6700}
+html[data-theme="light"] .labels .lbl.spill{color:#bf3989}
+html[data-theme="light"] .labels .lbl.sensor, html[data-theme="light"] .labels .lbl.region{color:#04140a; text-shadow:none; box-shadow:0 0 0 2px #fff}
+/* The map's own ground (growth_3d.js THEMES.light.bg), so the strip the map shifts away from matches it. */
+html[data-theme="light"] body{background:#f3f0e8}
 </style>
 </head>
 <body>
@@ -200,10 +246,9 @@ button:disabled{opacity:.35; cursor:default}
       <button id="back" type="button">Back</button>
       <button id="next" type="button">Next</button>
     </div>
-    <button id="btnFold" type="button" aria-expanded="true" aria-controls="cardMore" aria-label="Hide step details" title="Hide the step's text and controls, to see more of the map"><span>Hide</span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 8l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
   <div id="cardMore">
-    <div id="bodyRow"><p id="stepBody"></p> <span id="notesBar"><button id="btnNotes" type="button" aria-expanded="false" aria-controls="notes" title="What this step assumes, its sources, its limits and what comes next">Behind this step<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></span></div>
+    <div id="bodyRow"><p id="stepBody"></p></div>
     <div id="controls">
       <div id="sliderRow" hidden>
         <input id="homes" type="range" min="0" max="5" step="1" value="5" aria-label="Share of each region's 2041 homes">
@@ -214,21 +259,25 @@ button:disabled{opacity:.35; cursor:default}
         <button id="btnRegions" type="button" aria-pressed="false" title="Show each region in its own colour, without the surcharge colours" hidden>Regions</button>
       </div>
     </div>
+    <div id="notesBar"><button id="btnNotes" type="button" aria-expanded="false" aria-controls="notes" title="What this step assumes, its sources, its limits and what comes next">Behind this step<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div id="notes" hidden></div>
   </div>
 </section>
 
 <div id="pop" hidden></div>
 
-<a id="btnExplore" href="explore.html" title="Every weather case, rule, region and sensor method on these regions, in Sim 3.5's full view">Explore</a>
+<div id="corner">
+  <a id="btnExplore" href="explore.html" title="Every weather case, rule, region and sensor method on these regions, in Sim 3.5's full view">Explore</a>
+  <button id="themeBtn" type="button" title="Switch between the dark and the light theme">Light</button>
+</div>
 
 <script src="../simulation3/data/catchment.js?v=9"></script>
 <script src="../simulation3/data/growth.js?v=9"></script>
 <script src="data/regions.js?v=1"></script>
 <script src="../simulation3/data/index.js?v=9"></script>
-<script src="../simulation35/growth_3d.js?v=3"></script>
-<script src="data/sim4.js?v=7"></script>
-<script src="sim4_story.js?v=6"></script>
+<script src="../simulation35/growth_3d.js?v=32"></script>
+<script src="data/sim4.js?v=8"></script>
+<script src="sim4_story.js?v=8"></script>
 <script type="module">
   Sim4.init();
 </script>

@@ -84,7 +84,7 @@ function connect(url) {
   ok('the map fills the whole screen', layout.full);
   const clutter = await ev(`[...document.querySelectorAll('.labels .lbl.scale,.labels .lbl.outlet')].filter(e=>getComputedStyle(e).display!=='none').length`);
   ok("the map code's own scale and outlet labels are hidden", clutter === 0, clutter);
-  ok('the only controls are Back, Next, Hide, Behind this step and Explore', layout.controls.sort().join() === 'back,btnExplore,btnFold,btnNotes,next', layout.controls.join());
+  ok('the only controls are Back, Next, Behind this step, Explore and Light or Dark (no Hide)', layout.controls.sort().join() === 'back,btnExplore,btnNotes,next,themeBtn', layout.controls.join());
   ok('the card leaves the map clear', layout.cardShare < .22, pc(layout.cardShare));
 
   // Walk every step with the Next button
@@ -96,6 +96,17 @@ function connect(url) {
     ok(`step ${s.id}: under 65 words`, s.body.split(/\s+/).length <= 65, s.body.split(/\s+/).length);
     const sl = await ev('document.querySelector("#homes").getClientRects().length>0');
     ok(`step ${s.id}: slider only on step 3`, sl === s.slider);
+    // 18 Nov: the step's text, its slider and its legend show as the step opens, with every fold shut, never inside one.
+    const vis = await ev(`(()=>{const card=document.querySelector('#card').getBoundingClientRect(), n=document.querySelector('#notes');
+      const seen=e=>{if(!e||!e.getClientRects().length)return false;const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&r.top>=card.top-1&&r.bottom<=Math.min(card.bottom,innerHeight)+1&&r.left>=0&&r.right<=innerWidth+1&&!n.contains(e)};
+      return {notesShut:n.hidden, body:seen(document.querySelector('#stepBody')), slider:seen(document.querySelector('#homes')),
+        legend:[...document.querySelectorAll('#legend span')].map(seen), legendN:document.querySelectorAll('#legend span').length}})()`);
+    const wantLegend = (await ev(`(window.SIM4.steps[${i}].legend||[]).length`));
+    ok(`step ${s.id}: text${s.slider ? ', slider' : ''} and legend in view with the folds shut`, vis.notesShut && vis.body && (!s.slider || vis.slider) && vis.legend.every(Boolean) && (!wantLegend || vis.legendN > 0), JSON.stringify(vis));
+    // 18 Nov: wide and short. At 1500 px the card is at least 1200 px wide, at most 185 px tall with the fold shut, and
+    // needs no scrollbar, so the map shows below it.
+    const size = await ev(`(()=>{const c=document.querySelector('#card'),r=c.getBoundingClientRect();return{w:Math.round(r.width),h:Math.round(r.height),scroll:c.scrollHeight>c.clientHeight+1}})()`);
+    ok(`step ${s.id}: card wide and short (w >= 1200, h <= 185, no scrollbar)`, size.w >= 1200 && size.h <= 185 && !size.scroll, JSON.stringify(size));
     const sens = await ev('Sim4.sensors()');
     ok(`step ${s.id}: ${s.k} sensors on the map`, sens.length === s.k && (!s.k || sens.join() === L(s.k).chosen.join()), sens.join());
     if (s.slider) await wait(4000);
@@ -235,12 +246,66 @@ function connect(url) {
   ok('no client or suburb name in the words', !/SA Water|Walkerville|Rostrevor|Stonyfell|Woodforde|Malvern|Bolivar/i.test(all));
   ok('no private source: no meeting date, prices called assumed', !/28 Sep|confidential/i.test(all) && /assumed/.test(all));
 
+  // Light or dark (18 Nov): Explore's switch, its wording, and its storage key, so the choice carries between the two pages
+  const px = async (x, y) => {   // one screen pixel, read from a 1x1 PNG
+    const r = await c.send('Page.captureScreenshot', { format: 'png', clip: { x, y, width: 1, height: 1, scale: 1 } });
+    const b = Buffer.from(r.data, 'base64'); let o = 8, idat = [];
+    while (o < b.length) { const n = b.readUInt32BE(o), t = b.toString('ascii', o + 4, o + 8); if (t === 'IDAT') idat.push(b.slice(o + 8, o + 8 + n)); o += 12 + n; }
+    const raw = require('zlib').inflateSync(Buffer.concat(idat)); return [raw[1], raw[2], raw[3]];
+  };
+  const lum = ([r, g, b]) => (r * 299 + g * 587 + b * 114) / 1000;
+  const theme = () => ev('document.documentElement.dataset.theme');
+  const cssOf = (sel, prop) => ev(`getComputedStyle(document.querySelector(${JSON.stringify(sel)}))[${JSON.stringify(prop)}]`);
+  await ev('localStorage.removeItem("sim4Theme")');
+  await load('#step=4');
+  const ground = [Math.round(innerW() * 0.06), 860];
+  function innerW() { return 1500; }
+  ok('theme: dark by default, and the button offers Light', await theme() === 'dark' && await txt('#themeBtn') === 'Light' && /light theme/.test(await ev('document.querySelector("#themeBtn").title')));
+  const darkGround = await px(...ground), darkCard = await cssOf('#card', 'backgroundColor');
+  await click('#themeBtn'); await wait(700);
+  const lightGround = await px(...ground);
+  ok('theme: a real click turns it light, and the button then offers Dark', await theme() === 'light' && await txt('#themeBtn') === 'Dark' && /dark theme/.test(await ev('document.querySelector("#themeBtn").title')));
+  ok("theme: kept under Explore's own key", await ev('localStorage.getItem("sim4Theme")') === 'light' && /localStorage\.getItem\("sim4Theme"\)/.test(fs.readFileSync(path.join(PUB, 'simulation4/explore_ui.js'), 'utf8')));
+  ok("theme: the map's ground turns light", lum(darkGround) < 60 && lum(lightGround) > 200, darkGround + ' -> ' + lightGround);
+  ok('theme: the card, its text and the fold turn light', (await cssOf('#card', 'backgroundColor')) !== darkCard && lum((await cssOf('#stepBody', 'color')).match(/\d+/g).map(Number)) < 80);
+  const pills = await ev(`[...document.querySelectorAll('.labels .lbl.region')].filter(e=>e.style.display!=='none').map(e=>getComputedStyle(e).color)`);
+  ok("theme: the map's region labels keep dark text on their colour", pills.length > 0 && pills.every(c => c === 'rgb(4, 20, 10)'), pills.slice(0, 3).join(' '));
+  await load('#step=3&still=1');
+  ok('theme: a new visit keeps the choice', await theme() === 'light' && await txt('#themeBtn') === 'Dark');
+  {
+    await c.send('Page.navigate', { url: `http://127.0.0.1:${HTTP}/simulation4/explore.html` });
+    let et = null;
+    for (let i = 0; i < 240 && !et; i++) { await wait(250); et = await ev('document.querySelector("#sensorList") && document.querySelector("#sensorList").innerText.length > 50 ? document.documentElement.dataset.theme : null'); }
+    ok("theme: Explore opens in the story's choice", et === 'light', et);
+  }
+  await load('#step=3&still=1');
+  const riseDot = await ev(`[...document.querySelectorAll('#legend span')].filter(s=>/Rises/.test(s.textContent)).map(s=>getComputedStyle(s.querySelector('i')).backgroundColor)[0]`);
+  ok("theme: the legend's rise colour is the light map's", riseDot === 'rgb(201, 154, 0)', riseDot);
+  await click('#btnNotes'); await wait(300);
+  ok('theme: the fold and its tables are light', lum((await cssOf('#notes dd', 'color')).match(/\d+/g).map(Number)) < 80);
+  await load('#step=4&theme=dark');
+  ok('theme: #theme=dark in the link wins over the stored choice', await theme() === 'dark' && await txt('#themeBtn') === 'Light');
+  await click('#themeBtn'); await wait(300); await click('#themeBtn'); await wait(300);
+  ok('theme: switching back to dark is kept', await ev('localStorage.getItem("sim4Theme")') === 'dark' && await theme() === 'dark');
+  ok('theme: no exception while switching', c.errors.length === 0, c.errors[0]);
+
   // Narrow screen
   await c.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 780, deviceScaleFactor: 1, mobile: true });
   await load('#step=5b');
   const narrow = await ev(`(()=>{const r=document.querySelector('#card').getBoundingClientRect();return{fit:r.left>=0&&r.right<=innerWidth,bottom:r.bottom,h:innerHeight,scroll:document.documentElement.scrollWidth<=innerWidth}})()`);
   ok('phone width: the card fits', narrow.fit && narrow.scroll);
   ok('phone width: the card leaves map to see', narrow.bottom < narrow.h * .62, Math.round(narrow.bottom));
+  const corners = await ev(`(()=>{const c=document.querySelector('#card').getBoundingClientRect();return ['#btnExplore','#themeBtn'].map(s=>document.querySelector(s).getBoundingClientRect()).map(r=>({in:r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight,clear:r.top>=c.bottom}))})()`);
+  ok("phone width: Explore and Light or Dark fit, clear of the card", corners.every(x => x.in && x.clear), JSON.stringify(corners));
+  const phoneMiss = [];
+  for (const sx of steps) {
+    await load('#step=' + sx.id + '&still=1');
+    const v = await ev(`(()=>{const card=document.querySelector('#card').getBoundingClientRect(), n=document.querySelector('#notes');
+      const seen=e=>{if(!e||!e.getClientRects().length)return false;const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&r.top>=card.top-1&&r.bottom<=Math.min(card.bottom,innerHeight)+1&&r.left>=0&&r.right<=innerWidth+1&&!n.contains(e)};
+      return n.hidden&&seen(document.querySelector('#stepBody'))&&(document.querySelector('#sliderRow').hidden||seen(document.querySelector('#homes')))&&[...document.querySelectorAll('#legend span')].every(seen)})()`);
+    if (!v) phoneMiss.push(sx.id);
+  }
+  ok('phone width: every step shows its text, slider and legend with the folds shut', phoneMiss.length === 0, phoneMiss.join());
   await shot('phone_5b');
 
   ok('no exception in the whole run', c.errors.length === 0, c.errors[0]);

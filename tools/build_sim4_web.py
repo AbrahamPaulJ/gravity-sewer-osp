@@ -105,8 +105,8 @@ def steps(nm, reg, ctx):
     where = ", often downstream where their flow joins the main" if down else ""
     s3 = (f"Each region's 2041 homes are added on their own. {listing(up)} raise the water 10 mm or more in at least one manhole{where}; {listing(flat)} do not. "
           if up and flat else f"Each region's 2041 homes are added on their own. {'Every region raises' if up else 'No region raises'} the water 10 mm or more in any manhole{where}. ")
-    s3 += ("At full build-out, no manhole newly surcharges and " if not nsur else
-           f"At full build-out, {nsur} manhole{'' if nsur == 1 else 's'} newly surcharge{'s' if nsur == 1 else ''} and ")
+    s3 += ("At full build-out on a design wet day, no manhole newly surcharges and " if not nsur else
+           f"At full build-out on a design wet day, {nsur} manhole{'' if nsur == 1 else 's'} newly surcharge{'s' if nsur == 1 else ''} and ")
     s3 += "none spills." if not nspill else f"{nspill} spill{'s' if nspill == 1 else ''}."
     leave_bands = {tri[i]["band"] for i in by("leave")}
     why_leave = "room left" if leave_bands <= {"room left"} else "already over before growth" if leave_bands <= {"already over"} else "room left, or already over before growth"
@@ -117,7 +117,7 @@ def steps(nm, reg, ctx):
         parts.append(f"Watch {listing(by('watch'))}: could go either way.")
     if by("leave"):
         parts.append(f"Leave {listing(by('leave'))}: {why_leave}.")
-    s4 = " ".join(parts) + " Not monitoring is a valid answer, if a design wet day is the right test."
+    s4 = " ".join(parts) + " Leaving a region unmonitored is a valid answer, if a design wet day is the right test and growth comes one region at a time."
     k0, nd = len(seed), nm["universe"][DESIGN]
     L0 = lad[k0]
     see = f"see{'s' if k0 == 1 else ''} all {nd}" if L0["design_wet"] >= 1 - 1e-9 else f"see{'s' if k0 == 1 else ''} {pct(L0['design_wet'])} of the {nd}"
@@ -209,8 +209,9 @@ def tables(nm, ctx):
               [[r["k"], r["added"], wa(r["worst"], r["average"]), pct(r["design_wet"]), wa(r["worst_25"], r["average_25"]),
                 f"{r['warned_target']} of {wt}", wa(r["exact_worst"], r["exact_average"]), kdollars(r["cost"])] for r in nm["ladder"]]),
         f"Each row adds one sensor to the row above. Target regions, build-out up to 100%, {ctx['nwet']} wet cases, 10 mm rule unless stated. "
-        + (f"At least {tied} {word(rec)}-sensor sets tie for best, so read this as one good choice, not the only one."
-           if tied > 1 else f"No other {word(rec)}-sensor set found ties with it."))
+        + (f"Among sets that keep {keep_phrase(ctx)}, at least {tied} {word(rec)}-sensor sets tie for best, so read this as one good choice, not the only one. "
+           if tied > 1 else f"No other {word(rec)}-sensor set that keeps {keep_phrase(ctx)} ties with it. ")
+        + "The exact solver column drops that condition, so its sets are not nested.")
     sw = nm["swaps"][str(rec)]
     T["standins"] = figure(
         f"Stand-ins for the {word(rec)}",
@@ -310,7 +311,7 @@ def notes(nm, reg, ctx):
                    f"{cap['draws']} draws, and left when at most {pct(ctx['band_lo'])}; each draw puts every manhole's starting level off by up to "
                    f"{cap['baseline_error']} of its pipe height.",
         "source": f"The {lim} limit, the {pct(ctx['band_hi'])} and {pct(ctx['band_lo'])} cut-offs and the error: team assumption.",
-        "limit": f"Judged on one design day: bands change with the weather and the limit. Leave depends on Design wet. {keeps}",
+        "limit": f"Judged on one design day: bands change with the weather and the limit. Leave depends on Design wet. {keeps}" + suburb_phrase(cap, lim),
         "next": "The utility's own pipe ratings, and triage across all weather.",
         "figures": [T["regions"]]}
     N["5a"] = {
@@ -325,9 +326,12 @@ def notes(nm, reg, ctx):
                    f"{ctx['nwet']} wet cases, plus the share of overloads warned. A warning is a rise one build-out step before the first new surcharge. "
                    "Sensors never fail.",
         "source": f"Sensors do fail: in a real deployment, {DO_SENSORS[0]} of {DO_SENSORS[1]} level sensors stayed in service over about a year (Do et al. 2023).",
-        "limit": f"Many sets tie on these cases: at least {nm['tied_best_sets']} {word(rec)}-sensor sets score the same; this one wins on the stricter 25 mm rule. "
+        "limit": f"Many sets tie on these cases: among sets that keep {keep_phrase(ctx)}, at least {nm['tied_best_sets']} {word(rec)}-sensor sets score the same; "
+                 f"this one wins on the stricter 25 mm rule. {exact_phrase(ctx, rec)} "
                  "It is not chosen for Dry, or for 150% and 300% build-out. "
-                 f"One simulated run moves a weather case's score by {round(100 / max(u))} to {round(100 / min(u))} points: read smaller differences as noise.",
+                 f"One simulated run moves a weather case's score by {round(100 / max(u))} to {round(100 / min(u))} points: read smaller differences as noise. "
+                 f"Chosen for infill: on a new estate joining at the network's edge, these {word(rec)} see {pct(ctx['gf_cover']['average'])} of growth runs on average "
+                 f"and {pct(ctx['gf_cover']['worst'])} in the worst wet case (Explore, Greenfield).",
         "next": "A spare sensor per region, for failures.",
         "figures": [T["ladder"], T["standins"], T["held"]]}
     N["6"] = {
@@ -343,6 +347,39 @@ def notes(nm, reg, ctx):
 
 def word(n):
     return WORDS[n] if n is not None and 0 <= n < len(WORDS) else str(n)
+
+
+def suburb_phrase(cap, lim):
+    """Growth in every region at once (sim35_capacity.py's whole-suburb runs), on the design day at the pipe limit."""
+    x = cap["whole_suburb_bands"][DESIGN_TAG]
+    b = x[str(lim)]
+    if b["band"] == "runs out":
+        return (f" Growth in every region at once is different: the whole suburb's {x['share_100']:.0f} homes by 2041 reach the pipe limit in "
+                f"{'every draw' if b['p_runs_out'] >= 1 else pct(b['p_runs_out']) + ' of draws'}, first at {b['homes_p10']} to {b['homes_p90']} homes, "
+                "because flows from several regions add up in the shared mains.")
+    if b["band"] == "uncertain":
+        return f" Growth in every region at once could go either way: the whole suburb reaches the pipe limit within its 2041 homes in {pct(b['p_runs_out'])} of draws."
+    return ""
+
+
+def keep_phrase(ctx):
+    """What every tied set has in common: the Design wet sensor the ladder starts from (see sim4_numbers.design_seeds)."""
+    d = ctx["design"]
+    if d["full"] == list(ctx["seed"]):
+        return f"step 5a's sensor, the only manhole that sees all {d['n']} design wet runs alone"
+    return f"a sensor that sees all {d['n']} design wet runs" if len(ctx["seed"]) == 1 else f"a set that sees all {d['n']} design wet runs"
+
+
+def exact_phrase(ctx, rec):
+    """The exact solver's set at the recommended count, against the nested list, from the runs."""
+    d = ctx["design"]
+    head = (f"Without that condition the best {word(rec)} reach {pct(d['exact_worst'])} worst and {pct(d['exact_average'])} average "
+            "(Explore, Exact optimum)")
+    if d["exact_together"] < d["n"]:
+        return head + f", but together they see {d['exact_together']} of the {d['n']} design wet runs, so they do not answer step 5a."
+    if d["exact_best_alone"] < d["n"]:
+        return head + f", but no one of them sees all {d['n']} design wet runs alone, so they cannot grow from step 5a's sensor."
+    return head + "."
 
 
 # ------------------------------------------------------------------------------------------------ the redo guide
@@ -536,6 +573,45 @@ def compare(nm, old, ctx):
 
 
 # ------------------------------------------------------------------------------------------------ build
+def design_facts(nm, reg, chambers):
+    """Who sees the Design wet growth runs (target regions, up to 100%, a 10 mm rise), counted from the runs: the
+    manholes that see all of them alone, and how the exact solver's set at the recommended count does on them."""
+    tg = {i for i, r in enumerate(reg["regions"]) if r["id"] in nm["targets"]}
+    ok = {s for s, f in enumerate(reg["ladder"]) if f <= 1 + 1e-9}
+    runs = [{j for j, v in x["rise"] if v >= 10} for x in reg["rows"][DESIGN_TAG] if x["r"] in tg and x["s"] in ok]
+    runs = [r for r in runs if r]
+    assert len(runs) == nm["universe"][DESIGN], "Design wet runs do not match numbers.json: rebuild the results"
+    count = lambda names: sum(1 for r in runs if any(chambers.index(m) in r for m in names))
+    full = [chambers[j] for j in sorted({j for r in runs for j in r}) if count([chambers[j]]) == len(runs)]
+    ex = next(r for r in nm["ladder"] if r["k"] == nm["recommend"])
+    return {"n": len(runs), "full": full, "exact": ex["exact_set"], "exact_worst": ex["exact_worst"], "exact_average": ex["exact_average"],
+            "exact_together": count(ex["exact_set"]), "exact_best_alone": max(count([m]) for m in ex["exact_set"])}
+
+
+def greenfield_cover(sensors, reg, chambers, path=None):
+    """The share of detectable new-estate growth runs (a 10 mm rise at some manhole) that the sensors see, per wet case,
+    from data/greenfield.js: the same score Explore's Greenfield view gives the story's list (greenfield_runs.js)."""
+    gf = read_js(path or os.path.join(ROOT, "simulation4", "data", "greenfield.js"))
+    have = set(chambers)
+    S = set(sensors)
+    per = []
+    for c in reg["cases"]:
+        if c["ii"] <= 0:
+            continue
+        det = []
+        for s in gf["sites"]:
+            for r in (s["cases"].get(c["tag"]) or {}).get("rows", []):
+                g = r.get("greenfield")
+                if not g or not g.get("rise_mm"):
+                    continue
+                tip = {m for m, v in g["rise_mm"].items() if m in have and v >= 10}
+                if tip:
+                    det.append(tip)
+        if det:
+            per.append(sum(1 for t in det if t & S) / len(det))
+    return {"worst": min(per), "average": sum(per) / len(per), "cases": len(per)}
+
+
 def greenfield_joins():
     """(connections, candidates) from the greenfield plan written by sim4_greenfield.py."""
     with open(GF_PLAN, encoding="utf-8") as f:
@@ -570,9 +646,12 @@ def build(numbers, regions, handpicked=HANDPICKED, floats=FLOAT, greenfield=None
     seed_k = next(f["1.0"] for f in nm["fewest"] if f["scope"] == "Design wet only")
     overlay = [r for r in reg["regions"] if r.get("overlay")]
     geo = read_js(os.path.join(ROOT, "simulation3", "data", "catchment.js"))
+    chambers = read_js(os.path.join(ROOT, "simulation3", "data", "growth.js"))["chambers"]
     hi, lo = band_cuts()
+    rec_set = next(r for r in nm["ladder"] if r["k"] == nm["recommend"])["chosen"]
     ctx = {"seed": nm["ladder"][seed_k - 1]["chosen"] if seed_k else lad1["chosen"],
-           "nwet": len(nm["universe"]), "pipes": geo["nPipes"], "manholes": len(read_js(os.path.join(ROOT, "simulation3", "data", "growth.js"))["chambers"]),
+           "design": design_facts(nm, reg, chambers), "gf_cover": greenfield_cover(rec_set, reg, chambers),
+           "nwet": len(nm["universe"]), "pipes": geo["nPipes"], "manholes": len(chambers),
            "draws": int(source_const("sim4_numbers.py", "DRAWS")), "anchor": round(reg["anchor"]), "bisection": any("bisection" in r or r.get("overlay") for r in reg["regions"]),
            "nparts": len(reg["regions"]) - len(overlay), "overlay": [f"{r['id']}, the {r['name'].split(' (')[0]}" for r in overlay],
            "overlay_ids": [r["id"] for r in overlay], "float": fl,
@@ -593,7 +672,17 @@ def build(numbers, regions, handpicked=HANDPICKED, floats=FLOAT, greenfield=None
            # count on that test (10 mm rule), so its Exact optimum there is the story's, not the broader test's.
            "explore": {"ladder": [r["chosen"] for r in sorted(nm["ladder"], key=lambda r: r["k"])],
                        "exact": [r["exact_set"] for r in sorted(nm["ladder"], key=lambda r: r["k"])],
-                       "targets": nm["targets"], "recommend": rec},
+                       "targets": nm["targets"], "recommend": rec,
+                       # The story's own tables, so Explore's Results tabs show the story's figures on the story's test.
+                       "fewest": [{k: f[k] for k in ("scope", "0.8", "0.9", "1.0", "ladder_0.8", "ladder_0.9", "ladder_1.0")} for f in nm["fewest"]],
+                       "heldOut": [{"k": h["k"], "weather": h["weather_runs"]} for h in nm["held_out"]],
+                       "heldOutByCase": nm["held_out_by_case"],
+                       "warnTotal": nm["warn_universe"]["target"],
+                       "rungs": [{"k": r["k"], "worst": r["worst"], "average": r["average"], "warned": r["warned_target"]} for r in sorted(nm["ladder"], key=lambda r: r["k"])],
+                       "price": nm["price"],
+                       "float": [{"budget": r["budget"], **{side: {key: r[side][key] for key in ("level", "float", "cost", "worst", "average", "unseen_weather")}
+                                                            for side in ("level", "float", "mix")}} for r in fl["budgets"]],
+                       "floatMargin": fl["scope"]["float_margin_mm"]},
            "stepCount": 6}
     return (HEADER + "window.SIM4 = " + json.dumps(out, separators=(",", ":"), ensure_ascii=False) + ";\n",
             redo_page(nm, st, ctx))
