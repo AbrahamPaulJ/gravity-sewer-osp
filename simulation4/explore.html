@@ -151,7 +151,15 @@ h4{margin:14px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.
   background:var(--panel-2); font-size:12.5px}
 #sensorBox h4{margin-top:0}
 #objKnob,#methKnob{margin-top:8px}
-#curve{position:relative; margin-top:10px; --worst:#d95926; --mean:#3987e5; --greedy:#8b949e; --selset:#2ef56b}
+#curve{position:relative; margin-top:10px; --c-nested:#2ef56b; --c-exact:#e8743f; --c-greedy:#58a6ff; --c-warn:#e3b341; --c-risk:#db61a2}
+html[data-theme="light"] #curve{--c-nested:#1a7f37; --c-exact:#c4432b; --c-greedy:#0969da; --c-warn:#9a6700; --c-risk:#bf3989}
+#curve .cv-other{opacity:.38}
+#curve .lg span.on{color:var(--ink); font-weight:600}
+#curve .lg span:not(.on){opacity:.65}
+/* The selected method's lines blink three times when the method changes, then stay bold. */
+#curve .cv-sel.pulse{animation:cvPulse .45s ease-in-out 3}
+@keyframes cvPulse{0%,100%{opacity:1} 50%{opacity:.12}}
+@media (prefers-reduced-motion:reduce){#curve .cv-sel.pulse{animation:none}}
 #curveNote{margin:0 0 4px; font-size:11px}
 #methNote{margin:8px 0 0; font-size:11.5px}
 #curve svg{display:block; width:100%; height:auto; overflow:visible}
@@ -177,6 +185,8 @@ h4{margin:14px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.
 table.sm{width:100%; border-collapse:collapse; font-size:11.5px; margin-top:6px}
 table.sm th,table.sm td{padding:3px 4px; border-top:1px solid var(--line); text-align:right; white-space:normal; vertical-align:top; overflow-wrap:normal}
 table.sm td.hi,table.sm td.never,table.sm td:last-child{white-space:nowrap}
+table.sm tr.outside td{opacity:.5}
+#seenScope{margin:4px 0 0; font-size:11px}
 table.sm td:first-child{white-space:normal}
 table.sm th:first-child,table.sm td:first-child{text-align:left}
 table.sm th{color:var(--faint); font-weight:500; border-top:0}
@@ -503,7 +513,12 @@ html[data-theme="light"] .tab{background:#ffffffee}
 #vexagBox{flex:none; display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); padding:0 4px 0 12px; white-space:nowrap}
 #vexagBox input{width:96px; accent-color:var(--accent)}
 #vexagVal{min-width:2.4em; color:var(--ink); font-variant-numeric:tabular-nums}
-#themeBtn{flex:none; height:32px; padding:0 12px; font-size:12.5px; margin-left:8px}
+#themeBtn{flex:none; width:32px; height:32px; padding:0; margin-left:8px; display:grid; place-items:center}
+#themeBtn svg{width:17px; height:17px}
+#themeBtn .moon, html[data-theme="light"] #themeBtn .sun{display:none}
+html[data-theme="light"] #themeBtn .moon{display:block}
+#methSay{margin:6px 0 2px; font-size:11.5px; line-height:1.45}
+#methSay b{color:var(--ink); font-weight:600}
 </style>
 <!-- live presentation sync -->
 <script>(function(){var l=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),s=document.createElement("script");s.src=(l?"http://localhost:8787":"https://capstone-live.sidcode3535.workers.dev")+"/present.js";s.defer=true;document.head.appendChild(s)})();</script>
@@ -581,15 +596,16 @@ html[data-theme="light"] .tab{background:#ffffffee}
       <p class="quiet" id="scopeNote"></p>
     </div>
     <div class="knob x" id="methKnob">
-      <button data-m="story" title="The story's sensors, in its order: the recommendation, so this page and the story name the same manholes">Sim 4's list</button>
+      <button data-m="story" title="The story's sensors, in its order: the recommendation, so this page and the story name the same manholes. Starts from the design wet day's sensor and grows one at a time, keeping the best 1,500 sets, so no sensor moves as more are added">Nested beam search</button>
       <button data-m="warn" id="methWarn" title="The best set of this size for warning at least one build-out step before the first new surcharge">Warn before surcharge</button>
       <button data-m="exact" id="methExact" title="The best set of this size, solved exactly (integer program)">Exact optimum</button>
       <button data-m="greedy" title="One sensor at a time, each the best addition to the ones before">Greedy, one at a time</button>
       <button data-m="risk" id="methRisk" hidden title="Every scenario weighted by severity x occurrence (Kimbrough 2019): the share of total risk noticed, not the share of scenarios">Risk-weighted</button>
     </div>
+    <p class="x quiet" id="methSay"></p>
     <label class="fld" for="kRange">Number of sensors: <b id="kVal"></b></label>
     <input type="range" id="kRange" min="1" max="10" step="1">
-    <p class="x quiet" id="methNote" hidden>A new estate: Sim 4's list, or the greenfield runs' greedy order as a comparison. The exact solver has run on infill growth only.</p>
+    <p class="x quiet" id="methNote" hidden>A new estate: the nested beam search list, or the greenfield runs' greedy order as a comparison. The exact solver has run on infill growth only.</p>
     <div class="knob x" id="objKnob">
       <button data-o="worst" title="Each sensor is the one that most raises the WORST case">Best worst case</button>
       <button data-o="mean" title="Each sensor is the one that most raises the AVERAGE over the cases">Best average</button>
@@ -619,7 +635,7 @@ html[data-theme="light"] .tab{background:#ffffffee}
       <button id="btn-info" class="info" title="What this model is and the numbers behind it">About</button>
       <button id="btn-full" title="Full screen" aria-label="Full screen"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg></button>
     </div>
-    <button id="themeBtn" title="Switch between the dark and the light theme">Light</button>
+    <button id="themeBtn" aria-label="Switch to the light theme" title="Switch to the light theme"><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z" fill="currentColor"/></svg></button>
   </nav>
   </div>
   <div id="stageWrap">
@@ -722,17 +738,17 @@ html[data-theme="light"] .tab{background:#ffffffee}
 <script src="data/osm_buildings.js?v=1"></script>
 <script src="data/msft_buildings.js?v=1"></script>
 <script src="footprints.js?v=1"></script>
-<script src="../simulation35/growth_3d.js?v=32"></script>
+<script src="../simulation35/growth_3d.js?v=33"></script>
 <script src="../simulation3/osp_core.js?v=9"></script>
 <script src="../simulation3/placement.js?v=9"></script>
 <script src="data/explore.js?v=6"></script>
-<script src="data/sim4.js?v=8"></script>
+<script src="data/sim4.js?v=9"></script>
 <script src="data/greenfield.js?v=2"></script>
 <script src="data/estates.js?v=7"></script>
 <script src="greenfield_runs.js?v=3"></script>
 <script src="../simulation35/data/room.js?v=1"></script>
 <script src="../simulation35/room_calc.js?v=2"></script>
-<script src="explore_ui.js?v=33"></script>
+<script src="explore_ui.js?v=34"></script>
 <script type="module">
   Sim35UI.init();
 </script>

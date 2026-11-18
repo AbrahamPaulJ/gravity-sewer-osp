@@ -181,6 +181,7 @@ function connect(url) {
   }
   await load('#step=5b');
   const pops = {};
+  const COVERED = `(()=>{const b=document.querySelector('#pop');if(b.hidden)return[];const r=b.getBoundingClientRect();return Sim4.sensors().filter(m=>{const p=Growth3D.screenOf(m);return p&&p.x>r.left-6&&p.x<r.right+6&&p.y>r.top-6&&p.y<r.bottom+6})})()`;
   for (const [i, n] of L(5).chosen.entries()) {
     // Close the last popup first: it can sit over the next sensor (see below), and a click on it is not a click on the map.
     await c.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
@@ -193,14 +194,37 @@ function connect(url) {
     ok(`5b: ${n} quotes what is lost`, t.includes(`from ${pc(L(5).worst)} to ${pc(sw.without_worst)}`), t.match(/Worst.*/)?.[0]);
     const r = await ev(`(()=>{const r=document.querySelector('#pop').getBoundingClientRect(),c=document.querySelector('#card').getBoundingClientRect();return{on:r.left>=0&&r.top>=0&&r.right<=innerWidth&&r.bottom<=innerHeight}})()`);
     ok(`5b: ${n} popup stays on screen`, r.on);
-    const covered = await ev(`(()=>{const r=document.querySelector('#pop').getBoundingClientRect();return Sim4.sensors().filter(m=>{const p=Growth3D.screenOf(m);return p&&p.x>r.left&&p.x<r.right&&p.y>r.top&&p.y<r.bottom})})()`);
-    // Known since PR #14's regions: S1's neighbours leave no side free, so its popup falls back to the right and covers S2
-    // and S5 (the same on the 12 Nov page). Reported, not failed.
-    if (covered.length) console.log(`  note  5b: ${n} popup covers ${covered.join(', ')} (no free side; same before 14 Nov)`);
-    else ok(`5b: ${n} popup hides no sensor`, true);
+    // 19 Nov: the box docks in a corner free of sensors, so it never covers one (before, S1's box covered S2 and S5).
+    const covered = await ev(COVERED);
+    ok(`5b: ${n} popup hides no sensor`, covered.length === 0, covered.join());
     await shot(`popup_5_${i + 1}`);
   }
   const [s1, s2, s3, s4, s5] = L(5).chosen;
+  // Abraham's case (19 Nov): S1, then S3, then S1, each a real click on the map with the box left open, each landing.
+  {
+    await c.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await c.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }); await wait(200);
+    const seq = [], pos = [];
+    for (const n of [s1, s3, s1]) {
+      const p = await ev(`Growth3D.screenOf(${JSON.stringify(n)})`);
+      await clickAt(p.x, p.y);
+      for (let i = 0; i < 14 && !(await txt('#pop')).includes(n); i++) await wait(150);
+      seq.push((await txt('#pop')).includes(n) && (await ev(COVERED)).length === 0);
+      pos.push(await ev(`(()=>{const r=document.querySelector('#pop').getBoundingClientRect();return Math.round(r.left)+','+Math.round(r.top)})()`));
+    }
+    ok('5b: S1, S3, S1 clicked in turn with the box open: every click lands, no sensor covered', seq.every(Boolean), seq.join());
+    ok('5b: the box swaps its words in place (it does not move between sensors)', pos[0] === pos[1] && pos[1] === pos[2], pos.join(' / '));
+    const pinSeq = [];
+    for (const lbl of ['S3', 'S1', 'S3']) {
+      const n = L(5).chosen[+lbl.slice(1) - 1];
+      const p = await ev(`(()=>{const e=[...document.querySelectorAll('.labels .lbl.sensor')].find(e=>e.textContent===${JSON.stringify(lbl)});const r=e.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+      await clickAt(p.x, p.y);
+      for (let i = 0; i < 10 && !(await txt('#pop')).includes(n); i++) await wait(150);
+      pinSeq.push((await txt('#pop')).includes(n));
+    }
+    ok('5b: the pins themselves are clickable (S3, S1, S3)', pinSeq.every(Boolean), pinSeq.join());
+    await shot('popup_dock_s1_s3_s1');
+  }
   ok('every 5b popup carries its data, word for word', D.popups['5'].every(p => pops[p.name].includes(p.listens) && pops[p.name].includes(p.reacts) && pops[p.name].includes(p.lost) && (!p.note || pops[p.name].includes(p.note))));
   ok('a sensor whose region needs none says it is there for flow passing through', D.popups['5'].filter(p => /flow passing through/.test(p.note)).every(p => /flow passing through/.test(pops[p.name])));
   ok('wetter-weather sensors say so', D.popups['5'].filter(p => /wetter weather only/i.test(p.listens)).every(p => /wetter weather only/i.test(pops[p.name])) && D.popups['5'].some(p => /wetter weather only/i.test(p.listens)));
@@ -238,6 +262,25 @@ function connect(url) {
   const n5 = await txt('#notes');
   ok('5b: the fold says many sets tie, the 25 mm rule picks this one, not chosen for Dry or 150%/300%', /tie/.test(n5) && /25 mm/.test(n5) && /150%/.test(n5) && /300%/.test(n5) && /Dry/.test(n5), n5.slice(0, 160));
   await shot('fold_5b');
+  {
+    await load('#step=5b');
+    const W = D.steps.find(s => s.id === '5b').why, R5 = L(REC);
+    ok('5b: one visible line says why the nested list, not the exact best set', /nested list, not the exact best/.test(await txt('#stepBody')));
+    ok('5b: "Why not the exact best set?" is a button closed by default', await txt('#btnWhy') === 'Why not the exact best set?' && await ev('document.querySelector("#why").hidden') && await ev('document.querySelector("#btnWhy").getAttribute("aria-expanded")') === 'false');
+    const card0 = await ev('document.querySelector("#card").getBoundingClientRect().height');
+    const shift0 = await ev('getComputedStyle(document.documentElement).getPropertyValue("--map-shift")');
+    await click('#btnWhy'); await wait(300);
+    const w = await txt('#why');
+    ok('5b: a real click opens it, with both sets side by side', !(await ev('document.querySelector("#why").hidden')) && w.includes(R5.chosen.join(', ')) && w.includes(R5.exact_set.join(', ')), w.slice(0, 120));
+    ok('5b: its figures are numbers.json\'s (worst, average, warned)', w.includes(pc(R5.worst)) && w.includes(pc(R5.exact_worst)) && w.includes(pc(R5.average)) && w.includes(`${R5.warned_target} of ${X.warn_universe.target}`));
+    ok('5b: it leads with the reason: bought in stages without moving a sensor', /bought in stages without moving a sensor/.test(W.intro) && W.intro.indexOf('stages') < W.intro.indexOf(pc(R5.exact_worst)));
+    ok('5b: the open fold lies over the map rather than moving it', await ev('getComputedStyle(document.documentElement).getPropertyValue("--map-shift")') === shift0, shift0);
+    await shot('why_5b');
+    await click('#btnWhy'); await wait(200);
+    ok('5b: a second click closes it', await ev('document.querySelector("#why").hidden') && Math.abs(await ev('document.querySelector("#card").getBoundingClientRect().height') - card0) < 2);
+    await load('#step=5a');
+    ok('5a: no such button on other steps', await ev('document.querySelector("#btnWhy").hidden'));
+  }
 
   // Words anywhere on the page
   const all = await ev(`document.querySelector('#card').innerText+document.querySelector('#notes').textContent+JSON.stringify(window.SIM4.popups)+JSON.stringify(window.SIM4.steps)`);
@@ -260,18 +303,22 @@ function connect(url) {
   await load('#step=4');
   const ground = [Math.round(innerW() * 0.06), 860];
   function innerW() { return 1500; }
-  ok('theme: dark by default, and the button offers Light', await theme() === 'dark' && await txt('#themeBtn') === 'Light' && /light theme/.test(await ev('document.querySelector("#themeBtn").title')));
+  const offers = () => ev('document.querySelector("#themeBtn").getAttribute("aria-label")');
+  const iconShown = () => ev(`[...document.querySelectorAll('#themeBtn svg')].filter(s=>getComputedStyle(s).display!=='none').map(s=>s.getAttribute('class')).join()`);
+  ok('theme: dark by default, and the icon button offers light (a sun)', await theme() === 'dark' && /light theme/.test(await offers()) && await iconShown() === 'sun' && (await txt('#themeBtn')).trim() === '');
   const darkGround = await px(...ground), darkCard = await cssOf('#card', 'backgroundColor');
   await click('#themeBtn'); await wait(700);
   const lightGround = await px(...ground);
-  ok('theme: a real click turns it light, and the button then offers Dark', await theme() === 'light' && await txt('#themeBtn') === 'Dark' && /dark theme/.test(await ev('document.querySelector("#themeBtn").title')));
+  ok('theme: a real click turns it light, and the button then offers dark (a moon)', await theme() === 'light' && /dark theme/.test(await offers()) && await iconShown() === 'moon');
+  // 19 Nov: warm paper, not white: the ground and the card are off-white
+  ok('theme: light is warm paper (ground #f3f0e8 as the map, card #fbf9f4)', await cssOf('body', 'backgroundColor') === 'rgb(243, 240, 232)' && /rgba?\(251, 249, 244/.test(await cssOf('#card', 'backgroundColor')), await cssOf('#card', 'backgroundColor'));
   ok("theme: kept under Explore's own key", await ev('localStorage.getItem("sim4Theme")') === 'light' && /localStorage\.getItem\("sim4Theme"\)/.test(fs.readFileSync(path.join(PUB, 'simulation4/explore_ui.js'), 'utf8')));
   ok("theme: the map's ground turns light", lum(darkGround) < 60 && lum(lightGround) > 200, darkGround + ' -> ' + lightGround);
   ok('theme: the card, its text and the fold turn light', (await cssOf('#card', 'backgroundColor')) !== darkCard && lum((await cssOf('#stepBody', 'color')).match(/\d+/g).map(Number)) < 80);
   const pills = await ev(`[...document.querySelectorAll('.labels .lbl.region')].filter(e=>e.style.display!=='none').map(e=>getComputedStyle(e).color)`);
   ok("theme: the map's region labels keep dark text on their colour", pills.length > 0 && pills.every(c => c === 'rgb(4, 20, 10)'), pills.slice(0, 3).join(' '));
   await load('#step=3&still=1');
-  ok('theme: a new visit keeps the choice', await theme() === 'light' && await txt('#themeBtn') === 'Dark');
+  ok('theme: a new visit keeps the choice', await theme() === 'light' && await iconShown() === 'moon');
   {
     await c.send('Page.navigate', { url: `http://127.0.0.1:${HTTP}/simulation4/explore.html` });
     let et = null;
@@ -284,13 +331,46 @@ function connect(url) {
   await click('#btnNotes'); await wait(300);
   ok('theme: the fold and its tables are light', lum((await cssOf('#notes dd', 'color')).match(/\d+/g).map(Number)) < 80);
   await load('#step=4&theme=dark');
-  ok('theme: #theme=dark in the link wins over the stored choice', await theme() === 'dark' && await txt('#themeBtn') === 'Light');
+  ok('theme: #theme=dark in the link wins over the stored choice', await theme() === 'dark' && await iconShown() === 'sun');
   await click('#themeBtn'); await wait(300); await click('#themeBtn'); await wait(300);
   ok('theme: switching back to dark is kept', await ev('localStorage.getItem("sim4Theme")') === 'dark' && await theme() === 'dark');
   ok('theme: no exception while switching', c.errors.length === 0, c.errors[0]);
 
+  // The landing page (19 Nov): its title and tabs on one row, and one sun/moon switch in that row for the page and for
+  // Sim 4's story and Explore inside it, whose own switches hide there.
+  const loadLanding = async h => {
+    await c.send('Page.navigate', { url: 'about:blank' }); await wait(100);
+    await c.send('Page.navigate', { url: `http://127.0.0.1:${HTTP}/index.html${h}` });
+    for (let i = 0; i < 240; i++) { await wait(250); if (await ev(`(()=>{const f=document.querySelector('#pane-sim4 iframe');try{return f.contentDocument.body.dataset.ready==='1'||!!(f.contentDocument.querySelector('#sensorList')&&f.contentDocument.querySelector('#sensorList').innerText.length>50)}catch(e){return false}})()`)) break; }
+    await wait(1500);
+  };
+  const inFrame = x => ev(`(()=>{const w=document.querySelector('#pane-sim4 iframe').contentWindow,d=w.document;return (${x})})()`);
+  await ev('localStorage.removeItem("sim4Theme")');
+  await loadLanding('#sim4/story');
+  const head = await ev(`(()=>{const h=document.querySelector('header.top').getBoundingClientRect(),b=document.querySelector('header.top .brand').getBoundingClientRect(),t=document.querySelector('#tabs').getBoundingClientRect(),s=document.querySelector('#themeToggle').getBoundingClientRect();
+    return{h:Math.round(h.height),oneRow:t.top<b.bottom&&b.top<t.bottom&&s.top<b.bottom,right:Math.round(innerWidth-s.right)}})()`);
+  ok('landing: the title, the tabs and the light/dark switch share one row', head.oneRow && head.h <= 60, JSON.stringify(head));
+  ok('landing: the switch is an icon (a sun while dark), with a label', await ev(`[...document.querySelectorAll('#themeToggle svg')].filter(s=>getComputedStyle(s).display!=='none').map(s=>s.getAttribute('class')).join()`) === 'sun' &&
+     /light theme/.test(await ev('document.querySelector("#themeToggle").getAttribute("aria-label")')) && (await txt('#themeToggle')).trim() === '');
+  ok("landing: the story's own switch hides inside it", await inFrame('d.querySelector("#themeBtn").hidden'));
+  await shot('landing_dark');
+  await click('#themeToggle'); await wait(900);
+  ok('landing: a real click turns the page light (warm paper) and keeps it', await ev('document.documentElement.dataset.theme') === 'light' && await ev('localStorage.getItem("sim4Theme")') === 'light' && await cssOf('body', 'backgroundColor') === 'rgb(244, 241, 234)');
+  ok('landing: the story inside turns light with it', await inFrame('d.documentElement.dataset.theme') === 'light');
+  await shot('landing_light_story');
+  await loadLanding('#sim4/explore');
+  ok('landing: Explore inside opens light, its own switch hidden', await inFrame('d.documentElement.dataset.theme') === 'light' && await inFrame('d.querySelector("#themeBtn").hidden'));
+  await click('#themeToggle'); await wait(900);
+  ok('landing: the header switch turns Explore inside dark (this fixes Explore having no switch there)', await inFrame('d.documentElement.dataset.theme') === 'dark' && await ev('document.documentElement.dataset.theme') === 'dark');
+  await shot('landing_dark_explore');
+  ok('landing: no exception', c.errors.length === 0, c.errors[0]);
+
   // Narrow screen
   await c.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 780, deviceScaleFactor: 1, mobile: true });
+  await loadLanding('#sim4/story');
+  const headP = await ev(`(()=>{const s=document.querySelector('#themeToggle').getBoundingClientRect(),h=document.querySelector('header.top').getBoundingClientRect();return{fit:document.documentElement.scrollWidth<=innerWidth&&s.right<=innerWidth&&s.left>=0,h:Math.round(h.height)}})()`);
+  ok('phone width: the landing header fits, the switch on screen, the tabs wrapping under the title', headP.fit && headP.h < 150, JSON.stringify(headP));
+  await shot('landing_phone');
   await load('#step=5b');
   const narrow = await ev(`(()=>{const r=document.querySelector('#card').getBoundingClientRect();return{fit:r.left>=0&&r.right<=innerWidth,bottom:r.bottom,h:innerHeight,scroll:document.documentElement.scrollWidth<=innerWidth}})()`);
   ok('phone width: the card fits', narrow.fit && narrow.scroll);
@@ -307,6 +387,28 @@ function connect(url) {
   }
   ok('phone width: every step shows its text, slider and legend with the folds shut', phoneMiss.length === 0, phoneMiss.join());
   await shot('phone_5b');
+  {
+    await load('#step=5b'); await wait(1200);     // the map eases into place under the card after the page is ready
+    // On a phone the manholes of S1 and S3 are a few pixels apart, so the pins themselves (the S1, S3 labels) are clicked.
+    const [p1, , p3] = L(5).chosen, seq = [];
+    for (const n of [p1, p3, p1]) {
+      const lbl = 'S' + (L(5).chosen.indexOf(n) + 1);
+      const p = await ev(`(()=>{const e=[...document.querySelectorAll('.labels .lbl.sensor')].find(e=>e.textContent===${JSON.stringify(lbl)});const r=e.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+      await clickAt(p.x, p.y);
+      for (let i = 0; i < 14 && !(await txt('#pop')).includes(n); i++) await wait(150);
+      await wait(400);
+      seq.push((await txt('#pop')).includes(n));
+    }
+    const sheet = await ev(`(()=>{const b=document.querySelector('#pop').getBoundingClientRect(),c=document.querySelector('#card').getBoundingClientRect(),e=document.querySelector('#btnExplore').getBoundingClientRect();
+      return{bottom:b.bottom<=innerHeight&&b.left>=0&&b.right<=innerWidth&&b.top>=c.bottom,explore:!document.querySelector('#corner').getClientRects().length}})()`);
+    const cov = await ev(`(()=>{const b=document.querySelector('#pop');const r=b.getBoundingClientRect();return Sim4.sensors().filter(m=>{const p=Growth3D.screenOf(m);return p&&p.x>r.left&&p.x<r.right&&p.y>r.top&&p.y<r.bottom})})()`);
+    ok('phone width: the pins S1, S3, S1 tapped in turn: every tap lands', seq.every(Boolean), seq.join());
+    ok('phone width: the box is a sheet along the bottom, below the card; Explore and the switch step aside while it is open', sheet.bottom && sheet.explore, JSON.stringify(sheet));
+    ok('phone width: the sheet covers no sensor (the map moves up above it)', cov.length === 0, cov.join());
+    await shot('phone_sheet');
+    await click('#popX'); await wait(400);
+    ok('phone width: closing the sheet brings Explore back', await ev('document.querySelector("#pop").hidden && document.querySelector("#corner").getClientRects().length > 0'));
+  }
 
   ok('no exception in the whole run', c.errors.length === 0, c.errors[0]);
   console.log(`\n${pass} passed, ${fail} failed`);

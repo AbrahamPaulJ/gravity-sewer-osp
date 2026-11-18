@@ -4,9 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Optimal Sensor Placement in Gravity Sewers</title>
+<script>
+/* Light or dark before the first paint: #theme=light|dark in the link, else this browser's last choice ("sim4Theme", the key
+   Sim 4's story and Explore use, so one choice carries everywhere), else dark. */
+(function () {
+  var t = (location.search.match(/[?&]theme=(light|dark)/) || location.hash.match(/[#&/]theme=(light|dark)/) || [])[1];
+  if (!t) { try { t = localStorage.getItem("sim4Theme"); } catch (e) { /* storage blocked: dark */ } }
+  document.documentElement.dataset.theme = t === "light" ? "light" : "dark";
+})();
+</script>
 <style>
 :root{--bg:#0b1220;--panel:#111c2f;--panel-2:#16233a;--line:#22314d;
   --ink:#e7edf7;--ink-dim:#a9b8d4;--ink-faint:#6f81a3;--accent:#38bdf8;--good:#34d399;--warn:#fbbf24}
+/* The light theme: warm paper, as Sim 4's story. */
+html[data-theme="light"]{--bg:#f4f1ea;--panel:#fbf9f4;--panel-2:#efeae0;--line:#ddd6c8;
+  --ink:#1f2328;--ink-dim:#4a5163;--ink-faint:#676d78;--accent:#0969da;--good:#1a7f37;--warn:#9a6700;color-scheme:light}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%}
@@ -21,6 +33,20 @@ header.top .brand{font-size:14.5px;font-weight:650;letter-spacing:-.1px;min-widt
 .tabs{display:flex;gap:4px 12px;flex-wrap:wrap;justify-content:flex-end;align-items:center;flex:0 1 auto;min-width:0;margin-left:auto}
 .tabs-side{display:flex;gap:4px;flex-wrap:wrap;min-width:0}
 .tabs-sep{width:1px;height:20px;background:var(--line);flex:none}
+/* 19 Nov: light or dark, one sun/moon icon at the end of the row; on a narrow screen it stays beside the title and the
+   tabs wrap under both. It sets this page and Sim 4's story and Explore inside it. */
+.tabs{order:2}
+#themeToggle{order:3;flex:none;width:36px;height:36px;padding:0;display:grid;place-items:center;margin-left:-12px;
+  background:none;border:1px solid transparent;border-radius:8px;color:var(--ink-dim);cursor:pointer}
+#themeToggle:hover{color:var(--ink);background:var(--panel-2);border-color:var(--line)}
+#themeToggle svg{width:18px;height:18px}
+#themeToggle .moon,html[data-theme="light"] #themeToggle .sun{display:none}
+html[data-theme="light"] #themeToggle .moon{display:block}
+@media(max-width:899px){
+  header.top .brand{flex:1 1 auto;order:0}
+  #themeToggle{order:1;margin-left:0}
+  .tabs{order:4;flex-basis:100%;justify-content:flex-start;margin-left:0}
+}
 .tab-group{position:relative}
 .tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--ink-dim);
   padding:8px 16px;font:inherit;font-size:13px;cursor:pointer;border-radius:8px 8px 0 0;
@@ -91,10 +117,11 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);
   color:var(--ink-faint);font-size:12.5px}
 @media(max-width:799px){.entry-cards{grid-template-columns:1fr}}
 @media(max-width:599px){
-  header.top{padding:16px;gap:8px}
-  .tabs{gap:8px 0}
-  .tabs button{padding:8px 12px}
-  .tabs{gap:8px}
+  header.top{padding:8px 8px 4px 16px;gap:0 8px}
+  .tabs{gap:0}
+  .tabs-sep{display:none}
+  .tabs-side{display:contents}
+  .tabs button{padding:8px 9px}
   .wrap{padding:32px 16px 64px}
   h1{font-size:24px}
   .cards{grid-template-columns:minmax(0,1fr)}
@@ -114,6 +141,7 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);
 <header class="top">
   <span class="brand">Optimal sensor placement in gravity sewers</span>
   <span id="liveSlot" aria-hidden="true"></span>
+  <button id="themeToggle" type="button" aria-label="Switch to the light theme" title="Switch to the light theme"><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z" fill="currentColor"/></svg></button>
   <nav class="tabs" id="tabs" aria-label="Pages">
     <div class="tabs-side">
     <button data-tab="overview" class="on">Overview</button>
@@ -389,7 +417,7 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
 <div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html?v=32" title="Why observability is limited"></iframe></div>
 <div class="pane" id="pane-sim1" hidden><iframe data-src="simulation_legacy/index.html?v=32" title="Simulation 1: warning time"></iframe></div>
 <div class="pane" id="pane-sim2" hidden><iframe data-src="simulation/index.html?v=32" title="Simulation 2: growth and sensor placement"></iframe></div>
-<div class="pane" id="pane-sim4" hidden><iframe data-src="simulation4/index.html?v=11" allow="fullscreen" title="Simulation 4: where to put the first sensors"></iframe></div>
+<div class="pane" id="pane-sim4" hidden><iframe data-src="simulation4/index.html?v=12" allow="fullscreen" title="Simulation 4: where to put the first sensors"></iframe></div>
 <div class="pane" id="pane-sim35" hidden><iframe data-src="simulation35/index.html?v=4" allow="fullscreen" title="Simulation 3.5: warning, room for new homes, level or float"></iframe></div>
 <div class="pane" id="pane-coverage" hidden><iframe data-src="coverage/index.html?v=9" title="Coverage prototype: which sensor sees growth where (Simulation 3 runs)"></iframe></div>
 <div class="pane" id="pane-sim3" hidden><iframe data-src="simulation3/index.html?v=13" title="Simulation 3: growth and sensor placement"></iframe></div>
@@ -468,7 +496,7 @@ document.addEventListener('click', function(e){
 
 // A page inside a tab has its own link: #sim4/story opens Sim 4's story, #sim4/explore its Explore view.
 // The address bar follows the frame as it moves between them, so the link copied is the view on screen.
-var SUBPAGES = { sim4: { story: 'simulation4/index.html?v=11', explore: 'simulation4/explore.html' } };
+var SUBPAGES = { sim4: { story: 'simulation4/index.html?v=12', explore: 'simulation4/explore.html' } };
 function subOf(tab, frame){
   var subs = SUBPAGES[tab]; if (!subs) return null;
   try {
@@ -536,6 +564,27 @@ if (location.hash.length > 1 && showTab(location.hash.slice(1))) {
 }
 // A hash set from outside (the live presentation sync, the back button) switches the tab too.
 window.addEventListener('hashchange', function(){ showTab(location.hash.slice(1)); });
+
+// Light or dark, for this page and Sim 4's story and Explore: the header's switch keeps the choice under "sim4Theme" and
+// sends it to the Sim 4 frame, each time the frame loads too, so the story and Explore always match the header.
+// The other pages keep their own themes.
+(function(){
+  var btn = document.getElementById('themeToggle'), frame = document.querySelector('#pane-sim4 iframe');
+  function theme(){ return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'; }
+  function tell(){
+    try { if (frame && frame.contentWindow) frame.contentWindow.postMessage({ type: 'sim4-set-theme', theme: theme() }, '*'); } catch (e) {}
+  }
+  function apply(t, keep){
+    document.documentElement.dataset.theme = t;
+    var say = 'Switch to the ' + (t === 'light' ? 'dark' : 'light') + ' theme';
+    btn.title = say; btn.setAttribute('aria-label', say);
+    if (keep) { try { localStorage.setItem('sim4Theme', t); } catch (e) { /* not remembered */ } }
+    tell();
+  }
+  btn.addEventListener('click', function(){ apply(theme() === 'light' ? 'dark' : 'light', true); });
+  if (frame) frame.addEventListener('load', function(){ tell(); setTimeout(tell, 1500); setTimeout(tell, 4000); });
+  apply(theme(), false);
+})();
 </script>
 
 <script>

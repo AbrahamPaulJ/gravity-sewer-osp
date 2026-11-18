@@ -1432,7 +1432,7 @@ window.Growth3D = (function () {
     if (nd) box.expandByPoint(P(nd.x, nd.y, nd.inv));
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     const centre = sphere.center, span = Math.max(300, sphere.radius * 2);
-    const r = span / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)) * 0.72;
+    const r = span / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)) * 0.72 / Math.min(1, camera.aspect || 1);     // 19 Nov: a portrait screen fits the width too
     controls.target.copy(centre);
     camera.position.set(centre.x + r * 0.62, centre.y + r * 0.48, centre.z + r * 0.62);
     camera.updateProjectionMatrix();
@@ -1960,7 +1960,7 @@ window.Growth3D = (function () {
       const m = chamberMeshes.find(x => x.userData.node.name === tightOn);
       if (m) { centre = m.position.clone(); span = 420; }
     }
-    const r = span / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)) * 0.72;
+    const r = span / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)) * 0.72 / Math.min(1, camera.aspect || 1);     // 19 Nov: a portrait screen fits the width too
     controls.target.copy(centre);
     camera.position.set(centre.x + r * 0.62, centre.y + r * 0.48, centre.z + r * 0.62);
     camera.updateProjectionMatrix();
@@ -2153,7 +2153,7 @@ window.Growth3D = (function () {
     if (!any) return frame(null);
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     const centre = sphere.center, span = Math.max(300, sphere.radius * 2);
-    const r = span / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)) * 0.72;
+    const r = span / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)) * 0.72 / Math.min(1, camera.aspect || 1);     // 19 Nov: a portrait screen fits the width too
     controls.target.copy(centre);
     camera.position.set(centre.x + r * 0.62, centre.y + r * 0.48, centre.z + r * 0.62);
     camera.updateProjectionMatrix();

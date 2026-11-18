@@ -174,6 +174,7 @@ const Sim4 = (() => {
     $("#stepN").textContent = `Step ${s.n} of ${D().stepCount}`;
     $("#stepTitle").textContent = s.title;
     $("#stepBody").textContent = s.body;
+    renderWhy(s);
     $("#sliderRow").hidden = !s.slider;
     $("#back").disabled = st.i === 0;
     $("#next").disabled = st.i === total - 1;
@@ -195,6 +196,21 @@ const Sim4 = (() => {
       `<a class="redo" href="redo.html#${n.redo}">How to redo this for another suburb</a>`;
     setNotes(st.notes);
   }
+  /* A step's own question, folded under its text (step 5b: "Why not the exact best set?"), closed when the step opens.
+     Built by tools/build_sim4_web.py from the runs; the text is escaped here, the table is the builder's. */
+  function renderWhy(s) {
+    const w = s.why, b = $("#btnWhy"), box = $("#why");
+    b.hidden = !w;
+    if (!w) { box.hidden = true; box.innerHTML = ""; return; }
+    b.querySelector("span").textContent = w.title;
+    box.innerHTML = `<p>${esc(w.intro)}</p><div class="tscroll">${w.table}</div>`;
+    setWhy(/(^|[#&])why=1/.test(location.hash));
+  }
+  function setWhy(on) {
+    $("#why").hidden = !on;
+    $("#btnWhy").setAttribute("aria-expanded", String(on));
+    placeMap();
+  }
   function setNotes(on) {
     st.notes = on;
     $("#notes").hidden = !on;
@@ -207,10 +223,11 @@ const Sim4 = (() => {
   // A shift, not a smaller canvas: the stage keeps its size, so nothing is resized and the reader's view is kept.
   // An open "Behind this step" fold is read and closed again, so it lies over the map rather than moving it.
   function placeMap() {
-    const c = $("#card"), n = $("#notes");
-    const natural = c.scrollHeight + c.offsetHeight - c.clientHeight - (n.hidden ? 0 : n.offsetHeight + 6);     // the card's height with the fold shut
+    const c = $("#card"), n = $("#notes"), w = $("#why");
+    const natural = c.scrollHeight + c.offsetHeight - c.clientHeight - (n.hidden ? 0 : n.offsetHeight + 6) - (w.hidden ? 0 : w.offsetHeight + 10);     // the card's height with the folds shut
     const below = c.hidden ? 0 : c.offsetTop + Math.min(c.offsetHeight, natural);
-    document.documentElement.style.setProperty("--map-shift", Math.max(0, Math.round(below / 2)) + "px");
+    const p = $("#pop"), sheet = p && !p.hidden && st.popSide === "sheet" ? p.offsetHeight + 8 : 0;     // the phone's bottom sheet
+    document.documentElement.style.setProperty("--map-shift", Math.round((below - sheet) / 2) + "px");
   }
   function stopSweep() { if (st.sweep) { cancelAnimationFrame(st.sweep); st.sweep = null; } }
   function sweep() {
@@ -237,24 +254,35 @@ const Sim4 = (() => {
 
   /* ---------------------------------------------------------- the popup, on any click */
   function hidePop() {
-    st.pick = null; st.popAt = null;
+    const was = !$("#pop").hidden;
+    st.pick = null; st.popAt = null; st.popSide = null;
     $("#pop").hidden = true;
+    document.body.classList.remove("docked");
     Growth3D.setCoverSelect(null);
+    if (was) placeMap();
   }
   const esc = t => String(t).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
   const regionOf = name => { const ri = regionPaint().of[G().nodes.findIndex(n => n.name === name)]; return ri >= 0 ? ri : null; };
   // The corridor overlaps the eight regions: " Also on the corridor, R9: watch." for a manhole on it, else "".
   const overlayNote = name => { const oi = regionPaint().overlayOf[G().nodes.findIndex(n => n.name === name)];
     return oi >= 0 ? ` Also on the corridor, ${S().regions[oi].id}: ${D().triage[S().regions[oi].id]}.` : ""; };
-  // Opens the popup at a manhole, with its words and the sensors to keep clear of.
+  /* 19 Nov: the box no longer opens beside the manhole clicked, where it covered the sensors next to it (S1 and S3 sit
+     close together, so S3 could not be clicked after S1). It docks in a corner of the screen that holds no sensor, chosen
+     once per step, so clicking another sensor swaps its words in place and every sensor stays clickable; at phone width
+     it is a sheet along the bottom and the map moves up to centre in the space left. */
+  const phone = () => innerWidth <= 640;
   function openPop(name, html, sel, avoid) {
     st.pick = name;
     const box = $("#pop");
-    box.innerHTML = html;
+    box.innerHTML = '<button id="popX" type="button" aria-label="Close">\u00d7</button>' + html;
+    $("#popX").onclick = () => { hidePop(); paintMap(); };
     Growth3D.setCoverSelect(sel ? name : null, []);
+    const was = box.hidden;
     box.hidden = false;
     st.popAt = name;
-    st.popSide = popSide(name, avoid || sensorNames());
+    if (was || !st.popSide) st.popSide = dockSide(avoid || sensorNames());
+    placeDock();
+    if (was) placeMap();
   }
   function showPop(name) {
     const k = step().k, info = k ? D().popups[k].find(x => x.name === name) : null;
@@ -265,29 +293,33 @@ const Sim4 = (() => {
       openPop(name, `<b>${esc(name)}</b><p>${r ? `In ${r}: ${D().triage[r]}.` : "Not in a region."}${esc(overlayNote(name))} No sensor here.</p>`, false);
     }
   }
-  // Where the popup sits for one side of a manhole: kept on screen.
-  function popRect(at, side, w, h) {
-    const m = 12, gap = 20;
-    let x = side === "right" ? at.x + gap : side === "left" ? at.x - w - gap : at.x - w / 2;
-    let y = side === "below" ? at.y + gap : side === "above" ? at.y - h - gap : at.y - h / 2;
-    x = Math.max(m, Math.min(innerWidth - w - m, x));
-    y = Math.max(m, Math.min(innerHeight - h - m, y));
-    return { x, y, w, h };
+  // The dock's corners, below the step card: bottom left (above the map credit), bottom right, then the two sides.
+  const DOCK_W = 330, DOCK_H = 300;
+  function dockRect(side, h) {
+    const m = 16, card = $("#card").getBoundingClientRect(), top = card.bottom + m;
+    const x = side.endsWith("l") ? m : innerWidth - DOCK_W - m;
+    const y = side.startsWith("b") ? innerHeight - h - (side === "bl" ? 34 : m) : top;
+    return { x, y: Math.max(top, y), w: DOCK_W, h };
   }
-  // The first side that hides neither the manhole, another sensor nor the step card. Chosen once per popup, so it never jumps.
-  function popSide(name, avoid) {
-    const at = Growth3D.screenOf(name), box = $("#pop");
-    if (!at) return "right";
-    const w = box.offsetWidth, h = box.offsetHeight;
-    const blocks = ["#card"].map(s => $(s)).filter(el => !el.hidden).map(el => el.getBoundingClientRect());
-    const hides = (r, p, pad = 14) => p.x > r.x - pad && p.x < r.x + r.w + pad && p.y > r.y - pad && p.y < r.y + r.h + pad;
-    const others = avoid.filter(n => n !== name).map(n => Growth3D.screenOf(n)).filter(Boolean);
-    const free = side => {
-      const r = popRect(at, side, w, h);
-      const over = blocks.some(b => r.x < b.right && r.x + w > b.left && r.y < b.bottom && r.y + h > b.top);
-      return !over && !others.some(p => hides(r, p));
-    };
-    return ["right", "left", "below", "above"].find(free) || "right";
+  // The first corner that holds no sensor (its manhole or its label), checked at the tallest the box gets.
+  function dockSide(avoid) {
+    if (phone()) return "sheet";
+    const pts = avoid.map(n => Growth3D.screenOf(n)).filter(Boolean);
+    const labels = [...document.querySelectorAll(".labels .lbl.sensor")].map(e => e.getBoundingClientRect()).filter(r => r.width);
+    const pad = 18;
+    const hits = r => pts.filter(p => p.x > r.x - pad && p.x < r.x + r.w + pad && p.y > r.y - pad && p.y < r.y + r.h + pad).length +
+      labels.filter(l => l.left < r.x + r.w && l.right > r.x && l.top < r.y + r.h && l.bottom > r.y).length;
+    const sides = ["bl", "br", "ml", "mr"].map(s => ({ s, n: hits(dockRect(s, DOCK_H)) }));
+    return (sides.find(x => !x.n) || sides.reduce((a, x) => (x.n < a.n ? x : a))).s;
+  }
+  function placeDock() {
+    const box = $("#pop");
+    document.body.classList.toggle("docked", !box.hidden && st.popSide === "sheet");
+    box.dataset.dock = st.popSide || "";
+    if (box.hidden || st.popSide === "sheet") { box.style.left = box.style.top = ""; return; }
+    const r = dockRect(st.popSide, DOCK_H);
+    box.style.left = r.x + "px";
+    box.style.top = r.y + "px";     // a fixed top at the tallest the box gets, so another sensor's words swap in place
   }
   /* Labels that would sit on each other (two sensors on neighbouring manholes, a sensor under a region's label) are
      pushed apart, every frame, from where the map puts them: a region label gives way more than a sensor's, so each
@@ -323,14 +355,7 @@ const Sim4 = (() => {
   }
   function placePop() {
     declutter();
-    if (st.popAt) {
-      const at = Growth3D.screenOf(st.popAt), box = $("#pop");
-      if (at) {
-        const r = popRect(at, st.popSide, box.offsetWidth, box.offsetHeight);
-        box.style.left = r.x + "px";
-        box.style.top = r.y + "px";
-      }
-    }
+    if (st.popAt) placeDock();
     requestAnimationFrame(placePop);
   }
 
@@ -349,8 +374,9 @@ const Sim4 = (() => {
   function applyTheme(t) {
     document.documentElement.dataset.theme = t;
     if (Growth3D.setTheme) Growth3D.setTheme(t);
-    $("#themeBtn").textContent = t === "light" ? "Dark" : "Light";
-    $("#themeBtn").title = "Switch to the " + (t === "light" ? "dark" : "light") + " theme";
+    const say = "Switch to the " + (t === "light" ? "dark" : "light") + " theme";
+    $("#themeBtn").title = say;
+    $("#themeBtn").setAttribute("aria-label", say);
   }
   function setTheme(t, keep) {
     if (keep) { try { localStorage.setItem("sim4Theme", t); } catch (e) { /* not remembered */ } }
@@ -377,6 +403,8 @@ const Sim4 = (() => {
       document.body.dataset.ready = "1";
     });
     $("#themeBtn").onclick = () => setTheme(theme() === "light" ? "dark" : "light", true);
+    // Inside the landing page its header carries the switch and sends "sim4-set-theme"; on its own the page keeps its own.
+    if (window.self !== window.top) $("#themeBtn").hidden = true;
     applyTheme(theme());
     addEventListener("message", e => {
       if (e.data && e.data.type === "sim4-set-theme" && (e.data.theme === "light" || e.data.theme === "dark")) setTheme(e.data.theme, true);
@@ -389,6 +417,14 @@ const Sim4 = (() => {
     $("#homes").oninput = e => { stopSweep(); hidePop(); st.level = +e.target.value; renderLevel(); paintMap(); };
     $("#btnRegions").onclick = () => { hidePop(); st.regions = !st.regions; paintMap(); };
     $("#btnNotes").onclick = () => setNotes(!st.notes);
+    $("#btnWhy").onclick = () => setWhy($("#why").hidden);
+    // A click on a sensor's pin (S1, S2, ...) opens that sensor, wherever its manhole sits under the pin.
+    $("#stage").addEventListener("click", e => {
+      const l = e.target.closest && e.target.closest(".lbl.sensor");
+      if (!l) return;
+      const n = sensorNames()[+l.textContent.replace(/\D/g, "") - 1];
+      if (n) { stopSweep(); showPop(n); }
+    });
     if (window.ResizeObserver) new ResizeObserver(placeMap).observe($("#card"));
     addEventListener("keydown", e => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
@@ -398,8 +434,8 @@ const Sim4 = (() => {
       else if (e.key === "ArrowLeft" || e.key === "PageUp") go(st.i - 1);
       else if (e.key === "Escape") { hidePop(); paintMap(); }
     });
-    addEventListener("resize", () => { Growth3D.resize($("#stage")); placeMap(); });
+    addEventListener("resize", () => { Growth3D.resize($("#stage")); if (st.popAt) { st.popSide = dockSide(sensorNames()); placeDock(); } placeMap(); });
   }
   return { init, state: st, step, levels: LEVELS, sensors: sensorNames, growthState, regionPaint, regionTints, actionLabels, regionOf, overlayNote,
-           openPop, hidePop, esc, setTheme, ACTION_COL, LEGEND, REGION_COLS, setNotes, declutter };
+           openPop, hidePop, esc, setTheme, ACTION_COL, LEGEND, REGION_COLS, setNotes, setWhy, declutter };
 })();

@@ -153,7 +153,7 @@ const server = http.createServer((q, s) => {
   ok("Exact optimum: pins and cards are C1, C2, ...", pins.length && pins.every(p => /^C\d$/.test(p)) && cards.every(p => /^C\d$/.test(p)), pins.join(",") + " / " + cards.join(","));
   await click('#methKnob button[data-m="story"]'); await wait(2500);
   pins = await ev('[...document.querySelectorAll(".labels .lbl.sensor")].map(e=>e.textContent)');
-  ok("Sim 4's list: pins are S1, S2, ...", pins.length && pins.every(p => /^S\d$/.test(p)), pins.join(","));
+  ok("Nested beam search: pins are S1, S2, ...", pins.length && pins.every(p => /^S\d$/.test(p)), pins.join(","));
 
   // ---- greedy: the running worst case on a card equals the panel's figure at that count
   await click('#methKnob button[data-m="greedy"]'); await wait(2500);
@@ -161,6 +161,48 @@ const server = http.createServer((q, s) => {
   const glead = await ev('document.getElementById("sensorList").innerText.split("\\n")[0]');
   ok("Greedy: the last card's running worst case = the panel's worst case", g.length && glead.includes(g[g.length - 1].replace("worst ", "")), g.join(",") + " / " + glead);
   await click('#methKnob button[data-m="story"]'); await wait(1500);
+
+  // ---- 19 Nov: the recommendation is named for its algorithm, and explained where it is chosen
+  const btnName = await ev('document.querySelector(\'#methKnob button[data-m="story"]\').textContent');
+  const say = await ev('document.getElementById("methSay").innerText');
+  const src = fs.readFileSync(path.join(PUB, "simulation_src/sim4_numbers.py"), "utf8");
+  const width = (src.match(/^WIDTH = (\d+)/m) || [])[1];
+  ok("method: the recommendation is called Nested beam search, nowhere Sim 4's list", btnName === "Nested beam search" &&
+     !/Sim 4's list/.test(fs.readFileSync(path.join(PUB, "simulation4/explore.html"), "utf8")) && !/"Sim 4's list|Sim 4's list[:,]/.test(fs.readFileSync(path.join(PUB, "simulation4/explore_ui.js"), "utf8")), btnName);
+  ok("method: the line under it explains it (seed, beam width from sim4_numbers.py, score, nested, brute force)",
+     say.includes(L[1].chosen[0]) && width && say.includes(Number(width).toLocaleString("en-AU")) && /worst case plus the average/.test(say) && /25 mm rule breaks ties/.test(say) && /no sensor moves/.test(say) && /brute force/.test(say), say.slice(0, 200));
+
+  // ---- the chart: one line per method, the selected one bold with its average dashed, pulsing when the method changes
+  const chart = () => ev(`(()=>{const c=document.getElementById("curve");return{sel:(c.querySelector(".cv-sel")||{}).dataset?.m||null,avg:!!c.querySelector(".cv-sel .cv-avg"),
+    dash:(c.querySelector(".cv-sel .cv-avg")||{getAttribute:()=>null}).getAttribute("stroke-dasharray"),same:(()=>{const a=c.querySelector(".cv-sel .cv-avg"),w=c.querySelector(".cv-sel .cv-worst");return!!a&&!!w&&a.getAttribute("stroke")===w.getAttribute("stroke")})(),
+    others:[...c.querySelectorAll(".cv-other")].map(g=>g.dataset.m).sort().join(),otherAvg:c.querySelectorAll(".cv-other .cv-avg").length,pulse:!!c.querySelector(".cv-sel.pulse"),
+    fade:+getComputedStyle(c.querySelector(".cv-other")||c).opacity,legend:(c.querySelector(".lg span.on")||{}).textContent||""}})()`);
+  let ch = await chart();
+  ok("chart: the nested beam search is drawn bold, its average dashed in the same colour", ch.sel === "story" && ch.avg && ch.dash && ch.same && ch.legend === "Nested beam search", JSON.stringify(ch));
+  ok("chart: every other method draws its worst case, faded, with no average", /exact/.test(ch.others) && /greedy/.test(ch.others) && /warn/.test(ch.others) && ch.otherAvg === 0 && ch.fade < 0.6, JSON.stringify(ch));
+  const pulses = [];
+  for (const m of ["exact", "greedy", "warn", "story"]) {
+    await click(`#methKnob button[data-m="${m}"]`); await wait(1200);
+    ch = await chart();
+    pulses.push(ch.sel === m && ch.avg && ch.pulse && !ch.others.split(",").includes(m));
+  }
+  ok("chart: each method selected in turn is the bold one, with its average, and pulses as it changes", pulses.every(Boolean), pulses.join());
+  await click('#scopeKnob button[data-s="broad"]'); await wait(1500);
+  ch = await chart();
+  ok("chart: on the broader test too, the selected method shows its average", ch.sel === "story" && ch.avg, JSON.stringify(ch));
+  ok("chart: changing the test is not a method change, so no pulse", !ch.pulse);
+  ok("chart: the pulse respects reduced motion", /prefers-reduced-motion:reduce\)\{#curve \.cv-sel\.pulse\{animation:none\}/.test(fs.readFileSync(path.join(PUB, "simulation4/explore.html"), "utf8")));
+
+  // ---- the region panel: on the story's test, what lies outside it is greyed
+  const seenRows = () => ev(`[...document.querySelector("#mhFacts table.sm").querySelectorAll("tr")].slice(1).map(r=>({c:r.children[0].innerText,v:r.children[1].innerText,out:r.classList.contains("outside")}))`);
+  let sr = await seenRows();
+  ok("region panel, broader test: every case as it was, nothing greyed", sr.length === REG.cases.length && sr.every(r => !r.out) && !(await ev('!!document.getElementById("seenScope")')), JSON.stringify(sr).slice(0, 200));
+  await click('#scopeKnob button[data-s="story"]'); await wait(1500);
+  sr = await seenRows();
+  const dry = sr.find(r => /^Dry/.test(r.c));
+  ok("region panel, story's test: Dry is greyed and marked outside the test", dry && dry.out && /not in the story's test/.test(dry.c), JSON.stringify(dry));
+  ok("region panel, story's test: nothing past 100% shows as a build-out; it reads 'not seen by 100%', greyed", sr.every(r => r.out || (!/^(150|300)%$/.test(r.v))) && sr.filter(r => /not seen by 100%/.test(r.v)).every(r => r.out), JSON.stringify(sr).slice(0, 300));
+  ok("region panel, story's test: a quiet note says what the test is", /wet cases up to 100% build-out/.test(await ev('(document.getElementById("seenScope")||{}).innerText||""')));
 
   // ---- the map card's homes = the model's count
   const card = await ev('document.getElementById("homesLine").innerText');

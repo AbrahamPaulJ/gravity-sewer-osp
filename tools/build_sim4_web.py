@@ -128,7 +128,8 @@ def steps(nm, reg, ctx):
     h5 = next(h for h in nm["held_out"] if h["k"] == rec)
     s5b = (f"The same {k0} plus {rec - k0} more. Across {ctx['nwet']} wet cases they see {pct(L5['average'])} of growth runs on average "
            f"and {pct(L5['worst'])} in the worst case, and warn of {warned} overloads. On weather they were not chosen for: "
-           f"{pct(h5['weather_runs'][0] / h5['weather_runs'][1])}.")
+           f"{pct(h5['weather_runs'][0] / h5['weather_runs'][1])}. "
+           f"They are a nested list, not the exact best {word(rec)}: it keeps step 5a's sensor, so it grows from {k0} to {rec} to {max(lad)} without moving one.")
     s6 = (f"{kdollars(k0 * price)} or {kdollars(rec * price)}, at assumed prices. Real records of a normal day could confirm the design day "
           f"and save up to {rec - k0} sensors, about {kdollars((rec - k0) * price)}. A new suburb needs its own model runs: the method repeats, "
           f"this sensor list does not.")
@@ -572,6 +573,89 @@ def compare(nm, old, ctx):
             "the utility, not a result.")
 
 
+def warned_by(sensors, nm, reg, chambers):
+    """Overloads by 100% build-out the sensors warn of on the story's test, counted as sim4_numbers.py and Explore's
+    storyWarn count them: the 7 wet cases, the target regions, a 10 mm rise the build-out step before the first new
+    surcharge or spill."""
+    tg = {i for i, r in enumerate(reg["regions"]) if r["id"] in nm["targets"]}
+    S, warned, total = {chambers.index(m) for m in sensors}, 0, 0
+    for c in reg["cases"]:
+        if c["ii"] <= 0:
+            continue
+        rows = reg["rows"].get(c["tag"], [])
+        for ri in tg:
+            rr = sorted((x for x in rows if x["r"] == ri), key=lambda x: x["s"])
+            first = next((n for n, x in enumerate(rr) if x["sur"] or x["spill"]), -1)
+            if first < 1 or reg["ladder"][rr[first]["s"]] > 1 + 1e-9:
+                continue
+            seen = {j for j, v in rr[first - 1]["rise"] if v >= 10}
+            if not seen:
+                continue
+            total += 1
+            warned += bool(seen & S)
+    return warned, total
+
+
+def exact_unseen(nm, chambers, path=None):
+    """The exact sets' unseen-weather share at the recommended count, from demo/data/compare.js (build_demo_data.js),
+    or None when that file is missing or its exact sets are not numbers.json's."""
+    path = path or os.path.join(ROOT, "demo", "data", "compare.js")
+    if not os.path.exists(path):
+        return None
+    ex = read_js(path)["methods"]["exact"]
+    ours = [sorted(r["exact_set"]) for r in sorted(nm["ladder"], key=lambda r: r["k"])]
+    if [sorted(chambers[i] for i in s) for s in ex["sets"]] != ours or "unseen" not in ex:
+        return None
+    return ex["unseen"][nm["recommend"] - 1]
+
+
+def why_nested(nm, reg, chambers, ctx, exact_unseen=None):
+    """Step 5b's 'Why not the exact best set?': the nested list against the exact solver's set at the recommended count,
+    from the runs. The exact sets' unseen-weather figure is demo/data/compare.js's (build_demo_data.js: each wet case
+    scored by the exact set solved without it), set beside the list's on the same basis, the average over the cases."""
+    rec, k0 = nm["recommend"], len(ctx["seed"])
+    lad = {r["k"]: r for r in nm["ladder"]}
+    kmax = max(lad)
+    L, d = lad[rec], ctx["design"]
+    n_w, t_w = warned_by(L["chosen"], nm, reg, chambers)
+    n_e, t_e = warned_by(L["exact_set"], nm, reg, chambers)
+    assert (n_w, t_w) == (L["warned_target"], nm["warn_universe"]["target"]), "warning count does not match numbers.json"
+    # Sensors already in the ground that a later, larger exact set leaves out: bought in stages, and one at a time.
+    moved = lambda ks: sum(len(set(lad[a]["exact_set"]) - set(lad[b]["exact_set"])) for a, b in zip(ks, ks[1:]))
+    stages = [k0, rec, kmax]
+    m_stage, m_one = moved(stages), moved(list(range(1, kmax + 1)))
+    assert all(set(lad[a]["chosen"]) <= set(lad[b]["chosen"]) for a in range(1, kmax) for b in (a + 1,)), "the list is not nested"
+    hb = nm["held_out_by_case"]
+    unseen_list = sum(hb[c][str(rec)] for c in hb) / len(hb)
+    # The worst case gap in runs: the list's worst case is a whole number of runs of that case.
+    wc = min(L["per_case"], key=L["per_case"].get)
+    n = nm["universe"][wc]
+    gap = round((L["exact_worst"] - L["worst"]) * n, 6)
+    gap_s = (f"The gap in the worst case is {word(int(gap))} run{'s' if gap != 1 else ''} in {n}. " if abs(gap - round(gap)) < 1e-6 and gap >= 1 else "")
+    stage_s = (f"Bought {k0}, then {rec}, then {kmax}, the exact sets would move {word(m_stage)} sensor{'s' if m_stage != 1 else ''} "
+               f"already in the ground, and {word(m_one)} if bought one at a time. " if m_stage else "")
+    rows = [["Sensors", ", ".join(L["chosen"]), ", ".join(L["exact_set"])],
+            ["Worst wet case", pct(L["worst"]), pct(L["exact_worst"])],
+            ["Average over the " + str(ctx["nwet"]) + " wet cases", pct(L["average"]), pct(L["exact_average"])],
+            ["Overloads warned", f"{n_w} of {t_w}", f"{n_e} of {t_e}"],
+            ["Design wet runs seen (step 5a's question)", f"{round(L['design_wet'] * d['n'])} of {d['n']}", f"{d['exact_together']} of {d['n']}"],
+            ["Grows from " + f"{k0} to {rec} to {kmax}", "without moving a sensor", f"moves {word(m_stage)}" if m_stage else "without moving a sensor"]]
+    if exact_unseen is not None:
+        h = next(x for x in nm["held_out"] if x["k"] == rec)["weather_runs"]
+        rows.insert(4, [f"On weather not chosen for, average of the {len(hb)} cases", f"{pct(unseen_list)} ({pct(h[0] / h[1])} of runs, as above)", pct(exact_unseen)])
+    intro = (f"The list is nested: it starts from step 5a's sensor, and each sensor added keeps the ones before, so the {k0}, the {rec} and the "
+             f"{kmax} can be bought in stages without moving a sensor. The exact solver finds the best set at each count on its own, so its sets change "
+             f"from one count to the next. {stage_s}"
+             f"Its best {word(rec)} see more in the worst case, {pct(L['exact_worst'])} against {pct(L['worst'])}, "
+             + ("the same on average" if pct(L["average"]) == pct(L["exact_average"]) else f"{pct(L['exact_average'])} against {pct(L['average'])} on average")
+             + (" and warn of as many overloads" if n_e == n_w else f" and warn of {n_e} of {t_e} overloads")
+             + (f", but together they see {d['exact_together']} of the {d['n']} design wet runs, so they do not answer step 5a. " if d["exact_together"] < d["n"] else ". ")
+             + gap_s +
+             "The list gives up that much worst case for a set that keeps step 5a's sensor and can grow.")
+    return {"title": "Why not the exact best set?", "intro": intro,
+            "table": table(["", "Nested list (recommended)", f"Exact best {word(rec)}"], rows)}
+
+
 # ------------------------------------------------------------------------------------------------ build
 def design_facts(nm, reg, chambers):
     """Who sees the Design wet growth runs (target regions, up to 100%, a 10 mm rise), counted from the runs: the
@@ -662,6 +746,8 @@ def build(numbers, regions, handpicked=HANDPICKED, floats=FLOAT, greenfield=None
     k0, rec = len(ctx["seed"]), nm["recommend"]
     st = steps(nm, reg, ctx)
     N = notes(nm, reg, ctx)
+    why = why_nested(nm, reg, chambers, ctx, exact_unseen(nm, chambers))
+    next(s for s in st if s["id"] == "5b")["why"] = why
     for s in st:
         s["notes"] = N[s["id"]]
     out = {"design": DESIGN_TAG, "steps": st,
