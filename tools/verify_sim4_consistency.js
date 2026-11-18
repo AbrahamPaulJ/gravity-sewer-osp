@@ -185,7 +185,7 @@ const server = http.createServer((q, s) => {
     fade:+getComputedStyle(c.querySelector(".cv-other")||c).opacity,legend:(c.querySelector(".lg span.on")||{}).textContent||""}})()`);
   let ch = await chart();
   ok("chart: the nested beam search is drawn bold, its average dashed in the same colour", ch.sel === "story" && ch.avg && ch.dash && ch.same && ch.legend === "Nested beam search", JSON.stringify(ch));
-  ok("chart: every other method draws its worst case, faded, with no average", /exact/.test(ch.others) && /greedy/.test(ch.others) && /warn/.test(ch.others) && ch.otherAvg === 0 && ch.fade < 0.6, JSON.stringify(ch));
+  ok("chart: every other method drawn faded, with Worst case and Average both on its average dashed too", /exact/.test(ch.others) && /greedy-avg/.test(ch.others) && /warn/.test(ch.others) && ch.otherAvg >= 3 && ch.fade < 0.6, JSON.stringify(ch));
   const pulses = [];
   for (const m of ["exact", "greedy", "warn", "story"]) {
     await click(`#methKnob button[data-m="${m}"]`); await wait(1200);
@@ -252,6 +252,62 @@ const server = http.createServer((q, s) => {
     ok("6 fold: the float figure = float.json, averaged by case", [...new Set(fl0.map(v => [...pcs(v)][0]))].every(p => m6.includes(p)));
     const m1 = D.steps.find(s => s.id === "1").notes.more.blocks[0];
     ok("1 fold: council and model homes = regions.js and catchment.js", m1.intro.includes(REG.councilConnections.toLocaleString("en-AU")));
+  }
+
+  // ---- 19 Nov (third pass): the first view, the Show toggles, Greedy in two, the map controls card
+  {
+    await load();
+    const first = await ev(`({top:Growth3D.isTop(), houses:document.querySelector("#toggleConn").classList.contains("primary"), housesShown:!!document.querySelector("#toggleConn").getClientRects().length,
+      legend:document.querySelector("#toggleLegend").classList.contains("primary"), legendBox:!document.querySelector("#legend").hidden})`);
+    ok("first load: the map straight down, Houses and Legend off (the Houses button shown)", first.top && !first.houses && first.housesShown && !first.legend && !first.legendBox, JSON.stringify(first));
+    await click("#btn-compass"); await wait(1500);
+    const tilted = await ev("Growth3D.isTop()");
+    await click("#btn-compass"); await wait(1500);
+    ok("first load: the compass still turns it to the tilted view and back", !tilted && await ev("Growth3D.isTop()"), tilted);
+    await click('#viewKnob button[data-v="expert"]'); await wait(1500);
+    const tog = () => ev('[...document.querySelectorAll("#objKnob button")].map(b=>(b.classList.contains("on")&&b.getAttribute("aria-pressed")==="true"?"1":"0")).join("")');
+    const lines = () => ev('({w:document.querySelectorAll("#curve .cv-worst").length,a:document.querySelectorAll("#curve .cv-avg").length,lead:document.getElementById("sensorList").innerText.split("\\n")[0]})');
+    const shown = [];
+    for (const m of ["story", "exact", "warn"]) { await click(`#methKnob button[data-m="${m}"]`); await wait(900); shown.push(await ev('!!document.querySelector("#objKnob").getClientRects().length') && await tog() === "11"); }
+    ok("Show: Worst case and Average show for every method, both on to start", shown.every(Boolean), shown.join());
+    await click('#methKnob button[data-m="story"]'); await wait(1200);
+    const both = await lines();
+    await click('#objKnob button[data-o="worst"]'); await wait(900);
+    const aOnly = await lines(), t1 = await tog();
+    await click('#objKnob button[data-o="mean"]'); await wait(900);
+    const t2 = await tog();
+    ok("Show: Worst case off leaves the dashed averages only, and the figures say average", t1 === "01" && aOnly.w === 0 && aOnly.a >= 4 && /average/.test(aOnly.lead) && !/worst/.test(aOnly.lead), JSON.stringify(aOnly));
+    ok("Show: the last one on cannot be turned off", t2 === "01", t2);
+    await click('#objKnob button[data-o="worst"]'); await click('#objKnob button[data-o="mean"]'); await wait(900);
+    const wOnly = await lines();
+    ok("Show: Average off leaves the solid worst cases only, and the figures say worst", await tog() === "10" && wOnly.a === 0 && wOnly.w >= 4 && /worst/.test(wOnly.lead) && !/average/.test(wOnly.lead), JSON.stringify(wOnly));
+    await click('#objKnob button[data-o="mean"]'); await wait(900);
+    ok("Show: both on draws both", both.w >= 4 && both.a >= 4 && await tog() === "11", JSON.stringify(both));
+    const names = await ev('[...document.querySelectorAll("#methKnob button")].filter(b=>!b.hidden).map(b=>b.textContent)');
+    ok('Greedy is two methods: "Greedy: worst case" and "Greedy: average"', names.includes("Greedy: worst case") && names.includes("Greedy: average") && !names.some(n => /one at a time/.test(n)), names.join(" | "));
+    await click('#scopeKnob button[data-s="broad"]'); await wait(1200);
+    const gavg = [];
+    for (const m of ["greedy", "greedy-avg"]) { await click(`#methKnob button[data-m="${m}"]`); await ev('(()=>{const r=document.getElementById("kRange");r.value="1";r.dispatchEvent(new Event("input"))})()'); await wait(1200); gavg.push(await ev('({pins:[...document.querySelectorAll(".labels .lbl.sensor")].length, lead:document.getElementById("sensorList").innerText.split("\\n")[0]})')); }
+    const avgOf = t => +(((t.lead.match(/(\d+)% on average|average (\d+)%/) || []).slice(1).find(Boolean)) || -1);
+    ok("Greedy: average at one sensor catches at least as much on average as Greedy: worst case", gavg[1].pins === 1 && avgOf(gavg[1]) >= avgOf(gavg[0]) && avgOf(gavg[0]) >= 0, gavg.map(g => g.lead).join(" / "));
+    await send("Page.navigate", { url: "about:blank" }); await wait(150);
+    await send("Page.navigate", { url: `http://127.0.0.1:${HTTP}/simulation4/explore.html#view=expert&method=greedy&obj=mean&show=average` });
+    for (let i = 0; i < 240; i++) { await wait(250); if (await ev('!!(document.querySelector("#sensorList") && document.querySelector("#sensorList").innerText.length > 50)')) break; }
+    await wait(1500);
+    ok("hash: an old Greedy + Best average link opens Greedy: average; #show=average opens Average only", await ev('document.querySelector("#methKnob button.on").dataset.m') === "greedy-avg" && await tog() === "01");
+    // The map controls card
+    const help = await ev(`(()=>{const b=document.querySelector("#btn-maphelp"),c=document.querySelector("#btn-compass").getBoundingClientRect(),r=b.getBoundingClientRect();
+      return{next:Math.abs(r.top-c.top)<4&&Math.abs(r.left-c.right)<24,label:b.getAttribute("aria-label"),pop:!!document.querySelector("#btn-maphelpPop")}})()`);
+    ok("map help: a ? button beside the compass, labelled", help.next && help.label === "Map controls" && help.pop, JSON.stringify(help));
+    const hb = await ev('(()=>{const r=document.querySelector("#btn-maphelp").getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()');
+    await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: hb.x, y: hb.y, button: "none" }); await wait(400);
+    const open = await ev(`(()=>{const p=document.querySelector("#btn-maphelpPop"),r=p.getBoundingClientRect(),c=document.querySelector("#btn-compass").getBoundingClientRect(),b=document.querySelector("#btn-maphelp").getBoundingClientRect();
+      const hit=q=>!(q.right<=r.left||q.left>=r.right||q.bottom<=r.top||q.top>=r.bottom);
+      return{shown:!p.hidden,w:Math.round(r.width),fits:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,clear:!hit(c)&&!hit(b),exp:document.querySelector("#btn-maphelp").getAttribute("aria-expanded"),t:p.innerText}})()`);
+    ok("map help: hovering opens the card, about 360 px, on screen, clear of the compass and its own button", open.shown && open.w >= 340 && open.w <= 380 && open.fits && open.clear && open.exp === "true", JSON.stringify({ ...open, t: undefined }));
+    ok("map help: left drag turns, right drag moves, scroll zooms, touch named; no pinch claimed", /Left click/.test(open.t) && /turn/.test(open.t) && /Right click/.test(open.t) && /move/.test(open.t) && /Scroll/.test(open.t) && /touch/i.test(open.t) && !/pinch/i.test(open.t + fs.readFileSync(path.join(PUB, "simulation4/map_help.js"), "utf8").replace(/no pinch zoom/g, "")));
+    await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 }); await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 }); await wait(300);
+    ok("map help: Escape closes it", await ev('document.querySelector("#btn-maphelpPop").hidden && document.querySelector("#btn-maphelp").getAttribute("aria-expanded")==="false"'));
   }
 
   // ---- 19 Nov: Explore's citations link to the team's paper library; its tooltips stay plain

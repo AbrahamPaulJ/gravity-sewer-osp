@@ -111,6 +111,10 @@ button:disabled{opacity:.35; cursor:default}
    landing page the page's own header carries the switch, so this one hides there (sim4_story.js). */
 #themeBtn{width:36px; height:36px; min-height:36px; padding:0; display:grid; place-items:center; color:var(--dim); background:var(--panel-solid)}
 #themeBtn svg{width:18px; height:18px}
+/* 19 Nov: the map controls card (map_help.js) opens from this "?", under it, or above it at phone width. */
+#btnMapHelp{width:36px; height:36px; min-height:36px; padding:0; display:grid; place-items:center; border-radius:50%; font-weight:700; font-size:15px; color:var(--dim); background:var(--panel-solid)}
+#btnMapHelp:hover{color:var(--ink)}
+#why .gfLink{margin:8px 0 0} #why .gfLink a{color:var(--accent)}
 #themeBtn .moon, html[data-theme="light"] #themeBtn .sun{display:none}
 html[data-theme="light"] #themeBtn .moon{display:block}
 
@@ -306,7 +310,7 @@ html[data-theme="light"]{
 html[data-theme="light"] button{background:#f0ece3}
 html[data-theme="light"] #next{color:#fff}
 html[data-theme="light"] #card{box-shadow:0 4px 18px #3b30201a}
-html[data-theme="light"] #btnExplore, html[data-theme="light"] #themeBtn{background:var(--panel-solid); box-shadow:0 2px 10px #1f23281a}
+html[data-theme="light"] #btnExplore, html[data-theme="light"] #themeBtn, html[data-theme="light"] #btnMapHelp{background:var(--panel-solid); box-shadow:0 2px 10px #1f23281a}
 html[data-theme="light"] #pop{border-color:var(--line); box-shadow:0 8px 28px #1f232833}
 html[data-theme="light"] #notes td{border-bottom-color:#ebe5d9}
 html[data-theme="light"] #why td{border-bottom-color:#ebe5d9}
@@ -364,6 +368,7 @@ html[data-theme="light"] body{background:#f3f0e8}
 
 <div id="corner">
   <a id="btnExplore" href="explore.html" title="Every weather case, rule, region and sensor method on these regions, in Sim 3.5's full view">Explore</a>
+  <button id="btnMapHelp" type="button" aria-label="Map controls">?</button>
   <button id="themeBtn" type="button" aria-label="Switch to the light theme" title="Switch to the light theme"><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z" fill="currentColor"/></svg></button>
 </div>
 
@@ -371,10 +376,11 @@ html[data-theme="light"] body{background:#f3f0e8}
 <script src="../simulation3/data/growth.js?v=9"></script>
 <script src="data/regions.js?v=1"></script>
 <script src="../simulation3/data/index.js?v=9"></script>
-<script src="../simulation35/growth_3d.js?v=33"></script>
-<script src="data/sim4.js?v=10"></script>
+<script src="../simulation35/growth_3d.js?v=34"></script>
+<script src="data/sim4.js?v=11"></script>
 <script src="library.js?v=1"></script>
-<script src="sim4_story.js?v=11"></script>
+<script src="map_help.js?v=1"></script>
+<script src="sim4_story.js?v=12"></script>
 <script type="module">
   Sim4.init();
 </script>

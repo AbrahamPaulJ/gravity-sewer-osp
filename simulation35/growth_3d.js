@@ -1434,7 +1434,7 @@ window.Growth3D = (function () {
     const centre = sphere.center, span = Math.max(300, sphere.radius * 2);
     const r = span / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)) * 0.72 / Math.min(1, camera.aspect || 1);     // 19 Nov: a portrait screen fits the width too
     controls.target.copy(centre);
-    camera.position.set(centre.x + r * 0.62, centre.y + r * 0.48, centre.z + r * 0.62);
+    placeCam(centre, r);
     camera.updateProjectionMatrix();
     controls.update();
   }
@@ -1950,6 +1950,17 @@ window.Growth3D = (function () {
     return true;
   }
 
+  /* SIM4 (19 Nov): the map can open straight down, north up, rather than tilted. With setTopDefault(true) the first
+     framing is top-down, and later framings (Recentre, a region, an estate) keep whichever of top-down or tilted the
+     reader is in. Off by default, so the Sim 3.5 page frames as before. */
+  let topDefault = false, framedOnce = false;
+  function setTopDefault(on) { topDefault = !!on; framedOnce = false; }     // the next framing is the first: build() may have framed already
+  function placeCam(centre, r) {
+    const top = topDefault && (!framedOnce || isTop());
+    framedOnce = true;
+    if (top) camera.position.set(centre.x, centre.y + r * 0.95, centre.z + r * 0.95 * 1e-6);
+    else camera.position.set(centre.x + r * 0.62, centre.y + r * 0.48, centre.z + r * 0.62);
+  }
   function frame(tightOn) {
     if (!built) return;
     ++camTween;
@@ -1962,7 +1973,7 @@ window.Growth3D = (function () {
     }
     const r = span / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)) * 0.72 / Math.min(1, camera.aspect || 1);     // 19 Nov: a portrait screen fits the width too
     controls.target.copy(centre);
-    camera.position.set(centre.x + r * 0.62, centre.y + r * 0.48, centre.z + r * 0.62);
+    placeCam(centre, r);
     camera.updateProjectionMatrix();
     controls.update();
   }
@@ -2155,7 +2166,7 @@ window.Growth3D = (function () {
     const centre = sphere.center, span = Math.max(300, sphere.radius * 2);
     const r = span / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)) * 0.72 / Math.min(1, camera.aspect || 1);     // 19 Nov: a portrait screen fits the width too
     controls.target.copy(centre);
-    camera.position.set(centre.x + r * 0.62, centre.y + r * 0.48, centre.z + r * 0.62);
+    placeCam(centre, r);
     camera.updateProjectionMatrix();
     controls.update();
   }
@@ -2313,7 +2324,7 @@ window.Growth3D = (function () {
 
 /* SIM35 END */  return { build, liveCamera, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setHouseShapes, setScenario, setSpills, setPumpRates, mapState, frameNodes, setEstate, frameBox, setStreets, showGrid, setTheme,
            setRegionTints, setRegionLabels, showRegionLabels, setPulse, setEligible, setExtraNodes, setFlow,
-           viewTop, viewTilt, heading, isTop, onViewChange, getCamera, setCamera,
+           viewTop, viewTilt, heading, isTop, onViewChange, getCamera, setCamera, setTopDefault,
            frame, resize, heatHex, setExaggeration,
            get ZEXAG() { return ZEXAG; }/* SIM35 BEGIN */, setCoverSelect, coverSelectInfo, mapCam, screenOf,
            setSensorPrefix: p => { sensorPrefix = p || "S"; }/* SIM35 END */ };

@@ -163,7 +163,7 @@ def steps(nm, reg, ctx):
            f"A nested list, not the exact best {word(rec)}: it keeps step 5a's sensor and grows from {k0} to {rec} to {max(lad)} without moving one.")
     s6 = (f"{kdollars(k0 * price)} or {kdollars(rec * price)}, at assumed prices. Real records of a normal day could confirm the design day "
           f"and save up to {rec - k0} sensors, about {kdollars((rec - k0) * price)}. A new suburb needs its own model runs: the method repeats, "
-          f"this sensor list does not.")
+          f"this sensor list does not. New estates at the network's edge (greenfield) need sensors of their own: the next piece of work.")
     return [
         {"id": "1", "n": 1, "title": "The network", "map": "plain",
          "body": f"{ctx['pipes']} pipes and {ctx['manholes']} manholes, with new homes coming by 2041. The question is what data shows growth using up these pipes, and where to collect it."},
@@ -653,6 +653,23 @@ def exact_unseen(nm, chambers, path=None):
     return ex["unseen"][nm["recommend"] - 1]
 
 
+def why_greenfield(nm, ctx):
+    """Step 6's fold (19 Nov): the recommendation is for infill only; new estates at the edge (greenfield) were run but no
+    sensors are chosen for them yet, so it is the next piece of work. The coverage is greenfield_cover's, the score
+    Explore's Greenfield view gives the story's list."""
+    rec, (joins, cands), g = nm["recommend"], ctx["greenfield"], ctx["gf_cover"]
+    intro = (f"These {word(rec)} sensors were chosen for infill: new homes inside the suburb. New estates joining at the network's edge "
+             f"(greenfield) were run too, at {joins} edge connections, but no sensors are chosen for them yet. On those runs the same "
+             f"{word(rec)} see {pct(g['average'])} of the growth runs on average and {pct(g['worst'])} in the worst wet case, so a new estate "
+             "needs a placement of its own. Choosing it is the next piece of work.")
+    rows = [["Edge connections where a new estate could join", f"{joins} of {cands} candidate points"],
+            [f"Growth runs these {word(rec)} see, average over the {g['cases']} wet cases", pct(g["average"])],
+            [f"Growth runs these {word(rec)} see, worst wet case", pct(g["worst"])]]
+    link = ('<p class="gfLink"><a href="explore.html#fam=one&amp;view=expert">Open Explore\'s Greenfield view</a>: the story\'s sensors scored on each '
+            "estate, beside the greenfield runs' own greedy order.</p>")
+    return {"title": "New estates at the edge", "intro": intro, "table": table(["", "Value"], rows) + link}
+
+
 def why_nested(nm, reg, chambers, ctx, exact_unseen=None):
     """Step 5b's 'Why not the exact best set?': the nested list against the exact solver's set at the recommended count,
     from the runs. The exact sets' unseen-weather figure is demo/data/compare.js's (build_demo_data.js: each wet case
@@ -957,6 +974,7 @@ def build(numbers, regions, handpicked=HANDPICKED, floats=FLOAT, greenfield=None
     N = notes(nm, reg, ctx)
     why = why_nested(nm, reg, chambers, ctx, exact_unseen(nm, chambers))
     next(s for s in st if s["id"] == "5b")["why"] = why
+    next(s for s in st if s["id"] == "6")["why"] = why_greenfield(nm, ctx)
     F = sim4_more.figures(nm, reg, geo, runs, fl, ctx["gf_cover"], ctx["greenfield"][0])
     more, widgets = more_folds(F, nm, ctx)
     for s in st:

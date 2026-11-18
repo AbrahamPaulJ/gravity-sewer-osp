@@ -86,7 +86,8 @@ function connect(url) {
   ok('the map fills the whole screen', layout.full);
   const clutter = await ev(`[...document.querySelectorAll('.labels .lbl.scale,.labels .lbl.outlet')].filter(e=>getComputedStyle(e).display!=='none').length`);
   ok("the map code's own scale and outlet labels are hidden", clutter === 0, clutter);
-  ok('the only controls are Back, Next, Behind this step, Explore and Light or Dark (no Hide)', layout.controls.sort().join() === 'back,btnExplore,btnNotes,next,themeBtn', layout.controls.join());
+  ok('the only controls are Back, Next, Behind this step, Explore, the map controls ? and Light or Dark (no Hide)', layout.controls.sort().join() === 'back,btnExplore,btnMapHelp,btnNotes,next,themeBtn', layout.controls.join());
+  ok('19 Nov: the map opens straight down, north up', await ev('Growth3D.isTop()'));
   ok('the card leaves the map clear', layout.cardShare < .22, pc(layout.cardShare));
 
   // Walk every step with the Next button
@@ -208,7 +209,9 @@ function connect(url) {
     await c.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }); await wait(200);
     const seq = [], pos = [];
     for (const n of [s1, s3, s1]) {
-      const p = await ev(`Growth3D.screenOf(${JSON.stringify(n)})`);
+      // The map eases into place once the box opens: click the manhole where it settles, as a person would.
+      let p = await ev(`Growth3D.screenOf(${JSON.stringify(n)})`);
+      for (let i = 0; i < 20; i++) { await wait(150); const q = await ev(`Growth3D.screenOf(${JSON.stringify(n)})`); if (Math.abs(q.x - p.x) < 0.5 && Math.abs(q.y - p.y) < 0.5) break; p = q; }
       await clickAt(p.x, p.y);
       for (let i = 0; i < 14 && !(await txt('#pop')).includes(n); i++) await wait(150);
       seq.push((await txt('#pop')).includes(n) && (await ev(COVERED)).length === 0);
@@ -285,6 +288,57 @@ function connect(url) {
     ok('5b: a second click closes it', await ev('document.querySelector("#why").hidden') && Math.abs(await ev('document.querySelector("#card").getBoundingClientRect().height') - card0) < 2);
     await load('#step=5a');
     ok('5a: no such button on other steps', await ev('document.querySelector("#btnWhy").hidden'));
+  }
+
+  // 19 Nov (third pass): an open "Behind this step" runs down to 16 px above the screen's bottom, inside the card
+  {
+    const fold = async () => ev(`(()=>{const c=document.querySelector('#card'),n=document.querySelector('#notes'),cr=c.getBoundingClientRect(),nr=n.getBoundingClientRect();
+      return{shown:!n.hidden,nb:Math.round(nr.bottom),cb:Math.round(cr.bottom),gap:Math.round(innerHeight-cr.bottom),cardScroll:c.scrollHeight>c.clientHeight+1,foldScroll:n.scrollHeight>n.clientHeight+1,h:Math.round(nr.height)}})()`);
+    await load('#step=3&still=1');
+    await click('#btnNotes'); await wait(500);
+    await ev('document.querySelector("#more").open = true'); await wait(500);     // with "More on this step" open the words need more than the screen
+    const f3 = await fold();
+    ok('notes: a real click opens it down to 16 px above the bottom, inside the card, the card itself not scrolling', f3.shown && Math.abs(f3.gap - 16) <= 2 && f3.nb <= f3.cb && !f3.cardScroll && f3.foldScroll && f3.h > 500, JSON.stringify(f3));
+    await shot('notes_tall');
+    await click('#btnNotes'); await wait(300);
+    const shut = await ev(`(()=>{const r=document.querySelector('#card').getBoundingClientRect();return{h:Math.round(r.height),mh:document.querySelector('#notes').style.maxHeight}})()`);
+    ok('notes: closed again, the card is short as before', shut.h <= 185 && shut.mh === '', JSON.stringify(shut));
+    await load('#step=1&notes=1');
+    const f1 = await fold();
+    ok('notes: a short fold is only as tall as its words, and never runs past the card', f1.shown && f1.nb <= f1.cb && !f1.cardScroll && f1.gap >= 14, JSON.stringify(f1));
+  }
+  // 19 Nov (third pass): the map controls card, from a ? in the top-right corner
+  {
+    await load('#step=2');
+    const hp = await ev(`(()=>{const b=document.querySelector('#btnMapHelp'),t=document.querySelector('#themeBtn').getBoundingClientRect(),r=b.getBoundingClientRect();return{lab:b.getAttribute('aria-label'),row:!!b.closest('#corner')&&Math.abs(r.right-t.right)<2&&r.width>0,pop:!!document.querySelector('#btnMapHelpPop')}})()`);
+    ok('map help: a ? in the corner with Explore and Light or Dark, labelled Map controls', hp.lab === 'Map controls' && hp.row && hp.pop, JSON.stringify(hp));
+    const bx = await ev(`(()=>{const r=document.querySelector('#btnMapHelp').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+    await c.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: bx.x, y: bx.y, button: 'none' }); await wait(400);
+    const hov = await ev(`(()=>{const p=document.querySelector('#btnMapHelpPop'),r=p.getBoundingClientRect(),b=document.querySelector('#btnMapHelp').getBoundingClientRect(),cd=document.querySelector('#card').getBoundingClientRect();
+      return{shown:!p.hidden,w:Math.round(r.width),fits:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,clearBtn:r.top>=b.bottom||r.bottom<=b.top,t:p.innerText}})()`);
+    ok('map help: hovering opens the card (about 360 px, on screen, clear of its button)', hov.shown && hov.w >= 340 && hov.w <= 380 && hov.fits && hov.clearBtn, JSON.stringify({ ...hov, t: undefined }));
+    ok('map help: the controls named as the map has them', /Left click/.test(hov.t) && /Drag to turn/.test(hov.t) && /Right click/.test(hov.t) && /Drag to move/.test(hov.t) && /Scroll/.test(hov.t) && /two fingers/.test(hov.t));
+    await shot('maphelp_story');
+    await c.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 700, y: 600, button: 'none' }); await wait(500);
+    ok('map help: moving away closes it', await ev('document.querySelector("#btnMapHelpPop").hidden'));
+    await click('#btnMapHelp'); await c.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 700, y: 600, button: 'none' }); await wait(500);
+    const pinned = await ev('!document.querySelector("#btnMapHelpPop").hidden');
+    await clickAt(700, 600); await wait(300);
+    ok('map help: a click keeps it open; a click elsewhere closes it', pinned && await ev('document.querySelector("#btnMapHelpPop").hidden'), pinned);
+  }
+  // 19 Nov (third pass): step 6 says greenfield is the next piece of work, with its coverage in a fold
+  {
+    await load('#step=6');
+    const b6 = await txt('#stepBody');
+    const W6 = D.steps.find(s => s.id === '6').why;
+    ok('6: one visible line: new estates at the edge (greenfield) are the next piece of work', /New estates at the network's edge \(greenfield\)/.test(b6) && /next piece of work/.test(b6), b6.slice(-120));
+    ok('6: "New estates at the edge" is a fold closed by default', await txt('#btnWhy') === 'New estates at the edge' && await ev('document.querySelector("#why").hidden'));
+    await click('#btnWhy'); await wait(300);
+    const w6 = await txt('#why'), gf5 = D.steps.find(s => s.id === '5b').notes.limit.match(/these \w+ see (\d+%) of growth runs on average and (\d+%) in the worst/);
+    ok("6: the fold gives today's five on greenfield growth, the figures step 5b's limit quotes (average, worst)", gf5 && w6.includes(gf5[1] + ' of the growth runs on average') && w6.includes(gf5[2] + ' in the worst wet case'), gf5 && gf5.slice(1).join(' '));
+    ok("6: it links Explore's Greenfield view", await ev('document.querySelector("#why .gfLink a").getAttribute("href")') === 'explore.html#fam=one&view=expert');
+    ok('6: no client named, and slide 3 still says infill only', !/SA Water|important to|the client/i.test(W6.intro + W6.table + b6) && /Infill only/.test(JSON.stringify(D.steps.find(s => s.id === '3'))));
+    await shot('why_6');
   }
 
   // Source links (19 Nov): every cited source in the team's paper library opens there, in a new tab
@@ -432,6 +486,7 @@ function connect(url) {
   await shot('landing_light_story');
   await loadLanding('#sim4/explore');
   ok('landing: Explore inside opens light, its own switch hidden', await inFrame('d.documentElement.dataset.theme') === 'light' && await inFrame('d.querySelector("#themeBtn").hidden'));
+  ok('landing: one sun/moon only: Explore\'s own switch takes no space there', await inFrame('d.querySelector("#themeBtn").getClientRects().length') === 0);
   await click('#themeToggle'); await wait(900);
   ok('landing: the header switch turns Explore inside dark (this fixes Explore having no switch there)', await inFrame('d.documentElement.dataset.theme') === 'dark' && await ev('document.documentElement.dataset.theme') === 'dark');
   await shot('landing_dark_explore');
@@ -447,8 +502,15 @@ function connect(url) {
   const narrow = await ev(`(()=>{const r=document.querySelector('#card').getBoundingClientRect();return{fit:r.left>=0&&r.right<=innerWidth,bottom:r.bottom,h:innerHeight,scroll:document.documentElement.scrollWidth<=innerWidth}})()`);
   ok('phone width: the card fits', narrow.fit && narrow.scroll);
   ok('phone width: the card leaves map to see', narrow.bottom < narrow.h * .62, Math.round(narrow.bottom));
-  const corners = await ev(`(()=>{const c=document.querySelector('#card').getBoundingClientRect();return ['#btnExplore','#themeBtn'].map(s=>document.querySelector(s).getBoundingClientRect()).map(r=>({in:r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight,clear:r.top>=c.bottom}))})()`);
-  ok("phone width: Explore and Light or Dark fit, clear of the card", corners.every(x => x.in && x.clear), JSON.stringify(corners));
+  const corners = await ev(`(()=>{const c=document.querySelector('#card').getBoundingClientRect();return ['#btnExplore','#btnMapHelp','#themeBtn'].map(s=>document.querySelector(s).getBoundingClientRect()).map(r=>({in:r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight,clear:r.top>=c.bottom}))})()`);
+  ok("phone width: Explore, the map controls ? and Light or Dark fit, clear of the card", corners.every(x => x.in && x.clear), JSON.stringify(corners));
+  {
+    await load('#step=3&still=1&notes=1');
+    const pn = await ev(`(()=>{const c=document.querySelector('#card'),cr=c.getBoundingClientRect(),n=document.querySelector('#notes').getBoundingClientRect(),k=document.querySelector('#corner').getBoundingClientRect();
+      return{nb:Math.round(n.bottom),cb:Math.round(cr.bottom),corner:Math.round(k.top),cardScroll:c.scrollHeight>c.clientHeight+1,h:Math.round(n.height)}})()`);
+    ok('phone width: an open fold runs down to the foot of the card, above Explore and the switch', pn.nb <= pn.cb && pn.cb <= pn.corner && !pn.cardScroll && pn.h > 300, JSON.stringify(pn));
+    await shot('phone_notes');
+  }
   const phoneMiss = [];
   for (const sx of steps) {
     await load('#step=' + sx.id + '&still=1');

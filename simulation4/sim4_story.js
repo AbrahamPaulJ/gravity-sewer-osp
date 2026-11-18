@@ -180,6 +180,7 @@ const Sim4 = (() => {
     $("#next").disabled = st.i === total - 1;
     $("#dots").innerHTML = Array.from({ length: D().stepCount }, (_, a) => `<i class="${a + 1 === s.n ? "on" : ""}"></i>`).join("");
     renderNotes();
+    placeNotes();
     const c = $("#card"); c.classList.remove("in"); void c.offsetWidth; c.classList.add("in");
     c.scrollTop = 0;
   }
@@ -285,6 +286,7 @@ const Sim4 = (() => {
   function setWhy(on) {
     $("#why").hidden = !on;
     $("#btnWhy").setAttribute("aria-expanded", String(on));
+    placeNotes();
     placeMap();
   }
   function setNotes(on) {
@@ -293,7 +295,26 @@ const Sim4 = (() => {
     $("#btnNotes").setAttribute("aria-expanded", String(on));
     $("#btnNotes").title = on ? "Hide what sits behind this step" : "What this step assumes, its sources, its limits and what comes next";
     if (!on) $("#notes").scrollTop = 0;
+    placeNotes();
     placeMap();
+  }
+  /* 19 Nov: an open "Behind this step" runs down to the card's lowest edge, 16 px above the bottom of the screen (on a
+     phone, above Explore and the theme switch, or above the sensor sheet when that is open), so far more of it shows
+     before it scrolls; before, it stopped at 46% of the screen. The card never runs past the screen: the fold scrolls
+     inside itself, and a short fold is only as tall as its words. Shut, the card is as short as ever. */
+  const NOTES_MIN = 140;
+  function placeNotes() {
+    const c = $("#card"), n = $("#notes");
+    if (n.hidden) { n.style.maxHeight = ""; return; }
+    const cs = getComputedStyle(c), maxH = parseFloat(cs.maxHeight) || innerHeight - 32;
+    let bottom = c.offsetTop + maxH;
+    const p = $("#pop");
+    if (p && !p.hidden && st.popSide === "sheet") bottom = Math.min(bottom, p.offsetTop - 8);
+    const top = c.offsetTop + (n.getBoundingClientRect().top - c.getBoundingClientRect().top);     // a difference, so the card's entry animation does not move it
+    const room = Math.max(NOTES_MIN, Math.floor(bottom - top - parseFloat(cs.paddingBottom) - parseFloat(cs.borderBottomWidth)));
+    n.style.maxHeight = room + "px";
+    const over = c.scrollHeight - c.clientHeight;     // anything laid out below the fold (margins, padding) still fits
+    if (over > 0) n.style.maxHeight = Math.max(NOTES_MIN, room - over) + "px";
   }
   // The map moves down by half the card's height, so it centres in the space below the card at the same scale.
   // A shift, not a smaller canvas: the stage keeps its size, so nothing is resized and the reader's view is kept.
@@ -335,7 +356,7 @@ const Sim4 = (() => {
     $("#pop").hidden = true;
     document.body.classList.remove("docked");
     Growth3D.setCoverSelect(null);
-    if (was) placeMap();
+    if (was) { placeNotes(); placeMap(); }
   }
   const esc = t => String(t).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
   const regionOf = name => { const ri = regionPaint().of[G().nodes.findIndex(n => n.name === name)]; return ri >= 0 ? ri : null; };
@@ -358,7 +379,7 @@ const Sim4 = (() => {
     st.popAt = name;
     if (was || !st.popSide) st.popSide = dockSide(avoid || sensorNames());
     placeDock();
-    if (was) placeMap();
+    if (was) { placeNotes(); placeMap(); }
   }
   function showPop(name) {
     const k = step().k, info = k ? D().popups[k].find(x => x.name === name) : null;
@@ -468,6 +489,7 @@ const Sim4 = (() => {
       showPop(nd.name);
     }, nd => { $("#stage").style.cursor = nd ? "pointer" : ""; }).then(() => {
       if (Growth3D.setHouseShapes) Growth3D.setHouseShapes(true);   // homes as building outlines, no dots
+      if (Growth3D.setTopDefault) Growth3D.setTopDefault(true);       // 19 Nov: the map opens straight down, north up
       Growth3D.frame(null);
       applyTheme(theme());
       const want = (location.hash.match(/step=([0-9a-z]+)/) || [])[1];
@@ -499,10 +521,18 @@ const Sim4 = (() => {
     $("#stage").addEventListener("click", e => {
       const l = e.target.closest && e.target.closest(".lbl.sensor");
       if (!l) return;
-      const n = sensorNames()[+l.textContent.replace(/\D/g, "") - 1];
+      let n = sensorNames()[+l.textContent.replace(/\D/g, "") - 1];
+      // 19 Nov: seen from straight above, one sensor's pin can lie over another's manhole (S3's over S1's at 5b). A click
+      // within 8 px of a sensor's own manhole, and nearer it than the middle of the pin, means that sensor; a tap on the
+      // middle of a pin is that pin's (on a phone S3's pin sits a few px from S1's manhole).
+      const r = l.getBoundingClientRect();
+      let best = Math.min(8, Math.hypot(r.left + r.width / 2 - e.clientX, r.top + r.height / 2 - e.clientY));
+      for (const m of sensorNames()) { const q = Growth3D.screenOf(m); const d = q ? Math.hypot(q.x - e.clientX, q.y - e.clientY) : 1e9; if (d < best) { best = d; n = m; } }
       if (n) { stopSweep(); showPop(n); }
     });
     if (window.ResizeObserver) new ResizeObserver(placeMap).observe($("#card"));
+    // The fold's room changes when what sits above it does (the legend, a wrapped line, the 6 fold), not only the card.
+    if (window.ResizeObserver) { const ro = new ResizeObserver(() => placeNotes()); ["#cardHead", "#bodyRow", "#controls", "#notesBar"].forEach(q => ro.observe($(q))); }
     addEventListener("keydown", e => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
       // Inside the fold the arrow keys scroll its tables, so they do not change step there.
@@ -511,8 +541,9 @@ const Sim4 = (() => {
       else if (e.key === "ArrowLeft" || e.key === "PageUp") go(st.i - 1);
       else if (e.key === "Escape") { hidePop(); paintMap(); }
     });
-    addEventListener("resize", () => { Growth3D.resize($("#stage")); if (st.popAt) { st.popSide = dockSide(sensorNames()); placeDock(); } placeMap(); });
+    addEventListener("resize", () => { Growth3D.resize($("#stage")); if (st.popAt) { st.popSide = dockSide(sensorNames()); placeDock(); } placeNotes(); placeMap(); });
+    if (window.MapHelp) MapHelp.attach($("#btnMapHelp"));     // 19 Nov: how to turn, move and zoom the map
   }
   return { init, state: st, step, levels: LEVELS, sensors: sensorNames, growthState, regionPaint, regionTints, actionLabels, regionOf, overlayNote,
-           openPop, hidePop, esc, setTheme, ACTION_COL, LEGEND, REGION_COLS, setNotes, setWhy, declutter };
+           openPop, hidePop, esc, setTheme, ACTION_COL, LEGEND, REGION_COLS, setNotes, setWhy, declutter, placeNotes };
 })();

@@ -151,8 +151,11 @@ h4{margin:14px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.
   background:var(--panel-2); font-size:12.5px}
 #sensorBox h4{margin-top:0}
 #objKnob,#methKnob{margin-top:8px}
-#curve{position:relative; margin-top:10px; --c-nested:#2ef56b; --c-exact:#e8743f; --c-greedy:#58a6ff; --c-warn:#e3b341; --c-risk:#db61a2}
-html[data-theme="light"] #curve{--c-nested:#1a7f37; --c-exact:#c4432b; --c-greedy:#0969da; --c-warn:#9a6700; --c-risk:#bf3989}
+#curve{position:relative; margin-top:10px; --c-nested:#2ef56b; --c-exact:#e8743f; --c-greedy:#58a6ff; --c-greedy-avg:#a5a1ff; --c-warn:#e3b341; --c-risk:#db61a2}
+html[data-theme="light"] #curve{--c-nested:#1a7f37; --c-exact:#c4432b; --c-greedy:#0969da; --c-greedy-avg:#6639ba; --c-warn:#9a6700; --c-risk:#bf3989}
+/* 19 Nov: Worst case and Average are display toggles, either or both on. */
+#objKnob{align-items:center}
+#objKnob .knobLbl{flex:none; font-size:12px; color:var(--dim); padding-right:4px}
 #curve .cv-other{opacity:.38}
 #curve .lg span.on{color:var(--ink); font-weight:600}
 #curve .lg span:not(.on){opacity:.65}
@@ -214,6 +217,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 #mapControls button:hover,#mapControls button:focus-visible{color:var(--accent); border-color:var(--accent)}
 #mapControls #btn-compass{width:36px; padding:3px; border-radius:50%; display:grid; place-items:center}
 #btn-compass svg{width:24px; height:24px}
+#mapControls #btn-maphelp{width:36px; padding:0; border-radius:50%; display:grid; place-items:center; font-weight:700; font-size:15px}
 #mapControls #vexagBox{height:36px; padding:0 10px; background:var(--panel); border:1px solid var(--line); border-radius:6px}
 #mapOverlays{position:absolute; left:8px; bottom:calc(var(--foot, 24px) + 4px); z-index:7; display:flex; flex-wrap:wrap; gap:8px; align-items:center; max-width:calc(100% - 300px)}
 .ovGrp{display:flex; flex-wrap:wrap; gap:4px; padding:4px; background:var(--panel); border:1px solid var(--line); border-radius:8px; backdrop-filter:blur(6px)}
@@ -516,6 +520,7 @@ html[data-theme="light"] .tab{background:#ffffffee}
 #vexagBox input{width:96px; accent-color:var(--accent)}
 #vexagVal{min-width:2.4em; color:var(--ink); font-variant-numeric:tabular-nums}
 #themeBtn{flex:none; width:32px; height:32px; padding:0; margin-left:8px; display:grid; place-items:center}
+#themeBtn[hidden]{display:none}
 #themeBtn svg{width:17px; height:17px}
 #themeBtn .moon, html[data-theme="light"] #themeBtn .sun{display:none}
 html[data-theme="light"] #themeBtn .moon{display:block}
@@ -601,16 +606,18 @@ html[data-theme="light"] #themeBtn .moon{display:block}
       <button data-m="story" title="The story's sensors, in its order: the recommendation, so this page and the story name the same manholes. Starts from the design wet day's sensor and grows one at a time, keeping the best 1,500 sets, so no sensor moves as more are added">Nested beam search</button>
       <button data-m="warn" id="methWarn" title="The best set of this size for warning at least one build-out step before the first new surcharge">Warn before surcharge</button>
       <button data-m="exact" id="methExact" title="The best set of this size, solved exactly (integer program)">Exact optimum</button>
-      <button data-m="greedy" title="One sensor at a time, each the best addition to the ones before">Greedy, one at a time</button>
+      <button data-m="greedy" title="One sensor at a time, each the one that most raises the WORST case">Greedy: worst case</button>
+      <button data-m="greedy-avg" title="One sensor at a time, each the one that most raises the AVERAGE over the cases">Greedy: average</button>
       <button data-m="risk" id="methRisk" hidden title="Every scenario weighted by severity x occurrence (Kimbrough 2019): the share of total risk noticed, not the share of scenarios">Risk-weighted</button>
     </div>
     <p class="x quiet" id="methSay"></p>
     <label class="fld" for="kRange">Number of sensors: <b id="kVal"></b></label>
     <input type="range" id="kRange" min="1" max="10" step="1">
     <p class="x quiet" id="methNote" hidden>A new estate: the nested beam search list, or the greenfield runs' greedy order as a comparison. The exact solver has run on infill growth only.</p>
-    <div class="knob x" id="objKnob">
-      <button data-o="worst" title="Each sensor is the one that most raises the WORST case">Best worst case</button>
-      <button data-o="mean" title="Each sensor is the one that most raises the AVERAGE over the cases">Best average</button>
+    <div class="knob x" id="objKnob" role="group" aria-label="Show on the chart and in the figures">
+      <span class="knobLbl">Show</span>
+      <button data-o="worst" aria-pressed="true" title="Show the worst case: solid lines on the chart, and the worst-case figures. Either or both can be on">Worst case</button>
+      <button data-o="mean" aria-pressed="true" title="Show the average over the cases: dashed lines on the chart, and the average figures. Either or both can be on">Average</button>
     </div>
     <div id="curve" class="x"></div>
     <div id="sensorList"></div>
@@ -646,6 +653,7 @@ html[data-theme="light"] #themeBtn .moon{display:block}
       <label id="vexagBox" title="Vertical exaggeration: how many times heights are stretched against distances on the ground. 1x is true scale">Vertical <input id="vexag" type="range" min="1" max="10" step="1" value="10"> <span id="vexagVal">10×</span></label>
       <button id="btn-recentre" title="Recentre on the selected estate, all estates when shown, the picked manhole, or the whole network">Recentre</button>
       <button id="btn-compass" title="Top-down view, north up" aria-label="Top-down view, north up" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><text x="12" y="7" text-anchor="middle" fill="currentColor" font-size="7">N</text><path d="M12 9L18 21L12 18L6 21Z" fill="currentColor"/></svg></button>
+      <button id="btn-maphelp" class="mapHelpBtn" type="button" aria-label="Map controls" aria-expanded="false">?</button>
     </div>
     <div id="mapOverlays" aria-label="Map layers">
       <div class="ovGrp">
@@ -659,7 +667,7 @@ html[data-theme="light"] #themeBtn .moon{display:block}
       <div class="ovGrp x">
         <button id="toggleHeat" class="x" title="Colour every manhole by how much growth it would see on its own">Heatmap</button>
         <button id="toggleEstates" hidden title="Draw every imaginary estate at its largest size.">Estates</button>
-        <button id="toggleConn" class="x" title="Show or hide houses and their connection pipes">Houses</button>
+        <button id="toggleConn" title="Show or hide houses and their connection pipes">Houses</button>
         <button id="toggleIds" class="x" title="Label every manhole with its number">Manhole ids</button>
       </div>
     </div>
@@ -740,18 +748,19 @@ html[data-theme="light"] #themeBtn .moon{display:block}
 <script src="data/osm_buildings.js?v=1"></script>
 <script src="data/msft_buildings.js?v=1"></script>
 <script src="footprints.js?v=1"></script>
-<script src="../simulation35/growth_3d.js?v=33"></script>
+<script src="../simulation35/growth_3d.js?v=34"></script>
 <script src="../simulation3/osp_core.js?v=9"></script>
 <script src="../simulation3/placement.js?v=9"></script>
 <script src="data/explore.js?v=6"></script>
-<script src="data/sim4.js?v=10"></script>
+<script src="data/sim4.js?v=11"></script>
 <script src="library.js?v=1"></script>
 <script src="data/greenfield.js?v=2"></script>
 <script src="data/estates.js?v=7"></script>
 <script src="greenfield_runs.js?v=3"></script>
 <script src="../simulation35/data/room.js?v=1"></script>
 <script src="../simulation35/room_calc.js?v=2"></script>
-<script src="explore_ui.js?v=35"></script>
+<script src="map_help.js?v=1"></script>
+<script src="explore_ui.js?v=36"></script>
 <script type="module">
   Sim35UI.init();
 </script>
