@@ -4,7 +4,10 @@
    Results tabs and the side panel give the story's own figures, read from the files the story is built from:
    simulation_src/results/sim4/numbers.json, float.json, capacity.json and simulation4/data/sim4.js.
 
-     Warning          overloads warned = the ladder's warned_target, of the story's total; held out = held_out weather_runs
+     Warning          overloads warned = the ladder's warned_target, of the story's total; held out = held_out_by_case averaged
+     Unseen weather   one measure everywhere (19 Nov): each wet case scored by sensors chosen without it, averaged over the cases
+     Source links     the citations in Explore's texts link to the team's paper library (library.js); tooltips do not
+     More folds       the story's "More on this step" figures against numbers.json and a recount from the runs
      Room for homes   each region's band and 10th to 90th range = numbers.json triage (step 4), at the published settings
      Level or float   every budget row = float.json (step 6)
      Fewest sensors   every cell = numbers.json fewest (step 5a), exact and on the list
@@ -79,14 +82,17 @@ const server = http.createServer((q, s) => {
   const looOk = Object.entries(hoc).every(([c, v]) => loo.some(r => r[0] === c && pcs(v[String(rec)]).has(r[1])));
   ok("leave one case out = the story's held-out score per case", looOk && side.includes("the story's test"), JSON.stringify(loo).slice(0, 160));
   const h5 = X.held_out.find(h => h.k === rec);
-  ok("leave one case out: the pooled figure is the story's unseen weather", hasPc(side.slice(side.toLowerCase().indexOf("leave one case out")).split("All held-out runs together")[1] || "", h5.weather_runs[0] / h5.weather_runs[1]));
+  const uavg = k => Object.values(hoc).reduce((a, v) => a + v[String(k)], 0) / Object.keys(hoc).length;
+  ok("leave one case out: the average of the cases is the story's unseen weather", hasPc(side.slice(side.toLowerCase().indexOf("leave one case out")).split("Average of the cases")[1] || "", uavg(rec)));
+  ok("unseen weather: the story's 5b sentence, its comparison table and Explore all give the average of the cases", hasPc(D.steps.find(s => s.id === "5b").body, uavg(rec)) &&
+     hasPc(D.steps.find(s => s.id === "5b").notes.more.blocks[1].html, uavg(rec)) && !hasPc(D.steps.find(s => s.id === "5b").body, h5.weather_runs[0] / h5.weather_runs[1]));
 
   // ---- Results: Warning
   await click("#btn-results"); await wait(1500);
   let t = await tab("warn");
   ok("Warning: opens on the story's test", t.includes("The story's test") && /story's test/.test(t));
   ok("Warning: overloads warned = the story's", t.includes(`${L[rec].warned_target} of ${wt}`), (t.match(/\d+ of \d+\s*\n?overloads/) || [""])[0]);
-  ok("Warning: held out = the story's unseen weather", t.includes(`${h5.weather_runs[0]} of ${h5.weather_runs[1]}`));
+  ok("Warning: held out = the story's unseen weather, average of the cases", hasPc(t.split("average of the cases")[0].slice(-12), uavg(rec)), (t.match(/\d+%, average of the cases/) || [""])[0]);
   const warnRegs = (await rows("#modalBox table.ladder tbody tr")).map(r => r[0]);
   ok("Warning: only the regions to monitor or watch", JSON.stringify(warnRegs) === JSON.stringify(X.targets), warnRegs.join(","));
   const warnCols = (await rows("#modalBox table.ladder thead tr"))[0].slice(1, -1);
@@ -111,7 +117,7 @@ const server = http.createServer((q, s) => {
   t = await tab("float");
   const fr = await rows("#modalBox table.rtab tbody tr");
   const usd = v => "$" + v.toLocaleString("en-AU");
-  const un = x => x.unseen_weather[0] / x.unseen_weather[1];
+  const un = x => Object.values(x.unseen_by_case).reduce((a, v) => a + v, 0) / Object.keys(x.unseen_by_case).length;
   const floatOk = FL.budgets.map(b => {
     const r = fr.find(x => x[0] === usd(b.budget));
     const wa = (x, s) => [...pcs(x.worst)].some(a => [...pcs(x.average)].some(c => s === a + " / " + c));
@@ -216,6 +222,52 @@ const server = http.createServer((q, s) => {
   const m = s5b.match(/see (\d+%) of growth runs on average and (\d+%) in the worst wet case \(Explore, Greenfield\)/);
   ok("greenfield: Explore's figures = step 5b's sentence", m && new RegExp("catch " + m[2] + " of detectable greenfield growth in the worst case and " + m[1] + " on average").test(gs), (m ? m.slice(1).join(" / ") : "no sentence") + " vs " + gs.split("\n").find(l => /greenfield growth in the worst/.test(l)));
   ok("greenfield: scored on the wet cases", /scored on the 7 wet cases/i.test(await ev('document.getElementById("sensHead").innerText')));
+
+  // ---- 19 Nov: the story's "More on this step" figures, recounted here from the runs (regions.js), not from the builder
+  {
+    const G = (() => { global.window = global; eval(fs.readFileSync(path.join(PUB, "simulation3/data/growth.js"), "utf8")); return window.GROWTH_RUNS; })();
+    const idx = Object.fromEntries(G.chambers.map((n, i) => [n, i]));
+    const wet = REG.cases.filter(c => c.ii > 0), steps = REG.ladder.map((v, s) => [v, s]).filter(([v]) => v <= 1 + 1e-9).map(([, s]) => s);
+    const tg = REG.regions.map((r, i) => [r.id, i]).filter(([id]) => X.targets.includes(id)).map(([, i]) => i);
+    // Per case: the runs that count (some manhole rises 10 mm or more), and which of them each manhole sees.
+    const sees = wet.map(c => {
+      const rows = new Map(REG.rows[c.tag].map(x => [x.r + ":" + x.s, x])), runs = [];
+      for (const ri of tg) for (const s of steps) { const x = rows.get(ri + ":" + s); if (x.rise.some(([, v]) => v >= 10)) runs.push(new Set(x.rise.filter(([, v]) => v >= 10).map(([j]) => j))); }
+      return runs;
+    });
+    const score = S => { const per = sees.map(runs => runs.filter(r => S.some(m => r.has(idx[m]))).length / runs.length); return { per, worst: Math.min(...per), average: per.reduce((a, b) => a + b, 0) / per.length }; };
+    ok("recount: each wet case's runs = numbers.json's universe", wet.every((c, k) => sees[k].length === X.universe[c.label]), wet.map((c, k) => sees[k].length).join(","));
+    const more5 = D.steps.find(s => s.id === "5b").notes.more.blocks;
+    const cells = h => [...h.matchAll(/<tr>(.*?)<\/tr>/g)].map(m => [...m[1].matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1].replace(/<[^>]+>/g, ""))).filter(r => r.length);
+    const alone = cells(more5[0].html), five = L[rec].chosen;
+    ok("5b fold: each sensor alone, case by case, = a recount from the runs", five.every((m, k) => { const s = score([m]); return alone[k] && alone[k][0].endsWith(m) && s.per.every((v, j) => pcs(v).has(alone[k][j + 1])); }),
+       JSON.stringify(alone[0]));
+    const cmp = cells(more5[1].html);
+    const rowOk = (name, set) => { const r = cmp.find(x => x[0].startsWith(name)), s = score(set); return r && pcs(s.worst).has(r[1]) && pcs(s.average).has(r[2]); };
+    ok("5b fold: the nested and exact rows = a recount from the runs", rowOk("Nested", five) && rowOk("Exact", L[rec].exact_set), JSON.stringify(cmp.slice(0, 2)));
+    const ex = cmp.find(x => x[0].startsWith("Exact")), ne = cmp.find(x => x[0].startsWith("Nested"));
+    ok("5b fold: unseen weather, nested and exact both on the case average", ne && pcs(uavg(rec)).has(ne[4]) && ex && ex[4] === ne[4], `${ne && ne[4]} / ${ex && ex[4]}`);
+    const m6 = D.steps.find(s => s.id === "6").notes.more.blocks.map(b => b.html).join("");
+    const fl0 = FL.budgets.map(b => Object.values(b.float.unseen_by_case).reduce((a, v) => a + v, 0) / 7);
+    ok("6 fold: the float figure = float.json, averaged by case", [...new Set(fl0.map(v => [...pcs(v)][0]))].every(p => m6.includes(p)));
+    const m1 = D.steps.find(s => s.id === "1").notes.more.blocks[0];
+    ok("1 fold: council and model homes = regions.js and catchment.js", m1.intro.includes(REG.councilConnections.toLocaleString("en-AU")));
+  }
+
+  // ---- 19 Nov: Explore's citations link to the team's paper library; its tooltips stay plain
+  {
+    await load();
+    await click("#btn-results"); await wait(1200);
+    const lib = {};
+    for (const tb of await ev('[...document.querySelectorAll("#modalBox .restabs button")].map(b=>b.dataset.tab)')) {
+      await tab(tb);
+      for (const a of await ev('[...document.querySelectorAll("#modalBox a.lib")].map(a=>({t:a.textContent,h:a.getAttribute("href"),tg:a.target,r:a.rel}))')) lib[a.t + "|" + a.h] = a;
+    }
+    await click("#modalClose");
+    const A = Object.values(lib), V = "https://siddhu-123.github.io/waste_water_network_sensor-papers/pdf-viewer.html?paper=";
+    ok("Explore: the cited sources in Results link to the library viewer, new tab, rel=noopener", A.length >= 2 && A.every(a => a.h.startsWith(V) && a.tg === "_blank" && a.r === "noopener"), A.map(a => a.t).join(" ; ").slice(0, 170));
+    ok("Explore: no tooltip holds a link", await ev('![...document.querySelectorAll("[data-tip]")].some(e=>/<a /.test(e.getAttribute("data-tip")))'));
+  }
 
   ok("no page errors", errors.length === 0, errors.join(" | "));
   console.log(`\n${pass} passed, ${fail} failed`);

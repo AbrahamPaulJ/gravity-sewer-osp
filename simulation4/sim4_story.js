@@ -186,16 +186,92 @@ const Sim4 = (() => {
   /* "Behind this step": Assumes, Source, Limit and Next, the tables behind the step in a second fold, and the link to
      the redo guide. Built by tools/build_sim4_web.py from numbers.json; the text is escaped here, the tables are the builder's. */
   const ROWS = [["assumes", "Assumes"], ["source", "Source"], ["limit", "Limit"], ["next", "Next"]];
+  // A cited source in the team's paper library becomes a link to it (library.js); the text is escaped first.
+  const cite = html => window.SIM4_LIBRARY ? window.SIM4_LIBRARY.link(html) : html;
   function renderNotes() {
     const n = step().notes, box = $("#notes");
     if (!n) { $("#notesBar").hidden = true; box.hidden = true; return; }
     $("#notesBar").hidden = false;
-    const figs = (n.figures || []).map(f => `<div class="fig"><h3>${esc(f.title)}</h3>${f.intro ? `<p>${esc(f.intro)}</p>` : ""}<div class="tscroll">${f.table}</div></div>`).join("");
-    box.innerHTML = `<dl>${ROWS.map(([k, h]) => `<dt>${h}</dt><dd>${esc(n[k])}</dd>`).join("")}</dl>` +
+    const figs = (n.figures || []).map(f => `<div class="fig"><h3>${esc(f.title)}</h3>${f.intro ? `<p>${cite(esc(f.intro))}</p>` : ""}<div class="tscroll">${f.table}</div></div>`).join("");
+    // "More on this step": items first shown in the product demo, re-scored on the story's test (tools/sim4_more.py),
+    // closed by default. Intros are text, escaped here; html and the widgets' data are the builder's.
+    const m = n.more, more = m ? m.blocks.map(b => `<div class="fig more">${b.title ? `<h3>${esc(b.title)}</h3>` : ""}${b.intro ? `<p>${cite(esc(b.intro))}</p>` : ""}` +
+      (b.widget ? `<div class="widget" data-widget="${b.widget}"></div>` : "") + (b.html ? `<div class="tscroll">${cite(b.html)}</div>` : "") + "</div>").join("") : "";
+    box.innerHTML = `<dl>${ROWS.map(([k, h]) => `<dt>${h}</dt><dd>${cite(esc(n[k]))}</dd>`).join("")}</dl>` +
+      (more ? `<details id="more"><summary>${esc(m.title)}</summary>${more}</details>` : "") +
       (figs ? `<details id="figs"><summary>Figures behind this step</summary>${figs}</details>` : "") +
       `<a class="redo" href="redo.html#${n.redo}">How to redo this for another suburb</a>`;
+    box.querySelectorAll("[data-widget]").forEach(el => (WIDGETS[el.dataset.widget] || (() => {}))(el));
     setNotes(st.notes);
   }
+
+  /* The two drawings in "More on this step", from SIM4.more (tools/build_sim4_web.py, figures from tools/sim4_more.py). */
+  const WIDGETS = {
+    // Step 1: every pipe, coloured by one attribute, with how many pipes fall in each band.
+    pipes(el) {
+      const P = D().more.pipes, g = G(), keys = Object.keys(P);
+      let by = el.dataset.pick || "util";
+      const SEQ = ["#4f86c6", "#6fa8dc", "#8fbf9a", "#e0b04f", "#e8893a", "#d9602e", "#b8322a"], CAT = ["#c98a4b", "#3d8bd4", "#8b949e"];
+      const colours = a => !a.seq ? CAT.slice(0, a.bins.length) : (c => a.rev ? c.reverse() : c)(a.bins.map((_, k) => SEQ[a.bins.length < 2 ? 0 : Math.round(k * (SEQ.length - 1) / (a.bins.length - 1))]));
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (let k = 0; k < g.px.length; k++) { x0 = Math.min(x0, g.px[k]); x1 = Math.max(x1, g.px[k]); y0 = Math.min(y0, g.py[k]); y1 = Math.max(y1, g.py[k]); }
+      const W = 420, H = Math.round(W * (y1 - y0) / (x1 - x0)), sx = v => ((v - x0) / (x1 - x0) * (W - 8) + 4).toFixed(1), sy = v => ((y1 - v) / (y1 - y0) * (H - 8) + 4).toFixed(1);
+      const path = p => { let d = ""; for (let k = g.ptr[p]; k < g.ptr[p + 1]; k++) d += (k === g.ptr[p] ? "M" : "L") + sx(g.px[k]) + " " + sy(g.py[k]); return d; };
+      const draw = () => {
+        const a = P[by], col = colours(a), max = Math.max(...a.count);
+        const lines = a.of.map((k, p) => `<path d="${path(p)}" stroke="${k < 0 ? "var(--faint)" : col[k]}" stroke-width="${k < 0 ? 0.8 : 1.6}"/>`).join("");
+        el.innerHTML = `<div class="chips" role="group" aria-label="Colour the pipes by">${keys.map(k => `<button type="button" data-by="${k}" aria-pressed="${k === by}">${esc(P[k].label)}</button>`).join("")}</div>` +
+          `<div class="pipesWrap"><svg class="pipemap" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(a.label)} of every pipe"><g fill="none" stroke-linecap="round">${lines}</g></svg>` +
+          `<div class="bands">${a.unit ? `<div class="unit">${esc(a.unit)}</div>` : ""}${a.bins.map((b, k) => `<div class="band"><i style="background:${col[k]}"></i><span>${esc(b)}</span><span class="bar"><span style="width:${(a.count[k] / max * 100).toFixed(1)}%;background:${col[k]}"></span></span><b>${a.count[k]}</b></div>`).join("")}` +
+          (a.unknown ? `<div class="band"><i style="background:var(--faint)"></i><span>Year not recorded</span><span class="bar"></span><b>${a.unknown}</b></div>` : "") + `</div></div>` +
+          `<p class="wnote">${esc(a.note)}</p>`;
+        el.querySelectorAll("[data-by]").forEach(b => b.onclick = () => { by = el.dataset.pick = b.dataset.by; draw(); });
+      };
+      draw();
+    },
+    // Step 2: one manhole cut open: water in the outlet pipe and the shaft, against 0.7 of the pipe, the pipe top and the lid.
+    cutaway(el) {
+      const C = D().more.cutaway, regs = Object.keys(C.homes);
+      const s = { c: 0, r: regs[0], k: 0 };     // Design wet, the first region to monitor, today
+      const stepLabel = k => k === 0 ? "Today" : `${Math.round(C.steps[k - 1] * 100)}% of ${s.r}'s 2041 homes, +${Math.round(C.homes[s.r] * C.steps[k - 1])}`;
+      // The controls are drawn once, so dragging the slider is never interrupted; paint() redraws the picture only.
+      el.innerHTML = `<div class="cutRow"><div class="cutSvg"></div><div class="cutCtl">
+          <div class="badge"></div>
+          <label>Weather <select>${C.cases.map((c, k) => `<option value="${k}"${k === s.c ? " selected" : ""}>${esc(c.label)}</option>`).join("")}</select></label>
+          <div class="chips" role="group" aria-label="Homes added in">${regs.map(r => `<button type="button" data-r="${r}" aria-pressed="${r === s.r}">Homes in ${r}</button>`).join("")}</div>
+          <label class="slide"><input type="range" min="0" max="${C.steps.length}" step="1" value="${s.k}" aria-label="Homes added"><span></span></label>
+        </div></div>`;
+      const paint = () => {
+        const cs = C.cases[s.c], base = cs.base, water = base + (s.k ? cs.rise[s.r][s.k - 1] : 0), dia = C.dia, depth = C.depthM * 1000;
+        const W = 340, Hc = 230, top = 22, bottom = Hc - 22, zone = Math.max(dia * 1.4, 1), split = top + (bottom - top) * 0.3;
+        const y = mm => mm <= zone ? bottom - (bottom - split) * mm / zone : split - (split - top) * Math.min(1, (mm - zone) / Math.max(1, depth - zone));
+        const sx0 = 140, sx1 = 216, px0 = 18, px1 = 322, lid = y(depth), wTop = y(Math.min(water, depth)), bTop = y(Math.min(base, depth));
+        const state = water >= depth ? ["bad", "Overflowing at the lid"] : water > dia ? ["bad", "Surcharged: water above the pipe top"]
+          : water > C.limit * dia ? ["warn", `Past the pipe limit, ${C.limit} of the pipe`] : ["ok", `Within the pipe limit, ${C.limit} of the pipe`];
+        const line = (mm, t, cls, below) => `<line class="${cls}" x1="${px0}" x2="${px1}" y1="${y(mm).toFixed(1)}" y2="${y(mm).toFixed(1)}"/><text class="ax ${cls}" x="${px1 - 4}" y="${(y(mm) + (below ? 12 : -4)).toFixed(1)}" text-anchor="end">${t}</text>`;
+        const svg = `<svg class="cut" viewBox="0 0 ${W} ${Hc}" role="img" aria-label="${esc(C.manhole)} cut open: water ${Math.round(water)} mm deep in a ${dia} mm pipe">
+          <rect class="ground" x="0" y="${lid}" width="${W}" height="${Hc - lid}"/>
+          <rect class="void" x="${sx0}" y="${lid}" width="${sx1 - sx0}" height="${bottom - lid}"/>
+          <rect class="void" x="${px0}" y="${y(dia)}" width="${px1 - px0}" height="${bottom - y(dia)}"/>
+          <rect class="water" x="${px0}" y="${Math.max(y(dia), wTop)}" width="${px1 - px0}" height="${bottom - Math.max(y(dia), wTop)}"/>
+          ${water > dia ? `<rect class="water" x="${sx0}" y="${wTop}" width="${sx1 - sx0}" height="${y(dia) - wTop}"/>` : ""}
+          <line class="base" x1="${px0}" x2="${px1}" y1="${bTop}" y2="${bTop}"/>
+          ${line(C.limit * dia, `${C.limit} of pipe: the limit`, "lim")}${line(dia, "pipe top: surcharge above", "top")}
+          <rect class="lid" x="${sx0 - 8}" y="${lid - 5}" width="${sx1 - sx0 + 16}" height="5"/><text class="ax" x="${W - 6}" y="${lid - 9}" text-anchor="end">Lid: overflow, ${C.depthM.toFixed(1)} m up</text>
+          <text class="ax" x="${px0}" y="${split - 4}">shaft not to scale</text>
+          <text class="ax" x="${px0}" y="${Hc - 6}">Water ${Math.round(water)} mm deep; today ${Math.round(base)} mm (dotted)</text></svg>`;
+        el.querySelector(".cutSvg").innerHTML = svg;
+        const b = el.querySelector(".badge");
+        b.className = "badge " + state[0]; b.textContent = state[1];
+        el.querySelector(".slide span").textContent = stepLabel(s.k);
+        el.querySelectorAll("[data-r]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.r === s.r)));
+      };
+      el.querySelector("select").onchange = e => { s.c = +e.target.value; paint(); };
+      el.querySelectorAll("[data-r]").forEach(x => x.onclick = () => { s.r = x.dataset.r; paint(); });
+      el.querySelector("input").oninput = e => { s.k = +e.target.value; paint(); };
+      paint();
+    },
+  };
   /* A step's own question, folded under its text (step 5b: "Why not the exact best set?"), closed when the step opens.
      Built by tools/build_sim4_web.py from the runs; the text is escaped here, the table is the builder's. */
   function renderWhy(s) {
@@ -203,7 +279,7 @@ const Sim4 = (() => {
     b.hidden = !w;
     if (!w) { box.hidden = true; box.innerHTML = ""; return; }
     b.querySelector("span").textContent = w.title;
-    box.innerHTML = `<p>${esc(w.intro)}</p><div class="tscroll">${w.table}</div>`;
+    box.innerHTML = `<p>${cite(esc(w.intro))}</p><div class="tscroll">${w.table}</div>`;
     setWhy(/(^|[#&])why=1/.test(location.hash));
   }
   function setWhy(on) {
@@ -399,6 +475,7 @@ const Sim4 = (() => {
       if (/(^|[#&])notes=1/.test(location.hash)) st.notes = true;
       go(at < 0 ? 0 : at, false);
       if (/(^|[#&])figs=1/.test(location.hash) && $("#figs")) $("#figs").open = true;
+      if (/(^|[#&])more=1/.test(location.hash) && $("#more")) $("#more").open = true;
       placePop();
       document.body.dataset.ready = "1";
     });

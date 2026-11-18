@@ -226,6 +226,56 @@ html[data-theme="light"] #stage .mapCredit{color:#57606a !important}
 #why td:first-child{color:var(--dim)}
 #why th:nth-child(2), #why td:nth-child(2){color:var(--ink); font-weight:600}
 @media (prefers-reduced-motion:reduce){#btnWhy svg{transition:none}}
+/* "More on this step" (closed by default) and the links to the team's paper library. */
+#notes a.lib, #why a.lib{color:var(--accent); text-decoration:underline; text-decoration-style:dotted; text-underline-offset:2px}
+#notes a.lib:hover, #why a.lib:hover{text-decoration-style:solid}
+#notes .more{margin-top:4px}
+#notes .more h3{margin:14px 0 6px}
+#notes .more p{margin:0 0 6px; color:var(--dim)}
+#notes .more ul{margin:4px 0 6px; padding-left:18px; color:var(--ink)}
+#notes .more li{margin:2px 0}
+#notes h4{font-size:12.5px; margin:10px 0 4px; font-weight:600}
+#notes .stats{display:flex; flex-wrap:wrap; gap:8px 24px; margin:6px 0 8px}
+#notes .stats div{display:flex; flex-direction:column; min-width:0}
+#notes .stats b{font-size:18px; line-height:1.3; font-variant-numeric:tabular-nums}
+#notes .stats span{font-size:12px; color:var(--dim)}
+#notes .chips{display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 8px}
+#notes .chips button{font-size:12px; line-height:16px; padding:4px 10px; min-height:28px; background:transparent; color:var(--dim)}
+#notes .chips button[aria-pressed="true"]{color:var(--ink); border-color:var(--accent); background:color-mix(in srgb,var(--accent) 14%,transparent)}
+#notes .pipesWrap{display:grid; grid-template-columns:minmax(0,380px) minmax(0,1fr); gap:16px; align-items:start}
+#notes .pipemap{display:block; width:100%; height:auto; border:1px solid var(--line); border-radius:6px}
+#notes .bands .unit{font-size:11.5px; color:var(--faint); margin-bottom:4px}
+#notes .band{display:grid; grid-template-columns:12px minmax(0,1fr) minmax(40px,72px) 32px; gap:6px; align-items:center; font-size:12px; margin:3px 0}
+#notes .band i{width:12px; height:4px; border-radius:2px}
+#notes .band .bar{display:block; height:6px; background:var(--line); border-radius:3px; overflow:hidden}
+#notes .band .bar span{display:block; height:100%}
+#notes .band b{text-align:right; font-variant-numeric:tabular-nums; font-weight:600}
+#notes .wnote{margin:6px 0 0}
+#notes .cutRow{display:grid; grid-template-columns:minmax(0,340px) minmax(0,1fr); gap:14px; align-items:start}
+#notes svg.cut{display:block; width:100%; height:auto}
+#notes svg.cut .ground{fill:color-mix(in srgb,var(--faint) 24%,transparent)}
+#notes svg.cut .void{fill:var(--panel-solid); stroke:var(--faint)}
+#notes svg.cut .water{fill:#3d8bd4; opacity:.8}
+#notes svg.cut .base{stroke:var(--ink); stroke-dasharray:2 3}
+#notes svg.cut line.lim{stroke:#d29922; stroke-dasharray:5 4} #notes svg.cut text.lim{fill:#d29922}
+#notes svg.cut line.top{stroke:#f85149; stroke-dasharray:5 4} #notes svg.cut text.top{fill:#f85149}
+#notes svg.cut .lid{fill:var(--ink)}
+#notes svg .ax{font-size:10.5px; fill:var(--dim)}
+#notes .cutCtl{display:flex; flex-direction:column; align-items:flex-start; gap:10px; font-size:12.5px; color:var(--dim)}
+#notes .cutCtl select{font:inherit; color:var(--ink); background:var(--panel-solid); border:1px solid var(--line); border-radius:6px; padding:3px 6px; margin-left:6px; min-height:28px}
+#notes .cutCtl .chips{margin:0}
+#notes .slide{display:flex; flex-direction:column; gap:4px; width:100%}
+#notes .slide input{accent-color:var(--accent); min-height:24px; max-width:260px}
+#notes .slide span{color:var(--ink)}
+#notes .badge{display:inline-block; padding:3px 10px; border-radius:99px; font-size:12px; font-weight:600; border:1px solid}
+#notes .badge.ok{color:#3fb950; border-color:#3fb95066} #notes .badge.warn{color:#d29922; border-color:#d2992266} #notes .badge.bad{color:#f85149; border-color:#f8514966}
+#notes svg.xc{display:block; width:100%; max-width:440px; height:auto; margin:4px 0 2px}
+#notes svg.xc .grid{stroke:var(--line)}
+#notes svg.xc .d{fill:var(--accent); opacity:.55}
+#notes svg.xc .s{fill:var(--green); stroke:var(--panel-solid); stroke-width:1}
+#notes .mk{font-weight:700} #notes .mk.y{color:#3fb950} #notes .mk.p{color:#d29922} #notes .mk.n{color:#f85149}
+#notes .more td:first-child{color:var(--ink)}
+@media (max-width:640px){#notes .pipesWrap, #notes .cutRow{grid-template-columns:1fr} #notes .cutRow svg.cut{max-width:340px}}
 #btnExplore{min-height:36px; padding:8px 12px; line-height:18px; background:var(--panel-solid)}
 #pop{padding:16px; border-radius:8px; max-height:300px; overflow-y:auto}
 #pop b{margin-bottom:8px}
@@ -260,6 +310,14 @@ html[data-theme="light"] #btnExplore, html[data-theme="light"] #themeBtn{backgro
 html[data-theme="light"] #pop{border-color:var(--line); box-shadow:0 8px 28px #1f232833}
 html[data-theme="light"] #notes td{border-bottom-color:#ebe5d9}
 html[data-theme="light"] #why td{border-bottom-color:#ebe5d9}
+html[data-theme="light"] #notes .badge.ok, html[data-theme="light"] #notes .mk.y{color:#1a7f37}
+html[data-theme="light"] #notes .badge.warn, html[data-theme="light"] #notes .mk.p, html[data-theme="light"] #notes svg.cut text.lim{color:#9a6700; fill:#9a6700}
+html[data-theme="light"] #notes svg.cut line.lim{stroke:#bf8700}
+html[data-theme="light"] #notes .badge.bad, html[data-theme="light"] #notes .mk.n, html[data-theme="light"] #notes svg.cut text.top{color:#cf222e; fill:#cf222e}
+html[data-theme="light"] #notes svg.cut line.top{stroke:#cf222e}
+html[data-theme="light"] #notes svg.cut .water{fill:#2f7fc9}
+html[data-theme="light"] #notes svg.xc .d{opacity:.5}
+html[data-theme="light"] #notes .chips button[aria-pressed="false"]{background:transparent}
 html[data-theme="light"] #legend i{box-shadow:0 0 0 1px #1f232840}
 html[data-theme="light"] .labels .lbl{color:#5a32a3; text-shadow:0 0 3px #f4f1ea, 0 0 3px #f4f1ea, 0 1px 2px #f4f1ea}
 html[data-theme="light"] .labels .lbl.site{color:#0969da}
@@ -314,8 +372,9 @@ html[data-theme="light"] body{background:#f3f0e8}
 <script src="data/regions.js?v=1"></script>
 <script src="../simulation3/data/index.js?v=9"></script>
 <script src="../simulation35/growth_3d.js?v=33"></script>
-<script src="data/sim4.js?v=9"></script>
-<script src="sim4_story.js?v=9"></script>
+<script src="data/sim4.js?v=10"></script>
+<script src="library.js?v=1"></script>
+<script src="sim4_story.js?v=11"></script>
 <script type="module">
   Sim4.init();
 </script>

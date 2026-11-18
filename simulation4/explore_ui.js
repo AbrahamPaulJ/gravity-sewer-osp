@@ -236,6 +236,8 @@ window.Sim35UI = (function () {
      On the story's test they are scored afresh, and only the exact optimum at 10 mm is that test's own (explore.exact,
      from sim4_numbers.py). The panel says which. */
   const X4 = () => (window.SIM4 || {}).explore || {};
+  // A cited source in the team's paper library becomes a link to it (library.js), on text already escaped. Never on tooltips.
+  const cite = html => window.SIM4_LIBRARY ? window.SIM4_LIBRARY.link(html) : html;
   // What the nested beam search does (simulation_src/sim4_numbers.py: design_seeds, value, beam_ladder, WIDTH 1500).
   const NESTED_HOW = "It starts from the one manhole that sees all the design wet growth (" + ((((window.SIM4 || {}).explore || {}).ladder || [])[0] || ["MH4450531"])[0] +
     "), then adds one sensor at a time, keeping the best 1,500 part-built sets at each count, scored on the worst case plus the average over the 7 wet cases plus the share of overloads warned; the 25 mm rule breaks ties. " +
@@ -813,7 +815,7 @@ window.Sim35UI = (function () {
       : st.method === "exact" ? "<b>Exact optimum</b>: the best set at each count, solved on its own by an integer program, so the sets change from one count to the next. A comparison."
       : st.method === "greedy" ? "<b>Greedy</b>: one sensor at a time, each the best addition to those before, with no look-ahead. A comparison."
       : st.method === "warn" ? "<b>Warn before surcharge</b>: the set that warns of the most overloads a build-out step before the first new surcharge. A comparison."
-      : st.method === "risk" ? "<b>Risk-weighted</b>: the set that notices the most severity x occurrence (Kimbrough 2019). A comparison." : "";
+      : st.method === "risk" ? "<b>Risk-weighted</b>: the set that notices the most severity x occurrence (" + cite("Kimbrough 2019") + "). A comparison." : "";
     $("#sensInfo").dataset.tip = methText + objText + scopeText + " Detectable growth: scenarios that at least one manhole sees. This scores whether a sensor would notice growth, not whether it watches a choke point; the choke points are under No growth.";
   }
 
@@ -1156,7 +1158,7 @@ window.Sim35UI = (function () {
       const ho = (X4().heldOut || []).find(h => h.k === hk);
       extra += "<h4>Leave one case out (" + hk + " sensors, the story's test) <i class='info-i left' data-tip='For each wet case, the story&#39;s method picks " + hk + " sensors without that case, then they are scored on it (sim4_numbers.py). It tests the method, so it is the same whichever set is selected above.'>i</i></h4><table class='sm'><tr><th>Held out</th><th>Score on it</th></tr>" +
         S().cases.filter(c => hoc[c.label]).map(c => { const v = hoc[c.label][String(hk)]; return "<tr><td>" + esc(c.label) + "</td><td" + (v < 0.5 ? ' class="hi"' : "") + ">" + pct(v) + "</td></tr>"; }).join("") +
-        "</table>" + (ho ? "<p class='quiet'>All held-out runs together: " + pct(ho.weather[0] / ho.weather[1]) + ", the story's unseen-weather figure.</p>" : "");
+        "</table>" + (ho ? "<p class='quiet'>Average of the cases: " + pct(ho.weatherAvg) + ", the story's unseen-weather figure.</p>" : "");
     } else if (isIn && st.view === "expert" && !storyScope() && rr.loo && Object.keys(rr.loo).length) {
       const n0 = Object.values(rr.loo)[0].chosen.length;
       extra += "<h4>Leave one case out (" + n0 + " sensors, broader test, exact method; the same whichever set is selected) <i class='info-i left' data-tip='Sensors chosen on the other cases, scored on the one held out: how much the recommendation depends on any single assumption about the weather.'>i</i></h4><table class='sm'><tr><th>Held out</th><th>Score on it</th></tr>" +
@@ -1243,7 +1245,7 @@ window.Sim35UI = (function () {
   /* ------------------------------------------------------ documents, modal */
   function markdown(md_) {
     const out = []; let inTable = false;
-    const inline = t => esc(t).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    const inline = t => cite(esc(t)).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
     const closeT = () => { if (inTable) { out.push("</tbody></table>"); inTable = false; } };
     for (const raw of String(md_ || "").split("\n")) {
       const line = raw.replace(/\s+$/, "");
@@ -1420,7 +1422,7 @@ window.Sim35UI = (function () {
   const info = t => ' <i class="info-i left" data-tip="' + esc(t) + '">i</i>';
   // Where a tab's numbers come from, beside the table. The text is in the data, written by the builder.
   const sources = (key, extra) => "<div class='src'><b>Where these numbers come from</b>" + window.SIM4_EXPLORE.sources[key].concat(extra || []).map(([tag, t]) =>
-    "<div><span class='srctag'>" + esc(tag) + "</span> " + esc(t) + "</div>").join("") + "</div>";
+    "<div><span class='srctag'>" + esc(tag) + "</span> " + cite(esc(t)) + "</div>").join("") + "</div>";
   const say = html => "<p class='say'>" + html + "</p>";
   const head = (t, sub) => esc(t) + "<span class='thsub'>" + esc(sub) + "</span>";
   const listAnd = a => a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1];
@@ -1429,7 +1431,8 @@ window.Sim35UI = (function () {
   const scopeSeg = () => seg("scope", storyScope() ? "story" : "broad", [["story", "The story's test"], ["broad", "Broader test"]]);
   const scopeLine = () => "<p class='quiet'>" + esc(TEST_NOTE[storyScope() ? "story" : "broad"]) + "</p>";
 
-  const heldOutText = k => { const h = (X4().heldOut || []).find(x => x.k === k); return h ? h.weather[0] + " of " + h.weather[1] + " (" + pct(h.weather[0] / h.weather[1]) + ")" : "n/a"; };
+  // Unseen weather, as the story quotes it: each wet case scored by sensors chosen without it, averaged over the cases.
+  const heldOutText = k => { const h = (X4().heldOut || []).find(x => x.k === k); return h ? pct(h.weatherAvg) + ", average of the cases" : "n/a"; };
   function ladderTab() {
     const X = window.SIM4_EXPLORE, rule = RES.rule === "r25" ? "r25" : "r10", W = X.warn[rule], lad = S().ladder;
     const story = storyScope(), useStory = st.method === "story", kk = useStory ? Math.min(st.k, storyMax()) : st.k, e = W.sets[kk - 1];
@@ -1547,7 +1550,7 @@ window.Sim35UI = (function () {
 
   function floatStory() {
     const F = X4().float || [], P = X4().price || { level: 25000, float: 1000 }, rec = X4().recommend || 5, pc = v => v == null ? "n/a" : pct(v);
-    const un = x => pc(x.unseen_weather[0] / x.unseen_weather[1]);
+    const un = x => pc(x.unseen_avg);   // each wet case scored by a set chosen without it, averaged over the cases
     const bought = x => [x.level ? x.level + " level" : "", x.float ? x.float + " float" + (x.float === 1 ? "" : "s") : ""].filter(Boolean).join(" + ") + (x.float ? ", " + usd(x.cost) : "") || "none";
     const at = b => F.find(r => r.budget === b);
     const one = at(P.level), five = at(rec * P.level);
@@ -1560,7 +1563,7 @@ window.Sim35UI = (function () {
       say(line) +
       "<div class='resctl'>" + scopeSeg() + "</div>" + scopeLine() +
       "<p class='quiet'>The story's own table (step 6): the 10 mm rule, seeing growth. The broader test adds the 25 mm rule and warning before surcharge.</p>" +
-      "<div class='tscroll'><table class='rtab'><thead><tr><th class='r'>Budget</th><th class='r'>" + head("Level, the list", "worst / average") + "</th><th class='r'>" + head("Unseen weather", "higher is better") +
+      "<div class='tscroll'><table class='rtab'><thead><tr><th class='r'>Budget</th><th class='r'>" + head("Level, the list", "worst / average") + "</th><th class='r'>" + head("Unseen weather", "average of the cases") +
       "</th><th class='r'>Floats only: bought</th><th class='r'>" + head("Floats", "worst / average") + "</th><th class='r'>" + head("Unseen weather", "higher is better") +
       "</th><th class='r'>Free mix: bought</th><th class='r'>" + head("Free mix", "worst / average") + "</th><th class='r'>" + head("Unseen weather", "higher is better") + "</th></tr></thead><tbody>" + rows + "</tbody></table></div>" +
       "<p class='quiet'>Prices assumed: " + usd(P.level) + " a level sensor, " + usd(P.float) + " a float. The free mix maximises the worst case and is not nested, so its sets differ from the list.</p>" +

@@ -107,7 +107,8 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   ok("compare: seven methods in the table", await ev(`document.querySelectorAll('table.cmp tr[data-row]').length===7`));
   const row = id => ev(`[...document.querySelectorAll('table.cmp tr[data-row="${id}"] td')].map(x=>x.textContent).join('|')`);
   ok("compare: recommended row reads 94% / 88% / 11/11 / 75%", /^[^|]*\|94%\|88%\|11\/11\|75%/.test(await row("exact")), await row("exact"));
-  ok("compare: nested list row reads 94% / 81% / 11/11 / 77%", /^[^|]*\|94%\|81%\|11\/11\|77%/.test(await row("sim4")), await row("sim4"));
+  // 19 Nov: the story quotes unseen weather as the average over the cases (75%), so the demo, which reads the story's table, does too.
+  ok("compare: nested list row reads 94% / 81% / 11/11 / 75%", /^[^|]*\|94%\|81%\|11\/11\|75%/.test(await row("sim4")), await row("sim4"));
   await clickSensor(0); await wait(300);
   ok("compare: failing Sensor 1 drops the worst case to 0%", /1 failed/.test(await panel()) && await ev(`document.querySelectorAll('.stats .stat b')[1].textContent==='0%'`));
   await click('tr[data-row="hydraulic"]'); await wait(1000);

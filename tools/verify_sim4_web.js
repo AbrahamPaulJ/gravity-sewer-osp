@@ -72,6 +72,8 @@ function connect(url) {
   const L = k => X.ladder[k - 1];
   const kd = v => '$' + Math.floor(v / 1000) + 'k', K0 = X.fewest.find(f => f.scope === 'Design wet only')['1.0'], REC = X.recommend;
   const HO = k => X.held_out.find(h => h.k === k);
+  // Unseen weather as every page quotes it: each wet case scored by sensors chosen without it, averaged over the cases.
+  const UAVG = k => Object.values(X.held_out_by_case).reduce((a, v) => a + v[String(k)], 0) / Object.keys(X.held_out_by_case).length;
 
   await load('');
   ok('page loads, no exception', c.errors.length === 0, c.errors[0]);
@@ -122,7 +124,7 @@ function connect(url) {
   ok('step 2 quotes the surcharged counts', by('2').includes(String(fb['Design wet'].surcharged) + ' manholes') && by('2').includes(String(fb['Beyond design'].surcharged)));
   ok('step 5a quotes all Design wet runs', by('5a').includes(`all ${X.universe['Design wet']} growth runs`) && by('5a').includes(pc(L(K0).average)));
   ok('step 5b quotes the five', by('5b').includes(pc(L(REC).average)) && by('5b').includes(pc(L(REC).worst)) && by('5b').includes(`${L(REC).warned_target} overloads`));
-  ok('step 5b quotes unseen weather', by('5b').includes(pc(HO(REC).weather_runs[0] / HO(REC).weather_runs[1])));
+  ok('step 5b quotes unseen weather as the average over the cases, and says so', by('5b').includes(pc(UAVG(REC))) && /averaged by case/.test(by('5b')) && !by('5b').includes(pc(HO(REC).weather_runs[0] / HO(REC).weather_runs[1]) + '.'));
   ok('step 6 quotes the costs', by('6').includes(kd(K0 * X.price.level)) && by('6').includes(kd(REC * X.price.level)) && by('6').includes(kd((REC - K0) * X.price.level)) && by('6').includes('assumed'));
   ok('no word claims an overflow prediction', !steps.some(s => /overflows? (will|predicted)|predict/i.test(s.body)));
 
@@ -217,7 +219,10 @@ function connect(url) {
     const pinSeq = [];
     for (const lbl of ['S3', 'S1', 'S3']) {
       const n = L(5).chosen[+lbl.slice(1) - 1];
-      const p = await ev(`(()=>{const e=[...document.querySelectorAll('.labels .lbl.sensor')].find(e=>e.textContent===${JSON.stringify(lbl)});const r=e.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+      const at = () => ev(`(()=>{const e=[...document.querySelectorAll('.labels .lbl.sensor')].find(e=>e.textContent===${JSON.stringify(lbl)});const r=e.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+      // The map eases into place once the box opens: tap the pin where it settles, as a person would.
+      let p = await at();
+      for (let i = 0; i < 20; i++) { await wait(150); const q = await at(); if (Math.abs(q.x - p.x) < 0.5 && Math.abs(q.y - p.y) < 0.5) break; p = q; }
       await clickAt(p.x, p.y);
       for (let i = 0; i < 10 && !(await txt('#pop')).includes(n); i++) await wait(150);
       pinSeq.push((await txt('#pop')).includes(n));
@@ -280,6 +285,73 @@ function connect(url) {
     ok('5b: a second click closes it', await ev('document.querySelector("#why").hidden') && Math.abs(await ev('document.querySelector("#card").getBoundingClientRect().height') - card0) < 2);
     await load('#step=5a');
     ok('5a: no such button on other steps', await ev('document.querySelector("#btnWhy").hidden'));
+  }
+
+  // Source links (19 Nov): every cited source in the team's paper library opens there, in a new tab
+  {
+    eval(fs.readFileSync(path.join(PUB, 'simulation4/library.js'), 'utf8'));
+    const LIB = window.SIM4_LIBRARY;
+    const href = id => LIB.url(LIB.papers.find(p => p.key === id));
+    const links = async () => ev(`[...document.querySelectorAll('#notes a.lib, #why a.lib')].map(a=>({t:a.textContent,h:a.getAttribute('href'),tg:a.target,r:a.rel}))`);
+    await load('#step=4&notes=1');
+    const A = await links(), n4 = await txt('#notes');
+    ok('step 4: the 0.7 limit credited to Kimbrough (2019), linked at the cited page, a risk signal not a design standard',
+      A.some(a => a.t === 'Kimbrough (2019)' && a.h === href('kimbrough2019') && /page=87/.test(a.h)) && /risk signal, not a design standard/.test(n4) && /cut-offs and the error: team assumption/.test(n4), JSON.stringify(A).slice(0, 160));
+    const seen = [];
+    for (const s of D.steps) { await load(`#step=${s.id}&notes=1&more=1`); seen.push(...(await links()).map(a => ({ ...a, step: s.id }))); }
+    ok('every source link opens the library viewer in a new tab, rel=noopener', seen.length >= 5 && seen.every(a => a.h.startsWith(LIB.viewer + '?paper=') && a.tg === '_blank' && a.r === 'noopener'), seen.length);
+    ok('the links: Do 2023 (31), Kim 2022 (58), EPA SWMM 5 (SATYA-GL-01), Kimbrough 2019 (ASHIS-GL-17)',
+      ['31', '58', 'SATYA-GL-01', 'ASHIS-GL-17'].every(id => seen.some(a => a.h.includes('?paper=' + encodeURIComponent(id) + '&'))), [...new Set(seen.map(a => a.h.split('&')[0].split('=')[1]))].join(','));
+    ok("no link carries the utility's name; unlisted sources stay plain text", !seen.some(a => /SA\s*Water/i.test(decodeURIComponent(a.h))) && !seen.some(a => /PlanSA|ABS|Barwon/.test(a.t)));
+    const redo = fs.readFileSync(path.join(PUB, 'simulation4/redo.html'), 'utf8');
+    const rl = [...redo.matchAll(/<a class="lib" href="([^"]+)" target="_blank" rel="noopener"/g)].map(m => m[1].replace(/&amp;/g, '&'));
+    ok('redo guide: Do, Kim, Kimbrough and SWMM link to the same library pages as the story', [href('do2023'), href('kim2022'), href('kimbrough2019'), href('swmm')].every(h => rl.includes(h)), rl.length);
+  }
+
+  // "More on this step" (19 Nov): the product demo's items, closed by default, figures from the data
+  {
+    const stepsWithMore = D.steps.filter(s => s.notes && s.notes.more).map(s => s.id);
+    ok('"More on this step" on steps 1, 2, 3, 5a, 5b and 6', JSON.stringify(stepsWithMore) === JSON.stringify(['1', '2', '3', '5a', '5b', '6']), stepsWithMore.join());
+    await load('#step=1&notes=1');
+    ok('it is closed by default', await ev('!!document.querySelector("#more") && !document.querySelector("#more").open'));
+    await ev('document.querySelector("#more").open = true'); await wait(200);
+    let m = await txt('#more');
+    eval(fs.readFileSync(path.join(PUB, 'simulation4/data/regions.js'), 'utf8'));
+    eval(fs.readFileSync(path.join(PUB, 'simulation3/data/catchment.js'), 'utf8'));
+    const R = window.SIM3_REGIONS, G = window.GROWTH_GEOM, nPipes = G.nPipes, nMh = +D.steps[0].body.match(/(\d+) manholes/)[1];
+    ok("1: network figures are the data's (council homes, model homes, pipes, manholes)",
+      m.includes(R.councilConnections.toLocaleString('en-AU')) && m.includes(G.baseDwellings.toLocaleString('en-AU')) && m.includes(`${nPipes}\npipes`) && m.includes(`${nMh}\nmanholes`), `${nPipes} ${nMh}`);
+    ok('1: Have / Assumed / Missing, with no greenfield row', /Have, from public layers/.test(m) && /Missing/.test(m) && !/greenfield/i.test(m));
+    const nPaths = await ev('document.querySelectorAll("#more svg.pipemap path").length');
+    ok('1: every pipe is drawn, coloured by flow / capacity first', nPaths === nPipes && await ev('document.querySelector("#more [data-by=util]").getAttribute("aria-pressed")') === 'true', nPaths);
+    const bandSum = () => ev('[...document.querySelectorAll("#more .band b")].reduce((a,b)=>a+ +b.textContent,0)');
+    const b0 = await bandSum();
+    await ev('document.querySelector("#more [data-by=material]").scrollIntoView({block:"center"})'); await wait(200);
+    await click('#more [data-by=material]'); await wait(200);
+    ok('1: a real click on Material recolours; the bands add up to the pipe count each time', b0 === nPipes && await bandSum() === nPipes && await ev('document.querySelector("#more [data-by=material]").getAttribute("aria-pressed")') === 'true', b0);
+    await load('#step=2&notes=1&more=1');
+    const cut = D.more.cutaway;
+    ok("2: the cutaway is sensor S1's manhole, opening on Design wet, today", cut.manhole === L(1).chosen[0] && await ev('document.querySelector("#more select").selectedOptions[0].textContent') === 'Design wet' && /Today/.test(await txt('#more .slide')));
+    const r0 = Object.keys(cut.homes)[0];
+    await ev(`(()=>{const i=document.querySelector('#more input[type=range]');i.value=i.max;i.dispatchEvent(new Event('input'))})()`); await wait(150);
+    const want = cut.cases[0].base + cut.cases[0].rise[r0][cut.steps.length - 1];
+    ok("2: at 100% the shaft shows the model's water depth for that region's homes", (await txt('#more .slide')).includes('100%') && await ev(`document.querySelector('#more .cutSvg svg').getAttribute('aria-label')`).then(s => s.includes(`water ${Math.round(want)} mm`)), want);
+    await load('#step=5b&notes=1&more=1');
+    m = await txt('#more');
+    ok("5b: S1 alone, case by case, is step 5a's one-sensor score", Object.values(L(1).per_case).every(v => m.includes(pc(v))));
+    const trs = await ev('[...document.querySelectorAll("#more tr")].map(r=>r.innerText)');
+    const nestRow = trs.find(r => /^Nested/.test(r)) || '', exRow = trs.find(r => /^Exact best/.test(r)) || '';
+    ok("5b: the comparison's nested row = numbers.json (worst, average, warned) and the case-average unseen weather",
+      nestRow.includes(pc(L(REC).worst)) && nestRow.includes(pc(L(REC).average)) && nestRow.includes(`${L(REC).warned_target} of ${X.warn_universe.target}`) && nestRow.includes(pc(UAVG(REC))), nestRow);
+    ok("5b: the exact row = numbers.json's exact set", exRow.includes(pc(L(REC).exact_worst)) && exRow.includes(pc(L(REC).exact_average)), exRow);
+    ok('5b: Greedy is named "chosen on this test"; random is 500 draws, a different measure', /chosen on this test/.test(m) && /500 draws/.test(m) && /different measure/.test(m));
+    const lim5b = D.steps.find(s => s.id === '5b').notes.limit, gf = lim5b.match(/these \w+ see (\d+%) of growth runs on average and (\d+%) in the worst/);
+    await load('#step=6&notes=1&more=1');
+    m = await txt('#more');
+    ok('6: sensor types, and how sure we are, with the greenfield figures step 5b quotes', /Ultrasonic level/.test(m) && /Float switch/.test(m) && /need from you/i.test(m) && gf && m.includes(gf[1]) && m.includes(gf[2]), gf && gf.slice(1).join(' '));
+    ok('6: at most two blocks added', D.steps.find(s => s.id === '6').notes.more.blocks.length <= 2);
+    await load('#step=3&notes=1&more=1');
+    ok('3: the cross-check marks the recommended sensors and gives the rank agreement', await ev('document.querySelectorAll("#more svg.xc circle.s").length') === REC && /ρ = 0\.\d\d/.test(await txt('#more')));
   }
 
   // Words anywhere on the page
@@ -393,7 +465,10 @@ function connect(url) {
     const [p1, , p3] = L(5).chosen, seq = [];
     for (const n of [p1, p3, p1]) {
       const lbl = 'S' + (L(5).chosen.indexOf(n) + 1);
-      const p = await ev(`(()=>{const e=[...document.querySelectorAll('.labels .lbl.sensor')].find(e=>e.textContent===${JSON.stringify(lbl)});const r=e.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+      const at = () => ev(`(()=>{const e=[...document.querySelectorAll('.labels .lbl.sensor')].find(e=>e.textContent===${JSON.stringify(lbl)});const r=e.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+      // The map eases into place once the box opens: tap the pin where it settles, as a person would.
+      let p = await at();
+      for (let i = 0; i < 20; i++) { await wait(150); const q = await at(); if (Math.abs(q.x - p.x) < 0.5 && Math.abs(q.y - p.y) < 0.5) break; p = q; }
       await clickAt(p.x, p.y);
       for (let i = 0; i < 14 && !(await txt('#pop')).includes(n); i++) await wait(150);
       await wait(400);
