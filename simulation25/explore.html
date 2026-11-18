@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Walkerville · Explore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="explore/maplibre-gl.css" />
+  <link rel="stylesheet" href="explore/welcome.css?v=2" />
+  <link rel="stylesheet" href="explore/demo.css?v=2" />
+  <link rel="stylesheet" href="explore/explore.css?v=5" />
+</head>
+<body>
+  <div id="loading">Loading Walkerville…</div>
+
+  <div id="map" aria-hidden="true"></div>
+  <div class="paper-texture-overlay"></div>
+  <div id="stage">
+    <canvas id="stage-canvas" aria-label="Map of the Walkerville sewer network"></canvas>
+    <div id="labels"></div>
+  </div>
+
+  <header id="top">
+    <div class="where"><b>Walkerville sewer network</b><span>New homes, rising levels and the sensors that notice them</span></div>
+    <nav class="switch" aria-label="View">
+      <span aria-current="page">Explore</span>
+      <a href="index.html" title="Every control and model detail">Workbench</a>
+    </nav>
+  </header>
+
+  <div id="source">EPA SWMM · Simulation 2.5 · Basemap © OpenStreetMap contributors, © CARTO</div>
+  <div id="furniture" aria-hidden="true">
+    <div id="scale"><i></i><span></span></div>
+    <div id="north"><svg viewBox="0 0 20 20"><path d="M10 1 L15 17 L10 13 L5 17 Z" /></svg>N</div>
+  </div>
+
+  <aside class="welcome-sheet" id="sheet" aria-live="polite">
+    <div class="welcome-rect-stack">
+      <div class="blur-band b4"><div class="blur-shape"></div></div>
+      <div class="blur-band b3"><div class="blur-shape"></div></div>
+      <div class="blur-band b2"><div class="blur-shape"></div></div>
+      <div class="blur-band b1"><div class="blur-shape"></div></div>
+      <div class="blur-band b05"><div class="blur-shape"></div></div>
+      <div class="blur-band b0"><div class="blur-shape"></div></div>
+    </div>
+    <div class="card in" id="card"></div>
+  </aside>
+
+  <aside id="detail" class="source-card" hidden aria-live="polite"></aside>
+  <div id="tip" role="status"></div>
+
+  <script src="explore/maplibre-gl.js"></script>
+  <script src="explore/basemap-data.js?v=2"></script>
+  <script src="explore/basemap.js?v=3"></script>
+  <script src="data/catchment.js?v=86"></script>
+  <script src="data/growth.js?v=86"></script>
+  <script src="data/proof.js?v=86"></script>
+  <script src="osp_core.js?v=86"></script>
+  <script src="placement.js?v=86"></script>
+  <script src="explore/explore.js?v=7"></script>
+</body>
+</html>
