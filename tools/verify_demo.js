@@ -33,13 +33,13 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
 
   // The site tab
   await send("Page.navigate", { url: `http://127.0.0.1:${HTTP}/index.html` }); await wait(1500);
-  ok("navbar has Product demo after Overview", await ev(`[...document.querySelectorAll('#tabs button')].slice(0,2).map(b=>b.textContent).join('|')`) === "Overview|Product demo");
-  ok("navbar: story pages on the left, tools and archives on the right", await ev(`(()=>{const g=document.querySelectorAll('#tabs .tabs-side');if(g.length!==2)return false;
-    const a=g[0].getBoundingClientRect(),b=g[1].getBoundingClientRect();return a.right<b.left && innerWidth-b.right<40 && /Sandbox/.test(g[1].innerText)})()`));
-  await click('#simulations-toggle'); await wait(200); await shot("00_nav_menu");
-  ok("navbar: a menu opens under its own button", await ev(`(()=>{const t=document.querySelector('#simulations-toggle').getBoundingClientRect(),m=document.querySelector('#simulations-menu'),r=m.getBoundingClientRect();
+  ok("navbar: Overview, Background, Product demo, Simulation 4 | Archived", await ev(`[...document.querySelectorAll('#tabs > .tabs-side > button, #tabs > .tabs-side > .tab-group > .group-toggle')].map(b=>b.textContent).join('|')`) === "Overview|Background|Product demo|Simulation 4|Archived");
+  ok("navbar: one row, the title on the left and the pages on the right, Archived after a divider", await ev(`(()=>{const t=document.querySelector('header.top .brand').getBoundingClientRect(),n=document.querySelector('#tabs').getBoundingClientRect(),s=document.querySelector('.tabs-sep').getBoundingClientRect(),g=document.querySelectorAll('#tabs .tabs-side');
+    return Math.abs((t.top+t.bottom)/2-(n.top+n.bottom)/2)<12 && t.right<n.left && innerWidth-n.right<40 && g[0].getBoundingClientRect().right<=s.left && s.right<=g[1].getBoundingClientRect().left && !!document.querySelector('#archived-menu [data-tab="sandbox"]')})()`));
+  await click('#archived-toggle'); await wait(200); await shot("00_nav_menu");
+  ok("navbar: a menu opens under its own button", await ev(`(()=>{const t=document.querySelector('#archived-toggle').getBoundingClientRect(),m=document.querySelector('#archived-menu'),r=m.getBoundingClientRect();
     return !m.hidden && Math.abs(r.right-t.right)<2 && r.top>=t.bottom && r.left>=0})()`));
-  await click('#simulations-toggle'); await wait(100);
+  await click('#archived-toggle'); await wait(100);
   await click('#tabs button[data-tab="demo"]');
   let ready = false; for (let i = 0; i < 60 && !ready; i++) { await wait(250); ready = await ev(`(()=>{const f=document.querySelector('#pane-demo iframe');return !!(f && f.contentDocument && f.contentDocument.body && f.contentDocument.body.dataset.ready==='1')})()`); }
   ok("demo tab loads the demo in its pane", ready);

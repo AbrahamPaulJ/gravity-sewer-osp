@@ -14,12 +14,13 @@ body{margin:0;background:var(--bg);color:var(--ink);display:flex;flex-direction:
   font:15px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
 :where(a,button,[tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 
-header.top{padding:16px 24px;border-bottom:1px solid var(--line);background:var(--panel);
+header.top{padding:8px 24px;border-bottom:1px solid var(--line);background:var(--panel);
   display:flex;align-items:center;flex-wrap:wrap;gap:8px 24px;position:relative;z-index:2}
 header.top .brand{font-size:14.5px;font-weight:650;letter-spacing:-.1px;min-width:0}
 #liveSlot{flex:0 0 auto;margin-right:auto}
-.tabs{display:flex;gap:8px 24px;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;flex-basis:100%;min-width:0}
-.tabs-side{display:flex;gap:8px;flex-wrap:wrap;min-width:0}
+.tabs{display:flex;gap:4px 12px;flex-wrap:wrap;justify-content:flex-end;align-items:center;flex:0 1 auto;min-width:0;margin-left:auto}
+.tabs-side{display:flex;gap:4px;flex-wrap:wrap;min-width:0}
+.tabs-sep{width:1px;height:20px;background:var(--line);flex:none}
 .tab-group{position:relative}
 .tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--ink-dim);
   padding:8px 16px;font:inherit;font-size:13px;cursor:pointer;border-radius:8px 8px 0 0;
@@ -116,10 +117,6 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);
   <nav class="tabs" id="tabs" aria-label="Pages">
     <div class="tabs-side">
     <button data-tab="overview" class="on">Overview</button>
-    <button data-tab="demo">Product demo</button>
-    </div>
-    <div class="tabs-side">
-    <button data-tab="sandbox">Sandbox</button>
     <div class="tab-group" data-group="Background">
       <button class="group-toggle" id="background-toggle" aria-expanded="false" aria-controls="background-menu">Background</button>
       <div class="tab-menu" id="background-menu" aria-labelledby="background-toggle" hidden>
@@ -127,10 +124,15 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);
         <button data-tab="observability">Why observability is limited</button>
       </div>
     </div>
-    <div class="tab-group" data-group="Simulations">
-      <button class="group-toggle" id="simulations-toggle" aria-expanded="false" aria-controls="simulations-menu">Simulations</button>
-      <div class="tab-menu" id="simulations-menu" aria-labelledby="simulations-toggle" hidden>
-        <button data-tab="sim4">Simulation 4 (latest)</button>
+    <button data-tab="demo">Product demo</button>
+    <button data-tab="sim4">Simulation 4</button>
+    </div>
+    <span class="tabs-sep" aria-hidden="true"></span>
+    <div class="tabs-side">
+    <div class="tab-group" data-group="Archived">
+      <button class="group-toggle" id="archived-toggle" aria-expanded="false" aria-controls="archived-menu">Archived</button>
+      <div class="tab-menu" id="archived-menu" aria-labelledby="archived-toggle" hidden>
+        <button data-tab="sandbox">Sandbox</button>
         <button data-tab="sim35">Simulation 3.5</button>
         <button data-tab="coverage">Coverage prototype</button>
         <button data-tab="sim3e">Simulation 3-e (headroom)</button>
