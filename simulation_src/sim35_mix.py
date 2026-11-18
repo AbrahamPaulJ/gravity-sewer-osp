@@ -39,7 +39,7 @@ ABOVE_CROWN = [100, 300, 500, 1000, 2000]               # and mm above the crown
 EPS = 1e-3
 TIME = 90
 
-reg, geo = C.read_js(C.REGIONS), C.read_js(os.path.join(C.DATA, "catchment.js"))
+reg, geo = C.read_regions(), C.read_js(os.path.join(C.DATA, "catchment.js"))
 ch = C.chamber_names(); gm = C.geometry(geo, ch); n = len(ch)
 ix = {nd["name"]: j for j, nd in enumerate(geo["nodes"])}
 rim = [round(geo["nodes"][ix[c]]["depth"] * 1000) for c in ch]
@@ -52,7 +52,7 @@ lines = []
 
 
 def say(*a):
-    t = " ".join(str(x) for x in a); print(t, flush=True); lines.append(t)
+    t = C.sets.report_text(" ".join(str(x) for x in a), C.SCENARIO_SET); print(t, flush=True); lines.append(t)
 
 
 def float_options(margin):
@@ -78,16 +78,21 @@ def scenarios(score):
             for x in rows:
                 rs = dict((i, v) for i, v in x["rise"])
                 if any(v >= 10 for v in rs.values()):
-                    L.append({"r": x["r"], "s": x["s"], "rises": rs})
+                    L.append({"r": x["r"], "s": x["s"], "f": x["f"],
+                              "next_in_scope": C.sets.next_in_scope(reg, x), "rises": rs})
         else:
             for ri in range(nreg):
                 rr = [x for x in rows if x["r"] == ri]
                 s = next((x["s"] for x in rr if x["sur"] or x["spill"]), None)
                 if s is None or s < 1:
                     continue
-                rs = dict((i, v) for i, v in rr[s - 1]["rise"])
+                previous = next((x for x in rr if x["s"] == s - 1), None)
+                if previous is None:
+                    continue
+                rs = dict((i, v) for i, v in previous["rise"])
                 if any(v >= 10 for v in rs.values()):
-                    L.append({"r": ri, "s": s - 1, "rises": rs})
+                    L.append({"r": ri, "s": s - 1, "f": previous["f"],
+                              "next_in_scope": C.sets.next_in_scope(reg, previous), "rises": rs})
         out[t] = L
     return out
 

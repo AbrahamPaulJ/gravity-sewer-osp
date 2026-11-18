@@ -45,7 +45,7 @@ RECOMMEND = 5        # the headline count: the 7 wet cases pass 80% worst case a
 WIDTH = 1500
 DRAWS = 5000
 SEED = 4
-OUT = os.path.join(C.HERE, "results", "sim4")
+OUT = C.OUT if C.TARGET == "sim4" else os.path.join(C.HERE, "results", "sim4")
 LISTED = C.TARGET != "sim4"      # Sim 3's hand-picked regions: the checks below that name their regions apply only to them
 STEM = "numbers_handpicked" if LISTED else "numbers"
 ACTION = {"runs out": "monitor", "uncertain": "watch", "room left": "leave", "already over": "leave"}
@@ -54,7 +54,7 @@ cap = json.load(open(os.path.join(C.OUT, "capacity.json"), encoding="utf-8"))
 
 
 def say(*a):
-    t = " ".join(str(x) for x in a)
+    t = C.sets.report_text(" ".join(str(x) for x in a), C.SCENARIO_SET)
     print(t, flush=True)
     lines.append(t)
 
@@ -164,6 +164,11 @@ def triage():
     out = {}
     for r in reg["regions"]:
         i = r["id"]
+        if r.get("family") == "greenfield":
+            out[i] = {"action": "monitor", "band": "estate sized to pipe room",
+                      **dict.fromkeys(("homes_2041", "homes_now", "p_runs_out", "homes_p10", "homes_p90",
+                                       "mm_per_100_homes", "by_limit", "bands_by_case"))}
+            continue
         x = b[i]
         out[i] = {"action": ACTION[x[LIMIT]["band"]], "band": x[LIMIT]["band"], "homes_2041": x["share_100"], "homes_now": r["dwellings"],
                   "p_runs_out": x[LIMIT]["p_runs_out"], "homes_p10": x[LIMIT]["homes_p10"], "homes_p90": x[LIMIT]["homes_p90"],
@@ -205,18 +210,22 @@ def main():
 
     say("=== 1. Triage: Design wet, limit 0.7. runs out = monitor, uncertain = watch, room left = leave")
     for i, v in tri.items():
+        if v["bands_by_case"] is None:
+            say(f"  {i}: {v['action']:8s} band {v['band']}")
+            continue
         kept = sum(b == v["band"] for b in v["bands_by_case"].values())
         say(f"  {i}: {v['action']:8s} band {v['band']:10s} 2041 homes {v['homes_2041']:5.0f} (homes there now {v['homes_now']}); "
             f"same band in {kept} of 7 wet cases; limit 0.5/0.6/0.7 {v['by_limit']['0.5']}/{v['by_limit']['0.6']}/{v['by_limit']['0.7']}")
-    say("  Bands by wet case: " + "; ".join(f"{i} " + ",".join(b.replace('runs out', 'O').replace('uncertain', 'U').replace('room left', 'R').replace('already over', 'A') for b in v["bands_by_case"].values()) for i, v in tri.items()))
-    anchor = [i for i, v in tri.items() if round(v["homes_2041"]) == round(reg["anchor"])]
-    s7 = sum(v["homes_2041"] for i, v in tri.items() if i not in anchor)
-    say(f"  Homes: the other regions add up to {s7:.0f}; {', '.join(anchor) or 'no region'} alone is {round(reg['anchor'])} (the whole anchor by design, docs/18 D18). They are not shares of one total.")
+    say("  Bands by wet case: " + "; ".join(f"{i} " + ",".join(b.replace('runs out', 'O').replace('uncertain', 'U').replace('room left', 'R').replace('already over', 'A') for b in v["bands_by_case"].values()) for i, v in tri.items() if v["bands_by_case"] is not None))
+    anchor = [i for i, v in tri.items() if v["homes_2041"] is not None and round(v["homes_2041"]) == round(reg["anchor"])]
+    s7 = sum(v["homes_2041"] for i, v in tri.items() if i not in anchor and v["homes_2041"] is not None)
+    if any(v["homes_2041"] is not None for v in tri.values()):
+        say(f"  Homes: the other regions add up to {s7:.0f}; {', '.join(anchor) or 'no region'} alone is {round(reg['anchor'])} (the whole anchor by design, docs/18 D18). They are not shares of one total.")
 
     Det = {R: M.Problem("detect", R, M.MARGIN) for R in (10, 25)}
     War = {R: M.Problem("warn", R, M.MARGIN) for R in (10, 25)}
-    d_ok = lambda sc: lad[sc["s"]] <= 1.0
-    w_ok = lambda sc: lad[sc["s"] + 1] <= 1.0
+    d_ok = lambda sc: sc["f"] <= 1.0
+    w_ok = lambda sc: sc["next_in_scope"]
     in_T = lambda sc: sc["r"] in T
     d_keep = lambda sc: in_T(sc) and d_ok(sc)
     w_keep = lambda sc: in_T(sc) and w_ok(sc)
@@ -239,7 +248,7 @@ def main():
     say(f"  Target regions {Tn}. Runs a sensor could see at 10 mm by 100% build-out: " + ", ".join(f"{lab[t]} {len(U[10].scen[t])}" for t in wet))
     say(f"  Dry, reported apart: {Udry.total()} target runs show a 10 mm rise anywhere by 100%. Wet-day sensors are not chosen for these.")
     say(f"  Overloads warnable by 100%: {Uw[10].total()} in target regions of {Uw13.total()} anywhere ({Uw25.total()} counting stress steps).")
-    dropped = [(lab[t], rid[sc["r"]], lad[sc["s"] + 1]) for t in wet for sc in War[10].scen[t] if w_ok(sc) and not in_T(sc)]
+    dropped = [(lab[t], rid[sc["r"]], C.sets.size_value(reg, sc, next_step=True)) for t in wet for sc in War[10].scen[t] if w_ok(sc) and not in_T(sc)]
     say(f"  Warnable overloads given up by leaving regions out: {dropped}")
     left = []
     for t in wet:
@@ -248,8 +257,8 @@ def main():
                 continue
             rows = sorted((x for x in reg["rows"][t] if x["r"] == ri), key=lambda x: x["s"])
             star = next((j for j, x in enumerate(rows) if x["sur"] or x["spill"]), None)
-            if star is not None and lad[rows[star]["s"]] <= 1.0:
-                left.append({"case": lab[t], "region": rid[ri], "step": lad[rows[star]["s"]],
+            if star is not None and rows[star]["f"] <= 1.0:
+                left.append({"case": lab[t], "region": rid[ri], "step": C.sets.size_value(reg, rows[star]),
                              "max_rise_before": max([v for _, v in rows[star - 1]["rise"]] or [0]) if star else 0})
     say(f"  Every overload by 100% in a leave region, warnable or not: {left}")
 
@@ -282,17 +291,21 @@ def main():
     freq = Counter(i for S in equal for i in S)
     say(f"  How firm is the {RECOMMEND}-sensor set? {len(equal)} sets tie for best on worst, average and warned. Each sensor is in: " + ", ".join(f"{ch[i]} {freq[i]}" for i in L[:RECOMMEND]))
     seed = design_seeds(U[10], Uw[10])
-    assert seed, "no set of 1 or 2 sensors sees all of Design wet: read the report"
-    if LISTED:
-        assert len(seed) == 1 and len(seed[0]) == 2, "the Design wet pair is no longer unique: read the report"
-    pair = list(L[:len(seed[0])])      # the ladder's Design wet set: one of the smallest sets that see all of it
-    assert any(set(pair) == set(x) for x in seed), "the ladder does not start with a Design wet set"
-    say(f"  Smallest sets that see all of Design wet: {len(seed)} of {len(seed[0])} sensor(s); the ladder starts with {[ch[i] for i in pair]}.")
-    pool = sorted({d for t in wet for sc in U[10].scen[t] for d in sc["D"] if d < n} | {d for t in Uw[10].cases for sc in Uw[10].scen[t] for d in sc["D"] if d < n})
-    brute = max(round(value(U[10], Uw[10], pair + list(c)), 6) for c in itertools.combinations([i for i in pool if i not in pair], RECOMMEND - len(pair)))
-    mine = round(value(U[10], Uw[10], L[:RECOMMEND]), 6)
-    say(f"  Brute force over every {RECOMMEND}-sensor set with the Design wet set: best value {brute}, ladder {mine}.")
-    assert mine >= brute - 1e-6, "the beam missed the best five: widen it"
+    if seed is None:
+        S = Det[10].solve(Det[10].groups([DESIGN], d_keep), tau=1.0, kinds=("level",))[0]
+        say(f"  No set of 1 or 2 sensors sees all of Design wet; exact minimum: {None if S is None else len(S)} sensors.")
+        say("  Design wet pair checks, facts and pair-based reasons were skipped because no set of 1 or 2 sensors sees all of Design wet.")
+    else:
+        if LISTED:
+            assert len(seed) == 1 and len(seed[0]) == 2, "the Design wet pair is no longer unique: read the report"
+        pair = list(L[:len(seed[0])])      # the ladder's Design wet set: one of the smallest sets that see all of it
+        assert any(set(pair) == set(x) for x in seed), "the ladder does not start with a Design wet set"
+        say(f"  Smallest sets that see all of Design wet: {len(seed)} of {len(seed[0])} sensor(s); the ladder starts with {[ch[i] for i in pair]}.")
+        pool = sorted({d for t in wet for sc in U[10].scen[t] for d in sc["D"] if d < n} | {d for t in Uw[10].cases for sc in Uw[10].scen[t] for d in sc["D"] if d < n})
+        brute = max(round(value(U[10], Uw[10], pair + list(c)), 6) for c in itertools.combinations([i for i in pool if i not in pair], RECOMMEND - len(pair)))
+        mine = round(value(U[10], Uw[10], L[:RECOMMEND]), 6)
+        say(f"  Brute force over every {RECOMMEND}-sensor set with the Design wet set: best value {brute}, ladder {mine}.")
+        assert mine >= brute - 1e-6, "the beam missed the best five: widen it"
     say(f"  [{(time.time() - t0) / 60:.1f} min]")
 
     say("\n=== 4. Fewest sensors by how much of the weather you must cover (exact, target regions, up to 100%)")
@@ -378,10 +391,10 @@ def main():
                     new.append((t, sc))
         hears = {}
         for ri in sorted(T):
-            rr = sorted((x for x in reg["rows"][DESIGN] if x["r"] == ri and lad[x["s"]] <= 1.0), key=lambda x: x["s"])
-            ladder_rise = [(lad[x["s"]], round(x["dw"]), dict((a, b) for a, b in x["rise"]).get(i, 0.0)) for x in rr]
+            rr = sorted((x for x in reg["rows"][DESIGN] if x["r"] == ri and x["f"] <= 1.0), key=lambda x: x["s"])
+            ladder_rise = [(C.sets.size_value(reg, x), round(x["dw"]), dict((a, b) for a, b in x["rise"]).get(i, 0.0)) for x in rr]
             first = next(((s, h, v) for s, h, v in ladder_rise if v >= 10), None)
-            cases = [lab[t] for t in wet if any(x["r"] == ri and lad[x["s"]] <= 1.0 and dict((a, b) for a, b in x["rise"]).get(i, 0.0) >= 10 for x in reg["rows"][t])]
+            cases = [lab[t] for t in wet if any(x["r"] == ri and x["f"] <= 1.0 and dict((a, b) for a, b in x["rise"]).get(i, 0.0) >= 10 for x in reg["rows"][t])]
             hears[rid[ri]] = {"first_step": first and first[0], "first_homes": first and first[1], "first_rise": first and round(first[2], 1),
                               "rise_at_100": round(ladder_rise[-1][2], 1) if ladder_rise else 0, "cases_heard": cases}
         o, d = M.gm[i]
@@ -391,7 +404,7 @@ def main():
                  "hears": hears, "design_wet_silent": not any(v["first_step"] for v in hears.values()),
                  "design_depth_mm": depth, "bore_mm": d, "design_fullness": None if o is None else round((depth - o) / d, 3),
                  "surcharged_before_growth": i in bD["surcharged"], "over_alarm_before_growth": i in bD.get("alarm", []),
-                 "nearest_earlier_m": min((dist(i, j) for j in before), default=None)}
+                 "nearest_earlier_m": min((d for d in (dist(i, j) for j in before) if d is not None), default=None)}
         assert set(entry["adds_by_region"]) <= set(Tn) and set(hears) == set(Tn)
         reasons.append(entry)
         hh = "; ".join(f"{r_} from {v['first_homes']} homes (+{v['first_rise']} mm), +{v['rise_at_100']} at 100%" if v["first_step"] else f"{r_} silent ({len(v['cases_heard'])}/7 wet cases hear it)" for r_, v in hears.items())
@@ -415,7 +428,7 @@ def main():
     hot = defaultdict(lambda: {"runs": 0, "spill_runs": 0, "cases": set(), "regions": set()})
     for t in wet:
         for x in reg["rows"][t]:
-            if lad[x["s"]] <= 1.0:
+            if x["f"] <= 1.0:
                 for i in set(x["sur"]) | set(x["spill"]):
                     h = hot[i]; h["runs"] += 1; h["spill_runs"] += i in x["spill"]; h["cases"].add(lab[t]); h["regions"].add(rid[x["r"]])
     ranked = sorted(hot, key=lambda i: (-hot[i]["runs"], ch[i]))
@@ -426,11 +439,11 @@ def main():
     for o in over[:8]:
         say(f"   {o['manhole']}: {o['runs']} runs, {o['spill_runs']} spilling; {len(o['cases'])} cases; growth in {o['regions']}; sits in {o['home_regions'] or 'none'}")
     facts = {"before_growth": {lab[t]: {"surcharged": len(reg["base"][t]["surcharged"]), "spilled": len(reg["base"][t]["spilled"])} for t in M.tags},
-             "design_wet_at_100": {"regions_with_new_surcharge": sum(bool(x["sur"]) for x in reg["rows"][DESIGN] if lad[x["s"]] == 1), "regions_with_new_spill": sum(bool(x["spill"]) for x in reg["rows"][DESIGN] if lad[x["s"]] == 1)},
+             "design_wet_at_100": {"regions_with_new_surcharge": sum(bool(x["sur"]) for x in reg["rows"][DESIGN] if x["f"] == 1), "regions_with_new_spill": sum(bool(x["spill"]) for x in reg["rows"][DESIGN] if x["f"] == 1)},
              "design_wet_any_step_new_spill": sum(bool(x["spill"]) for x in reg["rows"][DESIGN]),
-             "wet_rows_new_spill_by_100": sum(bool(x["spill"]) for t in wet for x in reg["rows"][t] if lad[x["s"]] <= 1.0),
-             "wet_rows_new_surcharge_by_100": sum(bool(x["sur"]) for t in wet for x in reg["rows"][t] if lad[x["s"]] <= 1.0),
-             "wet_rows_by_100": sum(1 for t in wet for x in reg["rows"][t] if lad[x["s"]] <= 1.0)}
+             "wet_rows_new_spill_by_100": sum(bool(x["spill"]) for t in wet for x in reg["rows"][t] if x["f"] <= 1.0),
+             "wet_rows_new_surcharge_by_100": sum(bool(x["sur"]) for t in wet for x in reg["rows"][t] if x["f"] <= 1.0),
+             "wet_rows_by_100": sum(1 for t in wet for x in reg["rows"][t] if x["f"] <= 1.0)}
     say("  Before growth: " + ", ".join(f"{k} {v['surcharged']} surcharged/{v['spilled']} spilling" for k, v in facts["before_growth"].items()))
     say(f"  Design wet at 100%: {facts['design_wet_at_100']}; new spill at any step in Design wet: {facts['design_wet_any_step_new_spill']}. All wet rows by 100%: {facts['wet_rows_new_surcharge_by_100']} with new surcharge, {facts['wet_rows_new_spill_by_100']} with new spill, of {facts['wet_rows_by_100']}.")
     say("  So: growth here means surcharge, the warning sign before an overflow. It is not a count of overflows.")
@@ -453,6 +466,8 @@ def main():
                "leave_overloads": left, "warnable_given_up": dropped, "ladder": rows, "tied_best_sets": len(equal), "in_tied_sets": {ch[i]: freq[i] for i in L[:RECOMMEND]}, "recommend": RECOMMEND, "fewest": fewest,
                "held_out": held, "held_out_by_case": held_case, "random": base, "reasons": reasons, "swaps": swaps, "overloads": over, "facts": facts, "old_sets": compare,
                "price": M.PRICE, "responsive_manholes": len(resp), "universe": {lab[t]: len(U[10].scen[t]) for t in wet}, "warn_universe": {"target": Uw[10].total(), "plausible": Uw13.total(), "all": Uw25.total()}}
+    if seed is None:
+        payload.update(design_wet_pair=None, design_wet_pair_brute_force=None)
     with open(os.path.join(OUT, STEM + ".json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(payload, f, indent=1)
     say(f"\ndone in {(time.time() - t0) / 60:.1f} min")

@@ -1,0 +1,126 @@
+Float options 3825, useful 244; level candidates 328.
+Universe, wet cases: detect {'Design wet': 30, 'Beyond design': 33, 'Severe': 35, 'Design wet + age-weighted I&I': 29, 'Design wet + outside inflow x1.5': 31, 'Beyond design + age-weighted I&I': 34, 'Beyond design + outside inflow x1.5': 32} Dry 30
+Universe, wet cases: warn 14
+
+=== Score detect, level rule 10 mm, float margin 25 mm: worst/average over the 7 wet cases, by budget
+   budget          level only          float only            free mix
+    25000    20%/ 41%  1L+  0F    31%/ 42%  0L+ 18F    31%/ 42%  0L+ 18F
+    50000    40%/ 59%  2L+  0F    31%/ 42%  0L+ 18F    45%/ 52%  1L+ 11F
+    75000    53%/ 69%  3L+  0F    31%/ 42%  0L+ 40F    55%/ 59%  2L+ 11F
+   100000    67%/ 74%  4L+  0F    31%/ 42%  0L+ 40F    67%/ 74%  4L+  0F
+   125000    77%/ 82%  5L+  0F    31%/ 42%  0L+ 40F    77%/ 82%  5L+  0F
+   150000    83%/ 87%  6L+  0F    31%/ 42%  0L+ 40F    83%/ 87%  6L+  0F
+   200000    91%/ 94%  8L+  0F    31%/ 42%  0L+ 55F    91%/ 94%  8L+  0F
+   250000    97%/ 99% 10L+  0F    31%/ 42%  0L+ 56F    97%/ 99% 10L+  0F
+   [0.0 min]
+
+=== Score detect, level rule 25 mm, float margin 25 mm: worst/average over the 7 wet cases, by budget
+   budget          level only          float only            free mix
+    25000     7%/ 25%  1L+  0F    31%/ 42%  0L+ 18F    31%/ 42%  0L+ 15F
+    50000    14%/ 31%  2L+  0F    31%/ 42%  0L+ 18F    34%/ 47%  1L+ 11F
+    75000    21%/ 37%  3L+  0F    31%/ 42%  0L+ 40F    38%/ 49%  2L+ 18F
+   100000    28%/ 39%  4L+  0F    31%/ 42%  0L+ 40F    41%/ 50%  3L+ 18F
+   125000    34%/ 42%  5L+  0F    31%/ 42%  0L+ 40F    45%/ 51%  4L+  6F
+   150000    40%/ 48%  6L+  0F    31%/ 42%  0L+ 40F    45%/ 52%  5L+ 15F
+   200000    45%/ 52%  8L+  0F    31%/ 42%  0L+ 55F    45%/ 54%  7L+  3F
+   250000    45%/ 55% 10L+  0F    31%/ 42%  0L+ 56F    45%/ 55%  8L+  2F
+   [0.0 min]
+
+=== Score warn, level rule 10 mm, float margin 25 mm: worst/average over the 7 wet cases, by budget
+   budget          level only          float only            free mix
+    25000    50%/ 92%  1L+  0F     0%/ 29%  0L+  6F    50%/ 92%  1L+  0F
+    50000   100%/100%  2L+  0F     0%/ 29%  0L+  6F   100%/100%  2L+  0F
+    75000   100%/100%  2L+  0F     0%/ 29%  0L+  6F   100%/100%  2L+  3F
+   100000   100%/100%  2L+  0F     0%/ 29%  0L+  6F   100%/100%  2L+  3F
+   125000   100%/100%  2L+  0F     0%/ 29%  0L+  6F   100%/100%  2L+  3F
+   150000   100%/100%  2L+  0F     0%/ 29%  0L+  6F   100%/100%  2L+  3F
+   200000   100%/100%  2L+  0F     0%/ 29%  0L+  6F   100%/100%  2L+  3F
+   250000   100%/100%  2L+  0F     0%/ 29%  0L+  6F   100%/100%  2L+  3F
+   [0.0 min]
+
+=== Score warn, level rule 25 mm, float margin 25 mm: worst/average over the 7 wet cases, by budget
+   budget          level only          float only            free mix
+    25000     0%/ 50%  1L+  0F     0%/ 29%  0L+  6F     0%/ 50%  1L+  0F
+    50000     0%/ 58%  2L+  0F     0%/ 29%  0L+  6F     0%/ 58%  1L+  1F
+    75000     0%/ 58%  3L+  0F     0%/ 29%  0L+  6F     0%/ 58%  1L+  1F
+   100000     0%/ 58%  3L+  0F     0%/ 29%  0L+  6F     0%/ 58%  3L+  3F
+   125000     0%/ 58%  3L+  0F     0%/ 29%  0L+  6F     0%/ 58%  3L+  3F
+   150000     0%/ 58%  3L+  0F     0%/ 29%  0L+  6F     0%/ 58%  3L+  3F
+   200000     0%/ 58%  3L+  0F     0%/ 29%  0L+  6F     0%/ 58%  3L+  3F
+   250000     0%/ 58%  3L+  0F     0%/ 29%  0L+  6F     0%/ 58%  3L+  3F
+   [0.0 min]
+
+=== Level against float, held out
+Worst/average on the case left out, and share seen on the area left out
+  detect10  5 level sensors    in-sample  77%/ 82%  case left out  77%/ 82%  area left out  40%
+  detect10  1 level sensor     in-sample  20%/ 41%  case left out  20%/ 41%  area left out  11%
+  detect10  25 floats          in-sample  31%/ 42%  case left out  20%/ 28%  area left out  22%   floats already tripped before growth, median wet cases 0 of 7
+  detect10  125 floats         in-sample  31%/ 42%  case left out  20%/ 31%  area left out  22%   floats already tripped before growth, median wet cases 3 of 7
+  detect10  Free mix, $125k    in-sample  77%/ 82%  case left out  77%/ 82%  area left out  40%
+  detect10  Free mix, $25k     in-sample  31%/ 42%  case left out  20%/ 28%  area left out  22%   floats already tripped before growth, median wet cases 0 of 7
+   [0.0 min]
+  detect25  5 level sensors    in-sample  34%/ 42%  case left out  33%/ 39%  area left out  21%
+  detect25  1 level sensor     in-sample   7%/ 25%  case left out   7%/ 23%  area left out  15%
+  detect25  25 floats          in-sample  31%/ 42%  case left out  20%/ 28%  area left out  22%   floats already tripped before growth, median wet cases 0 of 7
+  detect25  125 floats         in-sample  31%/ 42%  case left out  20%/ 31%  area left out  22%   floats already tripped before growth, median wet cases 3 of 7
+  detect25  Free mix, $125k    in-sample  45%/ 51%  case left out  41%/ 47%  area left out  25%   floats already tripped before growth, median wet cases 0 of 7
+  detect25  Free mix, $25k     in-sample  31%/ 42%  case left out  20%/ 29%  area left out  21%   floats already tripped before growth, median wet cases 0 of 7
+   [0.0 min]
+  warn10  5 level sensors    in-sample 100%/100%  case left out   0%/nan%  area left out  79%
+  warn10  1 level sensor     in-sample  50%/ 92%  case left out   0%/nan%  area left out  79%
+  warn10  25 floats          in-sample   0%/ 29%  case left out   0%/nan%  area left out  21%   floats already tripped before growth, median wet cases 2 of 7
+  warn10  125 floats         in-sample   0%/ 29%  case left out   0%/nan%  area left out  21%   floats already tripped before growth, median wet cases 2 of 7
+  warn10  Free mix, $125k    in-sample 100%/100%  case left out   0%/nan%  area left out  79%   floats already tripped before growth, median wet cases 1 of 7
+  warn10  Free mix, $25k     in-sample  50%/ 92%  case left out   0%/nan%  area left out  79%
+   [0.0 min]
+  warn25  5 level sensors    in-sample   0%/ 58%  case left out   0%/nan%  area left out  50%
+  warn25  1 level sensor     in-sample   0%/ 50%  case left out   0%/nan%  area left out  50%
+  warn25  25 floats          in-sample   0%/ 29%  case left out   0%/nan%  area left out  21%   floats already tripped before growth, median wet cases 2 of 7
+  warn25  125 floats         in-sample   0%/ 29%  case left out   0%/nan%  area left out  21%   floats already tripped before growth, median wet cases 2 of 7
+  warn25  Free mix, $125k    in-sample   0%/ 58%  case left out   0%/nan%  area left out  50%   floats already tripped before growth, median wet cases 1 of 7
+  warn25  Free mix, $25k     in-sample   0%/ 50%  case left out   0%/nan%  area left out  50%
+   [0.0 min]
+
+=== Sensitivity at $125k free mix, detect, level 25 mm
+  float margin 10 mm:  72%/ 75%, 1 level + 22 float
+  float margin 25 mm:  45%/ 51%, 4 level + 6 float
+  float margin 50 mm:  34%/ 42%, 5 level + 0 float
+  float $1000, budget $25000:  31%/ 42%, 0 level + 15 float
+  float $1000, budget $125000:  45%/ 51%, 4 level + 6 float
+  float $1500, budget $25000:  31%/ 42%, 0 level + 15 float
+  float $1500, budget $125000:  45%/ 51%, 4 level + 6 float
+
+=== Item 6: cheapest set that passes a tolerance, worst of the 7 wet cases
+Prices assumed. Then the same tolerance chosen without one case or area, and how it really scores there.
+ score detect, level 10 mm
+   pass  50%  level: $75k 3L+0F held out case 67% area 42% | mix: $52k 2L+2F held out case 63% area 41%
+   pass  60%  level: $100k 4L+0F held out case 74% area 40% | mix: $76k 3L+1F held out case 68% area 38%
+   pass  70%  level: $125k 5L+0F held out case 81% area 42% | mix: $101k 4L+1F held out case 76% area 38%
+   pass  80%  level: $150k 6L+0F held out case 84% area 37% | mix: $150k 6L+0F held out case 86% area 38%
+   pass  90%  level: $200k 8L+0F held out case 93% area 33% | mix: $200k 8L+0F held out case 94% area 34%
+   pass 100%  level: $300k 12L+0F held out case 99% area 38% | mix: $300k 12L+0F held out case 99% area 38%
+   [0.1 min]
+ score detect, level 25 mm
+   pass  50%  level: not reachable | mix: not reachable
+   pass  60%  level: not reachable | mix: not reachable
+   pass  70%  level: not reachable | mix: not reachable
+   pass  80%  level: not reachable | mix: not reachable
+   pass  90%  level: not reachable | mix: not reachable
+   pass 100%  level: not reachable | mix: not reachable
+   [0.1 min]
+ score warn, level 10 mm
+   pass  50%  level: $25k 1L+0F held out case nan% area 79% | mix: $25k 1L+0F held out case nan% area 79%
+   pass  60%  level: $50k 2L+0F held out case nan% area 79% | mix: $50k 2L+0F held out case nan% area 79%
+   pass  70%  level: $50k 2L+0F held out case nan% area 79% | mix: $50k 2L+0F held out case nan% area 79%
+   pass  80%  level: $50k 2L+0F held out case nan% area 79% | mix: $50k 2L+0F held out case nan% area 79%
+   pass  90%  level: $50k 2L+0F held out case nan% area 79% | mix: $50k 2L+0F held out case nan% area 79%
+   pass 100%  level: $50k 2L+0F held out case nan% area 79% | mix: $50k 2L+0F held out case nan% area 79%
+   [0.1 min]
+ score warn, level 25 mm
+   pass  50%  level: not reachable | mix: not reachable
+   pass  60%  level: not reachable | mix: not reachable
+   pass  70%  level: not reachable | mix: not reachable
+   pass  80%  level: not reachable | mix: not reachable
+   pass  90%  level: not reachable | mix: not reachable
+   pass 100%  level: not reachable | mix: not reachable
+   [0.1 min]

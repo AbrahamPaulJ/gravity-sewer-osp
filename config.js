@@ -114,6 +114,23 @@
     "max_sensors": 10,
     "scenario_default_dwellings": 50,
 
+    "greenfield": {
+      "_note": "Sim 4 greenfield: an understanding-only transfer test of the infill-chosen sensors against imaginary edge estates; not a planning or capacity study. One representative per edge stretch, with at least min_homes of downstream property headroom on every route, including relief pipes.",
+      "table_4_4_max_properties": {"150": 400, "225": 1000, "300": 1800},
+      "_source": "SA Water Sewerage Code Supplement Pt 1, cl 4.5.5 and Table 4.4 (Amdt Jun09): maximum allowable EP 1000/2500/4500 for DN150/225/300, equivalent properties 400/1000/1800.",
+      "_property_limits": "SA Water Supplement Table 4.4 limits apply only to reticulation sewers, DN150-300. Above DN300 (branch and trunk sewers, DN375+), there is no property limit; capacity is left to SWMM. Below DN150 use 400 x (D/0.150)^(8/3), a team scaling assumption. Other unlisted reticulation diameters scale from the nearest table DN at equal slope and roughness; within 5 mm of a listed DN use that entry. D is in metres.",
+      "_assumptions": "Estate sizes and the short edge connection are team assumptions. Every site's ceiling is the smaller of floored property headroom and the largest configured step; a path with no Table 4.4 cap uses that largest step. Retain every smaller configured step plus the ceiling.",
+      "_edge": "Open sector beside the manhole, using all gravity pipes held by Network sampled every 10 m and existing homes/connections; its middle must have 60 m clearance towards open land. Cluster sites sharing a non-null limiting pipe or lying within cluster_radius_m with bearings within cluster_angle_deg; keep the largest sector, then lowest manhole id.",
+      "edge_open_deg": 120,
+      "edge_radius_m": 200,
+      "edge_clear_m": 400,
+      "cluster_radius_m": 300,
+      "cluster_angle_deg": 45,
+      "_estate_ii": "Team assumption: add sewage only, exactly as Sim25Model greenfield growth does, with no extra infiltration for the estate's own new pipes. No public data gives estate pipe lengths or infiltration.",
+      "steps": [10, 30, 80, 150, 300, 600, 1000],
+      "min_homes": 10
+    },
+
     "run": {
       "_note": "Run length, register R2 as corrected on 21 Oct 2026. A SWMM run ends when every chamber's depth has moved less than settle_tol_mm over the last settle_window_min simulated minutes, checked every check_every_min after min_minutes, otherwise at max_minutes with converged false recorded in the results. The fixed 480 minutes it replaces was settled at infiltration 0.11 (0.0 mm change to 1440 min) but not at 0.25 (MH4428836 149.8 to 164.3 mm; 32 of 71 segment manholes moved more than 5 mm) nor fully at 0.40 (38 of 328 chambers, up to 14.5 mm). Scenarios with pumps at set rates never settle and keep pumps.rated_minutes instead. Every run records the minutes it took, whether it settled, the largest drift and SWMM's continuity error. Window and tolerance were calibrated on 21 Oct 2026 against full 1440-minute trajectories at 0.11, 0.25 and 0.40: a 30-minute window at 0.5 mm opened at 410 minutes in Severe with 24 mm of slow creep still to come; 120 minutes at 0.25 mm opens at 370, 1040 and 740 minutes and leaves at most 0.1 mm at any chamber.",
       "max_minutes": 1800,

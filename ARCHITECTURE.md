@@ -17,6 +17,9 @@ src/ui/                  the sandbox page's state, canvas, controls, worker, and
 src/docs/                the documentation panes, generated from the loaded data
 data/                    generated datasets; never edited by hand
 tools/                   tests and the data formatter
+simulation_src/          Simulation 4's analysis scripts (sim4_*.py, sim35_*.py); results in
+                         results/sim4, results/sim4/greenfield (estates),
+                         results/sim4_set_greenfield and results/sim4_set_both
 ```
 
 ## Modules and what reads what
@@ -110,6 +113,9 @@ already is.
 python3 -m http.server 8001          # serve; file:// breaks the worker and the 3D view
 node tools/test_sandbox.js           # 38 regression checks against the shipped dataset
 python3 tools/format_data.py --check # would the data file change if reformatted?
+python3 tools/build_sim4_greenfield.py --check    # greenfield explorer data matches the saved runs
+(cd simulation_src && PYTHONPATH=. python3 ../tools/check_sim4_greenfield_plan.py)  # independent plan check
+python3 tools/check_sim4_estates.py   # drawn estates: design rules, nesting, density against the real network
 ```
 
 The tests are regression checks on one dataset, not unit tests of the algorithms.

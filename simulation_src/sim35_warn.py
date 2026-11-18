@@ -32,7 +32,6 @@ import sim35_mix as M
 RULES = (10, 25, 50)
 KMAX = 10
 LEVEL = ("level",)
-PLAUSIBLE = M.reg["ladder"].index(1.0) - 1      # a scenario's step is the one before its first surcharge
 
 
 def tally(P, S, cases):
@@ -41,7 +40,7 @@ def tally(P, S, cases):
     for t in cases:
         for sc in P.scen[t]:
             if sc["D"] & S:
-                n += 1; p += sc["s"] <= PLAUSIBLE
+                n += 1; p += sc["next_in_scope"]
     return n, p
 
 
@@ -71,14 +70,14 @@ def held_out(P, budget):
             for sc in P.scen[t]:
                 if sc["r"] == ra:
                     seen = bool(sc["D"] & S)
-                    tot += 1; hit += seen; pr += seen and sc["s"] <= PLAUSIBLE
+                    tot += 1; hit += seen; pr += seen and sc["next_in_scope"]
     return sum(shares) / len(shares), hit / tot, pw, pr
 
 
 def rule(R):
     P, Pd = M.Problem("warn", R, M.MARGIN), M.Problem("detect", R, M.MARGIN)
     total = sum(len(P.scen[t]) for t in M.wet)
-    plausible = sum(sc["s"] <= PLAUSIBLE for t in M.wet for sc in P.scen[t])
+    plausible = sum(sc["next_in_scope"] for t in M.wet for sc in P.scen[t])
     sets = []
     for k in range(1, KMAX + 1):
         budget = k * M.PRICE["level"]

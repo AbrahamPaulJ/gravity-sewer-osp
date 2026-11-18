@@ -9,8 +9,11 @@
      infill      new homes spread through one of the regions in proportion to the
                  homes already there, from 10% to 300% of that region's share of the 2021 to
                  2041 planning projection (SIM3_REGIONS, from sim3_regions.py / sim3_analysis.py)
-     greenfield  a new estate joining at one manhole, 10 to 700 dwellings (GROWTH_RUNS, the
-                 Sim 2.5 grid, re-run with settled run lengths where it has been)
+     greenfield  a new estate joining at one of 9 edge connections (5 manholes, 4 pipe ends),
+                 each at its own sizes up to its pipe room (sewer supplement Table 4.4), settled
+                 runs (SIM4_GREENFIELD,
+                 from sim4_greenfield.py, in the grid shape by greenfield_runs.js), drawn as
+                 imaginary streets and houses on nearby open land (SIM4_ESTATES)
    plus "no growth": the suburb as it is, for the choke points and the baseline.
 
    The map is the live Sim 2.5 page's renderer (growth_3d.js) with its colours unchanged, so
@@ -28,7 +31,7 @@ window.Sim35UI = (function () {
   const pct = x => Math.round(x * 100) + "%";
   const row2 = (k, v) => '<div class="fact"><span>' + esc(k) + "</span><span>" + v + "</span></div>";
 
-  const G = () => window.GROWTH_GEOM, R = () => window.GROWTH_RUNS, S = () => window.SIM3_REGIONS;
+  const G = () => window.GROWTH_GEOM, R = () => window.SIM4_GF_RUNS || window.GROWTH_RUNS, S = () => window.SIM3_REGIONS;
   const IDX = () => window.SIM3_INDEX;
   const ALARM_MM = window.GROWTH_RUNS.alarmMm;
   // Page rule ids and their plain names. The regions payload uses the same ids.
@@ -51,7 +54,9 @@ window.Sim35UI = (function () {
   const REGION_COLS = { R1: "#3987e5", R2: "#d95926", R3: "#008300", R4: "#e87ba4", R5: "#199e70", R6: "#39c5cf", R7: "#b08457", R8: "#9085e9", R9: "#c9d1d9" };
   const isOverlay = ri => !!S().regions[ri].overlay;
   const regionCol = ri => REGION_COLS[S().regions[ri].id] || "#5b6470";
-  const SIZES_TIP = "The size of the new estate, all of it draining into the sewer at the chosen manhole. 10, 30, 80 and 150 homes are realistic: one year of the whole council's growth landing at one point is about 30 to 80 homes, one apartment project 50 to 150. 700 is a stress case, roughly a decade of the council's growth in one place, kept as an upper bound and not a plausible development. For scale, the state projection (PlanSA, 2021 to 2041) is 390 to 485 new dwellings over twenty years for the whole council; the infill family spreads that figure over the regions, and Sim 2.5's corridor runs placed exactly 390 and 485 along Walkerville Terrace, where the state expects them.";
+  const GF_SIZES_TIP = "The size of the new estate, all of it draining into the sewer at the chosen connection. Each edge connection has sizes of its own: 10, 30, 80, 150, 300, 600 and 1,000 homes, stopping at the most the pipes downstream can take under the sewer supplement's Table 4.4 (properties per reticulation sewer, DN150 to DN300). " +
+    "For scale, PlanSA's Land Supply Report puts Greater Adelaide's greenfield supply at about 2,500 dwellings a year over 2017 to 2021, built as estates on the fringe; an estate's size and where it joins are team assumptions, as no public data gives them for this network.";
+  const SIZES_TIP_SIM3 = "The size of the new estate, all of it draining into the sewer at the chosen manhole. 10, 30, 80 and 150 homes are realistic: one year of the whole council's growth landing at one point is about 30 to 80 homes, one apartment project 50 to 150. 700 is a stress case, roughly a decade of the council's growth in one place, kept as an upper bound and not a plausible development. For scale, the state projection (PlanSA, 2021 to 2041) is 390 to 485 new dwellings over twenty years for the whole council; the infill family spreads that figure over the regions, and Sim 2.5's corridor runs placed exactly 390 and 485 along Walkerville Terrace, where the state expects them.";
   // Region indices in the order of their ids (R1, R2, ...), for the dropdown and the chips;
   // the data lists them in another order.
   const regionOrder = () => S().regions.map((r, i) => i).sort((a, b) => String(S().regions[a].id).localeCompare(String(S().regions[b].id), undefined, { numeric: true }));
@@ -123,24 +128,40 @@ window.Sim35UI = (function () {
   const st = {
     view: "simple", fam: "infill",
     region: 0, step: 4,                 // infill: region index, ladder index (100%)
-    site: null, add: 3,                 // greenfield: chamber index, growth size index
+    site: null, add: 1,                 // greenfield: chamber index, growth size index
     caseTag: null,                      // the uncertainty case, by tag (shared by the families)
     rule: "r10", k: 5, method: "story", obj: "worst",
     scope: "story",                     // the test sets are scored on: the story's (default) or the broader one (TEST_NOTE)
     showSensors: true, showHeat: false, showPumps: false, showConn: false,
+    showEstates: false,                 // greenfield: every edge connection's estate at its largest size
     hover: null, pick: null,            // hovered / clicked manhole NAME for the right panel
-    legend: false,                      // the colour key, off until asked for
+    legend: true,                       // the colour key, shown from the start
     areasView: false,                   // every region in its colour, nothing else
     coverView: false,                   // the map coloured by which sensor sees growth where
     rb: true, lb: true, top: true,      // right panel, left panel, top bar shown
     words: true,                        // the summary bubble on the map open
   };
 
+  const GF = () => window.SIM4_GF_RUNS || null;
+  const sizesTip = () => (GF() ? GF_SIZES_TIP : SIZES_TIP_SIM3);
+  const gfSite = i => !GF() || (i != null && GF().stepsAt[i] != null);     // can an estate join here?
+  const EST = () => window.SIM4_ESTATES || null;
+  const gfHead = i => { const g = (window.SIM4_GREENFIELD.sites || []).find(x => x.id === nameOf(i)); return g ? g.headroom : 0; };
+  if (GF()) Object.defineProperty(GF(), "growthLevels", {
+    get: () => (st.site != null && GF().stepsAt[st.site]) || GF().defaultLevels });
+  // Moving the estate keeps the size step where it fits the new site's own sizes.
+  function moveSite(i) {
+    st.site = i;
+    if (i != null) st.add = Math.min(st.add, R().growthLevels.length - 1);
+  }
+
   /* ------------------------------------------------------------- index spaces */
   const names = () => R().chambers;                 // chamber index -> SWMM name "MH<id>"
-  const nameOf = i => R().chambers[i];
+  // A pipe-end connection is not a chamber: its key runs on from chambers.length (greenfield_runs.js).
+  const nameOf = i => (R().chambers[i] != null ? R().chambers[i] : GF() && GF().siteName ? GF().siteName[i] : undefined);
   const mhOf = i => R().manholeIds[i];
-  const label = i => "MH " + mhOf(i);
+  const gfInfo = i => (GF() && GF().siteList ? GF().siteList.find(x => x.site === i) : null);
+  const label = i => { const g = gfInfo(i); return (mhOf(i) != null ? "MH " + mhOf(i) : "pipe end " + nameOf(i)) + (g && g.land ? ", " + g.land : ""); };
   const idxOfName = {};
   let regionOf = [];                                // chamber index -> region index or -1
 
@@ -364,6 +385,54 @@ window.Sim35UI = (function () {
   }
 
   /* ------------------------------------------------------------ greenfield */
+  // The imaginary estate for a site at a size, on open land beside an edge connection (estates.js).
+  function estateSpec(i, homes) {
+    const E = EST(), e = E && i != null && E.sites[nameOf(i)];
+    if (!e) return null;
+    const step = e.steps[String(homes)] || null, n = step ? step.n : 0, b = e.bbox;
+    return { at: nameOf(i), link: e.link, risingMain: e.rising_main || null, pipes: step ? step.pipes : [], mh: step ? (step.mh || []) : [], streets: e.streets || [], houses: e.houses.slice(0, n), houseZ: (e.house_z || []).slice(0, n),
+             pumped: !!(e.levels && e.levels.pumped), well: e.levels ? e.levels.well : null, lifts: step ? (step.lifts || []) : [], lv: e.levels || null, mainM: e.main_m,
+             box: b, n, linkM: e.link_m, pipeM: step ? step.pipe_m : 0, dir: e.direction, partial: step ? step.partial : true };
+  }
+  const estateWhere = () => { const e = estateSpec(st.site, R().growthLevels[st.add]); return e ? ", the estate drawn " + (e.linkM / 1000).toFixed(1) + " km " + e.dir : ""; };
+  // Every connection's imaginary estate at its largest size; estates never share land.
+  function allEstates() {
+    return GF().sites.map(i => {
+      const lv = GF().stepsAt[i];
+      return estateSpec(i, lv[lv.length - 1]);
+    }).filter(Boolean);
+  }
+  const estatesDrawn = list => list.length + " estate" + (list.length === 1 ? " is" : "s are") + " drawn, each on its own land.";
+  function frameAllEstates() {
+    const list = allEstates();
+    if (!list.length) return;
+    const b = list.reduce((a, e) => [Math.min(a[0], e.box[0]), Math.min(a[1], e.box[1]), Math.max(a[2], e.box[2]), Math.max(a[3], e.box[3])], [1e9, 1e9, -1e9, -1e9]);
+    Growth3D.frameBox(b, list[0].at);
+  }
+  function frameEstate() {
+    const e = estateSpec(st.site, R().growthLevels[st.add]);
+    if (e) Growth3D.frameBox(e.box, e.at);
+  }
+  // The estate on the map: the hovered edge connection's (a preview), else the selected one's.
+  function drawEstate() {
+    if (!Growth3D.setEstate) return;
+    $("#toggleEstates").hidden = st.fam !== "one" || !EST();
+    $("#toggleEstates").classList.toggle("primary", st.showEstates);
+    if (st.fam !== "one" || st.areasView) { Growth3D.setEstate(null); return; }
+    if (st.showEstates) {
+      const list = allEstates();
+      $("#toggleEstates").textContent = "Estates (" + list.length + ")";
+      $("#toggleEstates").title = estatesDrawn(list);
+      Growth3D.setEstate(list); return;
+    }
+    $("#toggleEstates").textContent = "Estates";
+    $("#toggleEstates").title = "Draw every imaginary estate at its largest size.";
+    const h = st.hover != null && idxOfName[st.hover] !== undefined && gfSite(idxOfName[st.hover]) ? idxOfName[st.hover] : null;
+    const i = h != null ? h : st.site;
+    if (i == null) { Growth3D.setEstate(null); return; }
+    const lv = (GF() && GF().stepsAt[i]) || R().growthLevels;
+    Growth3D.setEstate(estateSpec(i, lv[Math.min(st.add, lv.length - 1)]));
+  }
   function cell() {
     const Rr = R(), add = Rr.growthLevels[st.add];
     return Rr.cells.find(c => c.case === caseIndex() && c.add === add && c.rule === st.rule) || Rr.cells[0];
@@ -413,6 +482,7 @@ window.Sim35UI = (function () {
   /* ------------------------------------------------------------------ paint */
   function repaint() {
     const sensors = sensorSet();
+    Growth3D.setEligible(st.fam === "one" && GF() && !st.areasView && !coverOn() ? GF().sites.map(nameOf) : []);
     Growth3D.setCoverSelect(null);
     let named = {}, site = null, spillsBefore = [], spillsNew = [];
     if (st.fam === "infill") {
@@ -454,10 +524,12 @@ window.Sim35UI = (function () {
       if (st.fam === "infill") {
         Growth3D.setPulse(region().manholes.map(nameOf));
         Growth3D.setRegionLabels([{ names: [regionPaint().labelAt[st.region]], text: region().id, col: "#00d4ff" }]);
-      } else { Growth3D.setPulse([]); Growth3D.setRegionLabels([]); }
+      } else if (st.fam === "one" && GF()) { Growth3D.setPulse(GF().sites.map(nameOf)); Growth3D.setRegionLabels([]); }
+      else { Growth3D.setPulse([]); Growth3D.setRegionLabels([]); }
       Growth3D.setSpills(spillsBefore, spillsNew);
     }
     Growth3D.setPumpRates([]);
+    drawEstate();
     renderHomes(sensors);
     renderKnobs();
     renderStrip();
@@ -487,7 +559,9 @@ window.Sim35UI = (function () {
     else if (coverOn()) spec = { mode: "none" };
     else if (st.fam === "infill") spec = { mode: "region", names: region().manholes.map(nameOf) };
     else if (st.showSensors && sensors.length && st.fam !== "one") spec = { mode: "sensors", names: sensors };
-    else if (st.fam === "one" && st.site != null) { spec = { mode: "site", name: nameOf(st.site) }; lead = "Homes behind " + esc(label(st.site)); }
+    // A placed greenfield estate: count the existing homes behind it but do not mark them,
+    // since near the outlet that is nearly every home and it hides the estate.
+    else if (st.fam === "one" && st.site != null) { spec = { mode: "site", name: nameOf(st.site), quiet: GF() }; lead = "Homes behind " + esc(label(st.site)); }
     else spec = st.showSensors && sensors.length ? { mode: "sensors", names: sensors } : { mode: "none" };
     const r = Growth3D.highlight(spec);
     if (!r) { put("", "", "", "", ""); return; }
@@ -510,11 +584,17 @@ window.Sim35UI = (function () {
         row("", "<strong>" + r.unwatched + "</strong> do not"), "", "");
       return;
     }
+    const sw = c => spec.quiet ? "" : c;   // no colour key for homes that are not marked
     put(lead,
-      row("#1f4fff", "<strong>" + r.here + "</strong> reach it first" + (r.here > r.direct ? " (" + (r.here - r.direct) + " via unrecorded pipe ends)" : ""), true),
-      row("#7dc4e0", "<strong>" + r.through + "</strong> drain through it from further up"),
-      row("#3a2430", "<strong>" + r.elsewhere + "</strong> elsewhere"),
-      st.hover ? (st.fam === "one" ? "Click to move the growth here" : "Click to inspect it") : "");
+      row(sw("#1f4fff"), "<strong>" + r.here + "</strong> reach it first" + (r.here > r.direct ? " (" + (r.here - r.direct) + " via unrecorded pipe ends)" : ""), true),
+      row(sw("#7dc4e0"), "<strong>" + r.through + "</strong> drain through it from further up"),
+      row(sw("#3a2430"), "<strong>" + r.elsewhere + "</strong> elsewhere"),
+      st.hover ? (st.fam === "one" ? (gfSite(idxOfName[st.hover]) ? "Click to move the estate here" : "No estate here: not one of the 9 edge connections. Click to inspect it") : "Click to inspect it") : "");
+    const e = st.fam === "one" && !st.areasView ? estateSpec(st.hover != null && gfSite(idxOfName[st.hover]) ? idxOfName[st.hover] : st.hover == null ? st.site : null,
+      R().growthLevels[st.add]) : null;
+    if (st.fam === "one" && !st.areasView && st.showEstates) {
+      $("#homesLine").insertAdjacentHTML("beforeend", row("#1f4fff", estatesDrawn(allEstates()), true));
+    } else if (e) $("#homesLine").insertAdjacentHTML("beforeend", row("#1f4fff", "<strong>" + e.n + "</strong> new homes in an imaginary estate on open land " + e.dir + " of this manhole", true));
   }
   const shortName = reg => reg.name.split(":")[0];
 
@@ -527,7 +607,7 @@ window.Sim35UI = (function () {
   // The simple strip's "where": the regions, then greenfield, then no growth.
   function buildStrip() {
     $("#whereSel").innerHTML = regionOrder().map(i => { const r = S().regions[i]; return "<option value=" + JSON.stringify("r" + i) + ">" + esc(r.id + ": " + shortName(r)) + "</option>"; }).join("") +
-      '<option value="one">A new estate at one manhole</option><option value="none">Nowhere: the suburb today</option>';
+      '<option value="one">' + (GF() ? "A new estate at an edge connection" : "A new estate at one manhole") + '</option><option value="none">Nowhere: the suburb today</option>';
     $("#whereSel").onchange = () => {
       const v = $("#whereSel").value;
       if (v === "one" || v === "none") { setFamily(v); return; }
@@ -586,9 +666,8 @@ window.Sim35UI = (function () {
     const desc = String(reg.name).split(":").slice(1).join(":").trim();
     $("#whereSel").title = st.fam === "infill" ? reg.name : "";
     $("#whereHint").textContent = st.fam === "infill" ? (desc ? desc.charAt(0).toUpperCase() + desc.slice(1) + "; " : "") + reg.dwellings + " homes, " + reg.nManholes + " manholes today"
-      : st.fam === "one" ? (st.site != null ? "At " + label(st.site) + ". Click another manhole to move it." : "Click a manhole on the map to place it.")
+      : st.fam === "one" ? (st.site != null ? "At " + label(st.site) + estateWhere() + ". Click another " + (GF() ? "edge connection" : "manhole") + " to move it." : (GF() ? "Click a pulsing edge connection on the map to place it." : "Click a manhole on the map to place it."))
       : "No homes added. Amber manholes are over the alarm already.";
-    const how = $("#howStep");
     if (st.fam === "infill") {
       const row = curRow(), f = ladder()[st.step];
       $("#howRange").disabled = false; $("#howRange").max = String(ladder().length - 1); $("#howRange").value = String(st.step);
@@ -596,10 +675,11 @@ window.Sim35UI = (function () {
       $("#howInfo").dataset.tip = "100% is this region's share of the council's 2021 to 2041 planning projection, " + Math.round(reg.nominal) + " homes on top of its " + reg.dwellings +
         " today. 25% is roughly the first year or two of that; 300% is a stress test. The homes are added all at once to today's pipes, with no upgrades; in reality they arrive over three to five years.";
     } else if (st.fam === "one") {
-      $("#howRange").disabled = false; $("#howRange").max = String(R().growthLevels.length - 1); $("#howRange").value = String(st.add);
-      const g = R().growthLevels[st.add];
+      const lv = R().growthLevels, addIdx = Math.min(st.add, lv.length - 1);
+      $("#howRange").disabled = false; $("#howRange").max = String(lv.length - 1); $("#howRange").value = String(addIdx);
+      const g = lv[addIdx];
       $("#howLbl").innerHTML = "+" + g + " homes in the new estate" + (g >= 500 ? " <span class='quiet' style='display:inline'>(stress case)</span>" : "");
-      $("#howInfo").dataset.tip = SIZES_TIP;
+      $("#howInfo").dataset.tip = sizesTip();
     } else {
       $("#howRange").disabled = true; $("#howLbl").textContent = "No growth"; $("#howInfo").dataset.tip = "Nothing is added in this view; the map shows the network as it is in the selected weather.";
     }
@@ -611,7 +691,7 @@ window.Sim35UI = (function () {
     $("#kHint").textContent = pl.warn ? "warn of " + pl.warn.plausible_warned + " of " + WARN(st.rule).plausible_total + " overloads by 100% build-out" : pl.worst != null ? "catch " + pct(pl.worst) + " of detectable growth, worst case" : "";
     $("#kInfo").dataset.tip = pl.warn ? WARN_TIP : st.method === "story" ? "The story's first " + st.k + " sensor" + (st.k === 1 ? "" : "s") + ", in its order (Sim 4's list, up to " + storyMax() + "). " +
       "A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth. The percentage is the share of the detectable growth the set notices, on " +
-      (st.fam === "one" ? "the greenfield grid." : storyScope() ? TEST_NOTE.story.charAt(0).toLowerCase() + TEST_NOTE.story.slice(1) : TEST_NOTE.broad.charAt(0).toLowerCase() + TEST_NOTE.broad.slice(1))
+      (st.fam === "one" ? (GF() ? "the greenfield runs." : "the greenfield grid.") : storyScope() ? TEST_NOTE.story.charAt(0).toLowerCase() + TEST_NOTE.story.slice(1) : TEST_NOTE.broad.charAt(0).toLowerCase() + TEST_NOTE.broad.slice(1))
       : st.fam !== "one" && storyScope() ? "This many level sensors, by the method chosen, scored on " + TEST_NOTE.story.charAt(0).toLowerCase() + TEST_NOTE.story.slice(1) +
       " A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth; the percentage is the share of the detectable growth the set notices." : "The best set of this many level sensors, chosen once for the worst of all " + famCases().length + " weather and leakage cases. " +
       "A level sensor counts as seeing growth when a manhole's water rises 10 mm or more over its own level before the growth. " +
@@ -622,7 +702,7 @@ window.Sim35UI = (function () {
     const Rr = R();
     $("#ruleKnob").innerHTML = RULES.map(r => "<button data-r=" + JSON.stringify(r.id) + " title=" + JSON.stringify(r.note) + ">" + esc(r.label) + "</button>").join("");
     $("#addKnob").innerHTML = Rr.growthLevels.map((g, i) => "<button data-i=" + JSON.stringify(String(i)) + (g >= 500 ? ' title="A stress case, not a plausible estate"' : "") + ">+" + g + (g >= 500 ? '<span class="knobNum">stress case</span>' : "") + "</button>").join("");
-    $("#addInfo").dataset.tip = SIZES_TIP;
+    $("#addInfo").dataset.tip = sizesTip();
     $("#region").innerHTML = regionOrder().map(i => { const r = S().regions[i]; return "<option value=" + JSON.stringify(String(i)) + " title=" + JSON.stringify(r.name) + ">" + esc(r.id + ": " + shortName(r)) + "</option>"; }).join("");
     $("#stepRange").max = String(ladder().length - 1);
     buildCaseKnobs();
@@ -648,7 +728,7 @@ window.Sim35UI = (function () {
     $("#region").onchange = () => { st.region = +$("#region").value; st.pick = null; repaint(); };
     $("#stepRange").oninput = () => { st.step = +$("#stepRange").value; repaint(); };
     $("#kRange").oninput = () => { st.k = +$("#kRange").value; repaint(); };
-    $("#site").onchange = () => { st.site = $("#site").value === "" ? null : +$("#site").value; st.pick = null; repaint(); };
+    $("#site").onchange = () => { moveSite($("#site").value === "" ? null : +$("#site").value); st.pick = null; repaint(); };
   }
   function renderKnobs() {
     $("#methWarn").hidden = !WARN(st.rule) || st.fam === "one";
@@ -667,6 +747,7 @@ window.Sim35UI = (function () {
     $$("#famKnob button").forEach(b => b.classList.toggle("on", b.dataset.f === st.fam));
     $$("#iiKnob button").forEach(b => b.classList.toggle("on", +b.dataset.i === ci));
     $$("#ruleKnob button").forEach(b => b.classList.toggle("on", b.dataset.r === st.rule));
+    if (GF()) $("#addKnob").innerHTML = R().growthLevels.map((g, i) => "<button data-i=" + JSON.stringify(String(i)) + ">+" + g + "</button>").join("");
     $$("#addKnob button").forEach(b => b.classList.toggle("on", +b.dataset.i === st.add));
     $$("#methKnob button").forEach(b => b.classList.toggle("on", b.dataset.m === st.method));
     $$("#objKnob button").forEach(b => b.classList.toggle("on", b.dataset.o === st.obj));
@@ -704,14 +785,14 @@ window.Sim35UI = (function () {
     const methText = st.method === "story"
       ? (st.fam !== "one"
         ? "Sim 4's list: the story's sensors, in the story's order. The recommendation. Chosen in Sim 4 for the regions to monitor or watch, up to the 2041 homes, and scored here on " + (storyScope() ? "that same test" : "the broader test, which adds Dry, the regions the story leaves and the stress steps") + ". The other methods are comparisons."
-        : "Sim 4's list: the story's sensors, chosen for infill growth, scored here on a new estate joining at one manhole. Greedy is the greenfield grid's own order, as a comparison.")
+        : "Sim 4's list: the story's sensors, chosen for infill growth, tested here on new estates joining at the 9 edge connections. The placement does not change. Greedy is the greenfield runs' own order, as a comparison.")
       : st.fam !== "one"
       ? (st.method === "warn" ? "Warn before surcharge: the best set of this size for warning at least one build-out step before the first new surcharge, worst of the 7 wet cases." : st.method === "exact" ? (storyScope() && storyExact(st.k)
            ? "Exact: the best set of this size on the story's own test, solved exactly for the worst case (sim4_numbers.py, HiGHS). A comparison: the recommendation is Sim 4's list, which is nested and keeps step 5a's sensor."
            : "Exact: the best set of this size, solved exactly over all cases for the worst case (PuLP + HiGHS). A comparison: the recommendation is Sim 4's list.")
          : st.method === "risk" ? "Risk-weighted: a severity x occurrence score of the kind Kimbrough (2019) uses, with this page's own scales. Severity is homes draining through the manhole where it bites; occurrence is how far it pushes that manhole towards 0.7 of its bore. The set that notices the most risk, solved exactly. A comparison, not the recommendation: it pulls sensors towards trunk mains already near capacity."
                                : "Greedy: each sensor is the best addition to the ones before it. Up to 10 points below the exact optimum at the same size.")
-      : "The greenfield grid publishes the greedy order only; the exact solver has run on the infill family.";
+      : "Greedy is the greenfield runs' own order, a comparison only; the exact solver has run on the infill family.";
     const objText = st.method !== "greedy" ? "" : (st.obj === "worst"
       ? " Best worst case: each sensor added is the one that most raises the worst of the cases, so whatever the unknowns turn out to be at least this much is caught."
       : " Best average: each sensor added is the one that most raises the average over the cases; catches more on average, but can leave one case poorly covered.");
@@ -721,6 +802,7 @@ window.Sim35UI = (function () {
 
   function setView(v) {
     st.view = v;
+    try { sessionStorage.setItem("sim4View", v); } catch (e) { /* storage blocked */ }
     document.body.classList.toggle("simple", v === "simple");
     document.body.classList.toggle("expert", v === "expert");
     if (v === "simple") {
@@ -731,10 +813,21 @@ window.Sim35UI = (function () {
     repaint();
     Growth3D.resize($("#stage"));
   }
+  function syncGround() {
+    const gf = st.fam === "one";
+    // The imaginary street map on the open land around the network stays as faint context,
+    // fading out with distance from the network. Each estate draws its own streets at full
+    // strength; in infill, where no estate is built, the map is fainter still. It replaces
+    // the datum grid, so the ground shows one pattern, not two.
+    const streets = EST() ? EST().streets : [];
+    if (Growth3D.setStreets) Growth3D.setStreets(streets, gf ? 0.9 : 0.6);
+    if (Growth3D.showGrid) Growth3D.showGrid(!streets.length);
+  }
   function setFamily(f) {
     st.fam = f; st.pick = null; st.hover = null;
     if (f === "one" && (st.method === "exact" || st.method === "warn")) st.method = "greedy";
     if (f !== "one" && st.method === "greedy" && !st.pickedGreedy) st.method = "story";
+    syncGround();
     buildCaseKnobs();
     repaint();           // the camera stays where the reader left it
   }
@@ -780,6 +873,12 @@ window.Sim35UI = (function () {
       $("#siteFacts").innerHTML =
         row2("Homes reaching it first", "<b>" + (reach ? reach.here : (Rr.dwellingsAt[st.site] || 0)) + "</b>") +
         row2("Adding", "<b>+" + add + "</b> dwellings" + (Rr.lpsPerDwelling ? ", " + (add * Rr.lpsPerDwelling[caseIndex()]).toFixed(2) + " L/s" : "")) +
+        (GF() ? row2("Pipe room", "<b>" + Math.floor(gfHead(st.site)) + "</b> properties before a pipe downstream reaches its Table 4.4 limit") : "") +
+        (estateSpec(st.site, add) ? row2("Drawn estate", (s => "An imaginary estate on the open land beside this connection, joining through a short new sewer; not real streets or houses. " + s.n + " houses. " + (s.pipeM / 1000).toFixed(1) + " km of estate sewer" +
+          (s.lv ? ". Ground " + s.lv.ground_m[0].toFixed(0) + "\u2013" + s.lv.ground_m[1].toFixed(0) + " m, sewers " + s.lv.depth_m[0].toFixed(1) + "\u2013" + s.lv.depth_m[1].toFixed(1) + " m deep" +
+            (s.pumped ? ". The land falls away from this manhole, so the estate drains to a pump station at its lowest ground and a " + (s.mainM / 1000).toFixed(1) + " km rising main (dashed) carries it here" +
+              (s.lifts.length ? ". Where a sewer would pass 6.5 m deep, " + s.lifts.length + (s.lifts.length > 1 ? " small lift pumps (amber boxes) lift" : " small lift pump (amber box) lifts") + " it along the streets to that station (amber dashes)" : "")
+                      : ", falling by gravity to this manhole") + ". Dead-end sewers stop at a plain pipe end without a manhole, as most do in the real network" : ""))(estateSpec(st.site, add))) : "") +
         row2("Manholes that see it", tipped.length ? '<b class="bad">' + tipped.length + "</b>" : "none at this size") +
         (Rr.spill ? row2("Newly overflowing", spillNewOne().length ? '<b class="bad">' + spillNewOne().length + "</b> spill from the lid" : "none") : "") +
         row2("The " + chosen.length + " chosen sensors", caught.length ? '<b class="good">' + caught.length + "</b> (" +
@@ -843,7 +942,7 @@ window.Sim35UI = (function () {
       return;
     }
     if (st.fam === "one") {
-      if (st.site == null) { el.innerHTML = '<span class="tag">Greenfield</span>Click a manhole to place the new estate there.'; return; }
+      if (st.site == null) { el.innerHTML = '<span class="tag">Greenfield</span>' + (GF() ? "Click a pulsing connection: an estate can join only at one of the 9 edge connections, a manhole or pipe end with open land beside it and pipe room for the estate. Grey rings are exits, where sewage leaves the model; they are never connections." : "Click a manhole to place the new estate there."); return; }
       const cl = cell(), row = rowFor(cl, st.site), tipped = row ? row.tip : [], chosen = placement().chosen, caught = chosen.filter(i => tipped.includes(i));
       el.innerHTML = '<span class="tag">Greenfield</span><b>' + R().growthLevels[st.add] + " dwellings</b> joining at <b>" + esc(label(st.site)) + "</b> in " + wx + ": " +
         (tipped.length ? "<b>" + tipped.length + "</b> manhole" + (tipped.length === 1 ? "" : "s") + " see it" : "no manhole passes the rule") + ". " +
@@ -967,17 +1066,17 @@ window.Sim35UI = (function () {
     const h = st.fam === "one" ? R().heat[st.rule] : infillHeat();
     const chosen = placement().chosen, k = chosen.indexOf(i);
     const rank = 1 + h[st.obj].filter(x => x > h[st.obj][i]).length;
-    const ri = regionOf[i];
-    box.innerHTML = '<h4>This manhole <i class="info-i left" data-tip="' + esc("Water and headroom are for " + curCase().label + ". Click empty ground, or Back, to leave it.") + '">i</i></h4>' +
-      row2("Asset", "MH " + n.mh + (n.yr ? ", built " + n.yr : ", year not recorded")) +
+    const ri = regionOf[i] != null ? regionOf[i] : -1, chamber = n.kind === "chamber";   // a Sim 4 pipe-end connection is not a chamber
+    box.innerHTML = '<h4>' + (chamber ? "This manhole" : "This connection") + ' <i class="info-i left" data-tip="' + esc("Water and headroom are for " + curCase().label + ". Click empty ground, or Back, to leave it.") + '">i</i></h4>' +
+      row2("Asset", chamber ? "MH " + n.mh + (n.yr ? ", built " + n.yr : ", year not recorded") : "pipe end " + esc(nm) + ", no manhole on record, so not a sensor site") +
       (ri >= 0 ? row2("Region", esc(S().regions[ri].id + ", " + shortName(S().regions[ri]))) : "") +
       (water ? row2("Water before growth", water) : "") + (head ? row2("Headroom", head) : "") +
       (here ? row2("This growth", here) : "") +
       row2("Pipe floor / ground", inv.toFixed(2) + " / " + (inv + n.depth).toFixed(2) + ' m <span class="quiet">(' + n.depth.toFixed(1) + " m deep)</span>") +
       row2("Pipes", pipes) +
       row2("Drains through it", up.chambers + " manholes, " + (up.metres / 1000).toFixed(2) + " km of pipe") +
-      row2("As a sensor", "alone it sees " + pct(h.mean[i]) + " of " + (st.fam === "one" ? "greenfield" : "infill") + " growth on average, " + pct(h.worst[i]) + " in the worst case; rank " + rank + " of " + names().length +
-        (k >= 0 ? ", <b>chosen as S" + (k + 1) + "</b>" : "")) +
+      (!chamber ? "" : row2("As a sensor", "alone it sees " + pct(h.mean[i]) + " of " + (st.fam === "one" ? "greenfield" : "infill") + " growth on average, " + pct(h.worst[i]) + " in the worst case; rank " + rank + " of " + names().length +
+        (k >= 0 ? ", <b>chosen as S" + (k + 1) + "</b>" : ""))) +
       "";
   }
 
@@ -1078,7 +1177,7 @@ window.Sim35UI = (function () {
       const pl = R().sensors[st.rule][st.obj];
       series = [{ name: "Greedy, worst case", col: "var(--worst)", v: pl.worst }, { name: "Greedy, average", col: "var(--mean)", v: pl.mean }];
       if (st.method === "story") series.push({ name: "Sim 4's list, worst case", col: "var(--selset)", v: storyCurve("one", st.rule).map(c => c.worst) });
-      note = st.method === "story" ? "Selected set: Sim 4's list, against the greenfield grid's greedy order." : "Greedy: each sensor is the one that most raises the " + (st.obj === "worst" ? "worst case" : "average") + ". Greenfield publishes greedy only.";
+      note = st.method === "story" ? "Selected set: Sim 4's list, against the greenfield runs' greedy order." : "Greedy: each sensor is the one that most raises the " + (st.obj === "worst" ? "worst case" : "average") + ". Greenfield publishes greedy only.";
     }
     series = series.filter(s => s.v && s.v.length);
     if (!series.length) { el.innerHTML = ""; return; }
@@ -1434,6 +1533,9 @@ window.Sim35UI = (function () {
     } else {
       const bySite = new Map(cell().rows.map(x => [x.site, x]));
       names().forEach((nm, i) => { const row = bySite.get(i); units.push(entry(label(i), new Set(row ? row.tip : []))); });
+      // Pipe-end connections sit after the chambers, so a unit's index is still its site key.
+      if (GF() && GF().siteList) GF().siteList.filter(x => x.chamber == null).sort((a, b) => a.site - b.site).forEach(x => {
+        const row = bySite.get(x.site); units[x.site] = entry(label(x.site), new Set(row ? row.tip : [])); });
     }
     const sensors = placed.map((c, r) => ({ c, r, sees: [], only: 0 }));
     units.forEach((u, ui) => { u.by.forEach(r => sensors[r].sees.push(ui)); if (u.by.length === 1) sensors[u.by[0]].only++; });
@@ -1630,10 +1732,10 @@ window.Sim35UI = (function () {
       "<text x='" + ((L + W_ - Rt) / 2) + "' y='" + (H_ - 4) + "' text-anchor='middle' class='covax'>" + (isIn ? "Sensors, the best set of each size" : "Sensors, in greedy order") + "</text>" +
       "<line x1='" + x(at) + "' x2='" + x(at) + "' y1='" + T + "' y2='" + (H_ - B) + "' class='covcross' stroke-dasharray='3 3'/>" +
       SER.map(s => "<path d='" + path(s) + "' fill='none' stroke='" + s.col + "' stroke-width='2' stroke-linejoin='round' stroke-dasharray='" + s.dash + "'/>").join("") +
-      (lv == null ? "" : "<circle cx='" + x(at) + "' cy='" + y(lv) + "' r='4.5' fill='" + COV_LEVEL + "' stroke='#111c2f' stroke-width='2'/>") +
+      (lv == null ? "" : "<circle cx='" + x(at) + "' cy='" + y(lv) + "' r='4.5' fill='" + COV_LEVEL + "' stroke='var(--panel)' stroke-width='2'/>") +
       "<line id='covCross' y1='" + T + "' y2='" + (H_ - B) + "' class='covcross' visibility='hidden'/></svg><div class='covtip' id='covTip' hidden></div></div>" +
       "<p class='quiet'>" + (isIn ? "The best set of each size for seeing growth, so it can sit above the Warn before surcharge set. Scored on the runs each set was chosen on; the Level or float tab in Results has the unseen scores."
-        : "Greenfield growth only, so these counts do not compare with infill's. All five estate sizes count, 700 homes included. The map and slider stop at " + (R().maxSensors || 10) + " sensors; the curve carries on past them.") + "</p>";
+        : "Greenfield growth only, so these counts do not compare with infill's. Every edge connection at each of its sizes counts. The map and slider stop at " + (R().maxSensors || 10) + " sensors; the curve carries on past them.") + "</p>";
   }
   function wireCoverCurve() {
     if (!_covCurve) return;
@@ -1719,9 +1821,10 @@ window.Sim35UI = (function () {
   function buildSiteList() {
     const Rr = R(), sel = $("#site");
     const homes = i => { const r = Growth3D.reach(nameOf(i)); return r ? r.here : (Rr.dwellingsAt[i] || 0); };
-    const n = Rr.chambers.map((_, i) => homes(i));
-    const order = Rr.chambers.map((_, i) => i).sort((a, b) => n[b] - n[a]);
-    sel.innerHTML = '<option value="">No manhole selected</option>' + order.map(i => "<option value=" + JSON.stringify(String(i)) + ">" + esc(label(i)) + "  (" + n[i] + " homes)</option>").join("");
+    const keys = GF() && GF().siteList ? GF().siteList.map(x => x.site) : Rr.chambers.map((_, i) => i).filter(gfSite);
+    const n = {}; keys.forEach(i => { n[i] = homes(i); });
+    const order = keys.sort((a, b) => n[b] - n[a]);
+    sel.innerHTML = '<option value="">' + (GF() ? "No connection selected" : "No manhole selected") + '</option>' + order.map(i => "<option value=" + JSON.stringify(String(i)) + ">" + esc(label(i)) + "  (" + n[i] + " homes)</option>").join("");
     return order;
   }
   /* ---------------------------------------------------- dropdowns that wrap */
@@ -1763,6 +1866,7 @@ window.Sim35UI = (function () {
     $("#areasKey").hidden = !av;
     $("#coverKey").hidden = !cv;
     $("#simpleKey").hidden = !full;
+    $$(".eligibleKey").forEach(el => { el.hidden = st.fam !== "one" || !GF(); });
     $$(".legend .lg-results").forEach(g => { g.hidden = g.id === "heatKey" ? !heat : !full; });
     $$(".legend .lg-network").forEach(g => { g.hidden = !full || (g.id === "pumpKey" ? !st.showPumps : g.id === "connKey" ? !st.showConn : !(st.showPumps || st.showConn)); });
     $("#toggleLegend").classList.toggle("primary", st.legend && !own);
@@ -1778,7 +1882,7 @@ window.Sim35UI = (function () {
      the Pumps toggle, whose "Highlight" title it reads as a private action, a popup closed
      with Esc) and gives a viewer who joins late the presenter's whole view. */
   const LIVE = ["region", "step", "site", "add", "caseTag", "rule", "k", "method", "obj", "pickedGreedy", "pick", "scope"];
-  const LIVE_TOGGLES = { showSensors: "#toggleSensors", showHeat: "#toggleHeat", showPumps: "#togglePumps",
+  const LIVE_TOGGLES = { showSensors: "#toggleSensors", showHeat: "#toggleHeat", showPumps: "#togglePumps", showEstates: "#toggleEstates",
                          showConn: "#toggleConn", legend: "#toggleLegend", areasView: "#toggleAreas", coverView: "#toggleCover" };
   const docOpen = () => $("#modal").hidden ? null : $("#modalBox .docbody > .lead") ? "ref" : $("#modalBox").classList.contains("wide") ? "qa" : "about";
   function liveGet() {
@@ -1790,17 +1894,28 @@ window.Sim35UI = (function () {
     if (!v || typeof v !== "object") return;
     if (v.view && v.view !== st.view) setView(v.view);
     if (v.fam && v.fam !== st.fam) setFamily(v.fam);
-    ["rb", "lb", "top"].forEach(w => { if (typeof v[w] === "boolean" && v[w] !== st[w]) setFold(w, v[w]); });
     if (typeof v.words === "boolean" && v.words !== st.words) setWords(v.words);
     for (const k in LIVE_TOGGLES) if (typeof v[k] === "boolean" && v[k] !== st[k]) $(LIVE_TOGGLES[k]).click();
     let dirty = false;
     LIVE.forEach(k => { if (k in v && v[k] !== st[k]) { st[k] = v[k]; dirty = true; } });
     if (dirty) repaint();
+    // A layer toggle may open the right panel. Apply saved folds after those effects.
+    ["rb", "lb", "top"].forEach(w => { if (typeof v[w] === "boolean" && v[w] !== st[w]) setFold(w, v[w]); });
     const d = v.doc || null;
     if (d !== docOpen()) { if (!d) $("#modal").hidden = true; else if (d === "about") showModal(); else showDoc(d); }
   }
+  function pickManhole(nd) {
+    st.hover = null;
+    if (!nd) { st.pick = null; if (st.fam === "one" && st.site != null) st.site = null; repaint(); return; }
+    if (!(nd.name in idxOfName)) return;
+    const i = idxOfName[nd.name];
+    if (st.fam === "one" && gfSite(i)) { moveSite(i); st.pick = null; }
+    else st.pick = nd.name;          // inspect it; the selected region stays (23 Oct 2026)
+    repaint();
+  }
   function init() {
     names().forEach((c, i) => { idxOfName[c] = i; });
+    if (GF() && GF().siteList) GF().siteList.forEach(x => { if (x.chamber == null) idxOfName[x.id] = x.site; });
     regionOf = names().map(() => -1);
     S().regions.forEach((r, ri) => { if (!r.overlay) r.manholes.forEach(i => { regionOf[i] = ri; }); });
     const design = S().cases.find(c => Math.abs(c.ii - 0.11) < 1e-6 && /^Design wet$/.test(c.label)) || S().cases[1] || S().cases[0];
@@ -1809,7 +1924,15 @@ window.Sim35UI = (function () {
     // Presets from the URL hash (view, fam, region, step, case, rule, k, method), so a view
     // can be linked to and the page can be checked headless.
     const hp = new URLSearchParams((location.hash || "").replace(/^#/, ""));
-    if (hp.get("view") === "expert") st.view = "expert";
+    let savedView = null;
+    try { savedView = sessionStorage.getItem("sim4View"); } catch (e) { /* storage blocked */ }
+    if (hp.get("view") === "expert" || hp.get("view") === "simple") st.view = hp.get("view");
+    else if (savedView === "expert" || savedView === "simple") st.view = savedView;
+    // The theme is the viewer's own: #theme=light|dark, else what this browser chose last, else dark.
+    let saved = null;
+    try { saved = localStorage.getItem("sim4Theme"); } catch (e) { /* storage blocked: dark */ }
+    const theme0 = ["light", "dark"].includes(hp.get("theme")) ? hp.get("theme") : saved === "light" ? "light" : "dark";
+    document.documentElement.dataset.theme = theme0;
     if (["infill", "one", "none"].includes(hp.get("fam"))) st.fam = hp.get("fam");
     if (hp.get("region") != null && S().regions[+hp.get("region")]) st.region = +hp.get("region");
     if (hp.get("step") != null && ladder()[+hp.get("step")] != null) st.step = +hp.get("step");
@@ -1820,27 +1943,57 @@ window.Sim35UI = (function () {
     if (hp.get("test") === "broad") st.scope = "broad";       // #test=broad: the broader test; the story's is the default
     if (hp.get("site") != null && names()[+hp.get("site")]) st.site = +hp.get("site");
     if (st.fam === "one" && (st.method === "exact" || st.method === "warn")) st.method = "greedy";
-    if (st.view === "simple") st.rule = "r10";
+    if (st.view === "simple") { st.rule = "r10"; st.method = "story"; }
     if (hp.get("areas") === "1") st.areasView = true;
     if (hp.get("cover") === "1" || hp.get("results") === "cover") st.coverView = true;   // the old Results tab's link lands on the view
+    // Simple exposes the family's existing Dry / Design wet cases only.
+    if (st.view === "simple" && !/^(Dry|Design wet)$/.test(curCase().label)) {
+      const c = famCases().find(c => wxOf() === "dry" ? c.ii < 1e-6 : /^Design wet$/.test(c.label));
+      if (c) st.caseTag = c.tag;
+    }
     document.body.classList.toggle("simple", st.view === "simple");
     document.body.classList.toggle("expert", st.view === "expert");
-    Growth3D.build($("#stage"), nd => {
-      st.hover = null;
-      if (!nd) { st.pick = null; if (st.fam === "one" && st.site != null) st.site = null; repaint(); return; }
-      if (!(nd.name in idxOfName)) return;
-      const i = idxOfName[nd.name];
-      if (st.fam === "one") { st.site = i; st.pick = null; }
-      else st.pick = nd.name;          // inspect it; the selected region stays (23 Oct 2026)
-      repaint();
-    }, nd => {
+    if (GF() && GF().siteList && Growth3D.setExtraNodes)
+      Growth3D.setExtraNodes(GF().siteList.filter(x => x.chamber == null).map(x => x.id), (GF().exits || []).map(x => x.id));
+    Growth3D.build($("#stage"), pickManhole, nd => {
       const name = nd && !(st.fam === "one" && st.site != null && nd.name === nameOf(st.site)) ? nd.name : null;
       if (name === st.hover) return;
       st.hover = name;
+      drawEstate();
       renderHomes(sensorSet());
       coverHoverLine();
     }).then(() => {
+      // Homes are building outlines, never dots; the Houses button shows or hides them with
+      // their connection pipes. On at the start.
+      if (Growth3D.setHouseShapes) {
+        Growth3D.setHouseShapes(true);
+        st.showConn = true;
+        $("#toggleConn").classList.add("primary");
+        legendGroups();
+      }
       $("#kRange").max = String(R().maxSensors || 10);
+      const applyTheme = t => {
+        document.documentElement.dataset.theme = t;
+        if (Growth3D.setTheme) Growth3D.setTheme(t);
+        $("#themeBtn").textContent = t === "light" ? "Dark" : "Light";
+        $("#themeBtn").title = "Switch to the " + (t === "light" ? "dark" : "light") + " theme";
+      };
+      if (window.self !== window.top) $("#themeBtn").hidden = true;
+      applyTheme(theme0);
+      window.addEventListener("message", e => {
+        if (e.data && e.data.type === "sim4-set-theme" && (e.data.theme === "light" || e.data.theme === "dark")) {
+          try { localStorage.setItem("sim4Theme", e.data.theme); } catch (err) { /* not remembered */ }
+          applyTheme(e.data.theme);
+          repaint();
+        }
+      });
+      $("#themeBtn").onclick = () => {
+        const t = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+        try { localStorage.setItem("sim4Theme", t); } catch (e) { /* not remembered */ }
+        applyTheme(t);
+        repaint();
+      };
+      syncGround();
       buildKnobs();
       buildSiteList();
       legendGroups();
@@ -1849,11 +2002,58 @@ window.Sim35UI = (function () {
       if (hp.get("words") === "0") setWords(false);
       if (hp.get("open") === "ref" || hp.get("open") === "qa") showDoc(hp.get("open"));
       else if (hp.get("open") === "about") showModal();
-      $("#scale").textContent = G().nPipes + " pipes, " + G().nChambers + " manholes, " + (G().nHouses || G().baseDwellings) + " connected properties, plus " +
-        G().nodes.filter(n => n.kind !== "chamber").length + " pipe ends with no manhole on record. Elevation is the pipe invert, exaggerated x" + Growth3D.ZEXAG +
-        ". Drag to turn the map, right-drag to move it, scroll to zoom where the pointer is.";
+      const scaleText = () => {
+        $("#scale").textContent = G().nPipes + " pipes, " + G().nChambers + " manholes, " + (G().nHouses || G().baseDwellings) + " connected properties, plus " +
+          G().nodes.filter(n => n.kind !== "chamber").length + " pipe ends with no manhole on record. Elevation is the pipe invert, " +
+          (Growth3D.ZEXAG === 1 ? "at true scale" : "exaggerated x" + Growth3D.ZEXAG) +
+          ". Drag to turn the map, right-drag to move it, scroll to zoom where the pointer is.";
+      };
+      scaleText();
+      // The Vertical slider in the top bar (from PR 10): 1x is true scale.
+      $("#vexag").oninput = () => {
+        const k = +$("#vexag").value;
+        Growth3D.setExaggeration(k);
+        $("#vexagVal").textContent = k + "\u00d7";
+        scaleText();
+      };
       repaint();
       Growth3D.frame(null);            // the whole network, orbiting about its centre
+      $("#btn-recentre").onclick = () => {
+        if (st.fam === "one" && !st.areasView && st.showEstates && EST()) frameAllEstates();
+        else if (st.fam === "one" && !st.areasView && estateSpec(st.site, R().growthLevels[st.add])) frameEstate();
+        else Growth3D.frame(st.pick || null);
+      };
+      const compass = $("#btn-compass"), arrow = compass.querySelector("svg");
+      Growth3D.onViewChange(() => {
+        arrow.style.transform = "rotate(" + Growth3D.heading() + "deg)";
+        const top = Growth3D.isTop();
+        compass.setAttribute("aria-pressed", String(top));
+        compass.title = top ? "Restore the tilted 3D view" : "Top-down view, north up";
+        compass.setAttribute("aria-label", compass.title);
+      });
+      compass.onclick = () => { if (Growth3D.isTop()) Growth3D.viewTilt(); else Growth3D.viewTop(); };
+      // A refresh keeps the page as it was: mode, choices, layers and camera. A new visit (the
+      // tab closed and the site opened again) starts at the defaults, because sessionStorage
+      // lasts exactly as long as the tab. A link opened fresh still follows its hash.
+      const SAVE_KEY = "sim4ExploreState";
+      const nav = (performance.getEntriesByType && performance.getEntriesByType("navigation")[0]) || {};
+      if (nav.type === "reload" || nav.type === "back_forward") {
+        let saved = null;
+        try { saved = JSON.parse(sessionStorage.getItem(SAVE_KEY) || "null"); } catch (e) { /* nothing saved */ }
+        if (saved) {
+          try {
+            if (saved.vexag && saved.vexag !== Growth3D.ZEXAG) { $("#vexag").value = String(saved.vexag); $("#vexag").oninput(); }
+            liveSet(saved.state);
+            if (saved.flow && !st.showFlow) $("#toggleFlow").click();
+            if (saved.cam) Growth3D.setCamera(saved.cam);
+          } catch (e) { /* a bad save falls back to the defaults */ }
+        }
+      }
+      window.addEventListener("pagehide", () => {
+        try {
+          sessionStorage.setItem(SAVE_KEY, JSON.stringify({ state: liveGet(), flow: !!st.showFlow, vexag: Growth3D.ZEXAG, cam: Growth3D.getCamera() }));
+        } catch (e) { /* storage blocked: a refresh opens the defaults */ }
+      });
       // The page state first, then the camera, so a follower's view lands on the state it shows.
       const live = () => { window.LiveSync?.register("sim4explore", liveGet, liveSet); Growth3D.liveCamera(); };
       if (window.LiveSync) live(); else window.addEventListener("load", () => window.LiveSync && live(), { once: true });
@@ -1870,8 +2070,10 @@ window.Sim35UI = (function () {
       document.addEventListener("webkitfullscreenchange", sync);
     }
     $("#btn-results").onclick = showResults;
-    { const foot = $("#mapFoot"), sync = () => $("#stageWrap").style.setProperty("--foot", foot.offsetHeight + "px");
-      if (window.ResizeObserver) new ResizeObserver(sync).observe(foot);
+    // The summary sits above the layer buttons, which sit above the scale line, so none covers another.
+    { const foot = $("#mapFoot"), ov = $("#mapOverlays"), wrap = $("#stageWrap");
+      const sync = () => { wrap.style.setProperty("--foot", foot.offsetHeight + "px"); $("#legend").parentElement.style.setProperty("--foot", foot.offsetHeight + "px"); wrap.style.setProperty("--ovh", (ov ? ov.offsetHeight : 0) + "px"); };
+      if (window.ResizeObserver) { const ro = new ResizeObserver(sync); ro.observe(foot); if (ov) ro.observe(ov); }
       sync(); }
     { const h = new URLSearchParams(location.hash.slice(1)); if (h.get("results") && h.get("results") !== "cover") { RES.tab = h.get("results"); if (h.get("rescase")) RES.tag = h.get("rescase"); setTimeout(showResults, 400); } }
     $("#tab-ref").onclick = () => showDoc("ref");
@@ -1915,7 +2117,15 @@ window.Sim35UI = (function () {
       $("#togglePumps").classList.toggle("primary", st.showPumps);
       legendGroups();
     };
+    $("#toggleEstates").onclick = () => {
+      st.showEstates = !st.showEstates;
+      repaint();
+    };
     $("#toggleHeat").onclick = () => { st.showHeat = !st.showHeat; $("#toggleHeat").classList.toggle("primary", st.showHeat); repaint(); };
+    $("#toggleFlow").onclick = () => {
+      st.showFlow = Growth3D.setFlow ? Growth3D.setFlow(!st.showFlow) : false;
+      $("#toggleFlow").classList.toggle("primary", st.showFlow);
+    };
     $("#toggleConn").hidden = !(G().cptr && G().cptr.length > 1);
     $("#toggleConn").onclick = () => {
       st.showConn = !st.showConn;

@@ -1,0 +1,4057 @@
+{
+ "rule": {
+  "limit": 0.7,
+  "case": "Design wet",
+  "action": {
+   "runs out": "monitor",
+   "uncertain": "watch",
+   "room left": "leave",
+   "already over": "leave"
+  }
+ },
+ "triage": {
+  "R1": {
+   "action": "watch",
+   "band": "uncertain",
+   "homes_2041": 53.9,
+   "homes_now": 317,
+   "p_runs_out": 0.652,
+   "homes_p10": 12,
+   "homes_p90": 78,
+   "mm_per_100_homes": 63.1,
+   "by_limit": {
+    "0.5": "watch",
+    "0.6": "watch",
+    "0.7": "watch"
+   },
+   "bands_by_case": {
+    "Design wet": "uncertain",
+    "Beyond design": "runs out",
+    "Severe": "runs out",
+    "Design wet + age-weighted I&I": "uncertain",
+    "Design wet + outside inflow x1.5": "runs out",
+    "Beyond design + age-weighted I&I": "already over",
+    "Beyond design + outside inflow x1.5": "already over"
+   }
+  },
+  "R2": {
+   "action": "leave",
+   "band": "room left",
+   "homes_2041": 48.8,
+   "homes_now": 287,
+   "p_runs_out": 0.095,
+   "homes_p10": 53,
+   "homes_p90": null,
+   "mm_per_100_homes": 4.2,
+   "by_limit": {
+    "0.5": "leave",
+    "0.6": "leave",
+    "0.7": "leave"
+   },
+   "bands_by_case": {
+    "Design wet": "room left",
+    "Beyond design": "uncertain",
+    "Severe": "already over",
+    "Design wet + age-weighted I&I": "room left",
+    "Design wet + outside inflow x1.5": "room left",
+    "Beyond design + age-weighted I&I": "uncertain",
+    "Beyond design + outside inflow x1.5": "uncertain"
+   }
+  },
+  "R3": {
+   "action": "monitor",
+   "band": "runs out",
+   "homes_2041": 54.4,
+   "homes_now": 320,
+   "p_runs_out": 0.882,
+   "homes_p10": 2,
+   "homes_p90": 59,
+   "mm_per_100_homes": 90.6,
+   "by_limit": {
+    "0.5": "watch",
+    "0.6": "watch",
+    "0.7": "monitor"
+   },
+   "bands_by_case": {
+    "Design wet": "runs out",
+    "Beyond design": "runs out",
+    "Severe": "already over",
+    "Design wet + age-weighted I&I": "room left",
+    "Design wet + outside inflow x1.5": "runs out",
+    "Beyond design + age-weighted I&I": "already over",
+    "Beyond design + outside inflow x1.5": "already over"
+   }
+  },
+  "R4": {
+   "action": "watch",
+   "band": "uncertain",
+   "homes_2041": 53.6,
+   "homes_now": 315,
+   "p_runs_out": 0.615,
+   "homes_p10": 15,
+   "homes_p90": 79,
+   "mm_per_100_homes": 64.6,
+   "by_limit": {
+    "0.5": "leave",
+    "0.6": "watch",
+    "0.7": "watch"
+   },
+   "bands_by_case": {
+    "Design wet": "uncertain",
+    "Beyond design": "already over",
+    "Severe": "already over",
+    "Design wet + age-weighted I&I": "uncertain",
+    "Design wet + outside inflow x1.5": "runs out",
+    "Beyond design + age-weighted I&I": "already over",
+    "Beyond design + outside inflow x1.5": "uncertain"
+   }
+  },
+  "R5": {
+   "action": "leave",
+   "band": "room left",
+   "homes_2041": 39.6,
+   "homes_now": 233,
+   "p_runs_out": 0.0,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": 5.4,
+   "by_limit": {
+    "0.5": "leave",
+    "0.6": "leave",
+    "0.7": "leave"
+   },
+   "bands_by_case": {
+    "Design wet": "room left",
+    "Beyond design": "room left",
+    "Severe": "room left",
+    "Design wet + age-weighted I&I": "room left",
+    "Design wet + outside inflow x1.5": "room left",
+    "Beyond design + age-weighted I&I": "room left",
+    "Beyond design + outside inflow x1.5": "room left"
+   }
+  },
+  "R6": {
+   "action": "leave",
+   "band": "room left",
+   "homes_2041": 59.9,
+   "homes_now": 352,
+   "p_runs_out": 0.028,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": 2.5,
+   "by_limit": {
+    "0.5": "leave",
+    "0.6": "watch",
+    "0.7": "leave"
+   },
+   "bands_by_case": {
+    "Design wet": "room left",
+    "Beyond design": "room left",
+    "Severe": "already over",
+    "Design wet + age-weighted I&I": "room left",
+    "Design wet + outside inflow x1.5": "room left",
+    "Beyond design + age-weighted I&I": "room left",
+    "Beyond design + outside inflow x1.5": "room left"
+   }
+  },
+  "R7": {
+   "action": "monitor",
+   "band": "runs out",
+   "homes_2041": 54.9,
+   "homes_now": 323,
+   "p_runs_out": 0.863,
+   "homes_p10": 6,
+   "homes_p90": 71,
+   "mm_per_100_homes": 42.7,
+   "by_limit": {
+    "0.5": "leave",
+    "0.6": "watch",
+    "0.7": "monitor"
+   },
+   "bands_by_case": {
+    "Design wet": "runs out",
+    "Beyond design": "already over",
+    "Severe": "already over",
+    "Design wet + age-weighted I&I": "room left",
+    "Design wet + outside inflow x1.5": "runs out",
+    "Beyond design + age-weighted I&I": "already over",
+    "Beyond design + outside inflow x1.5": "already over"
+   }
+  },
+  "R8": {
+   "action": "leave",
+   "band": "room left",
+   "homes_2041": 71.1,
+   "homes_now": 418,
+   "p_runs_out": 0.0,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": 1.9,
+   "by_limit": {
+    "0.5": "leave",
+    "0.6": "leave",
+    "0.7": "leave"
+   },
+   "bands_by_case": {
+    "Design wet": "room left",
+    "Beyond design": "already over",
+    "Severe": "already over",
+    "Design wet + age-weighted I&I": "room left",
+    "Design wet + outside inflow x1.5": "room left",
+    "Beyond design + age-weighted I&I": "already over",
+    "Beyond design + outside inflow x1.5": "already over"
+   }
+  },
+  "R9": {
+   "action": "watch",
+   "band": "uncertain",
+   "homes_2041": 485.0,
+   "homes_now": 179,
+   "p_runs_out": 0.427,
+   "homes_p10": 90,
+   "homes_p90": 1271,
+   "mm_per_100_homes": 7.4,
+   "by_limit": {
+    "0.5": "watch",
+    "0.6": "monitor",
+    "0.7": "watch"
+   },
+   "bands_by_case": {
+    "Design wet": "uncertain",
+    "Beyond design": "already over",
+    "Severe": "already over",
+    "Design wet + age-weighted I&I": "uncertain",
+    "Design wet + outside inflow x1.5": "uncertain",
+    "Beyond design + age-weighted I&I": "already over",
+    "Beyond design + outside inflow x1.5": "already over"
+   }
+  },
+  "G:MH1630702": {
+   "action": "monitor",
+   "band": "estate sized to pipe room",
+   "homes_2041": null,
+   "homes_now": null,
+   "p_runs_out": null,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": null,
+   "by_limit": null,
+   "bands_by_case": null
+  },
+  "G:MH1631057": {
+   "action": "monitor",
+   "band": "estate sized to pipe room",
+   "homes_2041": null,
+   "homes_now": null,
+   "p_runs_out": null,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": null,
+   "by_limit": null,
+   "bands_by_case": null
+  },
+  "G:MH4450314": {
+   "action": "monitor",
+   "band": "estate sized to pipe room",
+   "homes_2041": null,
+   "homes_now": null,
+   "p_runs_out": null,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": null,
+   "by_limit": null,
+   "bands_by_case": null
+  },
+  "G:MH4452680": {
+   "action": "monitor",
+   "band": "estate sized to pipe room",
+   "homes_2041": null,
+   "homes_now": null,
+   "p_runs_out": null,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": null,
+   "by_limit": null,
+   "bands_by_case": null
+  },
+  "G:MH4452902": {
+   "action": "monitor",
+   "band": "estate sized to pipe room",
+   "homes_2041": null,
+   "homes_now": null,
+   "p_runs_out": null,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": null,
+   "by_limit": null,
+   "bands_by_case": null
+  },
+  "G:N153": {
+   "action": "monitor",
+   "band": "estate sized to pipe room",
+   "homes_2041": null,
+   "homes_now": null,
+   "p_runs_out": null,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": null,
+   "by_limit": null,
+   "bands_by_case": null
+  },
+  "G:N331": {
+   "action": "monitor",
+   "band": "estate sized to pipe room",
+   "homes_2041": null,
+   "homes_now": null,
+   "p_runs_out": null,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": null,
+   "by_limit": null,
+   "bands_by_case": null
+  },
+  "G:N67": {
+   "action": "monitor",
+   "band": "estate sized to pipe room",
+   "homes_2041": null,
+   "homes_now": null,
+   "p_runs_out": null,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": null,
+   "by_limit": null,
+   "bands_by_case": null
+  },
+  "G:N677": {
+   "action": "monitor",
+   "band": "estate sized to pipe room",
+   "homes_2041": null,
+   "homes_now": null,
+   "p_runs_out": null,
+   "homes_p10": null,
+   "homes_p90": null,
+   "mm_per_100_homes": null,
+   "by_limit": null,
+   "bands_by_case": null
+  }
+ },
+ "targets": [
+  "R1",
+  "R3",
+  "R4",
+  "R7",
+  "R9",
+  "G:MH1630702",
+  "G:MH1631057",
+  "G:MH4450314",
+  "G:MH4452680",
+  "G:MH4452902",
+  "G:N153",
+  "G:N331",
+  "G:N67",
+  "G:N677"
+ ],
+ "leave_overloads": [
+  {
+   "case": "Severe",
+   "region": "R2",
+   "step": 0.5,
+   "max_rise_before": 19.16
+  },
+  {
+   "case": "Severe",
+   "region": "R5",
+   "step": 0.25,
+   "max_rise_before": 0.79
+  },
+  {
+   "case": "Severe",
+   "region": "R6",
+   "step": 0.25,
+   "max_rise_before": 1.79
+  },
+  {
+   "case": "Severe",
+   "region": "R8",
+   "step": 0.25,
+   "max_rise_before": 0.99
+  },
+  {
+   "case": "Beyond design + outside inflow x1.5",
+   "region": "R2",
+   "step": 0.5,
+   "max_rise_before": 11.56
+  }
+ ],
+ "warnable_given_up": [
+  [
+   "Severe",
+   "R2",
+   0.5
+  ],
+  [
+   "Beyond design + outside inflow x1.5",
+   "R2",
+   0.5
+  ]
+ ],
+ "ladder": [
+  {
+   "k": 1,
+   "added": "MH4450922",
+   "chosen": [
+    "MH4450922"
+   ],
+   "worst": 0.0,
+   "average": 0.325,
+   "exact_worst": 0.2083,
+   "exact_average": 0.3206,
+   "exact_status": 0,
+   "exact_set": [
+    "MH4452189"
+   ],
+   "design_wet": 0.3913,
+   "per_case": {
+    "Design wet": 0.3913,
+    "Beyond design": 0.5577,
+    "Severe": 0.0,
+    "Design wet + age-weighted I&I": 0.3953,
+    "Design wet + outside inflow x1.5": 0.4118,
+    "Beyond design + age-weighted I&I": 0.5192,
+    "Beyond design + outside inflow x1.5": 0.0
+   },
+   "worst_25": 0.0,
+   "average_25": 0.1472,
+   "warned_target": 18,
+   "warned_target_25": 1,
+   "warned_13": 18,
+   "warned_25_overloads": 29,
+   "all_regions_worst": 0.0,
+   "all_regions_average": 0.3192,
+   "stress_worst": 0.0164,
+   "stress_average": 0.3967,
+   "dry": 0.0,
+   "cost": 25000
+  },
+  {
+   "k": 2,
+   "added": "MH4454376",
+   "chosen": [
+    "MH4450922",
+    "MH4454376"
+   ],
+   "worst": 0.4167,
+   "average": 0.4962,
+   "exact_worst": 0.4375,
+   "exact_average": 0.4937,
+   "exact_status": 0,
+   "exact_set": [
+    "MH4450922",
+    "MH4453512"
+   ],
+   "design_wet": 0.4565,
+   "per_case": {
+    "Design wet": 0.4565,
+    "Beyond design": 0.5769,
+    "Severe": 0.5294,
+    "Design wet + age-weighted I&I": 0.4651,
+    "Design wet + outside inflow x1.5": 0.4902,
+    "Beyond design + age-weighted I&I": 0.5385,
+    "Beyond design + outside inflow x1.5": 0.4167
+   },
+   "worst_25": 0.1522,
+   "average_25": 0.2527,
+   "warned_target": 20,
+   "warned_target_25": 5,
+   "warned_13": 20,
+   "warned_25_overloads": 32,
+   "all_regions_worst": 0.3846,
+   "all_regions_average": 0.4849,
+   "stress_worst": 0.3966,
+   "stress_average": 0.5485,
+   "dry": 0.129,
+   "cost": 50000
+  },
+  {
+   "k": 3,
+   "added": "MH1630926",
+   "chosen": [
+    "MH4450922",
+    "MH4454376",
+    "MH1630926"
+   ],
+   "worst": 0.5417,
+   "average": 0.6192,
+   "exact_worst": 0.5625,
+   "exact_average": 0.6167,
+   "exact_status": 0,
+   "exact_set": [
+    "MH1630926",
+    "MH4450922",
+    "MH4453512"
+   ],
+   "design_wet": 0.587,
+   "per_case": {
+    "Design wet": 0.587,
+    "Beyond design": 0.6923,
+    "Severe": 0.6471,
+    "Design wet + age-weighted I&I": 0.6047,
+    "Design wet + outside inflow x1.5": 0.6078,
+    "Beyond design + age-weighted I&I": 0.6538,
+    "Beyond design + outside inflow x1.5": 0.5417
+   },
+   "worst_25": 0.2093,
+   "average_25": 0.2943,
+   "warned_target": 20,
+   "warned_target_25": 5,
+   "warned_13": 20,
+   "warned_25_overloads": 32,
+   "all_regions_worst": 0.5,
+   "all_regions_average": 0.6024,
+   "stress_worst": 0.5,
+   "stress_average": 0.6506,
+   "dry": 0.3871,
+   "cost": 75000
+  },
+  {
+   "k": 4,
+   "added": "MH4448345",
+   "chosen": [
+    "MH4450922",
+    "MH4454376",
+    "MH1630926",
+    "MH4448345"
+   ],
+   "worst": 0.587,
+   "average": 0.6816,
+   "exact_worst": 0.6047,
+   "exact_average": 0.6485,
+   "exact_status": 0,
+   "exact_set": [
+    "MH1630926",
+    "MH4450531",
+    "MH4452011",
+    "MH4453512"
+   ],
+   "design_wet": 0.587,
+   "per_case": {
+    "Design wet": 0.587,
+    "Beyond design": 0.75,
+    "Severe": 0.7255,
+    "Design wet + age-weighted I&I": 0.6047,
+    "Design wet + outside inflow x1.5": 0.6667,
+    "Beyond design + age-weighted I&I": 0.75,
+    "Beyond design + outside inflow x1.5": 0.6875
+   },
+   "worst_25": 0.2093,
+   "average_25": 0.3395,
+   "warned_target": 23,
+   "warned_target_25": 6,
+   "warned_13": 23,
+   "warned_25_overloads": 37,
+   "all_regions_worst": 0.587,
+   "all_regions_average": 0.6605,
+   "stress_worst": 0.6607,
+   "stress_average": 0.7243,
+   "dry": 0.3871,
+   "cost": 100000
+  },
+  {
+   "k": 5,
+   "added": "MH1625316",
+   "chosen": [
+    "MH4450922",
+    "MH4454376",
+    "MH1630926",
+    "MH4448345",
+    "MH1625316"
+   ],
+   "worst": 0.6739,
+   "average": 0.7407,
+   "exact_worst": 0.6739,
+   "exact_average": 0.7407,
+   "exact_status": 0,
+   "exact_set": [
+    "MH1625316",
+    "MH1630926",
+    "MH4448345",
+    "MH4450922",
+    "MH4454376"
+   ],
+   "design_wet": 0.6739,
+   "per_case": {
+    "Design wet": 0.6739,
+    "Beyond design": 0.8077,
+    "Severe": 0.7255,
+    "Design wet + age-weighted I&I": 0.6977,
+    "Design wet + outside inflow x1.5": 0.7451,
+    "Beyond design + age-weighted I&I": 0.8269,
+    "Beyond design + outside inflow x1.5": 0.7083
+   },
+   "worst_25": 0.2558,
+   "average_25": 0.3749,
+   "warned_target": 23,
+   "warned_target_25": 6,
+   "warned_13": 23,
+   "warned_25_overloads": 37,
+   "all_regions_worst": 0.6538,
+   "all_regions_average": 0.718,
+   "stress_worst": 0.7213,
+   "stress_average": 0.7732,
+   "dry": 0.5161,
+   "cost": 125000
+  },
+  {
+   "k": 6,
+   "added": "MH4453213",
+   "chosen": [
+    "MH4450922",
+    "MH4454376",
+    "MH1630926",
+    "MH4448345",
+    "MH1625316",
+    "MH4453213"
+   ],
+   "worst": 0.7255,
+   "average": 0.7909,
+   "exact_worst": 0.7391,
+   "exact_average": 0.7883,
+   "exact_status": 0,
+   "exact_set": [
+    "MH1625316",
+    "MH1630926",
+    "MH4448345",
+    "MH4452011",
+    "MH4453213",
+    "MH4453512"
+   ],
+   "design_wet": 0.7391,
+   "per_case": {
+    "Design wet": 0.7391,
+    "Beyond design": 0.8654,
+    "Severe": 0.7255,
+    "Design wet + age-weighted I&I": 0.7674,
+    "Design wet + outside inflow x1.5": 0.8039,
+    "Beyond design + age-weighted I&I": 0.8846,
+    "Beyond design + outside inflow x1.5": 0.75
+   },
+   "worst_25": 0.2791,
+   "average_25": 0.3813,
+   "warned_target": 23,
+   "warned_target_25": 6,
+   "warned_13": 23,
+   "warned_25_overloads": 37,
+   "all_regions_worst": 0.6923,
+   "all_regions_average": 0.7665,
+   "stress_worst": 0.7213,
+   "stress_average": 0.8148,
+   "dry": 0.6452,
+   "cost": 150000
+  },
+  {
+   "k": 7,
+   "added": "MH4450531",
+   "chosen": [
+    "MH4450922",
+    "MH4454376",
+    "MH1630926",
+    "MH4448345",
+    "MH1625316",
+    "MH4453213",
+    "MH4450531"
+   ],
+   "worst": 0.7674,
+   "average": 0.8227,
+   "exact_worst": 0.7907,
+   "exact_average": 0.8125,
+   "exact_status": 0,
+   "exact_set": [
+    "MH1625316",
+    "MH1630926",
+    "MH4448345",
+    "MH4450531",
+    "MH4450922",
+    "MH4453512",
+    "MH4456468"
+   ],
+   "design_wet": 0.7826,
+   "per_case": {
+    "Design wet": 0.7826,
+    "Beyond design": 0.8846,
+    "Severe": 0.7843,
+    "Design wet + age-weighted I&I": 0.7674,
+    "Design wet + outside inflow x1.5": 0.8235,
+    "Beyond design + age-weighted I&I": 0.9038,
+    "Beyond design + outside inflow x1.5": 0.8125
+   },
+   "worst_25": 0.2791,
+   "average_25": 0.3982,
+   "warned_target": 23,
+   "warned_target_25": 8,
+   "warned_13": 23,
+   "warned_25_overloads": 38,
+   "all_regions_worst": 0.75,
+   "all_regions_average": 0.7963,
+   "stress_worst": 0.7869,
+   "stress_average": 0.846,
+   "dry": 0.6452,
+   "cost": 175000
+  },
+  {
+   "k": 8,
+   "added": "MH4450802",
+   "chosen": [
+    "MH4450922",
+    "MH4454376",
+    "MH1630926",
+    "MH4448345",
+    "MH1625316",
+    "MH4453213",
+    "MH4450531",
+    "MH4450802"
+   ],
+   "worst": 0.7843,
+   "average": 0.8384,
+   "exact_worst": 0.8235,
+   "exact_average": 0.8594,
+   "exact_status": 0,
+   "exact_set": [
+    "MH1625316",
+    "MH1630926",
+    "MH4448345",
+    "MH4449796",
+    "MH4452011",
+    "MH4453213",
+    "MH4453512",
+    "MH4456468"
+   ],
+   "design_wet": 0.8261,
+   "per_case": {
+    "Design wet": 0.8261,
+    "Beyond design": 0.8846,
+    "Severe": 0.7843,
+    "Design wet + age-weighted I&I": 0.814,
+    "Design wet + outside inflow x1.5": 0.8431,
+    "Beyond design + age-weighted I&I": 0.9038,
+    "Beyond design + outside inflow x1.5": 0.8125
+   },
+   "worst_25": 0.3256,
+   "average_25": 0.4111,
+   "warned_target": 24,
+   "warned_target_25": 8,
+   "warned_13": 24,
+   "warned_25_overloads": 39,
+   "all_regions_worst": 0.75,
+   "all_regions_average": 0.812,
+   "stress_worst": 0.7869,
+   "stress_average": 0.8589,
+   "dry": 0.7097,
+   "cost": 200000
+  }
+ ],
+ "tied_best_sets": 4,
+ "in_tied_sets": {
+  "MH4450922": 1,
+  "MH4454376": 4,
+  "MH1630926": 4,
+  "MH4448345": 4,
+  "MH1625316": 4
+ },
+ "recommend": 5,
+ "fewest": [
+  {
+   "scope": "Design wet only",
+   "0.8": 5,
+   "ladder_0.8": 8,
+   "0.9": 7,
+   "ladder_0.9": null,
+   "1.0": 9,
+   "ladder_1.0": null
+  },
+  {
+   "scope": "Design wet + Beyond design",
+   "0.8": 5,
+   "ladder_0.8": 8,
+   "0.9": 8,
+   "ladder_0.9": null,
+   "1.0": 11,
+   "ladder_1.0": null
+  },
+  {
+   "scope": "Design wet family (3)",
+   "0.8": 6,
+   "ladder_0.8": 8,
+   "0.9": 9,
+   "ladder_0.9": null,
+   "1.0": 12,
+   "ladder_1.0": null
+  },
+  {
+   "scope": "All 7 wet cases",
+   "0.8": 8,
+   "ladder_0.8": null,
+   "0.9": 11,
+   "ladder_0.9": null,
+   "1.0": 20,
+   "ladder_1.0": null
+  }
+ ],
+ "held_out": [
+  {
+   "k": 1,
+   "weather_runs": [
+    85,
+    343
+   ],
+   "weather_worst": 0.0,
+   "weather_warned": [
+    17,
+    25
+   ],
+   "region_runs": [
+    72,
+    343
+   ],
+   "region_warned": [
+    13,
+    25
+   ],
+   "region_per": {
+    "R1": 0.4138,
+    "R3": 0.0,
+    "R4": 0.0,
+    "R7": 0.0625,
+    "R9": 0.6923,
+    "G:MH1630702": 0.0,
+    "G:MH1631057": 0.0,
+    "G:MH4450314": 0.3182,
+    "G:MH4452680": 0.5882,
+    "G:MH4452902": 0.0,
+    "G:N153": 0.0,
+    "G:N331": 0.0,
+    "G:N67": 0.2143,
+    "G:N677": 0.2667
+   }
+  },
+  {
+   "k": 2,
+   "weather_runs": [
+    159,
+    343
+   ],
+   "weather_worst": 0.1628,
+   "weather_warned": [
+    20,
+    25
+   ],
+   "region_runs": [
+    159,
+    343
+   ],
+   "region_warned": [
+    20,
+    25
+   ],
+   "region_per": {
+    "R1": 0.4138,
+    "R3": 0.5556,
+    "R4": 0.5714,
+    "R7": 0.8125,
+    "R9": 0.9615,
+    "G:MH1630702": 0.0,
+    "G:MH1631057": 0.0,
+    "G:MH4450314": 0.5909,
+    "G:MH4452680": 0.8529,
+    "G:MH4452902": 0.1429,
+    "G:N153": 0.2308,
+    "G:N331": 0.0,
+    "G:N67": 0.5357,
+    "G:N677": 0.5333
+   }
+  },
+  {
+   "k": 3,
+   "weather_runs": [
+    201,
+    343
+   ],
+   "weather_worst": 0.3023,
+   "weather_warned": [
+    20,
+    25
+   ],
+   "region_runs": [
+    159,
+    343
+   ],
+   "region_warned": [
+    20,
+    25
+   ],
+   "region_per": {
+    "R1": 0.4138,
+    "R3": 0.5556,
+    "R4": 0.5714,
+    "R7": 0.8125,
+    "R9": 0.9615,
+    "G:MH1630702": 0.0,
+    "G:MH1631057": 0.0,
+    "G:MH4450314": 0.5909,
+    "G:MH4452680": 0.8529,
+    "G:MH4452902": 0.1429,
+    "G:N153": 0.2308,
+    "G:N331": 0.0,
+    "G:N67": 0.5357,
+    "G:N677": 0.5333
+   }
+  },
+  {
+   "k": 4,
+   "weather_runs": [
+    220,
+    343
+   ],
+   "weather_worst": 0.3023,
+   "weather_warned": [
+    22,
+    25
+   ],
+   "region_runs": [
+    167,
+    343
+   ],
+   "region_warned": [
+    20,
+    25
+   ],
+   "region_per": {
+    "R1": 0.4138,
+    "R3": 0.5556,
+    "R4": 0.9524,
+    "R7": 0.8125,
+    "R9": 0.9615,
+    "G:MH1630702": 0.0,
+    "G:MH1631057": 0.0,
+    "G:MH4450314": 0.5909,
+    "G:MH4452680": 0.8529,
+    "G:MH4452902": 0.1429,
+    "G:N153": 0.2308,
+    "G:N331": 0.0,
+    "G:N67": 0.5357,
+    "G:N677": 0.5333
+   }
+  },
+  {
+   "k": 5,
+   "weather_runs": [
+    233,
+    343
+   ],
+   "weather_worst": 0.3953,
+   "weather_warned": [
+    22,
+    25
+   ],
+   "region_runs": [
+    167,
+    343
+   ],
+   "region_warned": [
+    20,
+    25
+   ],
+   "region_per": {
+    "R1": 0.4138,
+    "R3": 0.5556,
+    "R4": 0.9524,
+    "R7": 0.8125,
+    "R9": 0.9615,
+    "G:MH1630702": 0.0,
+    "G:MH1631057": 0.0,
+    "G:MH4450314": 0.5909,
+    "G:MH4452680": 0.8529,
+    "G:MH4452902": 0.1429,
+    "G:N153": 0.2308,
+    "G:N331": 0.0,
+    "G:N67": 0.5357,
+    "G:N677": 0.5333
+   }
+  },
+  {
+   "k": 6,
+   "weather_runs": [
+    249,
+    343
+   ],
+   "weather_worst": 0.4651,
+   "weather_warned": [
+    22,
+    25
+   ],
+   "region_runs": [
+    167,
+    343
+   ],
+   "region_warned": [
+    20,
+    25
+   ],
+   "region_per": {
+    "R1": 0.4138,
+    "R3": 0.5556,
+    "R4": 0.9524,
+    "R7": 0.8125,
+    "R9": 0.9615,
+    "G:MH1630702": 0.0,
+    "G:MH1631057": 0.0,
+    "G:MH4450314": 0.5909,
+    "G:MH4452680": 0.8529,
+    "G:MH4452902": 0.1429,
+    "G:N153": 0.2308,
+    "G:N331": 0.0,
+    "G:N67": 0.5357,
+    "G:N677": 0.5333
+   }
+  },
+  {
+   "k": 7,
+   "weather_runs": [
+    255,
+    343
+   ],
+   "weather_worst": 0.4884,
+   "weather_warned": [
+    22,
+    25
+   ],
+   "region_runs": [
+    167,
+    343
+   ],
+   "region_warned": [
+    20,
+    25
+   ],
+   "region_per": {
+    "R1": 0.4138,
+    "R3": 0.5556,
+    "R4": 0.9524,
+    "R7": 0.8125,
+    "R9": 0.9615,
+    "G:MH1630702": 0.0,
+    "G:MH1631057": 0.0,
+    "G:MH4450314": 0.5909,
+    "G:MH4452680": 0.8529,
+    "G:MH4452902": 0.1429,
+    "G:N153": 0.2308,
+    "G:N331": 0.0,
+    "G:N67": 0.5357,
+    "G:N677": 0.5333
+   }
+  },
+  {
+   "k": 8,
+   "weather_runs": [
+    272,
+    343
+   ],
+   "weather_worst": 0.5349,
+   "weather_warned": [
+    22,
+    25
+   ],
+   "region_runs": [
+    167,
+    343
+   ],
+   "region_warned": [
+    20,
+    25
+   ],
+   "region_per": {
+    "R1": 0.4138,
+    "R3": 0.5556,
+    "R4": 0.9524,
+    "R7": 0.8125,
+    "R9": 0.9615,
+    "G:MH1630702": 0.0,
+    "G:MH1631057": 0.0,
+    "G:MH4450314": 0.5909,
+    "G:MH4452680": 0.8529,
+    "G:MH4452902": 0.1429,
+    "G:N153": 0.2308,
+    "G:N331": 0.0,
+    "G:N67": 0.5357,
+    "G:N677": 0.5333
+   }
+  }
+ ],
+ "held_out_by_case": {
+  "Design wet": {
+   "1": 0.1522,
+   "2": 0.4565,
+   "3": 0.587,
+   "4": 0.587,
+   "5": 0.6739,
+   "6": 0.7391,
+   "7": 0.7391,
+   "8": 0.7826
+  },
+  "Beyond design": {
+   "1": 0.5577,
+   "2": 0.5962,
+   "3": 0.7115,
+   "4": 0.7692,
+   "5": 0.7692,
+   "6": 0.8269,
+   "7": 0.8462,
+   "8": 0.9038
+  },
+  "Severe": {
+   "1": 0.0,
+   "2": 0.5294,
+   "3": 0.6471,
+   "4": 0.7255,
+   "5": 0.7255,
+   "6": 0.7255,
+   "7": 0.7255,
+   "8": 0.7843
+  },
+  "Design wet + age-weighted I&I": {
+   "1": 0.0233,
+   "2": 0.1628,
+   "3": 0.3023,
+   "4": 0.3023,
+   "5": 0.3953,
+   "6": 0.4651,
+   "7": 0.4884,
+   "8": 0.5349
+  },
+  "Design wet + outside inflow x1.5": {
+   "1": 0.4118,
+   "2": 0.4706,
+   "3": 0.5882,
+   "4": 0.5882,
+   "5": 0.6667,
+   "6": 0.7255,
+   "7": 0.7451,
+   "8": 0.7647
+  },
+  "Beyond design + age-weighted I&I": {
+   "1": 0.5192,
+   "2": 0.5577,
+   "3": 0.6731,
+   "4": 0.7692,
+   "5": 0.7692,
+   "6": 0.8462,
+   "7": 0.8654,
+   "8": 0.9231
+  },
+  "Beyond design + outside inflow x1.5": {
+   "1": 0.0,
+   "2": 0.4167,
+   "3": 0.5417,
+   "4": 0.6875,
+   "5": 0.7083,
+   "6": 0.7083,
+   "7": 0.75,
+   "8": 0.8125
+  }
+ },
+ "random": [
+  {
+   "k": 1,
+   "any": {
+    "worst_mean": 0.0087,
+    "worst_p95": 0.0577,
+    "avg_mean": 0.078,
+    "avg_p95": 0.2816,
+    "warned_mean": 3.51,
+    "warned_p95": 15,
+    "share_matching_ladder_worst": 1.0,
+    "share_matching_ladder_avg": 0.0172
+   },
+   "responsive": {
+    "worst_mean": 0.0168,
+    "worst_p95": 0.0769,
+    "avg_mean": 0.146,
+    "avg_p95": 0.3037,
+    "warned_mean": 6.56,
+    "warned_p95": 16,
+    "share_matching_ladder_worst": 1.0,
+    "share_matching_ladder_avg": 0.0292
+   }
+  },
+  {
+   "k": 2,
+   "any": {
+    "worst_mean": 0.0205,
+    "worst_p95": 0.087,
+    "avg_mean": 0.1451,
+    "avg_p95": 0.3301,
+    "warned_mean": 6.65,
+    "warned_p95": 17,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   },
+   "responsive": {
+    "worst_mean": 0.0413,
+    "worst_p95": 0.1304,
+    "avg_mean": 0.2426,
+    "avg_p95": 0.3805,
+    "warned_mean": 10.97,
+    "warned_p95": 19,
+    "share_matching_ladder_worst": 0.0006,
+    "share_matching_ladder_avg": 0.0
+   }
+  },
+  {
+   "k": 3,
+   "any": {
+    "worst_mean": 0.0323,
+    "worst_p95": 0.1176,
+    "avg_mean": 0.1971,
+    "avg_p95": 0.3819,
+    "warned_mean": 8.94,
+    "warned_p95": 18,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   },
+   "responsive": {
+    "worst_mean": 0.0689,
+    "worst_p95": 0.2093,
+    "avg_mean": 0.3103,
+    "avg_p95": 0.4479,
+    "warned_mean": 13.77,
+    "warned_p95": 20,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   }
+  },
+  {
+   "k": 4,
+   "any": {
+    "worst_mean": 0.0461,
+    "worst_p95": 0.1569,
+    "avg_mean": 0.2395,
+    "avg_p95": 0.4195,
+    "warned_mean": 10.71,
+    "warned_p95": 19,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   },
+   "responsive": {
+    "worst_mean": 0.0947,
+    "worst_p95": 0.3023,
+    "avg_mean": 0.3591,
+    "avg_p95": 0.4888,
+    "warned_mean": 15.69,
+    "warned_p95": 21,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   }
+  },
+  {
+   "k": 5,
+   "any": {
+    "worst_mean": 0.0604,
+    "worst_p95": 0.2093,
+    "avg_mean": 0.2789,
+    "avg_p95": 0.4549,
+    "warned_mean": 12.4,
+    "warned_p95": 20,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   },
+   "responsive": {
+    "worst_mean": 0.1232,
+    "worst_p95": 0.3913,
+    "avg_mean": 0.4024,
+    "avg_p95": 0.528,
+    "warned_mean": 17.12,
+    "warned_p95": 22,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   }
+  },
+  {
+   "k": 6,
+   "any": {
+    "worst_mean": 0.0746,
+    "worst_p95": 0.25,
+    "avg_mean": 0.3109,
+    "avg_p95": 0.4821,
+    "warned_mean": 13.71,
+    "warned_p95": 20,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   },
+   "responsive": {
+    "worst_mean": 0.1542,
+    "worst_p95": 0.4348,
+    "avg_mean": 0.4378,
+    "avg_p95": 0.5643,
+    "warned_mean": 18.23,
+    "warned_p95": 22,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   }
+  },
+  {
+   "k": 7,
+   "any": {
+    "worst_mean": 0.0892,
+    "worst_p95": 0.3125,
+    "avg_mean": 0.3384,
+    "avg_p95": 0.5019,
+    "warned_mean": 14.77,
+    "warned_p95": 21,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   },
+   "responsive": {
+    "worst_mean": 0.1775,
+    "worst_p95": 0.4565,
+    "avg_mean": 0.4663,
+    "avg_p95": 0.5863,
+    "warned_mean": 18.93,
+    "warned_p95": 22,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   }
+  },
+  {
+   "k": 8,
+   "any": {
+    "worst_mean": 0.105,
+    "worst_p95": 0.3913,
+    "avg_mean": 0.3662,
+    "avg_p95": 0.5279,
+    "warned_mean": 15.73,
+    "warned_p95": 21,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   },
+   "responsive": {
+    "worst_mean": 0.1998,
+    "worst_p95": 0.4783,
+    "avg_mean": 0.491,
+    "avg_p95": 0.6092,
+    "warned_mean": 19.52,
+    "warned_p95": 22,
+    "share_matching_ladder_worst": 0.0,
+    "share_matching_ladder_avg": 0.0
+   }
+  }
+ ],
+ "reasons": [
+  {
+   "position": 1,
+   "manhole": "MH4450922",
+   "home_regions": [
+    "R7",
+    "R9"
+   ],
+   "adds_runs": 112,
+   "adds_by_region": {
+    "R1": 12,
+    "R3": 15,
+    "R4": 12,
+    "R7": 14,
+    "R9": 18,
+    "G:MH4452680": 20,
+    "G:MH4450314": 7,
+    "G:N67": 6,
+    "G:N677": 8
+   },
+   "adds_by_case": {
+    "Design wet": 18,
+    "Beyond design": 29,
+    "Design wet + age-weighted I&I": 17,
+    "Design wet + outside inflow x1.5": 21,
+    "Beyond design + age-weighted I&I": 27
+   },
+   "hears": {
+    "R1": {
+     "first_step": 0.5,
+     "first_homes": 27,
+     "first_rise": 13.3,
+     "rise_at_100": 26.7,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R3": {
+     "first_step": 0.5,
+     "first_homes": 27,
+     "first_rise": 13.8,
+     "rise_at_100": 27.6,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R4": {
+     "first_step": 0.5,
+     "first_homes": 27,
+     "first_rise": 13.6,
+     "rise_at_100": 27.2,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R7": {
+     "first_step": 0.5,
+     "first_homes": 27,
+     "first_rise": 10.3,
+     "rise_at_100": 20.6,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R9": {
+     "first_step": 0.5,
+     "first_homes": 242,
+     "first_rise": 17.7,
+     "rise_at_100": 35.7,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "G:MH1630702": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH1631057": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4450314": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.4,
+     "cases_heard": [
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "G:MH4452680": {
+     "first_step": 300,
+     "first_homes": 300,
+     "first_rise": 21.1,
+     "rise_at_100": 123.0,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "G:MH4452902": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N153": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N331": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N67": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "G:N677": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Beyond design + age-weighted I&I"
+     ]
+    }
+   },
+   "design_wet_silent": false,
+   "design_depth_mm": 720,
+   "bore_mm": 300,
+   "design_fullness": 2.4,
+   "surcharged_before_growth": true,
+   "over_alarm_before_growth": true,
+   "nearest_earlier_m": null
+  },
+  {
+   "position": 2,
+   "manhole": "MH4454376",
+   "home_regions": [
+    "R6",
+    "R9"
+   ],
+   "adds_runs": 59,
+   "adds_by_region": {
+    "G:MH4450314": 9,
+    "G:N677": 15,
+    "G:N67": 10,
+    "R9": 7,
+    "G:MH4452680": 9,
+    "G:MH4452902": 3,
+    "G:N153": 6
+   },
+   "adds_by_case": {
+    "Design wet": 3,
+    "Beyond design": 1,
+    "Severe": 27,
+    "Design wet + age-weighted I&I": 3,
+    "Design wet + outside inflow x1.5": 4,
+    "Beyond design + age-weighted I&I": 1,
+    "Beyond design + outside inflow x1.5": 20
+   },
+   "hears": {
+    "R1": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 2.2,
+     "cases_heard": []
+    },
+    "R3": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 2.3,
+     "cases_heard": []
+    },
+    "R4": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 2.3,
+     "cases_heard": []
+    },
+    "R7": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 2.3,
+     "cases_heard": [
+      "Beyond design"
+     ]
+    },
+    "R9": {
+     "first_step": 1.0,
+     "first_homes": 485,
+     "first_rise": 10.6,
+     "rise_at_100": 10.6,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Severe",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "G:MH1630702": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH1631057": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4450314": {
+     "first_step": 292,
+     "first_homes": 292,
+     "first_rise": 12.9,
+     "rise_at_100": 12.9,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Severe",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "G:MH4452680": {
+     "first_step": 300,
+     "first_homes": 300,
+     "first_rise": 13.3,
+     "rise_at_100": 52.0,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Severe",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "G:MH4452902": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Severe"
+     ]
+    },
+    "G:N153": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Severe",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "G:N331": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N67": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.2,
+     "cases_heard": [
+      "Beyond design",
+      "Severe",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "G:N677": {
+     "first_step": 300,
+     "first_homes": 300,
+     "first_rise": 13.3,
+     "rise_at_100": 15.3,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Severe",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    }
+   },
+   "design_wet_silent": false,
+   "design_depth_mm": 301,
+   "bore_mm": 375,
+   "design_fullness": 0.803,
+   "surcharged_before_growth": false,
+   "over_alarm_before_growth": true,
+   "nearest_earlier_m": 872
+  },
+  {
+   "position": 3,
+   "manhole": "MH1630926",
+   "home_regions": [
+    "R8"
+   ],
+   "adds_runs": 42,
+   "adds_by_region": {
+    "G:MH1630702": 21,
+    "G:N331": 21
+   },
+   "adds_by_case": {
+    "Design wet": 6,
+    "Beyond design": 6,
+    "Severe": 6,
+    "Design wet + age-weighted I&I": 6,
+    "Design wet + outside inflow x1.5": 6,
+    "Beyond design + age-weighted I&I": 6,
+    "Beyond design + outside inflow x1.5": 6
+   },
+   "hears": {
+    "R1": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R3": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R4": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R7": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R9": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH1630702": {
+     "first_step": 150,
+     "first_homes": 150,
+     "first_rise": 13.9,
+     "rise_at_100": 28.4,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Severe",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "G:MH1631057": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4450314": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4452680": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4452902": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N153": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N331": {
+     "first_step": 150,
+     "first_homes": 150,
+     "first_rise": 13.9,
+     "rise_at_100": 31.2,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Severe",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "G:N67": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N677": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    }
+   },
+   "design_wet_silent": false,
+   "design_depth_mm": 39,
+   "bore_mm": 224,
+   "design_fullness": 0.174,
+   "surcharged_before_growth": false,
+   "over_alarm_before_growth": false,
+   "nearest_earlier_m": 1549
+  },
+  {
+   "position": 4,
+   "manhole": "MH4448345",
+   "home_regions": [
+    "R4"
+   ],
+   "adds_runs": 22,
+   "adds_by_region": {
+    "R1": 14,
+    "R4": 8
+   },
+   "adds_by_case": {
+    "Beyond design": 3,
+    "Severe": 4,
+    "Design wet + outside inflow x1.5": 3,
+    "Beyond design + age-weighted I&I": 5,
+    "Beyond design + outside inflow x1.5": 7
+   },
+   "hears": {
+    "R1": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 1.6,
+     "cases_heard": [
+      "Beyond design",
+      "Severe",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "R3": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Design wet + outside inflow x1.5"
+     ]
+    },
+    "R4": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Severe",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "R7": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Design wet + outside inflow x1.5"
+     ]
+    },
+    "R9": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "G:MH1630702": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH1631057": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4450314": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "G:MH4452680": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "G:MH4452902": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N153": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N331": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N67": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design"
+     ]
+    },
+    "G:N677": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Beyond design + age-weighted I&I"
+     ]
+    }
+   },
+   "design_wet_silent": true,
+   "design_depth_mm": 85,
+   "bore_mm": 225,
+   "design_fullness": 0.378,
+   "surcharged_before_growth": false,
+   "over_alarm_before_growth": false,
+   "nearest_earlier_m": 668
+  },
+  {
+   "position": 5,
+   "manhole": "MH1625316",
+   "home_regions": [
+    "R8"
+   ],
+   "adds_runs": 20,
+   "adds_by_region": {
+    "G:N153": 20
+   },
+   "adds_by_case": {
+    "Design wet": 4,
+    "Beyond design": 3,
+    "Design wet + age-weighted I&I": 4,
+    "Design wet + outside inflow x1.5": 4,
+    "Beyond design + age-weighted I&I": 4,
+    "Beyond design + outside inflow x1.5": 1
+   },
+   "hears": {
+    "R1": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R3": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R4": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R7": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R9": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH1630702": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH1631057": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4450314": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4452680": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4452902": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N153": {
+     "first_step": 80,
+     "first_homes": 80,
+     "first_rise": 11.5,
+     "rise_at_100": 36.0,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Severe",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "G:N331": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N67": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N677": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    }
+   },
+   "design_wet_silent": false,
+   "design_depth_mm": 31,
+   "bore_mm": 150,
+   "design_fullness": 0.207,
+   "surcharged_before_growth": false,
+   "over_alarm_before_growth": false,
+   "nearest_earlier_m": null
+  },
+  {
+   "position": 6,
+   "manhole": "MH4453213",
+   "home_regions": [
+    "R8"
+   ],
+   "adds_runs": 17,
+   "adds_by_region": {
+    "G:MH4452902": 17
+   },
+   "adds_by_case": {
+    "Design wet": 3,
+    "Beyond design": 3,
+    "Design wet + age-weighted I&I": 3,
+    "Design wet + outside inflow x1.5": 3,
+    "Beyond design + age-weighted I&I": 3,
+    "Beyond design + outside inflow x1.5": 2
+   },
+   "hears": {
+    "R1": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R3": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R4": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R7": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R9": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH1630702": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH1631057": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4450314": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4452680": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4452902": {
+     "first_step": 150,
+     "first_homes": 150,
+     "first_rise": 13.4,
+     "rise_at_100": 27.7,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Severe",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "G:N153": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N331": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N67": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N677": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    }
+   },
+   "design_wet_silent": false,
+   "design_depth_mm": 39,
+   "bore_mm": 225,
+   "design_fullness": 0.173,
+   "surcharged_before_growth": false,
+   "over_alarm_before_growth": false,
+   "nearest_earlier_m": 1385
+  },
+  {
+   "position": 7,
+   "manhole": "MH4450531",
+   "home_regions": [
+    "R3"
+   ],
+   "adds_runs": 11,
+   "adds_by_region": {
+    "R3": 10,
+    "G:MH4452680": 1
+   },
+   "adds_by_case": {
+    "Design wet": 2,
+    "Beyond design": 1,
+    "Severe": 3,
+    "Design wet + outside inflow x1.5": 1,
+    "Beyond design + age-weighted I&I": 1,
+    "Beyond design + outside inflow x1.5": 3
+   },
+   "hears": {
+    "R1": {
+     "first_step": 0.5,
+     "first_homes": 27,
+     "first_rise": 14.6,
+     "rise_at_100": 29.0,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R3": {
+     "first_step": 0.25,
+     "first_homes": 14,
+     "first_rise": 12.4,
+     "rise_at_100": 49.3,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Severe",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    },
+    "R4": {
+     "first_step": 0.5,
+     "first_homes": 27,
+     "first_rise": 14.8,
+     "rise_at_100": 29.5,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R7": {
+     "first_step": 0.5,
+     "first_homes": 27,
+     "first_rise": 11.3,
+     "rise_at_100": 22.6,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "R9": {
+     "first_step": 0.5,
+     "first_homes": 242,
+     "first_rise": 19.3,
+     "rise_at_100": 38.5,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "G:MH1630702": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH1631057": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4450314": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.4,
+     "cases_heard": [
+      "Beyond design",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "G:MH4452680": {
+     "first_step": 150,
+     "first_homes": 150,
+     "first_rise": 10.8,
+     "rise_at_100": 125.0,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "G:MH4452902": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N153": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N331": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N67": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Beyond design + age-weighted I&I"
+     ]
+    },
+    "G:N677": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": [
+      "Beyond design",
+      "Beyond design + age-weighted I&I"
+     ]
+    }
+   },
+   "design_wet_silent": false,
+   "design_depth_mm": 98,
+   "bore_mm": 150,
+   "design_fullness": 0.653,
+   "surcharged_before_growth": false,
+   "over_alarm_before_growth": false,
+   "nearest_earlier_m": 73
+  },
+  {
+   "position": 8,
+   "manhole": "MH4450802",
+   "home_regions": [
+    "R6"
+   ],
+   "adds_runs": 5,
+   "adds_by_region": {
+    "G:N677": 5
+   },
+   "adds_by_case": {
+    "Design wet": 2,
+    "Design wet + age-weighted I&I": 2,
+    "Design wet + outside inflow x1.5": 1
+   },
+   "hears": {
+    "R1": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R3": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R4": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R7": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "R9": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH1630702": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH1631057": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4450314": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4452680": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:MH4452902": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N153": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N331": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N67": {
+     "first_step": null,
+     "first_homes": null,
+     "first_rise": null,
+     "rise_at_100": 0.0,
+     "cases_heard": []
+    },
+    "G:N677": {
+     "first_step": 80,
+     "first_homes": 80,
+     "first_rise": 14.8,
+     "rise_at_100": 38.9,
+     "cases_heard": [
+      "Design wet",
+      "Beyond design",
+      "Severe",
+      "Design wet + age-weighted I&I",
+      "Design wet + outside inflow x1.5",
+      "Beyond design + age-weighted I&I",
+      "Beyond design + outside inflow x1.5"
+     ]
+    }
+   },
+   "design_wet_silent": false,
+   "design_depth_mm": 11,
+   "bore_mm": 150,
+   "design_fullness": 0.073,
+   "surcharged_before_growth": false,
+   "over_alarm_before_growth": false,
+   "nearest_earlier_m": 742
+  }
+ ],
+ "swaps": {
+  "1": {
+   "MH4450922": {
+    "without_worst": 0.0,
+    "without_average": 0.0,
+    "without_warned": 0,
+    "without_design": 0.0,
+    "without_per_case": {},
+    "stand_ins": 4,
+    "nearest_stand_ins": [
+     [
+      "MH4451207",
+      62
+     ],
+     [
+      "MH4451871",
+      157
+     ],
+     [
+      "MH4452011",
+      184
+     ]
+    ]
+   }
+  },
+  "2": {
+   "MH4450922": {
+    "without_worst": 0.1522,
+    "without_average": 0.3264,
+    "without_warned": 14,
+    "without_design": 0.1522,
+    "without_per_case": {
+     "Design wet": 0.1522,
+     "Beyond design": 0.4038,
+     "Severe": 0.5294,
+     "Design wet + age-weighted I&I": 0.1628,
+     "Design wet + outside inflow x1.5": 0.2353,
+     "Beyond design + age-weighted I&I": 0.3846,
+     "Beyond design + outside inflow x1.5": 0.4167
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4451207",
+      62
+     ],
+     [
+      "MH4451871",
+      157
+     ],
+     [
+      "MH4452011",
+      184
+     ]
+    ]
+   },
+   "MH4454376": {
+    "without_worst": 0.0,
+    "without_average": 0.325,
+    "without_warned": 18,
+    "without_design": 0.3913,
+    "without_per_case": {
+     "Design wet": 0.3913,
+     "Beyond design": 0.5577,
+     "Severe": 0.0,
+     "Design wet + age-weighted I&I": 0.3953,
+     "Design wet + outside inflow x1.5": 0.4118,
+     "Beyond design + age-weighted I&I": 0.5192,
+     "Beyond design + outside inflow x1.5": 0.0
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   }
+  },
+  "3": {
+   "MH4450922": {
+    "without_worst": 0.2826,
+    "without_average": 0.4494,
+    "without_warned": 14,
+    "without_design": 0.2826,
+    "without_per_case": {
+     "Design wet": 0.2826,
+     "Beyond design": 0.5192,
+     "Severe": 0.6471,
+     "Design wet + age-weighted I&I": 0.3023,
+     "Design wet + outside inflow x1.5": 0.3529,
+     "Beyond design + age-weighted I&I": 0.5,
+     "Beyond design + outside inflow x1.5": 0.5417
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4451207",
+      62
+     ],
+     [
+      "MH4451871",
+      157
+     ],
+     [
+      "MH4452011",
+      184
+     ]
+    ]
+   },
+   "MH4454376": {
+    "without_worst": 0.1176,
+    "without_average": 0.4481,
+    "without_warned": 18,
+    "without_design": 0.5217,
+    "without_per_case": {
+     "Design wet": 0.5217,
+     "Beyond design": 0.6731,
+     "Severe": 0.1176,
+     "Design wet + age-weighted I&I": 0.5349,
+     "Design wet + outside inflow x1.5": 0.5294,
+     "Beyond design + age-weighted I&I": 0.6346,
+     "Beyond design + outside inflow x1.5": 0.125
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH1630926": {
+    "without_worst": 0.4167,
+    "without_average": 0.4962,
+    "without_warned": 20,
+    "without_design": 0.4565,
+    "without_per_case": {
+     "Design wet": 0.4565,
+     "Beyond design": 0.5769,
+     "Severe": 0.5294,
+     "Design wet + age-weighted I&I": 0.4651,
+     "Design wet + outside inflow x1.5": 0.4902,
+     "Beyond design + age-weighted I&I": 0.5385,
+     "Beyond design + outside inflow x1.5": 0.4167
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   }
+  },
+  "4": {
+   "MH4450922": {
+    "without_worst": 0.2826,
+    "without_average": 0.5675,
+    "without_warned": 21,
+    "without_design": 0.2826,
+    "without_per_case": {
+     "Design wet": 0.2826,
+     "Beyond design": 0.6731,
+     "Severe": 0.7255,
+     "Design wet + age-weighted I&I": 0.3023,
+     "Design wet + outside inflow x1.5": 0.6667,
+     "Beyond design + age-weighted I&I": 0.6346,
+     "Beyond design + outside inflow x1.5": 0.6875
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4451207",
+      62
+     ],
+     [
+      "MH4451871",
+      157
+     ],
+     [
+      "MH4452011",
+      184
+     ]
+    ]
+   },
+   "MH4454376": {
+    "without_worst": 0.1961,
+    "without_average": 0.5105,
+    "without_warned": 21,
+    "without_design": 0.5217,
+    "without_per_case": {
+     "Design wet": 0.5217,
+     "Beyond design": 0.7308,
+     "Severe": 0.1961,
+     "Design wet + age-weighted I&I": 0.5349,
+     "Design wet + outside inflow x1.5": 0.5882,
+     "Beyond design + age-weighted I&I": 0.7308,
+     "Beyond design + outside inflow x1.5": 0.2708
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH1630926": {
+    "without_worst": 0.4565,
+    "without_average": 0.5586,
+    "without_warned": 23,
+    "without_design": 0.4565,
+    "without_per_case": {
+     "Design wet": 0.4565,
+     "Beyond design": 0.6346,
+     "Severe": 0.6078,
+     "Design wet + age-weighted I&I": 0.4651,
+     "Design wet + outside inflow x1.5": 0.549,
+     "Beyond design + age-weighted I&I": 0.6346,
+     "Beyond design + outside inflow x1.5": 0.5625
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4448345": {
+    "without_worst": 0.5417,
+    "without_average": 0.6192,
+    "without_warned": 20,
+    "without_design": 0.587,
+    "without_per_case": {
+     "Design wet": 0.587,
+     "Beyond design": 0.6923,
+     "Severe": 0.6471,
+     "Design wet + age-weighted I&I": 0.6047,
+     "Design wet + outside inflow x1.5": 0.6078,
+     "Beyond design + age-weighted I&I": 0.6538,
+     "Beyond design + outside inflow x1.5": 0.5417
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   }
+  },
+  "5": {
+   "MH4450922": {
+    "without_worst": 0.3696,
+    "without_average": 0.6266,
+    "without_warned": 21,
+    "without_design": 0.3696,
+    "without_per_case": {
+     "Design wet": 0.3696,
+     "Beyond design": 0.7308,
+     "Severe": 0.7255,
+     "Design wet + age-weighted I&I": 0.3953,
+     "Design wet + outside inflow x1.5": 0.7451,
+     "Beyond design + age-weighted I&I": 0.7115,
+     "Beyond design + outside inflow x1.5": 0.7083
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4451207",
+      62
+     ],
+     [
+      "MH4451871",
+      157
+     ],
+     [
+      "MH4452011",
+      184
+     ]
+    ]
+   },
+   "MH4454376": {
+    "without_worst": 0.2549,
+    "without_average": 0.584,
+    "without_warned": 21,
+    "without_design": 0.6087,
+    "without_per_case": {
+     "Design wet": 0.6087,
+     "Beyond design": 0.7885,
+     "Severe": 0.2549,
+     "Design wet + age-weighted I&I": 0.6279,
+     "Design wet + outside inflow x1.5": 0.6667,
+     "Beyond design + age-weighted I&I": 0.8077,
+     "Beyond design + outside inflow x1.5": 0.3333
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH1630926": {
+    "without_worst": 0.5435,
+    "without_average": 0.6177,
+    "without_warned": 23,
+    "without_design": 0.5435,
+    "without_per_case": {
+     "Design wet": 0.5435,
+     "Beyond design": 0.6923,
+     "Severe": 0.6078,
+     "Design wet + age-weighted I&I": 0.5581,
+     "Design wet + outside inflow x1.5": 0.6275,
+     "Beyond design + age-weighted I&I": 0.7115,
+     "Beyond design + outside inflow x1.5": 0.5833
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4448345": {
+    "without_worst": 0.5625,
+    "without_average": 0.6783,
+    "without_warned": 20,
+    "without_design": 0.6739,
+    "without_per_case": {
+     "Design wet": 0.6739,
+     "Beyond design": 0.75,
+     "Severe": 0.6471,
+     "Design wet + age-weighted I&I": 0.6977,
+     "Design wet + outside inflow x1.5": 0.6863,
+     "Beyond design + age-weighted I&I": 0.7308,
+     "Beyond design + outside inflow x1.5": 0.5625
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH1625316": {
+    "without_worst": 0.587,
+    "without_average": 0.6816,
+    "without_warned": 23,
+    "without_design": 0.587,
+    "without_per_case": {
+     "Design wet": 0.587,
+     "Beyond design": 0.75,
+     "Severe": 0.7255,
+     "Design wet + age-weighted I&I": 0.6047,
+     "Design wet + outside inflow x1.5": 0.6667,
+     "Beyond design + age-weighted I&I": 0.75,
+     "Beyond design + outside inflow x1.5": 0.6875
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   }
+  },
+  "6": {
+   "MH4450922": {
+    "without_worst": 0.4348,
+    "without_average": 0.6767,
+    "without_warned": 21,
+    "without_design": 0.4348,
+    "without_per_case": {
+     "Design wet": 0.4348,
+     "Beyond design": 0.7885,
+     "Severe": 0.7255,
+     "Design wet + age-weighted I&I": 0.4651,
+     "Design wet + outside inflow x1.5": 0.8039,
+     "Beyond design + age-weighted I&I": 0.7692,
+     "Beyond design + outside inflow x1.5": 0.75
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4451207",
+      62
+     ],
+     [
+      "MH4451871",
+      157
+     ],
+     [
+      "MH4452011",
+      184
+     ]
+    ]
+   },
+   "MH4454376": {
+    "without_worst": 0.2941,
+    "without_average": 0.6397,
+    "without_warned": 21,
+    "without_design": 0.6739,
+    "without_per_case": {
+     "Design wet": 0.6739,
+     "Beyond design": 0.8462,
+     "Severe": 0.2941,
+     "Design wet + age-weighted I&I": 0.6977,
+     "Design wet + outside inflow x1.5": 0.7255,
+     "Beyond design + age-weighted I&I": 0.8654,
+     "Beyond design + outside inflow x1.5": 0.375
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH1630926": {
+    "without_worst": 0.6078,
+    "without_average": 0.6679,
+    "without_warned": 23,
+    "without_design": 0.6087,
+    "without_per_case": {
+     "Design wet": 0.6087,
+     "Beyond design": 0.75,
+     "Severe": 0.6078,
+     "Design wet + age-weighted I&I": 0.6279,
+     "Design wet + outside inflow x1.5": 0.6863,
+     "Beyond design + age-weighted I&I": 0.7692,
+     "Beyond design + outside inflow x1.5": 0.625
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4448345": {
+    "without_worst": 0.6042,
+    "without_average": 0.7284,
+    "without_warned": 20,
+    "without_design": 0.7391,
+    "without_per_case": {
+     "Design wet": 0.7391,
+     "Beyond design": 0.8077,
+     "Severe": 0.6471,
+     "Design wet + age-weighted I&I": 0.7674,
+     "Design wet + outside inflow x1.5": 0.7451,
+     "Beyond design + age-weighted I&I": 0.7885,
+     "Beyond design + outside inflow x1.5": 0.6042
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH1625316": {
+    "without_worst": 0.6522,
+    "without_average": 0.7317,
+    "without_warned": 23,
+    "without_design": 0.6522,
+    "without_per_case": {
+     "Design wet": 0.6522,
+     "Beyond design": 0.8077,
+     "Severe": 0.7255,
+     "Design wet + age-weighted I&I": 0.6744,
+     "Design wet + outside inflow x1.5": 0.7255,
+     "Beyond design + age-weighted I&I": 0.8077,
+     "Beyond design + outside inflow x1.5": 0.7292
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4453213": {
+    "without_worst": 0.6739,
+    "without_average": 0.7407,
+    "without_warned": 23,
+    "without_design": 0.6739,
+    "without_per_case": {
+     "Design wet": 0.6739,
+     "Beyond design": 0.8077,
+     "Severe": 0.7255,
+     "Design wet + age-weighted I&I": 0.6977,
+     "Design wet + outside inflow x1.5": 0.7451,
+     "Beyond design + age-weighted I&I": 0.8269,
+     "Beyond design + outside inflow x1.5": 0.7083
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   }
+  },
+  "7": {
+   "MH4450922": {
+    "without_worst": 0.4651,
+    "without_average": 0.7795,
+    "without_warned": 23,
+    "without_design": 0.7826,
+    "without_per_case": {
+     "Design wet": 0.7826,
+     "Beyond design": 0.8846,
+     "Severe": 0.7843,
+     "Design wet + age-weighted I&I": 0.4651,
+     "Design wet + outside inflow x1.5": 0.8235,
+     "Beyond design + age-weighted I&I": 0.9038,
+     "Beyond design + outside inflow x1.5": 0.8125
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4451207",
+      62
+     ],
+     [
+      "MH4451871",
+      157
+     ],
+     [
+      "MH4452011",
+      184
+     ]
+    ]
+   },
+   "MH4454376": {
+    "without_worst": 0.3529,
+    "without_average": 0.6715,
+    "without_warned": 21,
+    "without_design": 0.7174,
+    "without_per_case": {
+     "Design wet": 0.7174,
+     "Beyond design": 0.8654,
+     "Severe": 0.3529,
+     "Design wet + age-weighted I&I": 0.6977,
+     "Design wet + outside inflow x1.5": 0.7451,
+     "Beyond design + age-weighted I&I": 0.8846,
+     "Beyond design + outside inflow x1.5": 0.4375
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH1630926": {
+    "without_worst": 0.6279,
+    "without_average": 0.6997,
+    "without_warned": 23,
+    "without_design": 0.6522,
+    "without_per_case": {
+     "Design wet": 0.6522,
+     "Beyond design": 0.7692,
+     "Severe": 0.6667,
+     "Design wet + age-weighted I&I": 0.6279,
+     "Design wet + outside inflow x1.5": 0.7059,
+     "Beyond design + age-weighted I&I": 0.7885,
+     "Beyond design + outside inflow x1.5": 0.6875
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4448345": {
+    "without_worst": 0.6667,
+    "without_average": 0.7603,
+    "without_warned": 20,
+    "without_design": 0.7826,
+    "without_per_case": {
+     "Design wet": 0.7826,
+     "Beyond design": 0.8269,
+     "Severe": 0.7059,
+     "Design wet + age-weighted I&I": 0.7674,
+     "Design wet + outside inflow x1.5": 0.7647,
+     "Beyond design + age-weighted I&I": 0.8077,
+     "Beyond design + outside inflow x1.5": 0.6667
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH1625316": {
+    "without_worst": 0.6744,
+    "without_average": 0.7636,
+    "without_warned": 23,
+    "without_design": 0.6957,
+    "without_per_case": {
+     "Design wet": 0.6957,
+     "Beyond design": 0.8269,
+     "Severe": 0.7843,
+     "Design wet + age-weighted I&I": 0.6744,
+     "Design wet + outside inflow x1.5": 0.7451,
+     "Beyond design + age-weighted I&I": 0.8269,
+     "Beyond design + outside inflow x1.5": 0.7917
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4453213": {
+    "without_worst": 0.6977,
+    "without_average": 0.7726,
+    "without_warned": 23,
+    "without_design": 0.7174,
+    "without_per_case": {
+     "Design wet": 0.7174,
+     "Beyond design": 0.8269,
+     "Severe": 0.7843,
+     "Design wet + age-weighted I&I": 0.6977,
+     "Design wet + outside inflow x1.5": 0.7647,
+     "Beyond design + age-weighted I&I": 0.8462,
+     "Beyond design + outside inflow x1.5": 0.7708
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4450531": {
+    "without_worst": 0.7255,
+    "without_average": 0.7909,
+    "without_warned": 23,
+    "without_design": 0.7391,
+    "without_per_case": {
+     "Design wet": 0.7391,
+     "Beyond design": 0.8654,
+     "Severe": 0.7255,
+     "Design wet + age-weighted I&I": 0.7674,
+     "Design wet + outside inflow x1.5": 0.8039,
+     "Beyond design + age-weighted I&I": 0.8846,
+     "Beyond design + outside inflow x1.5": 0.75
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   }
+  },
+  "8": {
+   "MH4450922": {
+    "without_worst": 0.5116,
+    "without_average": 0.7952,
+    "without_warned": 24,
+    "without_design": 0.8261,
+    "without_per_case": {
+     "Design wet": 0.8261,
+     "Beyond design": 0.8846,
+     "Severe": 0.7843,
+     "Design wet + age-weighted I&I": 0.5116,
+     "Design wet + outside inflow x1.5": 0.8431,
+     "Beyond design + age-weighted I&I": 0.9038,
+     "Beyond design + outside inflow x1.5": 0.8125
+    },
+    "stand_ins": 3,
+    "nearest_stand_ins": [
+     [
+      "MH4451207",
+      62
+     ],
+     [
+      "MH4451871",
+      157
+     ],
+     [
+      "MH4452011",
+      184
+     ]
+    ]
+   },
+   "MH4454376": {
+    "without_worst": 0.4314,
+    "without_average": 0.7315,
+    "without_warned": 22,
+    "without_design": 0.8043,
+    "without_per_case": {
+     "Design wet": 0.8043,
+     "Beyond design": 0.8654,
+     "Severe": 0.4314,
+     "Design wet + age-weighted I&I": 0.7907,
+     "Design wet + outside inflow x1.5": 0.8235,
+     "Beyond design + age-weighted I&I": 0.8846,
+     "Beyond design + outside inflow x1.5": 0.5208
+    },
+    "stand_ins": 2,
+    "nearest_stand_ins": [
+     [
+      "MH4454116",
+      63
+     ],
+     [
+      "MH4452994",
+      310
+     ]
+    ]
+   },
+   "MH1630926": {
+    "without_worst": 0.6667,
+    "without_average": 0.7153,
+    "without_warned": 24,
+    "without_design": 0.6957,
+    "without_per_case": {
+     "Design wet": 0.6957,
+     "Beyond design": 0.7692,
+     "Severe": 0.6667,
+     "Design wet + age-weighted I&I": 0.6744,
+     "Design wet + outside inflow x1.5": 0.7255,
+     "Beyond design + age-weighted I&I": 0.7885,
+     "Beyond design + outside inflow x1.5": 0.6875
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4448345": {
+    "without_worst": 0.6667,
+    "without_average": 0.7759,
+    "without_warned": 21,
+    "without_design": 0.8261,
+    "without_per_case": {
+     "Design wet": 0.8261,
+     "Beyond design": 0.8269,
+     "Severe": 0.7059,
+     "Design wet + age-weighted I&I": 0.814,
+     "Design wet + outside inflow x1.5": 0.7843,
+     "Beyond design + age-weighted I&I": 0.8077,
+     "Beyond design + outside inflow x1.5": 0.6667
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH1625316": {
+    "without_worst": 0.7209,
+    "without_average": 0.7792,
+    "without_warned": 24,
+    "without_design": 0.7391,
+    "without_per_case": {
+     "Design wet": 0.7391,
+     "Beyond design": 0.8269,
+     "Severe": 0.7843,
+     "Design wet + age-weighted I&I": 0.7209,
+     "Design wet + outside inflow x1.5": 0.7647,
+     "Beyond design + age-weighted I&I": 0.8269,
+     "Beyond design + outside inflow x1.5": 0.7917
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4453213": {
+    "without_worst": 0.7442,
+    "without_average": 0.7882,
+    "without_warned": 24,
+    "without_design": 0.7609,
+    "without_per_case": {
+     "Design wet": 0.7609,
+     "Beyond design": 0.8269,
+     "Severe": 0.7843,
+     "Design wet + age-weighted I&I": 0.7442,
+     "Design wet + outside inflow x1.5": 0.7843,
+     "Beyond design + age-weighted I&I": 0.8462,
+     "Beyond design + outside inflow x1.5": 0.7708
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4450531": {
+    "without_worst": 0.7255,
+    "without_average": 0.8065,
+    "without_warned": 24,
+    "without_design": 0.7826,
+    "without_per_case": {
+     "Design wet": 0.7826,
+     "Beyond design": 0.8654,
+     "Severe": 0.7255,
+     "Design wet + age-weighted I&I": 0.814,
+     "Design wet + outside inflow x1.5": 0.8235,
+     "Beyond design + age-weighted I&I": 0.8846,
+     "Beyond design + outside inflow x1.5": 0.75
+    },
+    "stand_ins": 0,
+    "nearest_stand_ins": []
+   },
+   "MH4450802": {
+    "without_worst": 0.7674,
+    "without_average": 0.8227,
+    "without_warned": 23,
+    "without_design": 0.7826,
+    "without_per_case": {
+     "Design wet": 0.7826,
+     "Beyond design": 0.8846,
+     "Severe": 0.7843,
+     "Design wet + age-weighted I&I": 0.7674,
+     "Design wet + outside inflow x1.5": 0.8235,
+     "Beyond design + age-weighted I&I": 0.9038,
+     "Beyond design + outside inflow x1.5": 0.8125
+    },
+    "stand_ins": 7,
+    "nearest_stand_ins": [
+     [
+      "MH4455762",
+      1044
+     ],
+     [
+      "MH4452994",
+      1052
+     ],
+     [
+      "MH4456468",
+      1166
+     ]
+    ]
+   }
+  }
+ },
+ "overloads": [
+  {
+   "manhole": "MH4501866",
+   "runs": 52,
+   "spill_runs": 0,
+   "cases": [
+    "Severe"
+   ],
+   "regions": [
+    "G:MH1631057",
+    "G:MH4450314",
+    "G:MH4452680",
+    "G:MH4452902",
+    "G:N153",
+    "G:N67",
+    "G:N677",
+    "R2",
+    "R5",
+    "R6",
+    "R8",
+    "R9"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R5"
+   ]
+  },
+  {
+   "manhole": "MH4453850",
+   "runs": 24,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design",
+    "Beyond design + age-weighted I&I"
+   ],
+   "regions": [
+    "G:MH4450314",
+    "G:MH4452680",
+    "G:N67",
+    "G:N677",
+    "R9"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R2"
+   ]
+  },
+  {
+   "manhole": "MH4448345",
+   "runs": 18,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680",
+    "R1",
+    "R3",
+    "R4",
+    "R7",
+    "R9"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R4"
+   ]
+  },
+  {
+   "manhole": "MH4501851",
+   "runs": 17,
+   "spill_runs": 0,
+   "cases": [
+    "Severe"
+   ],
+   "regions": [
+    "G:MH4450314",
+    "G:MH4452680",
+    "G:MH4452902",
+    "G:N153",
+    "G:N67",
+    "G:N677",
+    "R9"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R5"
+   ]
+  },
+  {
+   "manhole": "MH4429268",
+   "runs": 11,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design + age-weighted I&I"
+   ],
+   "regions": [
+    "G:MH4450314",
+    "G:MH4452680",
+    "G:N677",
+    "R3",
+    "R9"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7"
+   ]
+  },
+  {
+   "manhole": "MH4454376",
+   "runs": 11,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4450314",
+    "G:MH4452680",
+    "G:N677",
+    "R9"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R6",
+    "R9"
+   ]
+  },
+  {
+   "manhole": "MH4453788",
+   "runs": 10,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design",
+    "Beyond design + age-weighted I&I"
+   ],
+   "regions": [
+    "G:MH4450314",
+    "G:MH4452680",
+    "G:N677",
+    "R9"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R2"
+   ]
+  },
+  {
+   "manhole": "MH4449977",
+   "runs": 7,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design"
+   ],
+   "regions": [
+    "G:MH4452680",
+    "R1",
+    "R4",
+    "R9"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R4"
+   ]
+  },
+  {
+   "manhole": "MH4429527",
+   "runs": 6,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design"
+   ],
+   "regions": [
+    "G:MH4452680",
+    "R3",
+    "R9"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R3"
+   ]
+  },
+  {
+   "manhole": "MH4449011",
+   "runs": 6,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680",
+    "R1",
+    "R4",
+    "R9"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7"
+   ]
+  },
+  {
+   "manhole": "MH4451886",
+   "runs": 6,
+   "spill_runs": 6,
+   "cases": [
+    "Beyond design",
+    "Beyond design + age-weighted I&I"
+   ],
+   "regions": [
+    "G:MH4452680",
+    "R9"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7",
+    "R9"
+   ]
+  },
+  {
+   "manhole": "MH4451945",
+   "runs": 5,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680",
+    "R2"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R2"
+   ]
+  },
+  {
+   "manhole": "MH4452809",
+   "runs": 4,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680",
+    "R9"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7"
+   ]
+  },
+  {
+   "manhole": "MH4454116",
+   "runs": 4,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4450314",
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R2",
+    "R9"
+   ]
+  },
+  {
+   "manhole": "MH4448853",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R4"
+   ]
+  },
+  {
+   "manhole": "MH4450137",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R3"
+   ]
+  },
+  {
+   "manhole": "MH4450531",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R3"
+   ]
+  },
+  {
+   "manhole": "MH4451870",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7",
+    "R9"
+   ]
+  },
+  {
+   "manhole": "MH4452217",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7"
+   ]
+  },
+  {
+   "manhole": "MH4452680",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet",
+    "Design wet + age-weighted I&I"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7",
+    "R9",
+    "G:MH4452680"
+   ]
+  },
+  {
+   "manhole": "MH4453098",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet",
+    "Design wet + age-weighted I&I"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R2",
+    "R9"
+   ]
+  },
+  {
+   "manhole": "MH4453185",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R2",
+    "R9"
+   ]
+  },
+  {
+   "manhole": "MH4453489",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R2",
+    "R9"
+   ]
+  },
+  {
+   "manhole": "MH4453579",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R2",
+    "R9"
+   ]
+  },
+  {
+   "manhole": "MH4454629",
+   "runs": 2,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680",
+    "G:N67"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R6"
+   ]
+  },
+  {
+   "manhole": "MH4428268",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Severe"
+   ],
+   "regions": [
+    "R1"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R1"
+   ]
+  },
+  {
+   "manhole": "MH4447394",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R1"
+   ]
+  },
+  {
+   "manhole": "MH4447643",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7"
+   ]
+  },
+  {
+   "manhole": "MH4447691",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7"
+   ]
+  },
+  {
+   "manhole": "MH4450581",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7"
+   ]
+  },
+  {
+   "manhole": "MH4451823",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R8"
+   ]
+  },
+  {
+   "manhole": "MH4452154",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7"
+   ]
+  },
+  {
+   "manhole": "MH4452946",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Severe"
+   ],
+   "regions": [
+    "G:N677"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": true,
+   "home_regions": [
+    "R6"
+   ]
+  },
+  {
+   "manhole": "MH4452977",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Design wet + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R7"
+   ]
+  },
+  {
+   "manhole": "MH4453512",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R6"
+   ]
+  },
+  {
+   "manhole": "MH4455909",
+   "runs": 1,
+   "spill_runs": 0,
+   "cases": [
+    "Beyond design + outside inflow x1.5"
+   ],
+   "regions": [
+    "G:MH4452680"
+   ],
+   "from_target_region": true,
+   "on_old_choke_list": false,
+   "home_regions": [
+    "R6",
+    "R9"
+   ]
+  }
+ ],
+ "facts": {
+  "before_growth": {
+   "Dry": {
+    "surcharged": 0,
+    "spilled": 0
+   },
+   "Design wet": {
+    "surcharged": 7,
+    "spilled": 0
+   },
+   "Beyond design": {
+    "surcharged": 107,
+    "spilled": 1
+   },
+   "Severe": {
+    "surcharged": 141,
+    "spilled": 6
+   },
+   "Design wet + age-weighted I&I": {
+    "surcharged": 7,
+    "spilled": 0
+   },
+   "Design wet + outside inflow x1.5": {
+    "surcharged": 29,
+    "spilled": 0
+   },
+   "Beyond design + age-weighted I&I": {
+    "surcharged": 104,
+    "spilled": 1
+   },
+   "Beyond design + outside inflow x1.5": {
+    "surcharged": 121,
+    "spilled": 5
+   }
+  },
+  "design_wet_at_100": {
+   "regions_with_new_surcharge": 1,
+   "regions_with_new_spill": 0
+  },
+  "design_wet_any_step_new_spill": 0,
+  "wet_rows_new_spill_by_100": 6,
+  "wet_rows_new_surcharge_by_100": 117,
+  "wet_rows_by_100": 700
+ },
+ "old_sets": {
+  "Sim 3.5 map five": {
+   "worst": 0.3953,
+   "average": 0.5516,
+   "design_wet": 0.4348,
+   "warned": 22,
+   "old_worst": 0.5094,
+   "old_average": 0.6426,
+   "old_warned_13": 24
+  },
+  "Sim 3.5 coverage five": {
+   "worst": 0.3913,
+   "average": 0.5596,
+   "design_wet": 0.3913,
+   "warned": 22,
+   "old_worst": 0.5,
+   "old_average": 0.6466,
+   "old_warned_13": 24
+  }
+ },
+ "price": {
+  "level": 25000,
+  "float": 1000
+ },
+ "responsive_manholes": 176,
+ "universe": {
+  "Design wet": 46,
+  "Beyond design": 52,
+  "Severe": 51,
+  "Design wet + age-weighted I&I": 43,
+  "Design wet + outside inflow x1.5": 51,
+  "Beyond design + age-weighted I&I": 52,
+  "Beyond design + outside inflow x1.5": 48
+ },
+ "warn_universe": {
+  "target": 25,
+  "plausible": 27,
+  "all": 42
+ },
+ "design_wet_pair": null,
+ "design_wet_pair_brute_force": null
+}

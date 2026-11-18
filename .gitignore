@@ -14,3 +14,9 @@ tools/build_public_demo.py
 # Default output of the public Sim 2.5 reproduction build.
 reproduced_simulation25/
 __pycache__/
+
+# Raw OpenStreetMap / Microsoft extracts (suburb names; only used to measure street statistics,
+# cached in simulation_src/data/street_stats.json).
+simulation_src/data/raw/osm_streets_ext.json
+simulation_src/data/raw/msft_buildings_ext.json
+.DS_Store

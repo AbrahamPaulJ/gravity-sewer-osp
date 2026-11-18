@@ -345,11 +345,25 @@ const Sim4 = (() => {
   }
 
   /* ---------------------------------------------------------- start */
+  // The building outlines Explore uses, loaded here so the page's own script list stays as it is.
+  function loadBuildings() {
+    if (window.Footprints) return Promise.resolve();
+    const one = src => new Promise(ok => {
+      const el = document.createElement("script");
+      el.src = src; el.onload = el.onerror = ok;
+      document.head.appendChild(el);
+    });
+    return one("data/osm_buildings.js?v=1").then(() => one("data/msft_buildings.js?v=1")).then(() => one("footprints.js?v=1"));
+  }
   function init() {
+    loadBuildings().then(start);
+  }
+  function start() {
     Growth3D.build($("#stage"), nd => {
       if (!nd) { hidePop(); paintMap(); return; }
       showPop(nd.name);
     }, nd => { $("#stage").style.cursor = nd ? "pointer" : ""; }).then(() => {
+      if (Growth3D.setHouseShapes) Growth3D.setHouseShapes(true);   // homes as building outlines, no dots
       Growth3D.frame(null);
       const want = (location.hash.match(/step=([0-9a-z]+)/) || [])[1];
       const at = D().steps.findIndex(s => s.id === want);

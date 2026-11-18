@@ -1,0 +1,69 @@
+Check passed: fullness 1 matches Sim 3's surcharge flags on all 8 baselines.
+
+New homes before the path passes 0.7 of bore (>N = not reached by the top of the ladder, 300%)
+case                                  
+Dry                                   
+Design wet                            
+Beyond design                         
+Severe                                
+Design wet + age-weighted I&I         
+Design wet + outside inflow x1.5      
+Beyond design + age-weighted I&I      
+Beyond design + outside inflow x1.5   
+2041 share (100% build-out or estate size)           
+
+Manholes on the path already past 0.7 before any growth / manholes with buffer
+Dry                                   
+Design wet                            
+Beyond design                         
+Severe                                
+Design wet + age-weighted I&I         
+Design wet + outside inflow x1.5      
+Beyond design + age-weighted I&I      
+Beyond design + outside inflow x1.5   
+
+Design wet: sensitivity to the limit, and the manhole that gets there first
+  limit 0.5: 
+  limit 0.6: 
+  limit 0.7: 
+  limit 1.0: 
+
+Is the first manhole stable? Distinct first manholes for each area across the wet cases at 0.7:
+
+Areas reaching the limit within their own 2041 share (100% build-out or estate size), of 8:
+  limit 0.5: Dry=0  Design wet=0  Beyond design=0  Severe=0  Design wet+=0  Design wet+=0  Beyond design+=0  Beyond design+=0
+  limit 0.6: Dry=0  Design wet=0  Beyond design=0  Severe=0  Design wet+=0  Design wet+=0  Beyond design+=0  Beyond design+=0
+  limit 0.7: Dry=0  Design wet=0  Beyond design=0  Severe=0  Design wet+=0  Design wet+=0  Beyond design+=0  Beyond design+=0
+  limit 1.0: Dry=0  Design wet=0  Beyond design=0  Severe=0  Design wet+=0  Design wet+=0  Beyond design+=0  Beyond design+=0
+
+=== REPORTED OUTPUT. Baseline error 0.05 of bore, 400 draws. Band: runs out within the 2041 share in at least 80% of draws, room left in at most 20%.
+
+Band at limit 0.7, every case
+case                                  
+Dry                                   
+Design wet                            
+Beyond design                         
+Severe                                
+Design wet + age-weighted I&I         
+Design wet + outside inflow x1.5      
+Beyond design + age-weighted I&I      
+Beyond design + outside inflow x1.5   
+
+Design wet, per area, limit 0.7: share, homes to first pipe (10th to 90th), mm per 100 homes, band, path already over
+
+Does the band survive the choice of limit? Design wet:
+  limit 0.5: 
+  limit 0.6: 
+  limit 0.7: 
+
+How far does each area's band hold across the wet cases, limit 0.7 (runs out / uncertain / room left / already over, of 7):
+
+Separately, whole suburb at once (Sim 3-e's runs, not yet part of Sim 3.5): 485 homes = 100%
+  Dry                                    limit 0.7: 388 homes (MH4452189); already over 0 of 328
+  Design wet                             limit 0.7: 23 homes (MH4450531); already over 15 of 328
+  Beyond design                          limit 0.7: 46 homes (MH4429527); already over 121 of 328
+  Severe                                 limit 0.7: 166 homes (MH4428268); already over 144 of 328
+  Design wet + age-weighted I&I          limit 0.7: 99 homes (MH4449785); already over 14 of 328
+  Design wet + outside inflow x1.5       limit 0.7: 29 homes (MH4452809); already over 37 of 328
+  Beyond design + age-weighted I&I       limit 0.7: 58 homes (MH4453850); already over 117 of 328
+  Beyond design + outside inflow x1.5    limit 0.7: 199 homes (MH4428583); already over 134 of 328

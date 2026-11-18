@@ -197,6 +197,21 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 #stageWrap{flex:1; min-height:0; position:relative}
 #stage{position:absolute; inset:0}
 #stage canvas{display:block; width:100%; height:100%}
+#stage .mapCredit{max-width:calc(100% - 144px); line-height:12px}
+#mapControls{position:absolute; right:8px; top:24px; z-index:8; display:flex; align-items:center; gap:6px}
+#mapControls button{font:inherit; font-size:12px; height:36px; padding:0 10px; border:1px solid var(--line);
+  border-radius:6px; background:var(--panel); color:var(--dim); cursor:pointer}
+#mapControls button:hover,#mapControls button:focus-visible{color:var(--accent); border-color:var(--accent)}
+#mapControls #btn-compass{width:36px; padding:3px; border-radius:50%; display:grid; place-items:center}
+#btn-compass svg{width:24px; height:24px}
+#mapControls #vexagBox{height:36px; padding:0 10px; background:var(--panel); border:1px solid var(--line); border-radius:6px}
+#mapOverlays{position:absolute; left:8px; bottom:calc(var(--foot, 24px) + 4px); z-index:7; display:flex; flex-wrap:wrap; gap:8px; align-items:center; max-width:calc(100% - 300px)}
+.ovGrp{display:flex; flex-wrap:wrap; gap:4px; padding:4px; background:var(--panel); border:1px solid var(--line); border-radius:8px; backdrop-filter:blur(6px)}
+.ovGrp button{font:inherit; font-size:12px; height:28px; padding:0 9px; border:1px solid var(--line); background:var(--panel-2); color:var(--ink); border-radius:6px; cursor:pointer; white-space:nowrap}
+.ovGrp button:hover,.ovGrp button:focus-visible{border-color:var(--accent); color:var(--accent)}
+.ovGrp button.primary{background:var(--accent); border-color:var(--accent); color:#06131f}
+html[data-theme="light"] .ovGrp button.primary{color:#fff}
+.eligibleKey[hidden]{display:none}
 .labels{position:absolute; inset:0; pointer-events:none; overflow:hidden}
 .pipeCard{position:absolute; z-index:5; width:270px; padding:12px 14px 10px;
   background:#111c2fee; border:1px solid #22314d; border-radius:10px; color:#a9b8d4;
@@ -226,15 +241,19 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 /* The legend and scale line lie over the foot of the map, see-through, and the map can be dragged under them. */
 #mapFoot{position:absolute; left:0; right:0; bottom:0; z-index:2; pointer-events:none;
   text-shadow:0 0 3px #0d1117, 0 0 3px #0d1117, 0 1px 2px #0d1117}
-.legend{padding:6px 14px 2px; background:transparent; color:#c9d1d9; font-size:11.5px;
-  display:flex; gap:7px 18px; flex-wrap:wrap; align-items:center}
-#coverKeyList{display:inline-flex; gap:6px 16px; flex-wrap:wrap}
-#coverKeyList span{white-space:nowrap}
+.legend{position:absolute; right:8px; bottom:calc(var(--foot, 42px) + 8px); z-index:7; width:min(272px,36vw);
+  max-height:calc(100% - 110px); overflow-y:auto; padding:0; background:transparent;
+  color:#c9d1d9; font-size:11.5px; display:flex; flex-direction:column; gap:6px; pointer-events:auto;
+  text-shadow:none}
+#coverKeyList{display:flex; flex-direction:column; gap:4px}
+#coverKeyList span{white-space:normal}
 .legend[hidden]{display:none}
-#areasKeyList{display:inline-flex; gap:6px 16px; flex-wrap:wrap}
-#areasKeyList span{white-space:nowrap}
-.legend b{color:#c9d1d9; font-weight:600; margin-right:2px}
-.legend .grp{display:flex; gap:14px; align-items:center; flex-wrap:wrap}
+#areasKeyList{display:flex; flex-direction:column; gap:4px}
+#areasKeyList span{white-space:normal}
+.legend b{color:#c9d1d9; font-weight:600; margin-bottom:2px}
+.legend .grp{display:flex; flex-direction:column; gap:4px; align-items:flex-start;
+  background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:8px 10px;
+  backdrop-filter:blur(6px)}
 .legend .grp[hidden]{display:none}
 .legend .k{display:inline-block; width:11px; height:11px; border-radius:50%; vertical-align:-2px; margin-right:6px}
 .legend .kl{display:inline-block; width:16px; height:3px; border-radius:2px; vertical-align:3px; margin-right:6px}
@@ -257,7 +276,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   background:linear-gradient(90deg,#104281,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb)}
 /* The one overlay on the map: the sentence (its long form behind the (i)) and, under it, the
    homes line (the selected region's homes, or the hovered manhole's). Foot of the map, both views. */
-#inWords{position:absolute; left:12px; bottom:calc(var(--foot, 0px) + 4px); z-index:3; max-width:min(760px, calc(100% - 24px));
+#inWords{position:absolute; left:12px; bottom:calc(var(--foot, 0px) + var(--ovh, 0px) + 10px); z-index:3; max-width:min(760px, calc(100% - min(272px,36vw) - 40px));
   background:transparent; border:0; padding:6px 13px 4px 2px; pointer-events:none;
   color:#e7edf7; font-size:13px; line-height:1.45;
   text-shadow:0 0 3px #0d1117, 0 0 3px #0d1117, 0 1px 2px #0d1117}
@@ -436,6 +455,55 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 .kpis{display:flex; flex-wrap:wrap; gap:10px; margin-top:12px}
 .kpis div{flex:1 1 150px; background:#141d2b; border:1px solid var(--line); border-radius:8px; padding:8px 11px; font-size:12px; color:var(--dim)}
 .kpis b{display:block; font-size:18px; color:var(--ink); font-weight:600}
+/* The light theme (the Light/Dark switch in the map's top bar). The same layout and the same
+   result colours; only the ground, panels and text change. The map's own colours follow it in
+   growth_3d.js (setTheme). */
+html[data-theme="light"]{
+  --bg:#f6f8fa; --panel:#ffffff; --panel-2:#eef2f7; --ink:#1f2328; --dim:#47536a;
+  --faint:#6e7781; --line:#d0d7de; --accent:#0969da; --warn:#cf222e; --amber:#bf8700; --green:#1a7f37;
+  color-scheme:light}
+html[data-theme="light"] .knob button.on, html[data-theme="light"] nav button.primary, html[data-theme="light"] nav button.info:hover,
+html[data-theme="light"] .chip.on, html[data-theme="light"] .step .n{color:#fff}
+html[data-theme="light"] #rightSensors .why, html[data-theme="light"] .why{background:#f6f8fa}
+html[data-theme="light"] .ddList, html[data-theme="light"] #tipBox, html[data-theme="light"] #curveTip, html[data-theme="light"] .covtip{background:#fff; box-shadow:0 8px 28px #1f232833}
+html[data-theme="light"] .ddList div{border-top-color:var(--line)}
+html[data-theme="light"] #baseNote{background:#fff8e1; color:#7a5200}
+html[data-theme="light"] .pipeCard{background:#ffffffee; border-color:var(--line); color:var(--dim); box-shadow:0 8px 28px #1f232833}
+html[data-theme="light"] .pipeCard h4, html[data-theme="light"] .pipeCard .r b, html[data-theme="light"] .pipeCard .state,
+html[data-theme="light"] .pipeCard .x:hover{color:var(--ink)}
+html[data-theme="light"] .pipeCard .sub, html[data-theme="light"] .pipeCard .note, html[data-theme="light"] .pipeCard .x{color:var(--faint)}
+html[data-theme="light"] .pipeCard .r{border-top-color:var(--line)}
+html[data-theme="light"] .labels .lbl, html[data-theme="light"] #mapFoot, html[data-theme="light"] #inWords{text-shadow:0 0 3px #f3f0e8, 0 0 3px #f3f0e8, 0 1px 2px #f3f0e8}
+html[data-theme="light"] .labels .lbl{color:#5a32a3}
+html[data-theme="light"] .labels .lbl.site{color:#0969da}
+html[data-theme="light"] .labels .lbl.scn{color:#0550ae}
+html[data-theme="light"] .labels .lbl.pump, html[data-theme="light"] .labels .lbl.pumprate{color:#9a6700}
+html[data-theme="light"] .labels .lbl.spill{color:#bf3989}
+html[data-theme="light"] .labels .lbl.scale{color:#57606a}
+html[data-theme="light"] .labels .lbl.scale.cap{color:#47536a}
+html[data-theme="light"] .labels .lbl.sensor, html[data-theme="light"] .labels .lbl.region{text-shadow:none; box-shadow:0 0 0 2px #fff}
+html[data-theme="light"] .legend, html[data-theme="light"] .legend b, html[data-theme="light"] #homesLine, html[data-theme="light"] #homesLine .hd{color:#1f2328}
+html[data-theme="light"] .legend .ksq{border-color:#fff}
+html[data-theme="light"] #inWords, html[data-theme="light"] #inWords b, html[data-theme="light"] #homesLine strong{color:#1f2328}
+html[data-theme="light"] #homesLine .quiet2, html[data-theme="light"] #scale{color:#47536a}
+html[data-theme="light"] #homesLine .k.ring{box-shadow:0 0 0 2px #1f2328}
+html[data-theme="light"] #homesLine .tag, html[data-theme="light"] .say, html[data-theme="light"] .srctag,
+html[data-theme="light"] .ladder .lc, html[data-theme="light"] .kpis div{background:#eef2f7}
+html[data-theme="light"] .docbody .rf[aria-pressed="true"]{background:#ddf4ff}
+html[data-theme="light"] #modal{background:rgba(31,35,40,.45)}
+html[data-theme="light"] #modal .caveat{background:#ffebe9; color:#82071e}
+html[data-theme="light"] .badge.settled{background:#dafbe1; color:#1a7f37}
+html[data-theme="light"] .badge.fixed{background:#fff8c5; color:#7d4e00}
+html[data-theme="light"] .ressel{background:var(--panel-2)}
+html[data-theme="light"] .covbart{background:rgba(31,35,40,.08)}
+html[data-theme="light"] .covgl{stroke:rgba(31,35,40,.1)}
+html[data-theme="light"] .bo{color:#cf222e} html[data-theme="light"] .bu{color:#9a6700} html[data-theme="light"] .br{color:#1a7f37} html[data-theme="light"] .bg{color:#57606a}
+html[data-theme="light"] #inWords .tag{background:#ddf4ff; color:#0550ae; text-shadow:none}
+html[data-theme="light"] .tab{background:#ffffffee}
+#vexagBox{flex:none; display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); padding:0 4px 0 12px; white-space:nowrap}
+#vexagBox input{width:96px; accent-color:var(--accent)}
+#vexagVal{min-width:2.4em; color:var(--ink); font-variant-numeric:tabular-nums}
+#themeBtn{flex:none; height:32px; padding:0 12px; font-size:12.5px; margin-left:8px}
 </style>
 <!-- live presentation sync -->
 <script>(function(){var l=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),s=document.createElement("script");s.src=(l?"http://localhost:8787":"https://capstone-live.sidcode3535.workers.dev")+"/present.js";s.defer=true;document.head.appendChild(s)})();</script>
@@ -446,7 +514,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   <h1>Sim 4 explorer: every case, rule and region</h1>
   <div id="strip" class="s">
     <div class="step">
-      <div class="t"><span class="n">1</span>Where do the new homes go <i class="info-i" data-tip="Infill: new homes spread through one region of the suburb in proportion to the homes already there (a block split in two, a backyard subdivision). Greenfield: a new estate joining the sewer at one manhole; click a manhole on the map to place it. Nowhere: the suburb as it is today.">i</i></div>
+      <div class="t"><span class="n">1</span>Where do the new homes go <i class="info-i" data-tip="Infill: new homes spread through one region of the suburb in proportion to the homes already there (a block split in two, a backyard subdivision). Greenfield: a new estate joining the sewer at an edge manhole; click a pulsing edge manhole on the map to place it. Nowhere: the suburb as it is today.">i</i></div>
       <div class="selwrap"><button class="arrow" data-for="whereSel" data-step="-1" title="Previous">&#9664;</button><select id="whereSel"></select><button class="arrow" data-for="whereSel" data-step="1" title="Next">&#9654;</button></div>
       <div class="quiet" id="whereHint"></div>
     </div>
@@ -473,7 +541,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   <label class="fld">What kind of growth <i class="info-i" id="famInfo" data-tip="">i</i></label>
   <div class="knob" id="famKnob">
     <button data-f="infill" title="New homes spread through a region, in proportion to the homes already there">Infill: a region densifies</button>
-    <button data-f="one" title="A new estate joining the sewer at one manhole">Greenfield: one point</button>
+    <button data-f="one" title="A new estate joining the sewer at an edge manhole">Greenfield: one point</button>
     <button data-f="none" title="The suburb as it is today, no growth placed">No growth: the suburb today</button>
   </div>
 
@@ -521,7 +589,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
     </div>
     <label class="fld" for="kRange">Number of sensors: <b id="kVal"></b></label>
     <input type="range" id="kRange" min="1" max="10" step="1">
-    <p class="x quiet" id="methNote" hidden>A new estate: Sim 4's list, or the greenfield grid's greedy order as a comparison. The exact solver has run on infill growth only.</p>
+    <p class="x quiet" id="methNote" hidden>A new estate: Sim 4's list, or the greenfield runs' greedy order as a comparison. The exact solver has run on infill growth only.</p>
     <div class="knob x" id="objKnob">
       <button data-o="worst" title="Each sensor is the one that most raises the WORST case">Best worst case</button>
       <button data-o="mean" title="Each sensor is the one that most raises the AVERAGE over the cases">Best average</button>
@@ -538,42 +606,56 @@ nav button.info:hover{background:var(--accent); color:#06131f}
   <div id="top">
   <nav>
     <div class="navgrp">
-      <button id="toggleSensors" class="primary" title="Show or hide the recommended sensors">Sensors</button>
-      <button id="togglePumps" title="Highlight the pump stations, their rising mains and the pipes that drain to them">Pumps</button>
-      <button id="toggleHeat" class="x" title="Colour every manhole by how much growth it would see on its own">Heatmap</button>
-      <button id="toggleConn" class="x" title="Draw every connection pipe at its bore">Connections</button>
-      <button id="toggleIds" class="x" title="Label every manhole with its number">Manhole ids</button>
-      <button id="toggleLegend" title="Show what the colours mean">Legend</button>
-      <button id="toggleAreas" title="See how the suburb is divided into regions, each in its own colour; click again to come back">Regions</button>
-      <button id="toggleCover" title="Colour the map by which sensor sees growth where. It follows the growth, weather, rule, method and number of sensors on the left; the detail opens on the right">Coverage</button>
+      <button id="btn-story" class="primary" onclick="location.href='index.html'" title="Back to Simulation 4's six-step story">&#9664; Story</button>
+      <div class="knob" id="viewKnob">
+        <button data-v="simple" title="The map, the recommended sensors and one sentence">Simple</button>
+        <button data-v="expert" title="Every case, rule, placement method and check">Expert</button>
+      </div>
     </div>
     <span class="navsep"></span>
     <div class="navgrp">
-      <button id="btn-story" class="primary" onclick="location.href='index.html'" title="Back to Simulation 4's six-step story">&#9664; Story</button>
       <button id="btn-results" class="primary" title="Warning, room for new homes, level or float, fewest sensors needed, limits and findings">Results</button>
       <button id="tab-ref">Assumptions</button>
       <button id="btn-info" class="info" title="What this model is and the numbers behind it">About</button>
       <button id="btn-full" title="Full screen" aria-label="Full screen"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg></button>
     </div>
-    <div class="knob" id="viewKnob">
-      <button data-v="simple" title="The map, the recommended sensors and one sentence">Simple</button>
-      <button data-v="expert" title="Every case, rule, placement method and check">Expert</button>
-    </div>
+    <button id="themeBtn" title="Switch between the dark and the light theme">Light</button>
   </nav>
   </div>
   <div id="stageWrap">
     <div id="stage"></div>
+    <div id="mapControls" role="group" aria-label="Map view">
+      <label id="vexagBox" title="Vertical exaggeration: how many times heights are stretched against distances on the ground. 1x is true scale">Vertical <input id="vexag" type="range" min="1" max="10" step="1" value="10"> <span id="vexagVal">10×</span></label>
+      <button id="btn-recentre" title="Recentre on the selected estate, all estates when shown, the picked manhole, or the whole network">Recentre</button>
+      <button id="btn-compass" title="Top-down view, north up" aria-label="Top-down view, north up" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><text x="12" y="7" text-anchor="middle" fill="currentColor" font-size="7">N</text><path d="M12 9L18 21L12 18L6 21Z" fill="currentColor"/></svg></button>
+    </div>
+    <div id="mapOverlays" aria-label="Map layers">
+      <div class="ovGrp">
+        <button id="toggleSensors" class="primary" title="Show or hide the recommended sensors">Sensors</button>
+        <button id="togglePumps" title="Highlight the pump stations, their rising mains and the pipes that drain to them">Pumps</button>
+        <button id="toggleFlow" title="Animate the direction sewage flows: dots move along each pipe from its upstream end to its downstream end, and along each rising main from its pump. Speed is for display only">Sewer flow</button>
+        <button id="toggleAreas" title="See how the suburb is divided into regions, each in its own colour; click again to come back">Regions</button>
+        <button id="toggleCover" title="Colour the map by which sensor sees growth where. It follows the growth, weather, rule, method and number of sensors on the left; the detail opens on the right">Coverage</button>
+        <button id="toggleLegend" title="Show what the colours mean">Legend</button>
+      </div>
+      <div class="ovGrp x">
+        <button id="toggleHeat" class="x" title="Colour every manhole by how much growth it would see on its own">Heatmap</button>
+        <button id="toggleEstates" hidden title="Draw every imaginary estate at its largest size.">Estates</button>
+        <button id="toggleConn" class="x" title="Show or hide houses and their connection pipes">Houses</button>
+        <button id="toggleIds" class="x" title="Label every manhole with its number">Manhole ids</button>
+      </div>
+    </div>
     <button class="tab" id="topTab" title="Fold the top bar away">&#9650;</button>
     <button class="tab" id="rTab" title="Fold the right panel away">&#9654;</button>
     <button class="tab" id="lTab" title="Fold the left panel away">&#9664;</button>
     <div id="inWords"><button id="wordsTab" title="Fold the summary away">&#9662;</button><span id="wordsMini">Summary</span><div id="wordsText"></div><div id="homesLine"></div></div>
   </div>
 
-  <div id="mapFoot">
   <div class="legend" id="legend" hidden>
     <div class="grp" id="areasKey" hidden><b>Regions</b><span id="areasKeyList"></span></div>
     <div class="grp" id="coverKey" hidden><b>Coverage</b><span id="coverKeyList"></span></div>
     <div class="grp s" id="simpleKey"><b>Map</b>
+      <span class="eligibleKey" hidden><span class="k" style="background:#d66be8"></span>Edge connection that can take an estate</span><span class="eligibleKey" hidden><span class="k" style="background:#8b949e"></span>Exit: sewage leaves the model, never a connection</span>
       <span><span class="k" style="background:#2ef56b"></span>recommended sensor, numbered as in the list</span>
       <span><span class="k" style="background:#ff2d55"></span>sees this growth</span>
       <span><span class="k" style="background:#ffa500"></span>over the alarm before any growth</span>
@@ -590,6 +672,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
       <span><span class="kl" style="background:#ff2d55"></span>sees this growth</span>
     </div>
     <div class="grp lg-results x"><b>Manholes</b>
+      <span class="eligibleKey" hidden><span class="k" style="background:#d66be8"></span>Edge connection that can take an estate</span><span class="eligibleKey" hidden><span class="k" style="background:#8b949e"></span>Exit: sewage leaves the model, never a connection</span>
       <span><span class="k" style="background:#ff2d55"></span>sees the growth (the selected rule)</span>
       <span><span class="k" style="background:#fff176"></span>rises 10 mm or more, below the rule</span>
       <span><span class="k" style="background:#ffa500"></span>over the alarm before growth</span>
@@ -611,6 +694,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
       <span><span class="kdl"></span>no connection published: joined to its nearest main, a guess (<span id="connGuess"></span>)</span>
     </div>
     <div class="grp lg-network" hidden><b>Points</b>
+      <span class="eligibleKey" hidden><span class="k" style="background:#d66be8"></span>Edge connection that can take an estate</span><span class="eligibleKey" hidden><span class="k" style="background:#8b949e"></span>Exit: sewage leaves the model, never a connection</span>
       <span><span class="k" style="background:#c9d1d9"></span>manhole, a sensor could go here</span>
       <span><span class="k" style="background:#30363d"></span>pipe end, no manhole recorded</span>
       <span><span class="k" style="background:#ff6f9c"></span>connected property</span>
@@ -618,6 +702,7 @@ nav button.info:hover{background:var(--accent); color:#06131f}
       <span><span class="k" style="background:#a371f7"></span>outlet, everything drains through it</span>
     </div>
   </div>
+  <div id="mapFoot">
   <div id="scale"></div>
   </div>
 </main>
@@ -634,14 +719,20 @@ nav button.info:hover{background:var(--accent); color:#06131f}
 <script src="../simulation3/data/growth.js?v=9"></script>
 <script src="data/regions.js?v=1"></script>
 <script src="../simulation3/data/index.js?v=9"></script>
-<script src="../simulation35/growth_3d.js?v=3"></script>
+<script src="data/osm_buildings.js?v=1"></script>
+<script src="data/msft_buildings.js?v=1"></script>
+<script src="footprints.js?v=1"></script>
+<script src="../simulation35/growth_3d.js?v=31"></script>
 <script src="../simulation3/osp_core.js?v=9"></script>
 <script src="../simulation3/placement.js?v=9"></script>
 <script src="data/explore.js?v=5"></script>
 <script src="data/sim4.js?v=7"></script>
+<script src="data/greenfield.js?v=2"></script>
+<script src="data/estates.js?v=7"></script>
+<script src="greenfield_runs.js?v=2"></script>
 <script src="../simulation35/data/room.js?v=1"></script>
 <script src="../simulation35/room_calc.js?v=2"></script>
-<script src="explore_ui.js?v=5"></script>
+<script src="explore_ui.js?v=32"></script>
 <script type="module">
   Sim35UI.init();
 </script>
