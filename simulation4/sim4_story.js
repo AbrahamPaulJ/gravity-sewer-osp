@@ -14,6 +14,9 @@ const Sim4 = (() => {
   // Step 3's "Regions" view: every region in its own colour, the same colours by id as the Explore page (explore_ui.js).
   const REGION_COLS = { R1: "#3987e5", R2: "#d95926", R3: "#008300", R4: "#e87ba4", R5: "#199e70", R6: "#39c5cf", R7: "#b08457", R8: "#9085e9", R9: "#c9d1d9" };
   const regionCol = ri => REGION_COLS[S().regions[ri].id] || "#5b6470";
+  // The light theme draws the rise in a darker yellow (growth_3d.js THEMES), so the legend and labels follow it.
+  const theme = () => document.documentElement.dataset.theme === "light" ? "light" : "dark";
+  const riseCol = () => theme() === "light" ? "#c99a00" : "#fff176";
   const SWEEP_MS = 3200;
   // regions: the Regions view is on (step 3 only; off again on leaving the step or reloading).
   // onMap: the legend keys whose colour the map shows right now, so the legend lists only those.
@@ -78,7 +81,7 @@ const Sim4 = (() => {
         x.sur.forEach(i => { named[nameOf(i)] = "tip"; });
         spills = spills.concat(x.spill.map(nameOf));
         const top = Math.max(0, ...x.rise.map(([, mm]) => mm));
-        labels[x.r] = { names: [regionPaint().labelAt[x.r]], text: `${S().regions[x.r].id}: up to +${Math.round(top)} mm`, col: top >= 10 ? "#fff176" : "#8b949e" };
+        labels[x.r] = { names: [regionPaint().labelAt[x.r]], text: `${S().regions[x.r].id}: up to +${Math.round(top)} mm`, col: top >= 10 ? riseCol() : "#8b949e" };
       });
     }
     return { named, labels, spills };
@@ -155,7 +158,7 @@ const Sim4 = (() => {
       ? S().regions.map((r, ri) => ri).filter(ri => st.onMap.has(ri))
           .sort((a, b) => String(S().regions[a].id).localeCompare(String(S().regions[b].id), undefined, { numeric: true }))
           .map(ri => [regionCol(ri), S().regions[ri].id])
-      : (s.legend || []).filter(k => st.onMap.has(k)).map(k => LEGEND[k]);
+      : (s.legend || []).filter(k => st.onMap.has(k)).map(k => k === "rise" ? [riseCol(), LEGEND.rise[1]] : LEGEND[k]);
     $("#legend").innerHTML = items.map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join("");
     const b = $("#btnRegions");
     b.hidden = s.map !== "growth";
@@ -342,6 +345,18 @@ const Sim4 = (() => {
     });
     return one("data/osm_buildings.js?v=1").then(() => one("data/msft_buildings.js?v=1")).then(() => one("footprints.js?v=1"));
   }
+  // Light or dark, as Explore: the button names the theme it switches to, and the choice is kept under Explore's key.
+  function applyTheme(t) {
+    document.documentElement.dataset.theme = t;
+    if (Growth3D.setTheme) Growth3D.setTheme(t);
+    $("#themeBtn").textContent = t === "light" ? "Dark" : "Light";
+    $("#themeBtn").title = "Switch to the " + (t === "light" ? "dark" : "light") + " theme";
+  }
+  function setTheme(t, keep) {
+    if (keep) { try { localStorage.setItem("sim4Theme", t); } catch (e) { /* not remembered */ } }
+    applyTheme(t);
+    if (document.body.dataset.ready) { hidePop(); paintMap(); }
+  }
   function init() {
     loadBuildings().then(start);
   }
@@ -352,6 +367,7 @@ const Sim4 = (() => {
     }, nd => { $("#stage").style.cursor = nd ? "pointer" : ""; }).then(() => {
       if (Growth3D.setHouseShapes) Growth3D.setHouseShapes(true);   // homes as building outlines, no dots
       Growth3D.frame(null);
+      applyTheme(theme());
       const want = (location.hash.match(/step=([0-9a-z]+)/) || [])[1];
       const at = D().steps.findIndex(s => s.id === want);
       if (/(^|[#&])notes=1/.test(location.hash)) st.notes = true;
@@ -359,6 +375,11 @@ const Sim4 = (() => {
       if (/(^|[#&])figs=1/.test(location.hash) && $("#figs")) $("#figs").open = true;
       placePop();
       document.body.dataset.ready = "1";
+    });
+    $("#themeBtn").onclick = () => setTheme(theme() === "light" ? "dark" : "light", true);
+    applyTheme(theme());
+    addEventListener("message", e => {
+      if (e.data && e.data.type === "sim4-set-theme" && (e.data.theme === "light" || e.data.theme === "dark")) setTheme(e.data.theme, true);
     });
     $("#next").onclick = () => go(st.i + 1);
     $("#back").onclick = () => go(st.i - 1);
@@ -380,5 +401,5 @@ const Sim4 = (() => {
     addEventListener("resize", () => { Growth3D.resize($("#stage")); placeMap(); });
   }
   return { init, state: st, step, levels: LEVELS, sensors: sensorNames, growthState, regionPaint, regionTints, actionLabels, regionOf, overlayNote,
-           openPop, hidePop, esc, ACTION_COL, LEGEND, REGION_COLS, setNotes, declutter };
+           openPop, hidePop, esc, setTheme, ACTION_COL, LEGEND, REGION_COLS, setNotes, declutter };
 })();
