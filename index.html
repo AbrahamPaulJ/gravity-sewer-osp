@@ -40,6 +40,12 @@ header.top .brand{font-size:14.5px;font-weight:650;letter-spacing:-.1px;min-widt
 .panes{flex:1;min-height:0;position:relative}
 .pane{position:absolute;inset:0;overflow:auto}
 .pane[hidden]{display:none!important}
+/* A hidden tab keeps its box instead of collapsing to nothing: a frame that went to zero size could come back laid out
+   at an old size, with a white unpainted margin. content-visibility skips its drawing (a hidden 3D page stops its
+   frames), and it neither shows nor takes clicks. Browsers without it fall back to display:none above. */
+@supports (content-visibility:hidden){
+  .pane[hidden]{display:block!important;content-visibility:hidden;visibility:hidden;pointer-events:none}
+}
 .pane iframe{width:100%;height:100%;border:0;display:block;background:var(--bg)}
 
 .wrap{max-width:1040px;margin:0 auto;padding:40px 24px 80px;min-width:0}
