@@ -50,7 +50,7 @@ window.Growth3D = (function () {
   let pumpsOn = false, pumpLabels = [], pumpTubes = null, pumpSleeves = null;   // the chip
   let scnMarks = [];                                 // a growth scenario's sites: ring + label
   let spillMarks = [];                               // overflowing manholes: ring (+ label if new)
-  let sensorMarks = [], sensorKey = "";             // proposed sensors: pin, ring and numbered label
+  let sensorMarks = [], sensorKey = "", sensorPrefix = "S";             // proposed sensors: pin, ring and numbered label
   let houseLat = null, latHi = null, latUp = null, latGuess = null;  // each home's connection, as drawn
   let connMeshes = [], connCounts = null, pipeScale = 0;  // the Connections chip; mains' radius per mm
   const segEnds = [];               // per pipe segment, its two endpoints, for the sleeves
@@ -1473,7 +1473,7 @@ window.Growth3D = (function () {
      among the pipes was easy to miss at the scale of the whole area. Rebuilt only when the
      set changes. */
   function setSensorMarks(names) {
-    const key = names.join(",");
+    const key = sensorPrefix + "|" + names.join(",");
     if (key === sensorKey) return;
     sensorKey = key;
     sensorMarks.forEach(m => { scene.remove(m.group); m.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); m.label.el.remove(); });
@@ -1495,7 +1495,7 @@ window.Growth3D = (function () {
       scene.add(grp);
       const el = document.createElement("div");
       el.className = "lbl sensor";
-      el.textContent = "S" + (k + 1);
+      el.textContent = sensorPrefix + (k + 1);
       el.title = "Proposed sensor " + (k + 1) + ": MH " + mesh.userData.node.mh;
       labelLayer.appendChild(el);
       sensorMarks.push({ group: grp, name, label: { el, at: mesh.position.clone().add(new THREE.Vector3(0, 114, 0)) } });
@@ -2315,5 +2315,6 @@ window.Growth3D = (function () {
            setRegionTints, setRegionLabels, showRegionLabels, setPulse, setEligible, setExtraNodes, setFlow,
            viewTop, viewTilt, heading, isTop, onViewChange, getCamera, setCamera,
            frame, resize, heatHex, setExaggeration,
-           get ZEXAG() { return ZEXAG; }/* SIM35 BEGIN */, setCoverSelect, coverSelectInfo, mapCam, screenOf/* SIM35 END */ };
+           get ZEXAG() { return ZEXAG; }/* SIM35 BEGIN */, setCoverSelect, coverSelectInfo, mapCam, screenOf,
+           setSensorPrefix: p => { sensorPrefix = p || "S"; }/* SIM35 END */ };
 })();

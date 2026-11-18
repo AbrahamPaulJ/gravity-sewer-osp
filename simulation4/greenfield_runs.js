@@ -74,10 +74,11 @@
     });
   });
 
-  // Per case, the runs some manhole sees under the rule, each as its set of seeing manholes.
+  // Per wet case, the runs some manhole sees under the rule, each as its set of seeing manholes. Dry is left out of
+  // the scores, as the story leaves it out: the heat, the greedy order and every share are over the wet cases.
   const n = G3.chambers.length, ruleIds = ["alarm", "r10", "r25", "r50"];
-  const detected = rule => cases.map((_, ci) => cells.filter(c => c.case === ci && c.rule === rule)
-    .flatMap(c => c.rows).filter(r => r.tip.length).map(r => new Set(r.tip))).filter(runs => runs.length);
+  const detected = rule => cases.map((c, ci) => c.ii > 0 ? cells.filter(x => x.case === ci && x.rule === rule)
+    .flatMap(x => x.rows).filter(r => r.tip.length).map(r => new Set(r.tip)) : []).filter(runs => runs.length);
   const heat = {}, sensors = {}, maxSensors = G3.maxSensors || 10;
   ruleIds.forEach(rule => {
     const det = detected(rule);
