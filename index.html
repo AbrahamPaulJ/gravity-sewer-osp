@@ -66,6 +66,12 @@ html[data-theme="light"] #themeToggle .moon{display:block}
 .panes{flex:1;min-height:0;position:relative}
 .pane{position:absolute;inset:0;overflow:auto}
 .pane[hidden]{display:none!important}
+/* A hidden tab keeps its box instead of collapsing to nothing: a frame that went to zero size could come back laid out
+   at an old size, with a white unpainted margin. content-visibility skips its drawing (a hidden 3D page stops its
+   frames), and it neither shows nor takes clicks. Browsers without it fall back to display:none above. */
+@supports (content-visibility:hidden){
+  .pane[hidden]{display:block!important;content-visibility:hidden;visibility:hidden;pointer-events:none}
+}
 .pane iframe{width:100%;height:100%;border:0;display:block;background:var(--bg)}
 
 .wrap{max-width:1040px;margin:0 auto;padding:40px 24px 80px;min-width:0}
@@ -413,8 +419,8 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
      refetch. Bump it whenever an embedded page changes. -->
 <div class="pane" id="pane-demo" hidden><iframe data-src="demo/index.html?v=16" title="Product demo: the problem, the data, the method, the results and what comes next"></iframe></div>
 <div class="pane" id="pane-sandbox" hidden><iframe data-src="osp_sandbox.html?v=34#sandbox" title="OSP Sandbox"></iframe></div>
-<div class="pane" id="pane-anatomy" hidden><iframe data-src="manhole_anatomy.html?v=32" title="What a maintenance hole is"></iframe></div>
-<div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html?v=32" title="Why observability is limited"></iframe></div>
+<div class="pane" id="pane-anatomy" hidden><iframe data-src="manhole_anatomy.html?v=33" title="What a maintenance hole is"></iframe></div>
+<div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html?v=33" title="Why observability is limited"></iframe></div>
 <div class="pane" id="pane-sim1" hidden><iframe data-src="simulation_legacy/index.html?v=32" title="Simulation 1: warning time"></iframe></div>
 <div class="pane" id="pane-sim2" hidden><iframe data-src="simulation/index.html?v=32" title="Simulation 2: growth and sensor placement"></iframe></div>
 <div class="pane" id="pane-sim4" hidden><iframe data-src="simulation4/index.html?v=14" allow="fullscreen" title="Simulation 4: where to put the first sensors"></iframe></div>
@@ -542,7 +548,15 @@ function showTab(name){
   if (want && frame && frame.hasAttribute('data-src')) { frame.src = want; frame.removeAttribute('data-src'); }
   else if (want && frame && subOf(tab, frame) !== sub) { frame.src = want; }
   else if (frame && frame.hasAttribute('data-src')) { frame.src = frame.dataset.src; frame.removeAttribute('data-src'); }
+  else if (frame) refit(frame);
   return true;
+}
+// A frame shown again after its tab was hidden can keep the width it had before, and the browser leaves the rest
+// of the pane unpainted (a white margin). Resize the frame by a pixel for a moment and back, so the browser
+// re-measures it and the page's own resize handlers (its layout, its 3D map) run at the full pane.
+function refit(frame){
+  frame.style.width = 'calc(100% - 1px)';
+  setTimeout(function(){ frame.style.width = ''; }, 60);
 }
 document.querySelectorAll('#tabs button[data-tab]').forEach(function(b){
   b.addEventListener('click', function(){

@@ -269,6 +269,21 @@ html[data-theme="light"] .ovGrp button.primary{color:#fff}
   background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:8px 10px;
   backdrop-filter:blur(6px)}
 .legend .grp[hidden]{display:none}
+/* Every legend card folds to its title bar (the − on its header); folded cards stack as a short column of bars. The bar
+   at the top folds or opens them all. explore_ui.js legendFolds() adds the buttons and remembers the choice. */
+.legend .grp > b{display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; cursor:pointer;
+  user-select:none}
+.legend .lgFold{flex:none; width:18px; height:18px; padding:0; border:1px solid var(--line); border-radius:4px;
+  background:none; color:var(--dim); font:13px/1 system-ui, sans-serif; cursor:pointer}
+.legend .lgFold:hover{color:var(--ink); border-color:var(--dim)}
+.legend .grp.folded{padding:5px 10px; gap:0}
+.legend .grp.folded > :not(b){display:none !important}
+.legend .grp.folded > b{margin-bottom:0}
+#legendBar{display:flex; justify-content:flex-end}
+#legendBar[hidden]{display:none}
+#legendBar button{padding:2px 9px; border:1px solid var(--line); border-radius:6px; background:var(--panel); color:var(--dim);
+  font:11px/1.4 inherit; cursor:pointer; backdrop-filter:blur(6px)}
+#legendBar button:hover{color:var(--ink); border-color:var(--dim)}
 .legend .k{display:inline-block; width:11px; height:11px; border-radius:50%; vertical-align:-2px; margin-right:6px}
 .legend .kl{display:inline-block; width:16px; height:3px; border-radius:2px; vertical-align:3px; margin-right:6px}
 .legend .kr{display:inline-block; width:9px; height:9px; border-radius:50%; border:2px solid; vertical-align:-2px; margin-right:6px}
@@ -678,6 +693,7 @@ html[data-theme="light"] #themeBtn .moon{display:block}
   </div>
 
   <div class="legend" id="legend" hidden>
+    <div id="legendBar"><button id="legendFoldAll" title="Fold every legend card to its title, or open them all">Minimise all</button></div>
     <div class="grp" id="areasKey" hidden><b>Regions</b><span id="areasKeyList"></span></div>
     <div class="grp" id="coverKey" hidden><b>Coverage</b><span id="coverKeyList"></span></div>
     <div class="grp s" id="simpleKey"><b>Map</b>
@@ -760,7 +776,7 @@ html[data-theme="light"] #themeBtn .moon{display:block}
 <script src="../simulation35/data/room.js?v=1"></script>
 <script src="../simulation35/room_calc.js?v=2"></script>
 <script src="map_help.js?v=1"></script>
-<script src="explore_ui.js?v=36"></script>
+<script src="explore_ui.js?v=37"></script>
 <script type="module">
   Sim35UI.init();
 </script>

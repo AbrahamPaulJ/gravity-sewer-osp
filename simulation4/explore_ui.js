@@ -769,6 +769,7 @@ window.Sim35UI = (function () {
     buildStrip();
     on("#ruleKnob", b => { st.rule = b.dataset.r; repaint(); });
     $("#toggleLegend").onclick = () => { st.legend = !st.legend; legendGroups(); };
+    legendFolds();
     $("#toggleAreas").onclick = () => { st.areasView = !st.areasView; if (st.areasView) st.coverView = false; legendGroups(); repaint(); };
     $("#toggleCover").onclick = () => {
       st.coverView = !st.coverView;
@@ -878,6 +879,7 @@ window.Sim35UI = (function () {
       if (wxOf() !== "dry" && wxOf() !== "wet") setWeather("wet"); else if (!/^(Dry|Design wet)$/.test(curCase().label)) setWeather(wxOf());
     }
     repaint();
+    foldAllLabel();
     Growth3D.resize($("#stage"));
   }
   function syncGround() {
@@ -2053,7 +2055,51 @@ window.Sim35UI = (function () {
   }
   function legendGroups() {
     legendKeys();
+    foldAllLabel();
     Growth3D.resize($("#stage"));
+  }
+  /* Each legend card folds to its title bar, from the button on its header (or the header itself); folded cards stack
+     as a short column of bars. "Minimise all" folds every card shown, "Expand all" opens them. The folded titles are
+     remembered in this browser only. */
+  const FOLD_KEY = "sim4LegendFolded";
+  // Shown: not hidden, and not an Expert-only card (.x) in the Simple view or a Simple-only one (.s) in Expert.
+  const shownCards = () => $$(".legend .grp").filter(g => !g.hidden &&
+    !(g.classList.contains("x") && st.view === "simple") && !(g.classList.contains("s") && st.view === "expert"));
+  function foldAllLabel() {
+    const cards = shownCards(), all = cards.length > 0 && cards.every(g => g.classList.contains("folded"));
+    $("#legendFoldAll").textContent = all ? "Expand all" : "Minimise all";
+    $("#legendBar").hidden = cards.length < 2;
+  }
+  function foldCard(g, on) {
+    g.classList.toggle("folded", on);
+    const b = g.querySelector(".lgFold");
+    b.textContent = on ? "+" : "−";
+    b.title = on ? "Expand this legend" : "Minimise this legend";
+    b.setAttribute("aria-expanded", String(!on));
+  }
+  function saveFolds() {
+    const t = $$(".legend .grp.folded").map(g => g.dataset.key);
+    try { localStorage.setItem(FOLD_KEY, JSON.stringify(t)); } catch (e) { /* not remembered */ }
+  }
+  function legendFolds() {
+    let saved = [];
+    try { saved = JSON.parse(localStorage.getItem(FOLD_KEY) || "[]") || []; } catch (e) { /* storage blocked: all open */ }
+    $$(".legend .grp").forEach(g => {
+      const head = g.querySelector(":scope > b");
+      g.dataset.key = g.id || head.textContent.trim();
+      head.innerHTML = "<span>" + head.innerHTML + "</span>";
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "lgFold";
+      head.appendChild(b);
+      foldCard(g, saved.includes(g.dataset.key));
+      head.onclick = () => { foldCard(g, !g.classList.contains("folded")); saveFolds(); foldAllLabel(); };
+    });
+    $("#legendFoldAll").onclick = () => {
+      const cards = shownCards(), fold = !cards.every(g => g.classList.contains("folded"));
+      cards.forEach(g => foldCard(g, fold));
+      saveFolds(); foldAllLabel();
+    };
+    foldAllLabel();
   }
   /* Live presentation sync (Capstone Live). Its script mirrors buttons, sliders and selects by
      itself; this carries what it cannot see (a manhole picked on the map, a dropdown option,
