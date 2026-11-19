@@ -142,8 +142,8 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   const fig = await ev(`(()=>{const o=App.SIM4_TEST();const a=App.score(App.ladderIdx(1),o),b=App.score(App.ladderIdx(5),o),c=App.score(App.ladderIdx(5),{...o,mm:25}),w=App.score(App._.ladderWorstIdx(5),o);return [a.worst,a.avg,a.warned,b.worst,b.avg,b.warned,b.warnable,c.worst,c.avg,w.worst,w.avg,w.warned].map(x=>Math.round(x*100)/100)})()`);
   const r2 = x => Math.round(x * 100) / 100, want = [L(1).worst, L(1).average, L(1).warned_target, L(5).worst, L(5).average, L(5).warned_target, WT, L(5).worst_25, L(5).average_25, LW(5).worst, LW(5).average, LW(5).warned_target].map((v, j) => [2, 5, 6, 11].includes(j) ? v : r2(v));
   ok("engine reproduces Sim 4's two greedy lists (numbers.json): 1 and 5 level sensors, warnings, the 25 mm rule", JSON.stringify(fig) === JSON.stringify(want), JSON.stringify(fig) + " vs " + JSON.stringify(want));
-  ok("fifteen views in four chapters, The problem first", await ev(`document.querySelectorAll('#secs .ch').length===4 && document.querySelectorAll('#secs button[data-sec]').length===15 && document.querySelector('#secs button[data-sec]').dataset.sec==='problem'`));
-  ok("order: Which regions, One is not enough, Place sensors, then Compare", await ev(`App.SECTIONS.map(s=>s[0]).join()`) === "problem,setting,network,approach,simulate,insights,regions,onesensor,algorithms,compare,check,sensors,repeat,future,conclude", await ev(`App.SECTIONS.map(s=>s[0]).join()`));
+  ok("sixteen views in four chapters, The problem first", await ev(`document.querySelectorAll('#secs .ch').length===4 && document.querySelectorAll('#secs button[data-sec]').length===16 && document.querySelector('#secs button[data-sec]').dataset.sec==='problem'`));
+  ok("order: Which regions, One is not enough, Place sensors, then Compare and Other methods", await ev(`App.SECTIONS.map(s=>s[0]).join()`) === "problem,setting,network,approach,simulate,insights,regions,onesensor,algorithms,compare,ninh,check,sensors,repeat,future,conclude", await ev(`App.SECTIONS.map(s=>s[0]).join()`));
   ok("the plan defaults to Greedy: average (the story's step 5b)", await ev(`App._.plan()==='avg' && App.planIdx(5).join()===App.ladderIdx(5).join()`));
   ok("sensor labels read S1 to S5", await ev(`(()=>{App.go('conclude');return [...document.querySelectorAll('#labels .lbl.sensor')].map(e=>e.textContent).join()==='S1,S2,S3,S4,S5'})()`));
   await ev(`App.go('setting')`); await wait(300);
@@ -280,6 +280,16 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await click('[data-plan="avg"]'); await wait(300);
   ok("conclusion: back to Greedy: average", await ev(`App._.plan()==='avg'`));
   await shot("11_conclude");
+  // Other methods: Ninh's topology rule and the global-coverage algorithms, scored on growth and on blockage cover
+  await ev(`App.go('ninh')`); await wait(500);
+  ok("other methods: Ninh greedy, Ninh genetic algorithm, coverage greedy, Sim 3.5 region-less and our growth plan, in the table and the chart", await ev(`[...document.querySelectorAll('table.ncmp tr[data-nm]')].map(r=>r.dataset.nm).join()==='ninh,ga,cov,s35,gAvg' && document.querySelectorAll('svg.nchart g[data-nm]').length===5`));
+  ok("other methods: the table's growth figures for Sim 4 match the demo's own score", await ev(`(()=>{const m=window.NINH_COMPARE.methods.find(x=>x.id==='gAvg'),s=App.score(m.sets[4],App.SIM4_TEST());return Math.abs(s.worst-m.byK[4].scenario.worst)<1e-9&&Math.abs(s.avg-m.byK[4].scenario.avg)<1e-9})()`));
+  await click('table.ncmp tr[data-nm="ga"]'); await wait(300);
+  ok("other methods: clicking a row shows that method's sensors and the pipe they cover", await ev(`App.st.ninh.m==='ga'`) && /genetic algorithm/.test(await panel()));
+  await ev(`(()=>{const e=document.querySelector('#ncK');e.value=3;e.dispatchEvent(new Event('input'))})()`); await wait(300);
+  ok("other methods: the sensor slider re-scores every method", await ev(`App.st.ninh.k===3`) && /3 sensors/.test(await panel()));
+  await ev(`document.querySelector("svg.nchart").scrollIntoView()`); await wait(200); await shot("ninh_compare");
+  await ev(`(()=>{App.st.ninh.k=5;App.st.ninh.m='ninh'})()`);
   // Design: titles, callouts, themes, presentation mode
   let heads = true; for (const v of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${v}')`); await wait(120); heads = heads && await ev(`(()=>{const h=document.querySelector('#panel h2.title');return !!h && h.textContent===App.SECTIONS.find(s=>s[0]==='${v}')[2]})()`); }
   ok("every view opens with its own title", heads);
