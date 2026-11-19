@@ -298,6 +298,9 @@ html[data-theme="light"] .ovGrp button.primary{color:#fff}
   cursor:pointer; color:var(--dim); font-size:11.5px; background:none; font-family:inherit}
 .chip:hover{border-color:var(--dim); color:var(--ink)}
 .chip.on{border-color:var(--accent); background:var(--accent); color:#06131f; font-weight:600}
+.rlabels .rlbl{position:absolute; color:#04140a; font:700 11px/1.45 system-ui, sans-serif; padding:1px 7px; border-radius:4px;
+  white-space:nowrap; box-shadow:0 0 0 2px #0d1117; opacity:.95}
+html[data-theme="light"] .rlabels .rlbl{box-shadow:0 0 0 2px #fff}
 .labels .lbl.region{color:#04140a; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px;
   transform:translate(-50%,-50%); text-shadow:none; box-shadow:0 0 0 2px #0d1117; opacity:.95}
 .heatbar{display:inline-flex; align-items:center; gap:6px}
@@ -768,8 +771,14 @@ html[data-theme="light"] #themeBtn .moon{display:block}
 <script src="../simulation3/osp_core.js?v=9"></script>
 <script src="../simulation3/placement.js?v=9"></script>
 <script src="data/explore.js?v=6"></script>
-<script src="data/sim4.js?v=12"></script>
+<script src="data/sim4.js?v=13"></script>
 <script src="library.js?v=1"></script>
+<script src="region_labels.js?v=1"></script>
+<script>/* Region labels at the network's edge, not on a manhole (19 Nov dry run). */
+RegionLabels.init({ avoid: "#mapControls, .legend, #mapOverlays, #stage .mapCredit", z: 4, stage: function () { return document.getElementById("stage"); },
+  safe: function () { var m = document.getElementById('mapControls'), o = {};
+    if (m && m.offsetParent) o.top = m.getBoundingClientRect().bottom;
+    return o; } });</script>
 <script src="data/greenfield.js?v=2"></script>
 <script src="data/estates.js?v=7"></script>
 <script src="greenfield_runs.js?v=3"></script>

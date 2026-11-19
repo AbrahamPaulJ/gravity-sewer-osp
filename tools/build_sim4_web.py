@@ -153,16 +153,16 @@ def steps(nm, reg, ctx):
     k0, nd = len(seed), nm["universe"][DESIGN]
     L0 = lad[k0]
     see = f"see{'s' if k0 == 1 else ''} all {nd}" if L0["design_wet"] >= 1 - 1e-9 else f"see{'s' if k0 == 1 else ''} {pct(L0['design_wet'])} of the {nd}"
-    s5a = (f"{k0} sensor{'s' if k0 != 1 else ''} {see} growth runs in those regions on a design wet day. In other weather {'it falls' if k0 == 1 else 'they fall'} short: "
-           f"{pct(L0['average'])} on average across {ctx['nwet']} wet cases. Click a sensor to see why it is there.")
+    s5a = (f"{k0} level sensor{'s' if k0 != 1 else ''} {see} growth runs in those regions on a design wet day. In other weather {'it falls' if k0 == 1 else 'they fall'} short: "
+           f"{pct(L0['average'])} on average across {ctx['nwet']} wet cases. Click a level sensor to see why it is there.")
     L5, wt = lad[rec], nm["warn_universe"]["target"]
     warned = f"all {wt}" if L5["warned_target"] == wt else f"{L5['warned_target']} of {wt}"
-    s5b = (f"The same {k0} plus {rec - k0} more. Across {ctx['nwet']} wet cases they see {pct(L5['average'])} of growth runs on average "
-           f"and {pct(L5['worst'])} in the worst case, and warn of {warned} overloads. On weather they were not chosen for: "
+    s5b = (f"The same {k0} plus {rec - k0} more level sensors. Across {ctx['nwet']} wet cases they see {pct(L5['average'])} of growth runs on average "
+           f"and {pct(L5['worst'])} in the worst case, and warn of {warned} overloads. On unseen weather: "
            f"{pct(unseen_avg(nm, rec))}, averaged by case. "
-           f"A nested list, not the exact best {word(rec)}: it keeps step 5a's sensor and grows from {k0} to {rec} to {max(lad)} without moving one.")
+           f"A nested list, not the exact best {word(rec)}: it keeps step 5a's level sensor and grows from {k0} to {rec} to {max(lad)} without moving one.")
     s6 = (f"{kdollars(k0 * price)} or {kdollars(rec * price)}, at assumed prices. Normal-day records could confirm the design day "
-          f"and save up to {rec - k0} sensors, about {kdollars((rec - k0) * price)}. Level sensors, not floats: a float only switches at one height, "
+          f"and save up to {rec - k0} level sensors, about {kdollars((rec - k0) * price)}. Level sensors, not floats: a float only switches at one height, "
           f"so it cannot follow a gradual rise. A new suburb needs its own model runs. New estates at the edge (greenfield) are the next piece of work.")
     return [
         {"id": "1", "n": 1, "title": "The network", "map": "plain",
@@ -171,8 +171,8 @@ def steps(nm, reg, ctx):
          "body": f"Before any new homes, the model has {d['surcharged']} manholes surcharged: water above the pipe top, the warning sign before an overflow. {spill} On a much wetter day it has {fb['Beyond design']['surcharged']}, so wet weather alone already matters."},
         {"id": "3", "n": 3, "title": "Add the 2041 homes", "map": "growth", "slider": True, "legend": ["was", "rise", "tip"], "body": s3},
         {"id": "4", "n": 4, "title": "Decide where to look", "map": "triage", "legend": ["monitor", "watch", "leave"], "body": s4},
-        {"id": "5a", "n": 5, "title": "Place sensors, if the design day is right", "map": "sensors", "k": k0, "legend": ["sensor", "monitor", "watch"], "body": s5a},
-        {"id": "5b", "n": 5, "title": "Place sensors, if the weather is unknown", "map": "sensors", "k": rec, "legend": ["sensor", "monitor", "watch"], "body": s5b},
+        {"id": "5a", "n": 5, "title": "Place level sensors, if the design day is right", "map": "sensors", "k": k0, "legend": ["sensor", "monitor", "watch"], "body": s5a},
+        {"id": "5b", "n": 5, "title": "Place level sensors, if the weather is unknown", "map": "sensors", "k": rec, "legend": ["sensor", "monitor", "watch"], "body": s5b},
         {"id": "6", "n": 6, "title": "Cost, and doing it again", "map": "sensors", "k": rec, "legend": ["sensor"], "body": s6},
     ]
 

@@ -53,6 +53,9 @@ body{background:var(--bg); color:var(--ink); font:14px/1.5 system-ui,-apple-syst
 .labels .lbl.sensor{pointer-events:auto; cursor:pointer}
 .labels .lbl.pumprate{color:#e3b341; font-weight:600; transform:translate(-50%,160%)}
 .labels .lbl.scale,.labels .lbl.outlet{display:none !important}
+.rlabels .rlbl{position:absolute; color:#04140a; font:700 11px/1.45 system-ui, sans-serif; padding:1px 7px; border-radius:4px;
+  white-space:nowrap; box-shadow:0 0 0 2px #0d1117; opacity:.95}
+html[data-theme="light"] .rlabels .rlbl{box-shadow:0 0 0 2px #fff}
 .labels .lbl.region{color:#04140a; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px;
   transform:translate(-50%,-50%); text-shadow:none; box-shadow:0 0 0 2px #0d1117; opacity:.95}
 
@@ -377,10 +380,17 @@ html[data-theme="light"] body{background:#f3f0e8}
 <script src="data/regions.js?v=1"></script>
 <script src="../simulation3/data/index.js?v=9"></script>
 <script src="../simulation35/growth_3d.js?v=34"></script>
-<script src="data/sim4.js?v=12"></script>
+<script src="data/sim4.js?v=13"></script>
 <script src="library.js?v=1"></script>
+<script src="region_labels.js?v=1"></script>
+<script>/* Region labels at the network's edge, not on a manhole (19 Nov dry run). */
+RegionLabels.init({ avoid: "#stage .mapCredit, #corner > *", z: 9, stage: function () { return document.getElementById("stage"); },
+  safe: function () { var c = document.getElementById('card'), p = document.getElementById('pop'), o = {};
+    if (c && !c.hidden) o.top = c.getBoundingClientRect().bottom;
+    if (p && !p.hidden && p.dataset.dock === 'sheet') o.bottom = p.getBoundingClientRect().top;
+    return o; } });</script>
 <script src="map_help.js?v=1"></script>
-<script src="sim4_story.js?v=12"></script>
+<script src="sim4_story.js?v=13"></script>
 <script type="module">
   Sim4.init();
 </script>

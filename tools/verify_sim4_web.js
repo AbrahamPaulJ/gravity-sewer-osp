@@ -178,9 +178,27 @@ function connect(url) {
   for (const [i, n] of L(K0).chosen.entries()) {
     await clickSensor(n);
     const t = await txt('#pop'), p = D.popups[String(K0)][i];
-    ok(`5a: click ${n} opens its popup`, t.includes(`Sensor ${i + 1} of ${K0}`) && t.includes(n), t.split('\n')[0]);
+    ok(`5a: click ${n} opens its popup`, t.includes(`Level sensor ${i + 1} of ${K0}`) && t.includes(n), t.split('\n')[0]);
     ok(`5a: ${n} popup speaks of Design wet`, /Design wet falls from 100%/.test(t) && t.includes(p.lost) && t.includes(p.listens) && t.includes(p.reacts));
     if (i === 0) await shot('popup_5a');
+  }
+  // 20 Nov (dry run, 36:44 to 41:31): region labels read as sensor sites when they sat on a central manhole. They now sit
+  // at the network's edge with a dashed leader into the region, clear of every sensor pin and of each other.
+  for (const h of ['#step=4', '#step=5b']) {
+    await load(h); await wait(800);
+    const L = await ev(`(()=>{const pins=[...document.querySelectorAll('.labels .lbl.sensor')].filter(e=>e.offsetParent).map(e=>e.getBoundingClientRect());
+      return {st:RegionLabels.state(), pins:pins.map(b=>({l:b.left,t:b.top,r:b.right,b:b.bottom})), old:[...document.querySelectorAll('.labels .lbl.region')].filter(e=>e.style.display!=='none'&&e.style.visibility!=='hidden').length}})()`);
+    const ov = (a, b) => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
+    ok(`${h}: 9 region labels shown, none of them on the map's own label layer`, L.st.length === 9 && L.st.every(x => x.shown) && L.old === 0, JSON.stringify(L.st.map(x => x.text)));
+    ok(`${h}: no region label covers a sensor pin`, L.st.every(x => L.pins.every(p => !ov(x.box, p))));
+    ok(`${h}: no two region labels overlap`, L.st.every((x, i) => L.st.every((y, j) => i === j || !ov(x.box, y.box))));
+    ok(`${h}: each label sits away from its region's centre manhole, with a leader to the region`,
+      L.st.every(x => x.anchor && x.end && Math.hypot((x.box.l + x.box.r) / 2 - x.anchor.x, (x.box.t + x.box.b) / 2 - x.anchor.y) > 40));
+  }
+  {
+    const steps = await ev('window.SIM4.steps.map(s=>({id:s.id,title:s.title,body:s.body}))');
+    const bare = steps.filter(s => /(?<!level )\bsensors?\b/i.test(s.title + ' ' + s.body));
+    ok('20 Nov: the story says "level sensor", never a bare "sensor" (KK 41:57)', bare.length === 0, bare.map(s => s.id).join(' '));
   }
   await load('#step=5b');
   const pops = {};
@@ -192,7 +210,7 @@ function connect(url) {
     await clickSensor(n);
     const t = await txt('#pop'); pops[n] = t;
     const sw = X.swaps['5'][n];
-    ok(`5b: click ${n} opens its popup`, t.includes(`Sensor ${i + 1} of 5`) && t.includes(n), t.split('\n')[0]);
+    ok(`5b: click ${n} opens its popup`, t.includes(`Level sensor ${i + 1} of 5`) && t.includes(n), t.split('\n')[0]);
     ok(`5b: ${n} has the three plain lines`, /Listens to/.test(t) && /First reacts/.test(t) && /Without it/.test(t));
     ok(`5b: ${n} quotes what is lost`, t.includes(`from ${pc(L(5).worst)} to ${pc(sw.without_worst)}`), t.match(/Worst.*/)?.[0]);
     const r = await ev(`(()=>{const r=document.querySelector('#pop').getBoundingClientRect(),c=document.querySelector('#card').getBoundingClientRect();return{on:r.left>=0&&r.top>=0&&r.right<=innerWidth&&r.bottom<=innerHeight}})()`);
@@ -442,7 +460,7 @@ function connect(url) {
   ok("theme: kept under Explore's own key", await ev('localStorage.getItem("sim4Theme")') === 'light' && /localStorage\.getItem\("sim4Theme"\)/.test(fs.readFileSync(path.join(PUB, 'simulation4/explore_ui.js'), 'utf8')));
   ok("theme: the map's ground turns light", lum(darkGround) < 60 && lum(lightGround) > 200, darkGround + ' -> ' + lightGround);
   ok('theme: the card, its text and the fold turn light', (await cssOf('#card', 'backgroundColor')) !== darkCard && lum((await cssOf('#stepBody', 'color')).match(/\d+/g).map(Number)) < 80);
-  const pills = await ev(`[...document.querySelectorAll('.labels .lbl.region')].filter(e=>e.style.display!=='none').map(e=>getComputedStyle(e).color)`);
+  const pills = await ev(`[...document.querySelectorAll('.rlabels .rlbl')].filter(e=>e.style.display!=='none').map(e=>getComputedStyle(e).color)`);
   ok("theme: the map's region labels keep dark text on their colour", pills.length > 0 && pills.every(c => c === 'rgb(4, 20, 10)'), pills.slice(0, 3).join(' '));
   await load('#step=3&still=1');
   ok('theme: a new visit keeps the choice', await theme() === 'light' && await iconShown() === 'moon');
@@ -503,6 +521,14 @@ function connect(url) {
   const narrow = await ev(`(()=>{const r=document.querySelector('#card').getBoundingClientRect();return{fit:r.left>=0&&r.right<=innerWidth,bottom:r.bottom,h:innerHeight,scroll:document.documentElement.scrollWidth<=innerWidth}})()`);
   ok('phone width: the card fits', narrow.fit && narrow.scroll);
   ok('phone width: the card leaves map to see', narrow.bottom < narrow.h * .62, Math.round(narrow.bottom));
+  {
+    await wait(800);
+    const L = await ev(`(()=>{const pins=[...document.querySelectorAll('.labels .lbl.sensor')].filter(e=>e.offsetParent).map(e=>e.getBoundingClientRect());
+      return {st:RegionLabels.state(), pins:pins.map(b=>({l:b.left,t:b.top,r:b.right,b:b.bottom}))}})()`);
+    const ov = (a, b) => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
+    ok('phone width: region labels on screen, clear of the pins and of each other',
+      L.st.length === 9 && L.st.every(x => x.box.l >= 0 && x.box.r <= 390 && L.pins.every(q => !ov(x.box, q))) && L.st.every((x, i) => L.st.every((y, j) => i === j || !ov(x.box, y.box))));
+  }
   const corners = await ev(`(()=>{const c=document.querySelector('#card').getBoundingClientRect();return ['#btnExplore','#btnMapHelp','#themeBtn'].map(s=>document.querySelector(s).getBoundingClientRect()).map(r=>({in:r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight,clear:r.top>=c.bottom}))})()`);
   ok("phone width: Explore, the map controls ? and Light or Dark fit, clear of the card", corners.every(x => x.in && x.clear), JSON.stringify(corners));
   {

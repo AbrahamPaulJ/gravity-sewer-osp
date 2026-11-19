@@ -9,7 +9,7 @@ const Sim4 = (() => {
   const ACTION_COL = { monitor: "#ff5c7a", watch: "#ffa500", leave: "#33435f" };
   const LEGEND = {
     was: ["#ffa500", "Surcharged before growth"], rise: ["#fff176", "Rises 10 mm or more"], tip: ["#ff2d55", "Newly surcharged"],
-    monitor: [ACTION_COL.monitor, "Monitor"], watch: [ACTION_COL.watch, "Watch"], leave: [ACTION_COL.leave, "Leave"], sensor: ["#2ef56b", "Sensor"],
+    monitor: [ACTION_COL.monitor, "Monitor"], watch: [ACTION_COL.watch, "Watch"], leave: [ACTION_COL.leave, "Leave"], sensor: ["#2ef56b", "Level sensor"],
   };
   // Step 3's "Regions" view: every region in its own colour, the same colours by id as the Explore page (explore_ui.js).
   const REGION_COLS = { R1: "#3987e5", R2: "#d95926", R3: "#008300", R4: "#e87ba4", R5: "#199e70", R6: "#39c5cf", R7: "#b08457", R8: "#9085e9", R9: "#c9d1d9" };
@@ -384,7 +384,7 @@ const Sim4 = (() => {
   function showPop(name) {
     const k = step().k, info = k ? D().popups[k].find(x => x.name === name) : null;
     if (info) {
-      openPop(name, `<b>Sensor ${info.n} of ${k}: ${esc(name)}</b><dl><dt>Listens to</dt><dd>${esc(info.listens)}</dd><dt>First reacts</dt><dd>${esc(info.reacts)}</dd><dt>Without it</dt><dd>${esc(info.lost)}</dd></dl>${info.note ? `<p>${esc(info.note)}</p>` : ""}`, true);
+      openPop(name, `<b>Level sensor ${info.n} of ${k}: ${esc(name)}</b><dl><dt>Listens to</dt><dd>${esc(info.listens)}</dd><dt>First reacts</dt><dd>${esc(info.reacts)}</dd><dt>Without it</dt><dd>${esc(info.lost)}</dd></dl>${info.note ? `<p>${esc(info.note)}</p>` : ""}`, true);
     } else {
       const ri = regionOf(name), r = ri == null ? null : S().regions[ri].id;
       openPop(name, `<b>${esc(name)}</b><p>${r ? `In ${r}: ${D().triage[r]}.` : "Not in a region."}${esc(overlayNote(name))} No sensor here.</p>`, false);
