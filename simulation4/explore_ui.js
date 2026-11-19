@@ -130,7 +130,7 @@ window.Sim35UI = (function () {
     region: 0, step: 4,                 // infill: region index, ladder index (100%)
     site: null, add: 1,                 // greenfield: chamber index, growth size index
     caseTag: null,                      // the uncertainty case, by tag (shared by the families)
-    rule: "r10", k: 5, method: "greedy-avg",    // DEFAULT_METHOD, below: only the two greedy methods are offered
+    rule: "r10", k: 5, method: "greedy-avg",    // DEFAULT_METHOD, below: the two greedy methods and Exact optimum (the comparison) are offered
     showW: true, showA: true,           // the figures quote both the worst case and the average (the Show checkboxes went, 19 Nov)
     scope: "story",                     // the test sets are scored on: the story's (default) or the broader one (TEST_NOTE)
     showSensors: true, showHeat: false, showPumps: false, showConn: false,
@@ -249,9 +249,10 @@ window.Sim35UI = (function () {
      ("greedy-avg"). The chart draws one line for each, by its own goal; the figures quote both the worst case and the
      average (st.showW, st.showA stay on: the Show checkboxes went). */
   const isGreedy = m => m === "greedy" || m === "greedy-avg";
-  /* Only the two greedy methods are offered. The nested beam search, warn, exact and risk code and data stay, hidden:
-     add a method's id to SHOWN_METHODS to bring its button and chart line back. */
-  const SHOWN_METHODS = ["greedy-avg", "greedy"], DEFAULT_METHOD = "greedy-avg";
+  /* The two greedy methods are offered, and Exact optimum beside them as the comparison (20 Nov): the best set of each
+     size on its own, which can move sensors between sizes. The nested beam search, warn and risk code and data stay,
+     hidden: add a method's id to SHOWN_METHODS to bring its button and chart line back. */
+  const SHOWN_METHODS = ["greedy-avg", "greedy", "exact"], DEFAULT_METHOD = "greedy-avg";
   const shownMethod = m => (SHOWN_METHODS.includes(m) ? m : DEFAULT_METHOD);
   /* On the story's test at the 10 mm rule, both greedy buttons show the story's own lists (sim4_numbers.py, data/sim4.js
      explore.ladder and explore.ladderWorst), so this page and the story name the same manholes. On the broader test, or
@@ -365,7 +366,7 @@ window.Sim35UI = (function () {
     // only adds what neither says: which story step the set is, or that it was chosen on another test.
     const who = st.method === "story" ? "These are the story's " + (n === 1 ? "first sensor" : "first " + n + " sensors") + ", in its order. "
       : pl.chosenOn === "story" && isGreedy(st.method) ? "The story's " + methodName() + " list (step " + (st.method === "greedy" ? "5c" : "5b") + "). "
-      : pl.chosenOn === "story" ? "This is the exact optimum on the story's own test. "
+      : pl.chosenOn === "story" ? "The story's Exact optimum set (step 5b's comparison). "
       : story ? "This set was chosen on the broader test and is scored here on the story's. " : "";
     return (story ? "" : wetNote(pl)) + (w && w.total ? "<p style='margin:0 0 8px'>They warn of <b>" + w.warned + " of " + w.total + "</b> overloads by 100% build-out, before the first surcharge.</p>" : "") +
       (who ? "<p class='quiet' style='margin:0 0 8px' id='scopeSay'>" + who.trim() + "</p>" : "");
@@ -793,8 +794,9 @@ window.Sim35UI = (function () {
     on("#addKnob", b => { st.add = +b.dataset.i; repaint(); });
     on("#methKnob", b => { st.method = shownMethod(b.dataset.m); st.pickedGreedy = isGreedy(st.method); repaint(); });
     on("#scopeKnob", b => { st.scope = b.dataset.s === "broad" ? "broad" : "story"; repaint(); });
-    // Scored on and the method are switches (explore.html): a click on the track between the two labels flips to the other one.
-    ["#scopeKnob", "#methKnob"].forEach(k => $(k).addEventListener("click", e => {
+    // Scored on is a switch (explore.html): a click on the track between the two labels flips to the other one.
+    // The method is a bar of three buttons (20 Nov), so it has no track.
+    ["#scopeKnob"].forEach(k => $(k).addEventListener("click", e => {
       if (e.target.closest("button")) return;
       const bs = [...$(k).querySelectorAll("button")].filter(b => !b.hidden && b.getClientRects().length);
       if (bs.length !== 2) return;
@@ -819,7 +821,8 @@ window.Sim35UI = (function () {
     $("#scopeNote").textContent = TEST_NOTE[storyScope() ? "story" : "broad"];
     // The test is named by the Scored on switch just below, so the heading only names the sensors (greenfield has no switch).
     $("#sensHead").textContent = st.fam === "infill" ? "Level sensors" : "Level sensors, scored on the " + scoredCases().length + " wet cases";
-    const kMax = st.method === "story" ? storyMax() : storyGreedyList() ? storyGreedyList().length : (R().maxSensors || 10);
+    const kMax = st.method === "story" ? storyMax() : storyGreedyList() ? storyGreedyList().length
+      : st.method === "exact" && st.fam !== "one" && storyScope() && st.rule === "r10" && (X4().exact || []).length ? X4().exact.length : (R().maxSensors || 10);
     $("#kRange").max = String(kMax);
     if (st.k > kMax) st.k = kMax;
     const ci = caseIndex(), c = curCase();
@@ -864,7 +867,7 @@ window.Sim35UI = (function () {
     // The selected method in one visible line, under its buttons (expert view).
     $("#methSay").innerHTML = st.method === "story" ? "<b>Nested beam search</b>: " + esc(NESTED_HOW) + " The recommendation."
       : st.fam === "one" ? "<b>" + esc(methodName()) + "</b>: the greenfield runs' own order, one sensor at a time, each the one that most raises the " + (st.method === "greedy-avg" ? "average" : "worst case") + "."
-      : st.method === "exact" ? "<b>Exact optimum</b>: the best set at each count, solved on its own by an integer program, so the sets change from one count to the next. A comparison."
+      : st.method === "exact" ? "<b>Exact optimum</b>: the best set of each size, solved on its own by an integer program: the best worst case, then the best average. A comparison: the sets change from one size to the next, so buying in stages would move sensors."
       : st.method === "greedy" ? "<b>Greedy: worst case</b>: one sensor at a time, each the one that most raises the worst case, with no look-ahead, so no sensor moves as more are added."
       : st.method === "greedy-avg" ? "<b>Greedy: average</b>: one sensor at a time, each the one that most raises the average over the cases, with no look-ahead, so no sensor moves as more are added."
       : st.method === "warn" ? "<b>Warn before surcharge</b>: the set that warns of the most overloads a build-out step before the first new surcharge. A comparison."
@@ -1667,14 +1670,17 @@ window.Sim35UI = (function () {
     const all = F => F.find(f => /^All/.test(f.scope)) || F[F.length - 1];
     const a = all(FA), w = all(FW);
     const n80 = f => f && f["ladder_0.8"] != null ? f["ladder_0.8"] + " level sensors</b> (" + usd(f["ladder_0.8"] * P.level) + ")" : "more than " + kmax + "</b>";
+    const x80 = f => f && f["0.8"] != null ? f["0.8"] + " level sensors</b>" : "more than " + kmax + "</b>";
     const line = a ? "At the 10 mm rule, to see at least <b>80%</b> of growth runs in the worst of the " + scopeCases("story").length + " wet cases, Greedy: average needs <b>" + n80(a) +
-      " and Greedy: worst case <b>" + n80(w) + "." : "";
-    return "<p class='q'>What is the fewest sensors that passes?" + info("How many level sensors each greedy list needs before its worst weather case, among those named, reaches the pass mark, on the story's runs (sim4_numbers.py).") + "</p>" +
+      " and Greedy: worst case <b>" + n80(w) + ". The fewest any set needs (Exact optimum) is <b>" + x80(a) + "." : "";
+    const xcell = (f, m) => "<td class='r'>" + (f && f[m] != null ? f[m] : "<span class='quiet'>not reached</span>") + "</td>";
+    return "<p class='q'>What is the fewest sensors that passes?" + info("How many level sensors each greedy list needs before its worst weather case, among those named, reaches the pass mark, and the fewest any set needs (Exact optimum, solved on its own, so not a list to buy in stages), on the story's runs (sim4_numbers.py).") + "</p>" +
       say(line) +
       "<div class='resctl'>" + scopeSeg() + "</div>" + scopeLine() +
       "<p class='quiet'>The story's own table (step 5a): the 10 mm rule, seeing growth. The broader test adds floats, the 25 mm rule and warning before surcharge.</p>" +
-      "<div class='tscroll'><table class='rtab'><thead><tr><th>Weather to cover</th><th class='r'>Greedy: average, 80%</th><th class='r'>90%</th><th class='r'>100%</th><th class='r'>Greedy: worst case, 80%</th><th class='r'>90%</th><th class='r'>100%</th></tr></thead><tbody>" +
-      FA.map((f, i) => "<tr><th>" + esc(f.scope) + "</th>" + cell(f, "0.8") + cell(f, "0.9") + cell(f, "1.0") + cell(FW[i], "0.8") + cell(FW[i], "0.9") + cell(FW[i], "1.0") + "</tr>").join("") + "</tbody></table></div>" +
+      "<div class='tscroll'><table class='rtab'><thead><tr><th>Weather to cover</th><th class='r'>Greedy: average, 80%</th><th class='r'>90%</th><th class='r'>100%</th><th class='r'>Greedy: worst case, 80%</th><th class='r'>90%</th><th class='r'>100%</th><th class='r'>Exact optimum, 80%</th><th class='r'>90%</th><th class='r'>100%</th></tr></thead><tbody>" +
+      FA.map((f, i) => "<tr><th>" + esc(f.scope) + "</th>" + cell(f, "0.8") + cell(f, "0.9") + cell(f, "1.0") + cell(FW[i], "0.8") + cell(FW[i], "0.9") + cell(FW[i], "1.0") +
+        xcell(f, "0.8") + xcell(f, "0.9") + xcell(f, "1.0") + "</tr>").join("") + "</tbody></table></div>" +
       "<p class='quiet'>Prices are assumed, not quotes: " + usd(P.level) + " a level sensor.</p>" +
       sources("min");
   }

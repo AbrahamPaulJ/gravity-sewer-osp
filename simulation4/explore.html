@@ -70,22 +70,32 @@ h4 .info-i{margin-left:4px}
   margin-top:3px; font-variant-numeric:tabular-nums}
 .knob button.on .knobNum{opacity:.85}
 #iiKnob,#ruleKnob,#famKnob{flex-wrap:wrap}
-/* Scored on and the method: two choices each, so a switch: label, sliding track, label. The knob sits on the side of the
-   chosen label, which is bold. Click either label or the track (explore_ui.js flips it). The two buttons stay buttons;
-   the track is the row's ::before, placed between them. The method's hidden buttons stay out of it. */
-#scopeKnob,#methKnob{align-items:center; gap:10px; flex-wrap:nowrap; padding:3px 0}
-#scopeKnob button,#methKnob button{flex:1 1 0; min-width:0; border:0; border-radius:4px; background:none; padding:4px 0;
+/* Scored on: two choices, so a switch: label, sliding track, label. The knob sits on the side of the chosen label,
+   which is bold. Click either label or the track (explore_ui.js flips it). The two buttons stay buttons; the track is
+   the row's ::before, placed between them. */
+#scopeKnob{align-items:center; gap:10px; flex-wrap:nowrap; padding:3px 0}
+#scopeKnob button{flex:1 1 0; min-width:0; border:0; border-radius:4px; background:none; padding:4px 0;
   color:var(--dim); font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color .15s}
-#scopeKnob button[data-s="story"],#methKnob button[data-m="greedy-avg"]{order:1; text-align:right}
-#scopeKnob button[data-s="broad"],#methKnob button[data-m="greedy"]{order:3; text-align:left}
-#scopeKnob::before,#methKnob::before{content:""; order:2; flex:none; width:38px; height:22px; border-radius:11px; cursor:pointer;
+#scopeKnob button[data-s="story"]{order:1; text-align:right}
+#scopeKnob button[data-s="broad"]{order:3; text-align:left}
+#scopeKnob::before{content:""; order:2; flex:none; width:38px; height:22px; border-radius:11px; cursor:pointer;
   background-color:var(--accent); background-image:radial-gradient(circle, #fff 0 8px, transparent 8.5px);
   background-size:22px 22px; background-repeat:no-repeat; background-position:left center; transition:background-position .2s}
-#scopeKnob:has(button[data-s="broad"].on)::before,#methKnob:has(button[data-m="greedy"].on)::before{background-position:right center}
-#scopeKnob button:hover,#methKnob button:hover{color:var(--ink); background:none}
-#scopeKnob button.on,#methKnob button.on{color:var(--ink); font-weight:600; background:none; box-shadow:none}
-#scopeKnob button:focus-visible,#methKnob button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-@media (prefers-reduced-motion:reduce){#scopeKnob::before,#methKnob::before{transition:none}}
+#scopeKnob:has(button[data-s="broad"].on)::before{background-position:right center}
+#scopeKnob button:hover{color:var(--ink); background:none}
+#scopeKnob button.on{color:var(--ink); font-weight:600; background:none; box-shadow:none}
+#scopeKnob button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+@media (prefers-reduced-motion:reduce){#scopeKnob::before{transition:none}}
+/* The method (20 Nov): three choices, so one joined bar of three buttons, the chosen one filled. Greedy: average,
+   Greedy: worst case, then Exact optimum, the comparison. The hidden methods' buttons stay out of it. */
+#methKnob{gap:0; border:1px solid var(--line); border-radius:7px; overflow:hidden}
+#methKnob button{flex:1 1 0; min-width:0; border:0; border-radius:0; padding:7px 4px; white-space:normal; line-height:1.2}
+#methKnob button:not([hidden]) ~ button:not([hidden]){border-left:1px solid var(--line)}
+#methKnob button[data-m="greedy-avg"]{order:1}
+#methKnob button[data-m="greedy"]{order:2}
+#methKnob button[data-m="exact"]{order:3}
+#methKnob button.on{border-color:var(--accent)}
+#methKnob button:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 #iiKnob button,#ruleKnob button{flex:1 1 calc(50% - 4px); white-space:normal; line-height:1.25}
 #famKnob button{flex:1 1 calc(33% - 4px); white-space:normal; line-height:1.25}
 #typeKnob button{white-space:normal; line-height:1.25}
@@ -626,19 +636,19 @@ html[data-theme="light"] #themeBtn .moon{display:block}
   <div id="sensorBox">
     <h4><span id="sensHead">Level sensors</span> <i class="info-i" id="sensInfo" data-tip="">i</i></h4>
     <div id="scopeBox">
-      <label class="fld">Scored on <i class="info-i" data-tip="Where the sensor sets come from: on the story's test at the 10 mm rule both greedy lists are the story's own (steps 5b and 5c); on the broader test, or at the 25 mm rule, each greedy order is chosen on the broader test itself.">i</i></label>
+      <label class="fld">Scored on <i class="info-i" data-tip="Where the sensor sets come from: on the story's test at the 10 mm rule both greedy lists and Exact optimum are the story's own (steps 5b and 5c); on the broader test, or at the 25 mm rule, each is chosen on the broader test itself.">i</i></label>
       <div class="knob" id="scopeKnob">
         <button data-s="story" title="The 7 wet cases, the regions to monitor or watch, build-out up to 100%">The story's test</button>
         <button data-s="broad" title="Broader than the story: adds Dry, the regions it leaves, and the 150% and 300% stress steps">Broader test</button>
       </div>
       <p class="quiet" id="scopeNote"></p>
     </div>
-    <!-- Only the two greedy methods are offered. The other buttons stay hidden, with their code and data, so one can come
-         back by adding it to SHOWN_METHODS in explore_ui.js. -->
+    <!-- The two greedy methods and Exact optimum (20 Nov, the comparison) are offered. The other buttons stay hidden, with
+         their code and data, so one can come back by adding it to SHOWN_METHODS in explore_ui.js. -->
     <div class="knob x" id="methKnob">
       <button data-m="story" hidden title="The story's sensors, in its order: the recommendation, so this page and the story name the same manholes. Starts from the design wet day's sensor and grows one at a time, keeping the best 1,500 sets, so no sensor moves as more are added">Nested beam search</button>
       <button data-m="warn" id="methWarn" hidden title="The best set of this size for warning at least one build-out step before the first new surcharge">Warn before surcharge</button>
-      <button data-m="exact" id="methExact" hidden title="The best set of this size, solved exactly (integer program)">Exact optimum</button>
+      <button data-m="exact" id="methExact" title="The best set of this size, solved on its own (integer program): the best worst case, then the best average. A comparison: its sets change from one size to the next, so sensors would move if bought in stages">Exact optimum</button>
       <button data-m="greedy-avg" title="One level sensor at a time, each the one that most raises the AVERAGE over the cases. On the story's test: the story's steps 5a and 5b">Greedy: average</button>
       <button data-m="greedy" title="One level sensor at a time, each the one that most raises the WORST case. On the story's test: the story's step 5c">Greedy: worst case</button>
       <button data-m="risk" id="methRisk" hidden title="Every scenario weighted by severity x occurrence (Kimbrough 2019): the share of total risk noticed, not the share of scenarios">Risk-weighted</button>
@@ -780,8 +790,8 @@ html[data-theme="light"] #themeBtn .moon{display:block}
 <script src="../simulation35/growth_3d.js?v=34"></script>
 <script src="../simulation3/osp_core.js?v=9"></script>
 <script src="../simulation3/placement.js?v=9"></script>
-<script src="data/explore.js?v=7"></script>
-<script src="data/sim4.js?v=14"></script>
+<script src="data/explore.js?v=8"></script>
+<script src="data/sim4.js?v=15"></script>
 <script src="library.js?v=1"></script>
 <script src="region_labels.js?v=1"></script>
 <script>/* Region labels at the network's edge, not on a manhole (19 Nov dry run). */
@@ -795,7 +805,7 @@ RegionLabels.init({ avoid: "#mapControls, .legend, #mapOverlays, #stage .mapCred
 <script src="../simulation35/data/room.js?v=1"></script>
 <script src="../simulation35/room_calc.js?v=2"></script>
 <script src="map_help.js?v=1"></script>
-<script src="explore_ui.js?v=48"></script>
+<script src="explore_ui.js?v=49"></script>
 <script type="module">
   Sim35UI.init();
 </script>

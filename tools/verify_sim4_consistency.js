@@ -3,7 +3,7 @@
    Opens simulation4/explore.html headless and checks that, at its defaults (the story's test, Greedy: average), the
    Results tabs and the side panel give the story's own figures, read from the files the story is built from:
    simulation_src/results/sim4/numbers.json, float.json, capacity.json and simulation4/data/sim4.js.
-   Explore offers only the two greedy methods (Greedy: worst case, Greedy: average); the others are hidden, not deleted.
+   Explore offers the two greedy methods (Greedy: average, Greedy: worst case) and Exact optimum, the comparison (20 Nov); the others are hidden, not deleted.
    On the story's test both greedy lists are the story's own (numbers.json ladder and ladder_worst); their figures are also
    recounted here from the runs (regions.js).
 
@@ -170,11 +170,11 @@ const server = http.createServer((q, s) => {
   const cellOf = (f, m) => f["ladder_" + m] == null ? "more than " + X.ladder.length : String(f["ladder_" + m]);
   const fewOk = X.fewest.map((f, i) => {
     const r = mr.find(x => x[0] === f.scope), g = X.fewest_worst[i];
-    const good = r && g.scope === f.scope && ["0.8", "0.9", "1.0"].every((m, j) => r[j + 1] === cellOf(f, m) && r[j + 4] === cellOf(g, m));
+    const good = r && g.scope === f.scope && ["0.8", "0.9", "1.0"].every((m, j) => r[j + 1] === cellOf(f, m) && r[j + 4] === cellOf(g, m) && r[j + 7] === (f[m] == null ? "not reached" : String(f[m])));
     return [f.scope, good, r ? r.join("|") : "missing"];
   });
-  ok("Fewest sensors: every cell = step 5a (numbers.json), how far down each greedy list", fewOk.every(x => x[1]), fewOk.filter(x => !x[1]).map(x => x.join(" ")).join("; "));
-  ok("Fewest sensors: the story's test counts down the two greedy lists", /Greedy: average needs/.test(t) && /Greedy: worst case/.test(t) && !/solved exactly on the story/.test(t));
+  ok("Fewest sensors: every cell = step 5a (numbers.json), how far down each greedy list, and Exact optimum's fewest", fewOk.every(x => x[1]), fewOk.filter(x => !x[1]).map(x => x.join(" ")).join("; "));
+  ok("Fewest sensors: the story's test counts down the two greedy lists, with Exact optimum's fewest beside them", /Greedy: average needs/.test(t) && /Greedy: worst case/.test(t) && /The fewest any set needs \(Exact optimum\)/.test(t) && !/solved exactly on the story/.test(t));
 
   // ---- Findings
   t = await tab("findings");
@@ -195,7 +195,7 @@ const server = http.createServer((q, s) => {
   const cards = await ev('[...document.querySelectorAll("#sensorList .pin")].map(e=>e.textContent)');
   ok("Greedy: pins and cards are S1, S2, ...", pins.length && pins.every(p => /^S\d$/.test(p)) && cards.every(p => /^S\d$/.test(p)), pins.join(",") + " / " + cards.join(","));
   const stay = [];
-  for (const m of ["story", "exact", "warn", "risk"]) { await click(`#methKnob button[data-m="${m}"]`); await wait(900); stay.push(await ev('(document.querySelector("#methKnob button.on")||{}).dataset?.m')); }
+  for (const m of ["story", "warn", "risk"]) { await click(`#methKnob button[data-m="${m}"]`); await wait(900); stay.push(await ev('(document.querySelector("#methKnob button.on")||{}).dataset?.m')); }
   ok("hidden methods: clicking their buttons anyway leaves Greedy: average selected", stay.every(m => m === "greedy-avg"), stay.join(","));
 
   // ---- greedy: the running worst case on a card equals the panel's figure at that count
@@ -206,28 +206,41 @@ const server = http.createServer((q, s) => {
   const pinsW = await ev('[...document.querySelectorAll("#sensorList .why .hd")].map(e=>(e.innerText.match(/MH ?[0-9]+/)||[""])[0].replace(" ",""))');
   ok("Greedy: worst case on the story's test = the story's step 5c list and figures", pinsW.join() === LW[rec].chosen.join() && hasPc(glead, LW[rec].worst) && hasPc(glead, LW[rec].average), pinsW.join() + " / " + glead);
 
-  // ---- only the two greedy methods are offered, and the line under them explains the selected one
-  const visible = await ev('[...document.querySelectorAll("#methKnob button")].filter(b=>!b.hidden&&b.getClientRects().length).map(b=>b.dataset.m).join()');
+  // ---- the two greedy methods and Exact optimum are offered, left to right, and the line under them explains the selected one
+  const visible = await ev('[...document.querySelectorAll("#methKnob button")].filter(b=>!b.hidden&&b.getClientRects().length).sort((a,b)=>a.getBoundingClientRect().left-b.getBoundingClientRect().left).map(b=>b.dataset.m).join()');
   const say = await ev('document.getElementById("methSay").innerText');
-  ok("method: only Greedy: average and Greedy: worst case are offered", visible === "greedy-avg,greedy", visible);
-  // Scored on and the method are switches: label, track (the row's ::before), label; the knob on the chosen label's side.
-  const sw = () => ev(`["#scopeKnob","#methKnob"].map(k=>{const el=document.querySelector(k),bs=[...el.querySelectorAll("button")].filter(b=>b.getClientRects().length),tr=getComputedStyle(el,"::before");
+  ok("method: Greedy: average, Greedy: worst case and Exact optimum are offered, in that order", visible === "greedy-avg,greedy,exact", visible);
+  // Scored on is a switch: label, track (the row's ::before), label; the knob on the chosen label's side.
+  const sw = () => ev(`["#scopeKnob"].map(k=>{const el=document.querySelector(k),bs=[...el.querySelectorAll("button")].filter(b=>b.getClientRects().length),tr=getComputedStyle(el,"::before");
     const r=bs.map(b=>b.getBoundingClientRect());return{k,n:bs.length,on:bs.findIndex(b=>b.classList.contains("on")),fit:bs.every(b=>b.scrollWidth<=b.clientWidth+1),
     row:new Set(r.map(x=>Math.round(x.top+x.height/2))).size,track:tr.width,knob:tr.backgroundPositionX,gap:r.length===2?[Math.round(r[0].right),Math.round(r[1].left)]:null,y:r.length?Math.round(r[0].top+r[0].height/2):0}})`);
   await click('#methKnob button[data-m="greedy-avg"]'); await wait(1200);
   let sws = await sw();
-  ok("Scored on and the method are switches: two labels either side of a track on one row, knob on the chosen side, no label cut off",
+  ok("Scored on is a switch: two labels either side of a track on one row, knob on the chosen side, no label cut off",
      sws.every(x => x.n === 2 && x.on === 0 && x.row === 1 && x.fit && x.track === "38px" && x.knob === "0%" && x.gap[1] - x.gap[0] > 38), JSON.stringify(sws));
+  // The method (20 Nov) is one bar of three buttons on one row, no track, the chosen one filled with the accent.
+  const bar = await ev(`(()=>{const el=document.querySelector("#methKnob"),bs=[...el.querySelectorAll("button")].filter(b=>b.getClientRects().length),r=bs.map(b=>b.getBoundingClientRect()),on=el.querySelector("button.on");
+    return{n:bs.length,row:new Set(r.map(x=>Math.round(x.top))).size,track:getComputedStyle(el,"::before").content,fill:on&&getComputedStyle(on).backgroundColor,off:getComputedStyle(bs.find(b=>!b.classList.contains("on"))).backgroundColor,
+      fit:bs.every(b=>b.scrollWidth<=b.clientWidth+1)}})()`);
+  ok("method: one bar of three buttons on one row, no switch track, the chosen one filled, no label cut off", bar.n === 3 && bar.row === 1 && /none|normal/.test(bar.track) && bar.fill !== bar.off && bar.fit, JSON.stringify(bar));
   const tap = async x => { await send("Input.dispatchMouseEvent", { type: "mousePressed", x: (x.gap[0] + x.gap[1]) / 2, y: x.y, button: "left", clickCount: 1 }); await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: (x.gap[0] + x.gap[1]) / 2, y: x.y, button: "left", clickCount: 1 }); await wait(1200); };
-  await ev('document.getElementById("methKnob").scrollIntoView({block:"center"})'); await wait(400);
-  await tap((await sw())[1]);
-  const flipped = await ev('(document.querySelector("#methKnob button.on")||{}).dataset?.m'), knobR = (await sw())[1].knob;
-  await tap((await sw())[1]);
-  const back = await ev('(document.querySelector("#methKnob button.on")||{}).dataset?.m');
-  ok("method switch: a click on the track flips to Greedy: worst case (knob right) and back", flipped === "greedy" && knobR === "100%" && back === "greedy-avg", `${flipped} ${knobR} ${back}`);
+  await ev('document.getElementById("scopeKnob").scrollIntoView({block:"center"})'); await wait(400);
+  await tap((await sw())[0]);
+  const flipped = await ev('(document.querySelector("#scopeKnob button.on")||{}).dataset?.s'), knobR = (await sw())[0].knob;
+  await tap((await sw())[0]);
+  const back = await ev('(document.querySelector("#scopeKnob button.on")||{}).dataset?.s');
+  ok("Scored on switch: a click on the track flips to the broader test (knob right) and back", flipped === "broad" && knobR === "100%" && back === "story", `${flipped} ${knobR} ${back}`);
+  // Exact optimum on the story's test at 10 mm: the story's own exact set and figures (numbers.json's exact_*), said to be the comparison.
+  await click('#methKnob button[data-m="exact"]'); await wait(2500);
+  const pinsX = await ev('[...document.querySelectorAll("#sensorList .why .hd")].map(e=>(e.innerText.match(/MH ?[0-9]+/)||[""])[0].replace(" ",""))');
+  const xlead = await ev('document.getElementById("sensorList").innerText.split("\\n")[0]'), xsay = await ev('document.getElementById("methSay").innerText');
+  ok("Exact optimum on the story's test = the story's exact set and figures at " + rec, pinsX.slice().sort().join() === L[rec].exact_set.slice().sort().join() && hasPc(xlead, L[rec].exact_worst) && hasPc(xlead, L[rec].exact_average), pinsX.join() + " / " + xlead);
+  ok("Exact optimum: the line under the buttons calls it the comparison and says buying in stages would move sensors", /^Exact optimum/.test(xsay) && /comparison/i.test(xsay) && /move sensors/.test(xsay), xsay);
+  ok("Exact optimum: the panel names it as the story's own exact set", /The story's Exact optimum set/.test(await ev('document.getElementById("sensorList").innerText')));
+  await click('#methKnob button[data-m="greedy-avg"]'); await wait(1500);
   ok("method: the old name Sim 4's list appears nowhere", !/Sim 4's list/.test(fs.readFileSync(path.join(PUB, "simulation4/explore.html"), "utf8")) && !/"Sim 4's list|Sim 4's list[:,]/.test(fs.readFileSync(path.join(PUB, "simulation4/explore_ui.js"), "utf8")));
   ok("method: the line under it explains greedy (worst case, one at a time, no sensor moves)", /^Greedy: worst case/.test(say) && /one sensor at a time/.test(say) && /worst case/.test(say) && /no sensor moves/.test(say), say.slice(0, 200));
-  ok("method: Explore names no other placement method anywhere it shows", !/Nested beam search|Exact optimum|Warn before surcharge|Risk-weighted/.test(await ev('document.body.innerText')));
+  ok("method: Explore names no other placement method anywhere it shows (Exact optimum is the comparison)", !/Nested beam search|Warn before surcharge|Risk-weighted/.test(await ev('document.body.innerText')));
 
   // ---- the chart: one line per greedy, each by its own goal (worst case / average), the selected one bold, pulsing on change
   const chart = () => ev(`(()=>{const c=document.getElementById("curve");return{sel:(c.querySelector(".cv-sel")||{}).dataset?.m||null,
@@ -236,15 +249,15 @@ const server = http.createServer((q, s) => {
     fade:+getComputedStyle(c.querySelector(".cv-other")||c).opacity,legend:[...c.querySelectorAll(".lg span")].map(s=>s.textContent).join("|"),
     on:(c.querySelector(".lg span.on")||{}).textContent||"",note:(document.getElementById("curveNote")||{}).textContent||""}})()`);
   let ch = await chart();
-  ok("chart: two lines, one per greedy, Greedy: average bold and Greedy: worst case lighter, no dashed lines", ch.sel === "greedy-avg" && ch.others === "greedy" && ch.lines === 2 && ch.dashed === 0 && ch.fade > 0.4 && ch.fade < 1 && ch.legend === "Greedy: average|Greedy: worst case" && ch.on === "Greedy: average", JSON.stringify(ch));
-  ok("chart: each greedy drawn by its own goal, and the note says only that", /^Greedy: average by its average; Greedy: worst case by its worst case\.$/.test(ch.note), ch.note.slice(0, 160));
+  ok("chart: three lines, one per method, Greedy: average bold and the others lighter, no dashed lines", ch.sel === "greedy-avg" && ch.others === "exact,greedy" && ch.lines === 3 && ch.dashed === 0 && ch.fade > 0.4 && ch.fade < 1 && ch.legend === "Greedy: average|Greedy: worst case|Exact optimum" && ch.on === "Greedy: average", JSON.stringify(ch));
+  ok("chart: each drawn by its own goal, and the note says only that", /^Greedy: average by its average; Greedy: worst case by its worst case; Exact optimum by its worst case\.$/.test(ch.note), ch.note.slice(0, 160));
   const pulses = [];
-  for (const m of ["greedy", "greedy-avg"]) {
+  for (const m of ["greedy", "exact", "greedy-avg"]) {
     await click(`#methKnob button[data-m="${m}"]`); await wait(1200);
     ch = await chart();
-    pulses.push(ch.sel === m && ch.pulse && ch.lines === 2 && ch.others === (m === "greedy" ? "greedy-avg" : "greedy"));
+    pulses.push(ch.sel === m && ch.pulse && ch.lines === 3 && ch.others === ["exact", "greedy", "greedy-avg"].filter(x => x !== m).join());
   }
-  ok("chart: each greedy selected in turn is the bold one, the other still drawn, and it pulses as it changes", pulses.every(Boolean), pulses.join());
+  ok("chart: each method selected in turn is the bold one, the others still drawn, and it pulses as it changes", pulses.every(Boolean), pulses.join());
   // The chart follows Scored on: the same sets rescored, so the lines move. Each line's y at 1..n sensors, read off its path.
   const ys = () => ev(`[...document.querySelectorAll("#curve .cv-line")].map(p=>p.closest("g").dataset.m+":"+(p.getAttribute("d").match(/[ML][\\d.]+ ([\\d.]+)/g)||[]).map(s=>Math.round(+s.split(" ")[1])).join(",")).join(" | ")`);
   const yStory = await ys(), leadStory = await ev('document.getElementById("sensorList").innerText.split("\\n")[0]');
@@ -253,7 +266,7 @@ const server = http.createServer((q, s) => {
   ok("chart: switching Scored on redraws the lines (the story's test and the broader test differ)", yStory && yBroad && yStory !== yBroad, "story " + yStory + "  //  broad " + yBroad);
   ok("side panel: switching Scored on changes the figures too", leadStory !== leadBroad, leadStory + "  //  " + leadBroad);
   ch = await chart();
-  ok("chart: on the broader test too, both greedy lines, the selected one bold", ch.sel === "greedy-avg" && ch.lines === 2, JSON.stringify(ch));
+  ok("chart: on the broader test too, all three lines, the selected one bold", ch.sel === "greedy-avg" && ch.lines === 3, JSON.stringify(ch));
   ok("chart: changing the test is not a method change, so no pulse", !ch.pulse);
   ok("chart: the pulse respects reduced motion", /prefers-reduced-motion:reduce\)\{#curve \.cv-sel\.pulse\{animation:none\}/.test(fs.readFileSync(path.join(PUB, "simulation4/explore.html"), "utf8")));
 
@@ -296,7 +309,8 @@ const server = http.createServer((q, s) => {
     const hw = X.held_out_by_case_worst, uavgW = Object.values(hw).reduce((a, v) => a + v[String(rec)], 0) / Object.keys(hw).length;
     const ga = cmp.find(x => x[0].startsWith("Greedy: average")), gw = cmp.find(x => x[0].startsWith("Greedy: worst case"));
     ok("5b fold: unseen weather for each greedy list on the case average", ga && pcs(uavg(rec)).has(ga[4]) && gw && pcs(uavgW).has(gw[4]), `${ga && ga[4]} / ${gw && gw[4]}`);
-    ok("5b fold: no other placement method in the comparison", !cmp.some(x => /^(Nested|Exact|Warn|Risk)/.test(x[0])), cmp.map(x => x[0]).join(" | "));
+    ok("5b fold: the Exact optimum row = a recount of numbers.json's exact set from the runs", rowOk("Exact optimum", L[rec].exact_set), JSON.stringify(cmp.find(x => x[0].startsWith("Exact")) || null));
+    ok("5b fold: no other placement method in the comparison", !cmp.some(x => /^(Nested|Warn|Risk)/.test(x[0])), cmp.map(x => x[0]).join(" | "));
     const m6 = D.steps.find(s => s.id === "6").notes.more.blocks.map(b => b.html).join("");
     const fl0 = FL.budgets.map(b => Object.values(b.float.unseen_by_case).reduce((a, v) => a + v, 0) / 7);
     ok("6 fold: the float figure = float.json, averaged by case", [...new Set(fl0.map(v => [...pcs(v)][0]))].every(p => m6.includes(p)));
