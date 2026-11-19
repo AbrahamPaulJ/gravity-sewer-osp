@@ -1,12 +1,12 @@
 === Level against float for the same money: target regions, up to 100%, 7 wet cases, 10 mm rule, float margin 25 mm, prices $25,000 and $1,000 (assumed)
     budget              level (the list)                   floats only                      free mix
-    25,000       0%/ 53% w 8 u 55% 1L+0F    0%/ 35% w 4 u  0% 0L+15F -3      12%/ 42% w 4 u 34% 1L+0F
-    50,000       0%/ 72% w11 u 71% 2L+0F    0%/ 35% w 4 u  0% 0L+15F -2      43%/ 62% w 7 u 39% 2L+0F
-    75,000      44%/ 86% w11 u 71% 3L+0F    0%/ 35% w 4 u  0% 0L+15F -22      62%/ 79% w10 u 55% 2L+6F
-   100,000      69%/ 92% w11 u 76% 4L+0F    0%/ 35% w 4 u  0% 0L+15F -22      81%/ 91% w10 u 71% 4L+0F
-   125,000      81%/ 94% w11 u 77% 5L+0F    0%/ 35% w 4 u  0% 0L+15F -22      88%/ 94% w11 u 76% 5L+0F
-   150,000      88%/ 96% w11 u 78% 6L+0F    0%/ 35% w 4 u  0% 0L+15F -22      94%/ 96% w11 u 78% 6L+0F
-   175,000      94%/ 97% w11 u 78% 7L+0F    0%/ 35% w 4 u  0% 0L+15F -22      94%/ 97% w11 u 79% 7L+0F
+    25,000       0%/ 59% w 8 u 48% 1L+0F    0%/ 35% w 4 u  0% 0L+15F -3      12%/ 42% w 4 u 34% 1L+0F
+    50,000      25%/ 77% w11 u 64% 2L+0F    0%/ 35% w 4 u  0% 0L+15F -2      43%/ 62% w 7 u 39% 2L+0F
+    75,000      50%/ 86% w11 u 71% 3L+0F    0%/ 35% w 4 u  0% 0L+15F -22      62%/ 79% w10 u 55% 2L+6F
+   100,000      75%/ 92% w11 u 76% 4L+0F    0%/ 35% w 4 u  0% 0L+15F -22      81%/ 91% w10 u 71% 4L+0F
+   125,000      88%/ 94% w11 u 76% 5L+0F    0%/ 35% w 4 u  0% 0L+15F -22      88%/ 94% w11 u 76% 5L+0F
+   150,000      94%/ 96% w11 u 78% 6L+0F    0%/ 35% w 4 u  0% 0L+15F -22      94%/ 96% w11 u 78% 6L+0F
+   175,000      94%/ 97% w11 u 79% 7L+0F    0%/ 35% w 4 u  0% 0L+15F -22      94%/ 97% w11 u 79% 7L+0F
    200,000      94%/ 98% w11 u 79% 8L+0F    0%/ 35% w 4 u  0% 0L+15F -22      94%/ 98% w11 u 79% 8L+0F
   (worst/average of the 7 wet cases; w = overloads warned of, of 11; u = unseen weather, runs pooled)
 

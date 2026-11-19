@@ -69,19 +69,20 @@ def warn_runs(R=10):
 
 W = warn_runs()
 check("warn universe", len(W) == X["warn_universe"]["target"], f"{len(W)}")
-prev = []
-for r in X["ladder"]:
-    S = {ix[m] for m in r["chosen"]}
-    per = {t: sum(bool(h & S) for h in detect_runs(t)) / len(detect_runs(t)) for t in wet}
-    per25 = {t: sum(bool(h & S) for h in detect_runs(t, 25)) / len(detect_runs(t)) for t in wet}
-    k = r["k"]
-    check(f"k={k} exactly k sensors, nested", len(S) == k and set(prev) <= S)
-    prev = list(S)
-    check(f"k={k} worst", abs(min(per.values()) - r["worst"]) < 6e-5, f"{min(per.values()):.4f}")
-    check(f"k={k} average", abs(sum(per.values()) / 7 - r["average"]) < 6e-5, f"{sum(per.values()) / 7:.4f}")
-    check(f"k={k} Design wet", abs(per[DESIGN] - r["design_wet"]) < 6e-5, f"{per[DESIGN]:.4f}")
-    check(f"k={k} 25 mm", abs(min(per25.values()) - r["worst_25"]) < 6e-5 and abs(sum(per25.values()) / 7 - r["average_25"]) < 6e-5)
-    check(f"k={k} warned", sum(bool(h & S) for h in W) == r["warned_target"], f"{r['warned_target']}/{len(W)}")
+for key in ("ladder", "ladder_worst"):
+    prev = []
+    for r in X[key]:
+        S = {ix[m] for m in r["chosen"]}
+        per = {t: sum(bool(h & S) for h in detect_runs(t)) / len(detect_runs(t)) for t in wet}
+        per25 = {t: sum(bool(h & S) for h in detect_runs(t, 25)) / len(detect_runs(t)) for t in wet}
+        k = r["k"]
+        check(f"{key} k={k} exactly k sensors, nested", len(S) == k and set(prev) <= S)
+        prev = list(S)
+        check(f"{key} k={k} worst", abs(min(per.values()) - r["worst"]) < 6e-5, f"{min(per.values()):.4f}")
+        check(f"{key} k={k} average", abs(sum(per.values()) / 7 - r["average"]) < 6e-5, f"{sum(per.values()) / 7:.4f}")
+        check(f"{key} k={k} Design wet", abs(per[DESIGN] - r["design_wet"]) < 6e-5, f"{per[DESIGN]:.4f}")
+        check(f"{key} k={k} 25 mm", abs(min(per25.values()) - r["worst_25"]) < 6e-5 and abs(sum(per25.values()) / 7 - r["average_25"]) < 6e-5)
+        check(f"{key} k={k} warned", sum(bool(h & S) for h in W) == r["warned_target"], f"{r['warned_target']}/{len(W)}")
 
 # What the popups say is lost without a sensor
 for k in ("2", "5"):
@@ -105,19 +106,26 @@ for e in X["reasons"]:
         check(f"{e['manhole']} rise at 100% from {name}", abs(rise[-1] - h["rise_at_100"]) < .06)
     check(f"{e['manhole']} surcharged flag", (i in reg["base"][DESIGN]["surcharged"]) == e["surcharged_before_growth"])
 
-# The fewest sensors that see all of Design wet: no smaller set does, and the list's first k0 do
-full = detect_runs(DESIGN)
-live = sorted({i for h in full for i in h})
-k0 = next(f["1.0"] for f in X["fewest"] if f["scope"] == "Design wet only")
-first = {ix[m] for m in X["ladder"][k0 - 1]["chosen"]}
-singles = [a for a in live if all(a in h for h in full)]
-check(f"the list's first {k0} see all of Design wet", all(h & first for h in full))
-if k0 == 1:
-    check("one sensor sees all of Design wet, and it starts the list", ch[next(iter(first))] in [ch[a] for a in singles], f"{len(singles)} single sensors do")
-else:
-    check("no single sensor sees all of Design wet", not singles)
-    pairs = [(a, b) for x, a in enumerate(live) for b in live[x + 1:] if all(h & {a, b} for h in full)]
-    check("a pair that sees all of Design wet starts the list", k0 > 2 or any(set(p) == first for p in pairs))
+# Both greedy lists, re-run here from the raw rows (19 Nov: Sim 4 places level sensors by greedy only): each step adds the
+# manhole that most raises the goal, ties to the other measure, then the lower index.
+runs = {t: detect_runs(t) for t in wet}
+live = sorted({i for t in wet for h in runs[t] for i in h})
+
+
+def wa(S):
+    per = [sum(bool(h & S) for h in runs[t]) / len(runs[t]) for t in wet]
+    return round(min(per), 6), round(sum(per) / len(per), 6)
+
+
+for key, goal in (("ladder", "average"), ("ladder_worst", "worst")):
+    L = []
+    for _ in range(len(X[key])):
+        def score(i):
+            w, a = wa(set(L) | {i})
+            return ((a, w) if goal == "average" else (w, a)) + (-i,)
+        L.append(max((i for i in live if i not in L), key=score))
+    check(f"{key}: greedy for the {goal}, re-run from the raw rows, gives the same order", [ch[i] for i in L] == [r["added"] for r in X[key]],
+          ", ".join(ch[i] for i in L))
 
 # The list of real overloads
 hot = set()

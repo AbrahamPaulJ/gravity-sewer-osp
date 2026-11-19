@@ -223,13 +223,15 @@ def figures(nm, reg, geo, runs, fl, gf_cover, gf_joins):
     ii = next(c["ii"] for c in reg["cases"] if c["tag"] == design_tag)
     desk = Desk(geo, runs["lpsPerDwelling"][1])
     desk.names = chambers
+    # Sim 4 places level sensors by greedy only (19 Nov), two ways: Greedy: average (the map's default) and Greedy: worst case.
+    ladw = {r["k"]: r for r in nm["ladder_worst"]}
     listS = T.ids(lad[rec]["chosen"])
-    exactS = T.ids(lad[rec]["exact_set"])
+    worstS = T.ids(ladw[rec]["chosen"])
     # The engine must reproduce numbers.json before anything else is trusted.
-    for k, r in lad.items():
-        a, b = T.score(T.ids(r["chosen"])), T.score(T.ids(r["exact_set"]))
-        assert abs(a["worst"] - r["worst"]) < 6e-5 and abs(a["average"] - r["average"]) < 6e-5 and a["warned"] == r["warned_target"], f"list at {k} does not match numbers.json"
-        assert abs(b["worst"] - r["exact_worst"]) < 6e-5 and abs(b["average"] - r["exact_average"]) < 6e-5, f"exact at {k} does not match numbers.json"
+    for name, L_ in (("Greedy: average", lad), ("Greedy: worst case", ladw)):
+        for k, r in L_.items():
+            a = T.score(T.ids(r["chosen"]))
+            assert abs(a["worst"] - r["worst"]) < 6e-5 and abs(a["average"] - r["average"]) < 6e-5 and a["warned"] == r["warned_target"], f"{name} at {k} does not match numbers.json"
     assert T.n == [nm["universe"][c] for c in T.labels], "runs per case do not match numbers.json"
     assert T.nwarn == nm["warn_universe"]["target"], "warnable overloads do not match numbers.json"
 
@@ -337,13 +339,12 @@ def figures(nm, reg, geo, runs, fl, gf_cover, gf_joins):
     deskS = desk.rank(pool, lambda i: util[desk.out_pipe(chambers[i])] if desk.out_pipe(chambers[i]) is not None else -1, rec)
     homesS = desk.rank(pool, lambda i: desk.homes_at[desk.node_of[chambers[i]]], rec)
     out["why"] = {"today": T.score(today), "today_set": [chambers[i] for i in today], "desk": T.score(deskS), "desk_set": [chambers[i] for i in deskS],
-                  "list": T.score(listS), "n_today": len(base_d["surcharged"])}
+                  "list": T.score(listS), "worst_list": T.score(worstS), "n_today": len(base_d["surcharged"])}
 
     # Each sensor alone, per wet case, step 5b.
     out["alone"] = [{"name": chambers[i], "per": T.per_case([i])} for i in listS]
 
-    # Other ways to place five, step 5b.
-    gW, gA = T.greedy(rec, "worst"), T.greedy(rec, "avg")
+    # The two greedy lists against simple baselines, step 5b.
     rng = _random.Random()
     seed = RANDOM_SEED
 
@@ -360,17 +361,15 @@ def figures(nm, reg, geo, runs, fl, gf_cover, gf_joins):
         draws.append(T.score(p[:rec]))
     rand = {"worst": sum(d["worst"] for d in draws) / len(draws), "average": sum(d["average"] for d in draws) / len(draws),
             "warned": sum(d["warned"] for d in draws) / len(draws)}
-    hb = nm["held_out_by_case"]
+    hb, hbw = nm["held_out_by_case"], nm["held_out_by_case_worst"]
     rows = []
 
     def row(name, S, unseen, note=""):
         s = T.score(S)
         rows.append({"name": name, "set": [chambers[i] for i in S], "worst": s["worst"], "average": s["average"], "warned": s["warned"],
                      "unseen": unseen, "fails": T.one_fails(S), "note": note})
-    row("Nested beam search (recommended)", listS, sum(hb[c][str(rec)] for c in hb) / len(hb))
-    row("Exact best five", exactS, T.unseen(lambda k, cs: T.exact(k, cs), rec))
-    row("Greedy, worst case first", gW, T.unseen(lambda k, cs: T.greedy(k, "worst", cs), rec))
-    row("Greedy, average first", gA, T.unseen(lambda k, cs: T.greedy(k, "avg", cs), rec))
+    row("Greedy: average", listS, sum(hb[c][str(rec)] for c in hb) / len(hb))
+    row("Greedy: worst case", worstS, sum(hbw[c][str(rec)] for c in hbw) / len(hbw))
     row("Desk: flow / capacity", deskS, None)
     row("Desk: most homes upstream", homesS, None)
     for r in rows:
@@ -383,7 +382,7 @@ def figures(nm, reg, geo, runs, fl, gf_cover, gf_joins):
     f_un = sorted({round(sum(b["float"]["unseen_by_case"].values()) / len(b["float"]["unseen_by_case"]), 6) for b in B})   # averaged over the cases
     out["float_unseen"] = f_un
     out["greenfield"] = {"joins": gf_joins, "worst": gf_cover["worst"], "average": gf_cover["average"]}
-    out["ties"] = nm["tied_best_sets"]
+    out["standins"] = {m: v["stand_ins"] for m, v in nm["swaps"][str(rec)].items()}
     return out
 
 

@@ -153,7 +153,7 @@ def findings(f):
                else "So both results hold up" if weather_holds else "So the result depends on the clearance")
     return f"""# Simulation 4 explorer: Sim 3.5's questions on Sim 4's regions
 
-Sim 4's story gives the short answer; this explorer asks Sim 3.5's three questions again on the same regions, with every weather case, rule and placement method. Its sensors are the story's own list by default, and by default every set is scored on the story's own test: the {f['n_wet']} wet cases, the regions to monitor or watch, build-out up to 100% (the 2041 homes), so the story's sensors show the story's figures. A broader test is an option under Sensors: it adds Dry, the regions the story leaves, and the 150% and 300% stress steps, so every share there is lower. Sim 3.5's methods (warn before surcharge, exact, greedy, risk-weighted) stay as comparisons. Sections 1 and 3 below are worked out on the broader test, so their counts differ from the story's: the Warning, Level or float and Fewest sensors tabs open on the story's own figures. The suburb is cut into {f['n_parts']} regions holding near-equal numbers of existing homes, by the spatial bisection of Kim et al. (2022){', plus ' + listing([r['name'].split(' (')[0] for r in f['overlay']]) + ' as an overlapping extra region' if f['overlay'] else ''}, and each was run in SWMM on Sim 3's settled model. Everything is uncalibrated: a guide to where to look first, not a measurement. The other tabs hold the tables.
+Sim 4's story gives the short answer; this explorer asks Sim 3.5's three questions again on the same regions, with every weather case and rule. Sim 4 places level sensors by greedy only, two ways: Greedy: average (the default) and Greedy: worst case. By default every set is scored on the story's own test: the {f['n_wet']} wet cases, the regions to monitor or watch, build-out up to 100% (the 2041 homes), and there, at the 10 mm rule, both greedy lists are the story's own, so the two pages name the same sensors and figures. A broader test is an option under Sensors: it adds Dry, the regions the story leaves, and the 150% and 300% stress steps, so every share there is lower, and the greedy orders there are chosen on it. Sections 1 and 3 below are worked out on the broader test, so their counts differ from the story's: the Warning, Level or float and Fewest sensors tabs open on the story's own figures. The suburb is cut into {f['n_parts']} regions holding near-equal numbers of existing homes, by the spatial bisection of Kim et al. (2022){', plus ' + listing([r['name'].split(' (')[0] for r in f['overlay']]) + ' as an overlapping extra region' if f['overlay'] else ''}, and each was run in SWMM on Sim 3's settled model. Everything is uncalibrated: a guide to where to look first, not a measurement. The other tabs hold the tables.
 
 ## 1. The score: warning before surcharge
 
@@ -247,10 +247,10 @@ def sources(f):
                   ["Our runs", RUNS],
                   ["Assumed, no source", "How a float earns credit (25 mm clearance, quiet on a Design wet day), its height options, and both prices."],
                   ["Tested", f"Removing the quiet rule leaves floats at {ws(fb, None)}. The clearance matters more: 10 mm gives {ws(f10, None)}. The worst figure is one weather case. See the Findings tab."]],
-        "min": [["Published", "Choosing for the worst case rather than the average: Krause et al. (2008). Solved exactly with the HiGHS solver."],
+        "min": [["Published", "Choosing for the worst case rather than the average: Krause et al. (2008). The story's test counts how far down each greedy list a pass mark is reached; the broader test's level-and-float table is solved exactly with the HiGHS solver, for the sensor-type comparison only."],
                 ["Our runs", RUNS],
                 ["Assumed, no source", "The rules, both prices, and the pass marks, which are the operator's call."]],
-        "cover": [["Published", "Choosing for the worst case rather than the average: Krause et al. (2008). Solved exactly with the HiGHS solver."],
+        "cover": [["Published", "Choosing for the worst case rather than the average: Krause et al. (2008). The level and float curves are solved exactly with the HiGHS solver, to compare sensor types; the placement itself is greedy."],
                   ["Our runs", RUNS + " The same runs, sensors and rules as the rest of the page; greenfield uses its own grid of runs, and four of its eight weather cases (Dry, Design wet and its two variants) are fixed 480-minute runs, not settled ones. Coverage view, chart design, greenfield curve, why-none note and wheel zoom after the team's coverage prototype."],
                   ["Assumed, no source", "The 10 mm and 25 mm rules; how a float earns credit; the build-out steps. A sensor gets no extra credit for backing up another."]],
     }
@@ -279,7 +279,7 @@ def limits(f):
 
 - How homes spread across a region and arrive over time: evenly, along a corridor, in batches or in an early surge.
 - Counting a warning at early build-out as worth more than a late one, and rare weather as worth less.
-- Settling the four greenfield weather cases that are still fixed 480-minute runs, and running the exact solver on greenfield growth. Its coverage view uses the greedy sensors only.
+- Settling the four greenfield weather cases that are still fixed 480-minute runs. Greenfield uses the greedy sensors only, like infill.
 - Using float readings to calibrate a model. Wani et al. (2015) calibrated almost as well from on/off readings as from continuous ones (Nash-Sutcliffe 0.78 against 0.80). That is a different job from seeing growth, so it does not change the tables here.
 - Grouping similar manholes by clustering, then placing within each group, from the team's reading.
 

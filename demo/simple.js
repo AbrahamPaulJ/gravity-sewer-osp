@@ -13,6 +13,7 @@
   const weather = tag => WEATHER[caseLabel(tag)] || caseLabel(tag);
   // Map words (legends, callouts, tooltips) in plain language. Order matters: longer phrases first.
   const WORDS = [
+    [/Greedy: average/g, "Best on average"], [/Greedy: worst case/g, "Best in the hardest weather"],
     [/\s*\(manning\)/gi, ""], [/^Watch$/, "Keep an eye on"], [/^Leave$/, "Room to spare"], [/^Level sensor$/, "Level sensor"], [/Low flow \/ capacity/gi, "Pipes with room"], [/^High$/, "Fuller pipes"],
     [/Surcharged by infiltration alone/g, "Already backing up from rain leaking in"], [/Surcharged before growth/g, "Already backing up today"],
     [/surcharged before growth/g, "already backing up today"], [/Newly surcharged/g, "Starts backing up"], [/newly surcharged/g, "starts backing up"],
@@ -21,12 +22,12 @@
     [/Rises 10 mm in few runs/g, "Notices few scenarios"], [/In many runs/g, "Notices many scenarios"], [/Responds in few runs/g, "Notices few scenarios"],
     [/Responds in many \(up to (\d+)\)/g, "Notices many (up to $1)"], [/in (\d+) runs/g, "in $1 scenarios"], [/(\d+) runs/g, "$1 scenarios"],
     [/the worst case drops to/g, "one kind of wet weather drops to"], [/in the worst weather\)/g, "in one kind of wet weather)"], [/worst case/gi, "hardest weather"], [/in the worst weather/g, "in the hardest weather"],
-    [/Monitor region/g, "Area to monitor"], [/Watch region/g, "Area to watch"], [/Exact search/g, "Our search"],
+    [/Monitor region/g, "Area to monitor"], [/Watch region/g, "Area to watch"], [/Greedy search/g, "Our search"],
     [/Desk heuristic: flow\/capacity/g, "Desk study: fullest pipes"], [/Desk heuristic: most homes upstream/g, "Rule of thumb: most homes upstream"],
     [/Best coverage \(exact\)/g, "Our 5 sensors"], [/Flow \/ capacity \(Manning\)/g, "How full the pipe is"], [/Flow \/ capacity/gi, "How full"], [/flow \/ capacity \(manning\)/g, "how full the pipe is"],
     [/Before growth (\d+) mm deep/g, "Before the new homes: $1 mm deep"], [/with these homes/g, "with the new homes"], [/Infiltration/g, "Rain leaking in"],
     [/water backs up from downstream/g, "water queues back from a full pipe below"], [/Responds in/g, "Notices"],
-    [/Beyond design/g, "very wet day"], [/Design wet/g, "design wet day"], [/Buy all at once \(exact\)/g, "Buy all at once"], [/Buy in stages \(nested\)/g, "Buy in stages"], [/Severe/g, "extreme wet day"], [/ \+ age-weighted I&I/g, ", old pipes leak more"], [/ \+ outside inflow x1\.5/g, ", extra water from upstream"],
+    [/Beyond design/g, "very wet day"], [/Design wet/g, "design wet day"], [/Severe/g, "extreme wet day"], [/ \+ age-weighted I&I/g, ", old pipes leak more"], [/ \+ outside inflow x1\.5/g, ", extra water from upstream"],
   ];
   const CM = "1 cm (about a fingernail's width)";
 
@@ -186,7 +187,7 @@
     },
     algorithms: {
       panel() {
-        const a = st.algorithms; a.method = _.plan() === "once" ? "exact" : "sim4"; a.show = false; const x = facts(), hk = x.byK[a.k - 1], hit = hk.hit;
+        const a = st.algorithms; a.method = _.planMethod(); a.show = false; const x = facts(), hk = x.byK[a.k - 1], hit = hk.hit;
         return `
           <p class="lede">A sensor <b>notices</b> a scenario if its water rises ${CM}. We let the computer try combinations of the 328 manholes and keep the set that notices the most scenarios in the hardest weather.</p>
           <h3>How many level sensors</h3>
@@ -202,7 +203,7 @@
     },
     compare: {
       panel() {
-        const c = st.compare; c.k = 5; c.mm = 10; const own = _.plan() === "once" ? "exact" : "sim4"; if (![own, "hydraulic", "homes"].includes(c.method)) c.method = own; const x = facts();
+        const c = st.compare; c.k = 5; c.mm = 10; const own = _.planMethod(); if (![own, "hydraulic", "homes"].includes(c.method)) c.method = own; const x = facts();
         const after = x.plan.map(i => score(x.plan.filter(j => j !== i), SIM4_TEST()).per.reduce((a, q) => q.share < a.share ? q : a)), weak = after.reduce((b, q, k) => q.share < after[b].share ? k : b, 0), wq = after[weak];
         return `
           <p class="lede">Five sensors each, placed four ways, counted on the same ${x.n} scenarios in the hardest weather. Click a row to see its sensors.</p>
@@ -286,7 +287,7 @@
           ${_.planChips()}
           ${_.verdict()}
           <h3>What we recommend</h3>
-          <ol class="redo"><li><b>Start with one level sensor</b> at ${_.plan() === "stages" ? "S1, the design-wet-day site" : "the site the plan depends on most"}, for a wet season (about ${money(_.PRICE)}).</li><li><b>Check the model</b> against what it records.</li><li><b>Then place the rest</b>, about ${money(5 * _.PRICE)} for five, at assumed prices.</li></ol>
+          <ol class="redo"><li><b>Start with one level sensor</b> at S1, the first site the plan picks, for a wet season (about ${money(_.PRICE)}).</li><li><b>Check the model</b> against what it records.</li><li><b>Then place the rest</b>, about ${money(5 * _.PRICE)} for five, at assumed prices.</li></ol>
           <div class="hint"><b>Why it matters:</b> sensors give years of warning before a spill, and time to plan a fix rather than react to one.</div>
           ${fold("What we need, and how sure we are", `<ul class="plain"><li>A few weeks of water-level or flow readings from a normal day.</li><li>Your pipe ratings: how full is too full.</li><li>Where new homes are approved, year by year.</li><li>Where new estates could join the network and how big they could be, so we can decide whether growth at the edge should shape the sensor sites.</li></ul><ul class="plain"><li><b>Firm:</b> where growth shows, and that five sensors beat one when the weather is unknown.</li><li><b>Less sure:</b> exact lids (many nearby sites do as well), timing, and costs. The model is not yet checked against real readings.</li><li><b>Assumed:</b> a new estate joins where there is open land at the edge of the network, no bigger than the pipe has room for, and adds sewage only.</li><li><b>Weak:</b> our 5 notice few new estates at the edge, and mostly as water backing up rather than the estate's own flow.</li></ul>`)}
           ${nextBtn()}`;
@@ -298,7 +299,7 @@
   const read = {
     problem: "The network, before any colour: every line is a pipe.",
     regions: "Pipe colour: monitor (red), keep an eye on (amber) or room to spare (grey). Region names sit at the edge.",
-    onesensor: "The big dot is the one level sensor for the design wet day; the small dots are the rest of the plan.",
+    onesensor: "The big dot is the first level sensor placed; the small dots are the rest of the plan.",
     setting: "Coloured pipes: the area getting new homes. Rings: manholes already backing up on this day. The blue dot is the manhole in the drawing; click any other.",
     network: "Each line is a pipe, coloured by what you picked. Rings: manholes already backing up on a wet day.",
     approach: "The map follows the step you pick on the left.",
