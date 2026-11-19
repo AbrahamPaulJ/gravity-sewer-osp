@@ -13,7 +13,7 @@
   const weather = tag => WEATHER[caseLabel(tag)] || caseLabel(tag);
   // Map words (legends, callouts, tooltips) in plain language. Order matters: longer phrases first.
   const WORDS = [
-    [/Greedy: average/g, "Best on average"], [/Greedy: worst case/g, "Best in the hardest weather"], [/Exact optimum/g, "Best set bought all at once"],
+    [/Ninh rule, greedy/g, "Pipe-map method, first search"], [/Ninh rule, genetic algorithm/g, "Pipe-map method, second search"], [/Coverage greedy \(2-pipe radius\)/g, "Spread to reach the most manholes nearby"], [/Sim 3\.5, region-less/g, "Our earlier way, no areas"], [/ \(Ninh rule\)/g, ""], [/Sim 4 Greedy: average \(current\)/g, "Our level sensors"], [/Sim 4 Greedy: worst case/g, "Our level sensors"], [/Greedy: average/g, "Best on average"], [/Greedy: worst case/g, "Best in the hardest weather"], [/Exact optimum/g, "Best set bought all at once"],
     [/\s*\(manning\)/gi, ""], [/^Watch$/, "Keep an eye on"], [/^Leave$/, "Room to spare"], [/^Level sensor$/, "Level sensor"], [/Low flow \/ capacity/gi, "Pipes with room"], [/^High$/, "Fuller pipes"],
     [/Surcharged by infiltration alone/g, "Already backing up from rain leaking in"], [/Surcharged before growth/g, "Already backing up today"],
     [/surcharged before growth/g, "already backing up today"], [/Newly surcharged/g, "Starts backing up"], [/newly surcharged/g, "starts backing up"],
@@ -220,6 +220,28 @@
       },
       wire() { on("[data-row]", "onclick", e => { st.compare.method = e.currentTarget.dataset.row; st.compare.failed.clear(); refresh(); }); },
     },
+    ninh: {
+      panel() {
+        const n = st.ninh; n.k = 5; const d = window.NINH_COMPARE, x = facts(), tag = x.hard.tag, P = _.pal();
+        const at = id => d.methods.find(m => m.id === id).byK[4], hits = id => at(id).scenario.per.find(q => q.tag === tag) || { hit: 0, n: x.n };
+        const own = _.plan() === "worst" ? "gWorst" : "gAvg";
+        const row = (id, label, colour) => `<div data-nm="${id}" class="rowwrap ${n.m === id ? "on" : ""}">${dotRow(label, hits(id).hit, hits(id).n, colour)}</div>`;
+        const ev = (id, k) => at(id).all.ev[k];
+        return `
+          <p class="lede">A recent published method (Ninh and others, 2025) chooses sensor sites from the pipe map alone, without trying out growth: it puts sensors where a blocked pipe would back water up to them. A simpler common way spreads sensors so each one reaches as many manholes nearby as it can. We tried both on our growth scenarios. Click a row to see its sensors.</p>
+          <div class="hint">Growth scenarios each one notices on a ${weather(tag).toLowerCase()}, the hardest weather we tested:</div>
+          ${row("ninh", "Pipe-map method, first search", P.orange)}
+          ${row("ga", "Pipe-map method, second search", P.yellow)}
+          ${row("cov", "Spread sensors to reach the most manholes nearby", P.purple)}
+          ${row("s35", "Our earlier way: trying out growth, any manhole, no areas", P.blue)}
+          ${row(own, "Our 5 level sensors", COL.sensor)}
+          <div class="stats">${stat(pct(at("ninh").ninh), "of the pipe length where a blockage would show: pipe-map method")}${stat(pct(at(own).ninh), "the same, for our 5")}</div>
+          <div class="hint">Each method is good at its own job. The pipe-map method watches more pipe for blockages; ours notices far more of the slow rise from new homes, which is what this project is for.</div>
+          <div class="hint">Pipes that <b>start backing up</b> because of the new homes, noticed when it happens: pipe-map method <b>${ev("ninh", "sur").atTime} of ${ev("ninh", "sur").series}</b>, ours <b>${ev(own, "sur").atTime} of ${ev(own, "sur").series}</b>. Pipes filling <b>past the safe level</b>: ${ev("ninh", "alarm").atTime} and ${ev(own, "alarm").atTime} of ${ev(own, "alarm").series}.</div>
+          ${nextBtn()}`;
+      },
+      wire() { on("[data-nm]", "onclick", e => { st.ninh.m = e.currentTarget.dataset.nm; refresh(); }); },
+    },
     check: {
       panel() {
         const ch = st.check; ch.screen = "util"; const o = HANDLERS.check.odd();
@@ -298,6 +320,7 @@
 
   const x = () => facts();
   const read = {
+    ninh: "Numbered dots: the chosen method's sensors. Coloured pipes: where a blocked pipe would back water up to one of them. Green rings: our 5 sensors.",
     problem: "The network, before any colour: every line is a pipe.",
     regions: "Pipe colour: monitor (red), keep an eye on (amber) or room to spare (grey). Region names sit at the edge.",
     onesensor: "The big dot is the first level sensor placed; the small dots are the rest of the plan.",
