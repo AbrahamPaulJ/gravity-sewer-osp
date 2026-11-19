@@ -118,7 +118,8 @@ def lib_link(text_html, lib):
 # ------------------------------------------------------------------------------------------------ the story
 def steps(nm, reg, ctx):
     tri, lad, fb = nm["triage"], {r["k"]: r for r in nm["ladder"]}, nm["facts"]["before_growth"]
-    seed, rec, price = ctx["seed"], nm["recommend"], nm["price"]["level"]
+    ladw = {r["k"]: r for r in nm["ladder_worst"]}
+    rec, price = nm["recommend"], nm["price"]["level"]
     by = lambda a: [i for i, v in tri.items() if v["action"] == a]
     d = fb[DESIGN]
     spill = "None spill." if not d["spilled"] else f"{d['spilled']} spill{'s' if d['spilled'] == 1 else ''}."
@@ -150,20 +151,28 @@ def steps(nm, reg, ctx):
     if by("leave"):
         parts.append(f"Leave {listing(by('leave'))}: {why_leave}.")
     s4 = " ".join(parts) + " Leaving a region unmonitored is a valid answer, if a design wet day is the right test and growth comes one region at a time."
-    k0, nd = len(seed), nm["universe"][DESIGN]
-    L0 = lad[k0]
-    see = f"see{'s' if k0 == 1 else ''} all {nd}" if L0["design_wet"] >= 1 - 1e-9 else f"see{'s' if k0 == 1 else ''} {pct(L0['design_wet'])} of the {nd}"
-    s5a = (f"{k0} level sensor{'s' if k0 != 1 else ''} {see} growth runs in those regions on a design wet day. In other weather {'it falls' if k0 == 1 else 'they fall'} short: "
-           f"{pct(L0['average'])} on average across {ctx['nwet']} wet cases. Click a level sensor to see why it is there.")
-    L5, wt = lad[rec], nm["warn_universe"]["target"]
-    warned = f"all {wt}" if L5["warned_target"] == wt else f"{L5['warned_target']} of {wt}"
-    s5b = (f"The same {k0} plus {rec - k0} more level sensors. Across {ctx['nwet']} wet cases they see {pct(L5['average'])} of growth runs on average "
-           f"and {pct(L5['worst'])} in the worst case, and warn of {warned} overloads. On unseen weather: "
-           f"{pct(unseen_avg(nm, rec))}, averaged by case. "
-           f"A nested list, not the exact best {word(rec)}: it keeps step 5a's level sensor and grows from {k0} to {rec} to {max(lad)} without moving one.")
-    s6 = (f"{kdollars(k0 * price)} or {kdollars(rec * price)}, at assumed prices. Normal-day records could confirm the design day "
-          f"and save up to {rec - k0} level sensors, about {kdollars((rec - k0) * price)}. Level sensors, not floats: a float only switches at one height, "
-          f"so it cannot follow a gradual rise. A new suburb needs its own model runs. New estates at the edge (greenfield) are the next piece of work.")
+    # 19 Nov: Sim 4 places level sensors by greedy only, two ways. Greedy: average is the map's default (5a, 5b);
+    # Greedy: worst case is step 5c. Each card stays under 65 words (verify_sim4_web.js).
+    nd = nm["universe"][DESIGN]
+    L1, L5, W5, wt = lad[1], lad[rec], ladw[rec], nm["warn_universe"]["target"]
+    seen1 = f"all {nd}" if L1["design_wet"] >= 1 - 1e-9 else f"{round(L1['design_wet'] * nd)} of the {nd}"
+    s5a = (f"Greedy adds one level sensor at a time, the manhole that adds most to its goal, and never moves one. "
+           f"Aiming for the best average over the {ctx['nwet']} wet cases, the first sees {seen1} design wet growth runs and "
+           f"{pct(L1['average'])} on average, but {pct(L1['worst'])} in the worst case. Click a level sensor to see why it is there.")
+    warned = lambda r: f"all {wt}" if r["warned_target"] == wt else f"{r['warned_target']} of {wt}"
+    s5b = (f"Greedy: average, {rec} level sensors: across the {ctx['nwet']} wet cases they see {pct(L5['average'])} of growth runs on average "
+           f"and {pct(L5['worst'])} in the worst case, and warn of {warned(L5)} overloads. On unseen weather: "
+           f"{pct(unseen_avg(nm, rec))}, averaged by case. Each was added to the ones before, so they can be bought in stages without moving one.")
+    lead = [k for k in sorted(lad) if ladw[k]["worst"] > lad[k]["worst"] + 1e-9]
+    prefix = lead and lead == list(range(1, len(lead) + 1)) and all(lad[k]["worst"] >= ladw[k]["worst"] - 1e-9 for k in lad if k > len(lead))
+    lead_s = (f"It leads in the worst case with {' or '.join(str(k) for k in lead) if len(lead) <= 2 else f'1 to {lead[-1]}'} "
+              f"level sensor{'s' if lead[-1] > 1 else ''}; from {len(lead) + 1} on, Greedy: average does as well or better. " if prefix else
+              f"It leads in the worst case at {listing([str(k) for k in lead])} level sensors. " if lead else "It never leads in the worst case. ")
+    s5c = (f"Greedy: worst case aims for the weakest weather case instead, and picks other manholes. With {rec} level sensors it sees "
+           f"{pct(W5['worst'])} in the worst case and {pct(W5['average'])} on average, and warns of {warned(W5)} overloads. " + lead_s + "Explore shows both.")
+    s6 = (f"{kdollars(price)} a level sensor, so {rec} cost {kdollars(rec * price)}, at assumed prices. Greedy never moves a level sensor, so they can be "
+          f"bought in stages. Level sensors, not floats: a float only switches at one height, so it cannot follow a gradual rise. "
+          f"A new suburb needs its own model runs. New estates at the edge (greenfield) are the next piece of work.")
     return [
         {"id": "1", "n": 1, "title": "The network", "map": "plain",
          "body": f"{ctx['pipes']} pipes and {ctx['manholes']} manholes, with new homes coming by 2041. The question is what data shows growth using up these pipes, and where to collect it."},
@@ -171,19 +180,22 @@ def steps(nm, reg, ctx):
          "body": f"Before any new homes, the model has {d['surcharged']} manholes surcharged: water above the pipe top, the warning sign before an overflow. {spill} On a much wetter day it has {fb['Beyond design']['surcharged']}, so wet weather alone already matters."},
         {"id": "3", "n": 3, "title": "Add the 2041 homes", "map": "growth", "slider": True, "legend": ["was", "rise", "tip"], "body": s3},
         {"id": "4", "n": 4, "title": "Decide where to look", "map": "triage", "legend": ["monitor", "watch", "leave"], "body": s4},
-        {"id": "5a", "n": 5, "title": "Place level sensors, if the design day is right", "map": "sensors", "k": k0, "legend": ["sensor", "monitor", "watch"], "body": s5a},
-        {"id": "5b", "n": 5, "title": "Place level sensors, if the weather is unknown", "map": "sensors", "k": rec, "legend": ["sensor", "monitor", "watch"], "body": s5b},
+        {"id": "5a", "n": 5, "title": "Place level sensors one at a time (greedy)", "map": "sensors", "k": 1, "legend": ["sensor", "monitor", "watch"], "body": s5a},
+        {"id": "5b", "n": 5, "title": f"Greedy: average, {word(rec)} level sensors", "map": "sensors", "k": rec, "legend": ["sensor", "monitor", "watch"], "body": s5b},
+        {"id": "5c", "n": 5, "title": f"Greedy: worst case, {word(rec)} level sensors", "map": "sensors", "k": rec, "list": "worst", "legend": ["sensor", "monitor", "watch"], "body": s5c},
         {"id": "6", "n": 6, "title": "Cost, and doing it again", "map": "sensors", "k": rec, "legend": ["sensor"], "body": s6},
     ]
 
 
 # ------------------------------------------------------------------------------------------------ popups
-def popups(nm, ctx, k):
-    tri, lad, why = nm["triage"], {r["k"]: r for r in nm["ladder"]}, {r["manhole"]: r for r in nm["reasons"]}
+def popups(nm, ctx, k, goal="average"):
+    """Each level sensor's popup on the story's map, for the greedy list named (goal 'average' or 'worst')."""
+    x = "" if goal == "average" else "_worst"
+    tri, lad, why = nm["triage"], {r["k"]: r for r in nm["ladder" + x]}, {r["manhole"]: r for r in nm["reasons" + x]}
     L = lad[k]
     out = []
     for n, m in enumerate(L["chosen"], 1):
-        r, sw = why[m], nm["swaps"][str(k)][m]
+        r, sw = why[m], nm["swaps" + x][str(k)][m]
         heard = [(g, v) for g, v in r["hears"].items() if v["first_step"]]
         if heard:
             listens = f"{listing([g for g, _ in heard])}, on a design wet day"
@@ -193,7 +205,7 @@ def popups(nm, ctx, k):
             wet = sorted(((g, len(v["cases_heard"])) for g, v in r["hears"].items() if v["cases_heard"]), key=lambda x: -x[1])[:2]
             listens = "In wetter weather only: " + ", ".join(f"{g} in {c} of {ctx['nwet']} wet cases" for g, c in wet)
             reacts = "Stays under 10 mm on a design wet day, even with all 2041 homes"
-        if k == len(ctx["seed"]):
+        if k == 1:
             lost = f"Design wet falls from {pct(L['design_wet'])} to {pct(sw['without_design'])} of growth runs"
         else:
             lost = f"Worst case falls from {pct(L['worst'])} to {pct(sw['without_worst'])}, average from {pct(L['average'])} to {pct(sw['without_average'])}"
@@ -202,7 +214,7 @@ def popups(nm, ctx, k):
         if home and all(tri.get(h, {}).get("action") == "leave" for h in home):
             note.append(f"It sits in {listing(home)}, which need{'s' if len(home) == 1 else ''} no sensor of {'its' if len(home) == 1 else 'their'} own. It is here for flow passing through.")
         only = [c for c, v in L["per_case"].items() if v > 0 and sw["without_per_case"].get(c, 0) == 0]
-        if only and k != len(ctx["seed"]):
+        if only and k != 1:
             note.append(f"It is the only sensor here that sees {listing([CASE_PHRASE.get(c, c) for c in only])}.")
         if r["surcharged_before_growth"]:
             note.append("The model has this manhole surcharged before any growth. Worth a site check.")
@@ -234,35 +246,54 @@ def tables(nm, ctx):
                for i, v in tri.items()]),
         f"Design wet, pipe limit {nm['rule']['limit']} of pipe height. Runs out means monitor, uncertain means watch, room left means leave. "
         "Bands by case: O runs out, U uncertain, R room left, A already over before growth.")
-    tied = nm["tied_best_sets"]
-    T["ladder"] = figure(
-        "The ladder",
-        table(["Sensors", "Added", "Worst / average", "Design wet", "25 mm rule", "Warned", "Exact solver, not nested", "Assumed cost"],
-              [[r["k"], r["added"], wa(r["worst"], r["average"]), pct(r["design_wet"]), wa(r["worst_25"], r["average_25"]),
-                f"{r['warned_target']} of {wt}", wa(r["exact_worst"], r["exact_average"]), kdollars(r["cost"])] for r in nm["ladder"]]),
-        f"Each row adds one sensor to the row above. Target regions, build-out up to 100%, {ctx['nwet']} wet cases, 10 mm rule unless stated. "
-        + (f"Among sets that keep {keep_phrase(ctx)}, at least {tied} {word(rec)}-sensor sets tie for best, so read this as one good choice, not the only one. "
-           if tied > 1 else f"No other {word(rec)}-sensor set that keeps {keep_phrase(ctx)} ties with it. ")
-        + "The exact solver column drops that condition, so its sets are not nested.")
+    def ladder_fig(key, name, goal):
+        return figure(
+            f"{name}, one level sensor at a time",
+            table(["Sensors", "Added", "Worst / average", "Design wet", "25 mm rule", "Warned", "Assumed cost"],
+                  [[r["k"], r["added"], wa(r["worst"], r["average"]), pct(r["design_wet"]), wa(r["worst_25"], r["average_25"]),
+                    f"{r['warned_target']} of {wt}", kdollars(r["cost"])] for r in nm[key]]),
+            f"Each row adds one level sensor to the row above: the manhole that most raises the {goal}, ties to the other measure. "
+            f"Target regions, build-out up to 100%, {ctx['nwet']} wet cases, 10 mm rule unless stated.")
+    T["ladder"] = ladder_fig("ladder", "Greedy: average", "average over the cases")
+    T["ladder_worst"] = ladder_fig("ladder_worst", "Greedy: worst case", "worst case")
     sw = nm["swaps"][str(rec)]
     T["standins"] = figure(
         f"Stand-ins for the {word(rec)}",
         table(["Sensor", "Worst / average without it", "Warned without it", "Stand-ins with the same score", "Nearest"],
               [[m, wa(v["without_worst"], v["without_average"]), f"{v['without_warned']} of {wt}", v["stand_ins"],
                 ", ".join(a for a, _ in v["nearest_stand_ins"]) or "none"] for m, v in sw.items()]))
-    ho = {x["k"]: x for x in nm["held_out"]}
     rnd = {x["k"]: x for x in nm["random"]}
+    for x_, nm_ in (("", "Greedy: average"), ("_worst", "Greedy: worst case")):
+        T["held" + x_] = held_fig(nm, ctx, rnd, x_, nm_)
+    show = lambda v: f"more than {max(r['k'] for r in nm['ladder'])}" if v is None else v
+    T["fewest"] = figure(
+        "Fewest sensors by weather covered",
+        table(["Weather to cover", "Greedy: average, 80%", "90%", "100%", "Greedy: worst case, 80%", "90%", "100%"],
+              [[f["scope"]] + [show(f[f"ladder_{t}"]) for t in ("0.8", "0.9", "1.0")] + [show(g[f"ladder_{t}"]) for t in ("0.8", "0.9", "1.0")]
+               for f, g in zip(nm["fewest"], nm["fewest_worst"])]),
+        "How many level sensors each greedy list needs before it sees this share of growth runs in the worst of the weather cases named. "
+        "Target regions, up to 100%.")
+    if ctx["bisection"] and ctx["handpicked"]:
+        T["compare"] = compare(nm, ctx["handpicked"], ctx)
+    return T_rest(T, nm, ctx)
+
+
+def held_fig(nm, ctx, rnd, x_, name):
+    """'How it holds up' for one greedy list: chosen without the weather case or region tested."""
+    rec = nm["recommend"]
+    ho = {x["k"]: x for x in nm["held_out" + x_]}
     reg5, rand5 = ho[rec]["region_runs"][0] / ho[rec]["region_runs"][1], rnd[rec]["responsive"]["avg_mean"]
+    hbc = nm["held_out_by_case" + x_]
     transfer = ("the sensor list does not transfer, only the method" if reg5 - rand5 < 0.10
                 else "the picks still beat random manholes on a region they were not chosen for")
     kmax = max(ho)
-    blind = [c for c, v in nm["held_out_by_case"].items() if v[str(kmax)] == 0]
+    blind = [c for c, v in hbc.items() if v[str(kmax)] == 0]
     blind_txt = (f" {listing([c.replace(DESIGN + ' + age-weighted I&I', 'Age-weighted Design wet') for c in blind])} cannot be predicted from the other weather: "
                  f"chosen without it, {kmax} sensors see 0% of it." if blind else "")
-    T["held"] = figure(
-        "How it holds up",
+    return figure(
+        f"How {name} holds up",
         table(["Sensors", "Unseen weather, average of the cases", "Warned", "Unseen region", "Warned", "Random responsive, average", "Warned", "Random any, average", "Warned"],
-              [[k, pct(unseen_avg(nm, k)), f"{x['weather_warned'][0]} of {x['weather_warned'][1]}",
+              [[k, pct(unseen_avg(nm, k, x_)), f"{x['weather_warned'][0]} of {x['weather_warned'][1]}",
                 pct(x["region_runs"][0] / x["region_runs"][1]), f"{x['region_warned'][0]} of {x['region_warned'][1]}",
                 pct(rnd[k]["responsive"]["avg_mean"]), f"{rnd[k]['responsive']['warned_mean']:.1f}",
                 pct(rnd[k]["any"]["avg_mean"]), f"{rnd[k]['any']['warned_mean']:.1f}"] for k, x in sorted(ho.items())]),
@@ -270,13 +301,9 @@ def tables(nm, ctx):
         f"On an unseen region, {rec} sensors see {pct(reg5)} against {pct(rand5)} for random manholes that respond at all: {transfer}.{blind_txt}"
         + (f" {listing([o.split(',')[0] for o in ctx['overlay']])} shares its manholes with the regions it crosses, so holding it out does not hide it, and the unseen-region figure is a little generous."
            if ctx["overlay"] and any(o.split(",")[0] in nm["targets"] for o in ctx["overlay"]) else ""))
-    if ctx["bisection"] and ctx["handpicked"]:
-        T["compare"] = compare(nm, ctx["handpicked"], ctx)
-    show = lambda v: "not reachable" if v is None else v
-    T["fewest"] = figure(
-        "Fewest sensors by weather covered",
-        table(["Weather to cover", "80%", "90%", "100%"], [[f["scope"], show(f["0.8"]), show(f["0.9"]), show(f["1.0"])] for f in nm["fewest"]]),
-        "The fewest level sensors that see this share of growth runs in the worst of the weather cases named, solved exactly, target regions, up to 100%.")
+
+
+def T_rest(T, nm, ctx):
     fx = nm["facts"]
     T["overloads"] = figure(
         "Where the model really overloads by 100%",
@@ -296,9 +323,8 @@ def tables(nm, ctx):
 def notes(nm, reg, ctx):
     """Each card's fold: Assumes, Source, Limit and Next, with every figure from the files, and the tables behind it."""
     T, tri, rec, cap = tables(nm, ctx), nm["triage"], nm["recommend"], ctx["capacity"]
-    lad = {r["k"]: r for r in nm["ladder"]}
-    k0 = len(ctx["seed"])
-    L0, L5 = lad[k0], lad[rec]
+    lad, ladw = {r["k"]: r for r in nm["ladder"]}, {r["k"]: r for r in nm["ladder_worst"]}
+    L1, L5, W5 = lad[1], lad[rec], ladw[rec]
     u = nm["universe"].values()
     keep = [i for i, v in tri.items() if v["action"] == "leave" and all(b == "room left" for b in v["bands_by_case"].values())]
     keeps = (f"{listing(keep)} alone keeps room in all {ctx['nwet']} wet cases." if len(keep) == 1 else
@@ -349,25 +375,37 @@ def notes(nm, reg, ctx):
         "next": "The utility's own pipe ratings, and triage across all weather.",
         "figures": [T["regions"]]}
     N["5a"] = {
-        "assumes": "A rise of 10 mm at the sensor counts as seen. Sensors never fail.",
-        "source": "Our own search over the model runs, checked against an exact solver at every count. No published method is cited: team assumption.",
-        "limit": f"Tuned to one day: across the {ctx['nwet']} wet cases {'it sees' if k0 == 1 else 'they see'} {pct(L0['average'])} of growth runs on average "
-                 f"and {pct(L0['worst'])} in the worst case. The 10 mm and 25 mm rules and the pipe limit are assumed.",
+        "assumes": f"A rise of 10 mm at the sensor counts as seen. Sensors never fail. Greedy adds, each time, the manhole that most raises the "
+                   f"average share of growth runs seen over the {ctx['nwet']} wet cases, ties to the worst case.",
+        "source": "Our own greedy search over the model runs. No published method is cited: team assumption.",
+        "limit": f"One sensor favours no weather: across the {ctx['nwet']} wet cases it sees {pct(L1['average'])} of growth runs on average "
+                 f"and {pct(L1['worst'])} in the worst case. Greedy looks one sensor ahead only, so a later sensor cannot undo an early choice. "
+                 "The 10 mm and 25 mm rules and the pipe limit are assumed.",
         "next": "Allow for sensor noise and the time it takes to notice.",
         "figures": [T["fewest"]]}
+    si = nm["swaps"][str(rec)]
+    n_si = sum(1 for v in si.values() if v["stand_ins"] > 0)
+    standin_s = (f"{word(n_si).capitalize()} of the {word(rec)} have stand-ins with the same worst case and average, so read this as one good choice, not the only one. "
+                 if n_si else f"None of the {word(rec)} has a stand-in with the same worst case and average. ")
     N["5b"] = {
-        "assumes": f"Step 5a's {'sensor' if k0 == 1 else 'sensors'} plus the {word(rec - k0)} that score best on the worst case plus the average over the "
-                   f"{ctx['nwet']} wet cases, plus the share of overloads warned. A warning is a rise one build-out step before the first new surcharge. "
-                   "Sensors never fail.",
+        "assumes": f"Greedy: average: each of the {word(rec)} adds the most to the average share of growth runs seen over the {ctx['nwet']} wet cases. "
+                   "A warning is a rise one build-out step before the first new surcharge. Sensors never fail.",
         "source": f"Sensors do fail: in a real deployment, {DO_SENSORS[0]} of {DO_SENSORS[1]} level sensors stayed in service over about a year (Do et al. 2023).",
-        "limit": f"Many sets tie on these cases: among sets that keep {keep_phrase(ctx)}, at least {nm['tied_best_sets']} {word(rec)}-sensor sets score the same; "
-                 f"this one wins on the stricter 25 mm rule. {exact_phrase(ctx, rec)} "
-                 "It is not chosen for Dry, or for 150% and 300% build-out. "
+        "limit": standin_s + "It is not chosen for Dry, or for 150% and 300% build-out. "
                  f"One simulated run moves a weather case's score by {round(100 / max(u))} to {round(100 / min(u))} points: read smaller differences as noise. "
                  f"Chosen for infill: on a new estate joining at the network's edge, these {word(rec)} see {pct(ctx['gf_cover']['average'])} of growth runs on average "
-                 f"and {pct(ctx['gf_cover']['worst'])} in the worst wet case (Explore, Greenfield).",
+                 f"and {pct(ctx['gf_cover']['worst'])} in the worst wet case.",
         "next": "A spare sensor per region, for failures.",
         "figures": [T["ladder"], T["standins"], T["held"]]}
+    N["5c"] = {
+        "assumes": f"Greedy: worst case: each of the {word(rec)} adds the most to the share of growth runs seen in the weakest of the {ctx['nwet']} wet cases, "
+                   "ties to the average. Sensors never fail.",
+        "source": "Our own greedy search over the same model runs as step 5b. Team assumption.",
+        "limit": f"Aiming at the weakest case can leave the average lower: with {word(rec)} level sensors it sees {pct(W5['average'])} on average, "
+                 f"against {pct(L5['average'])} for Greedy: average. On unseen weather: {pct(unseen_avg(nm, rec, '_worst'))}, averaged by case. "
+                 "Which goal to use is the utility's choice.",
+        "next": "Agree the goal with the utility: the worst case if any weather may come, the average if the design day can be trusted.",
+        "figures": [T["ladder_worst"], T["held_worst"]]}
     N["6"] = {
         "assumes": f"{kdollars(price['level'])} a level sensor and {kdollars(price['float'])} a float switch, bought once.",
         "source": "Prices: assumed, not quotes. Floats: Wani et al. (2015) found an on/off sensor records only how long a level is passed, "
@@ -400,26 +438,6 @@ def suburb_phrase(cap, lim):
     return ""
 
 
-def keep_phrase(ctx):
-    """What every tied set has in common: the Design wet sensor the ladder starts from (see sim4_numbers.design_seeds)."""
-    d = ctx["design"]
-    if d["full"] == list(ctx["seed"]):
-        return f"step 5a's sensor, the only manhole that sees all {d['n']} design wet runs alone"
-    return f"a sensor that sees all {d['n']} design wet runs" if len(ctx["seed"]) == 1 else f"a set that sees all {d['n']} design wet runs"
-
-
-def exact_phrase(ctx, rec):
-    """The exact solver's set at the recommended count, against the nested list, from the runs."""
-    d = ctx["design"]
-    head = (f"Without that condition the best {word(rec)} reach {pct(d['exact_worst'])} worst and {pct(d['exact_average'])} average "
-            "(Explore, Exact optimum)")
-    if d["exact_together"] < d["n"]:
-        return head + f", but together they see {d['exact_together']} of the {d['n']} design wet runs, so they do not answer step 5a."
-    if d["exact_best_alone"] < d["n"]:
-        return head + f", but no one of them sees all {d['n']} design wet runs alone, so they cannot grow from step 5a's sensor."
-    return head + "."
-
-
 # ------------------------------------------------------------------------------------------------ the redo guide
 REDO_STEPS = {
     "1": ("Inputs: pipes and manholes (positions, inverts, diameters, lids), the outlet, pump stations, and homes now and projected.",
@@ -432,10 +450,12 @@ REDO_STEPS = {
     "4": ("Inputs: the design case and the pipe limit, ideally the utility's own ratings.",
           ["<code>SIM35_TARGET=sim4 python sim35_capacity.py</code> for the bands."]),
     "5a": ("Inputs: the rise rule (10 mm here).",
-           ["<code>python sim4_numbers.py</code> writes the nested list and every figure.", "The sensor list itself does not transfer: only the method does."]),
+           ["<code>python sim4_numbers.py</code> writes both greedy lists and every figure.", "The sensor list itself does not transfer: only the method does."]),
     "5b": ("Inputs: the weather cases the sensors must cope with.",
            ["Same run as 5a.", "Check the held-out (unseen weather) figure in <code>results/sim4/numbers_report.txt</code>.",
             "<code>python tools/check_sim4_numbers.py</code> recomputes the figures from the raw runs."]),
+    "5c": ("Inputs: the same weather cases, with the worst case as the goal.",
+           ["Same run as 5a: <code>numbers.json</code> keeps Greedy: worst case under the <code>*_worst</code> keys."]),
     "6": ("Inputs: the utility's sensor prices. They are still set in <code>sim35_mix.py</code> (<code>PRICE</code>), not yet in <code>config.js</code>.",
           ["<code>python sim4_float.py</code> for level or float.",
            "<code>python tools/build_sim4_web.py</code> and <code>python tools/build_sim4_explore.py</code> rebuild the pages."]),
@@ -552,10 +572,11 @@ def bought(c):
     return " + ".join(parts) + (f", {kdollars(c['cost'])}" if f else "") if parts else "none"
 
 
-def unseen_avg(nm, k):
+def unseen_avg(nm, k, x_=""):
     """Unseen weather, the one measure every page quotes: each wet case scored with k sensors chosen without it,
-    averaged over the cases (numbers.json held_out_by_case). Pooling the runs instead weights the bigger cases more."""
-    hb = nm["held_out_by_case"]
+    averaged over the cases (numbers.json held_out_by_case, or held_out_by_case_worst for x_='_worst'). Pooling the
+    runs instead weights the bigger cases more."""
+    hb = nm["held_out_by_case" + x_]
     return sum(hb[c][str(k)] for c in hb) / len(hb)
 
 
@@ -582,7 +603,7 @@ def level_or_float(fl):
     mixed = [r for r in B if r["mix"]["float"]]
     p += ("The free mix buys level sensors only at every budget here; " if not mixed else
           "The free mix buys level sensors only, except at " + listing([f"{kdollars(r['budget'])} ({bought(r['mix'])})" for r in mixed]) + "; ")
-    p += "it maximises the worst case and is not nested, so its sets differ from the list."
+    p += "it maximises the worst case and is not nested, so its sets differ from Greedy: average."
     uw = lambda c: pct(case_mean(c["unseen_by_case"]))
     return figure("Level or float, for the same money",
             table(["Budget", "Level, the list: worst / average", "Unseen weather, average of the cases", "Floats only: bought", "Worst / average", "Unseen weather",
@@ -597,12 +618,11 @@ def compare(nm, old, ctx):
     def side(x, skip=()):
         tri, rec = x["triage"], x["recommend"]
         lad = {r["k"]: r for r in x["ladder"]}
-        k0 = next(f["1.0"] for f in x["fewest"] if f["scope"] == "Design wet only")
         ho = next(h for h in x["held_out"] if h["k"] == rec)
         homes = [v["homes_now"] for i, v in tri.items() if i not in skip]
         acts = lambda a: listing([i for i, v in tri.items() if v["action"] == a]) or "none"
         return {"homes": f"{min(homes)} to {max(homes)}", "monitor": acts("monitor"), "watch": acts("watch"),
-                "seed": f"{k0}: {listing(lad[k0]['chosen'])}", "five": lad[rec]["chosen"], "rec": rec,
+                "first": lad[1]["chosen"][0], "five": lad[rec]["chosen"], "rec": rec,
                 "score": wa(lad[rec]["worst"], lad[rec]["average"]),
                 "warned": f"{lad[rec]['warned_target']} of {x['warn_universe']['target']}",
                 "weather": pct(unseen_avg(x, rec)), "region": pct(ho["region_runs"][0] / ho["region_runs"][1])}
@@ -610,14 +630,14 @@ def compare(nm, old, ctx):
     same = [m for m in b["five"] if m in a["five"]]
     rows = [["Homes per region now", a["homes"] + " (the corridor one of the 8)", b["homes"] + (" (the corridor overlapping)" if ctx["overlay"] else "")],
             ["Monitor", a["monitor"], b["monitor"]], ["Watch", a["watch"], b["watch"]],
-            ["Sensors if the design day is right", a["seed"], b["seed"]],
+            ["Greedy: average, first level sensor", a["first"], b["first"]],
             [f"{b['rec']} sensors, worst / average", a["score"], b["score"]], ["Overloads warned", a["warned"], b["warned"]],
             ["Unseen weather, average of the cases", a["weather"], b["weather"]], ["Unseen region", a["region"], b["region"]]]
     return figure("Compared with the hand-picked regions",
             table(["", "Hand-picked regions", "Equal-home regions (this page)"], rows),
             "The same analysis on Sim 3's hand-picked regions, which Sims 3 and 3.5 keep. A region id is not the same place in the two cuts. "
             f"{len(same)} of the {b['rec']} sensors are the same either way ({listing(same)}), so where to put sensors holds up; which regions "
-            "to watch, and whether a design day needs one sensor or two, depend on how the suburb is cut. That cut is a choice to agree with "
+            "to watch depends on how the suburb is cut. That cut is a choice to agree with "
             "the utility, not a result.")
 
 
@@ -644,19 +664,6 @@ def warned_by(sensors, nm, reg, chambers):
     return warned, total
 
 
-def exact_unseen(nm, chambers, path=None):
-    """The exact sets' unseen-weather share at the recommended count, from demo/data/compare.js (build_demo_data.js),
-    or None when that file is missing or its exact sets are not numbers.json's."""
-    path = path or os.path.join(ROOT, "demo", "data", "compare.js")
-    if not os.path.exists(path):
-        return None
-    ex = read_js(path)["methods"]["exact"]
-    ours = [sorted(r["exact_set"]) for r in sorted(nm["ladder"], key=lambda r: r["k"])]
-    if [sorted(chambers[i] for i in s) for s in ex["sets"]] != ours or "unseen" not in ex:
-        return None
-    return ex["unseen"][nm["recommend"] - 1]
-
-
 def why_greenfield(nm, ctx):
     """Step 6's fold (19 Nov): the recommendation is for infill only; new estates at the edge (greenfield) were run but no
     sensors are chosen for them yet, so it is the next piece of work. The coverage is greenfield_cover's, the score
@@ -669,55 +676,34 @@ def why_greenfield(nm, ctx):
     rows = [["Edge connections where a new estate could join", f"{joins} of {cands} candidate points"],
             [f"Growth runs these {word(rec)} see, average over the {g['cases']} wet cases", pct(g["average"])],
             [f"Growth runs these {word(rec)} see, worst wet case", pct(g["worst"])]]
-    link = ('<p class="gfLink"><a href="explore.html#fam=one&amp;view=expert">Open Explore\'s Greenfield view</a>: the story\'s sensors scored on each '
-            "estate, beside the greenfield runs' own greedy order.</p>")
+    link = ('<p class="gfLink"><a href="explore.html#fam=one&amp;view=expert">Open Explore\'s Greenfield view</a>: the greenfield runs\' own greedy '
+            "orders, for the best worst case or the best average.</p>")
     return {"title": "New estates at the edge", "intro": intro, "table": table(["", "Value"], rows) + link}
 
 
-def why_nested(nm, reg, chambers, ctx, exact_unseen=None):
-    """Step 5b's 'Why not the exact best set?': the nested list against the exact solver's set at the recommended count,
-    from the runs. The exact sets' unseen-weather figure is demo/data/compare.js's (build_demo_data.js: each wet case
-    scored by the exact set solved without it), set beside the list's on the same basis, the average over the cases."""
-    rec, k0 = nm["recommend"], len(ctx["seed"])
-    lad = {r["k"]: r for r in nm["ladder"]}
-    kmax = max(lad)
-    L, d = lad[rec], ctx["design"]
-    n_w, t_w = warned_by(L["chosen"], nm, reg, chambers)
-    n_e, t_e = warned_by(L["exact_set"], nm, reg, chambers)
-    assert (n_w, t_w) == (L["warned_target"], nm["warn_universe"]["target"]), "warning count does not match numbers.json"
-    # Sensors already in the ground that a later, larger exact set leaves out: bought in stages, and one at a time.
-    moved = lambda ks: sum(len(set(lad[a]["exact_set"]) - set(lad[b]["exact_set"])) for a, b in zip(ks, ks[1:]))
-    stages = [k0, rec, kmax]
-    m_stage, m_one = moved(stages), moved(list(range(1, kmax + 1)))
-    assert all(set(lad[a]["chosen"]) <= set(lad[b]["chosen"]) for a in range(1, kmax) for b in (a + 1,)), "the list is not nested"
-    hb = nm["held_out_by_case"]
-    unseen_list = unseen_avg(nm, rec)
-    # The worst case gap in runs: the list's worst case is a whole number of runs of that case.
-    wc = min(L["per_case"], key=L["per_case"].get)
-    n = nm["universe"][wc]
-    gap = round((L["exact_worst"] - L["worst"]) * n, 6)
-    gap_s = (f"The gap in the worst case is {word(int(gap))} run{'s' if gap != 1 else ''} in {n}. " if abs(gap - round(gap)) < 1e-6 and gap >= 1 else "")
-    stage_s = (f"Bought {k0}, then {rec}, then {kmax}, the exact sets would move {word(m_stage)} sensor{'s' if m_stage != 1 else ''} "
-               f"already in the ground, and {word(m_one)} if bought one at a time. " if m_stage else "")
-    rows = [["Sensors", ", ".join(L["chosen"]), ", ".join(L["exact_set"])],
-            ["Worst wet case", pct(L["worst"]), pct(L["exact_worst"])],
-            ["Average over the " + str(ctx["nwet"]) + " wet cases", pct(L["average"]), pct(L["exact_average"])],
-            ["Overloads warned", f"{n_w} of {t_w}", f"{n_e} of {t_e}"],
-            ["Design wet runs seen (step 5a's question)", f"{round(L['design_wet'] * d['n'])} of {d['n']}", f"{d['exact_together']} of {d['n']}"],
-            ["Grows from " + f"{k0} to {rec} to {kmax}", "without moving a sensor", f"moves {word(m_stage)}" if m_stage else "without moving a sensor"]]
-    if exact_unseen is not None:
-        rows.insert(4, [f"On weather not chosen for, average of the {len(hb)} cases", pct(unseen_list), pct(exact_unseen)])
-    intro = (f"The list is nested: it starts from step 5a's sensor, and each sensor added keeps the ones before, so the {k0}, the {rec} and the "
-             f"{kmax} can be bought in stages without moving a sensor. The exact solver finds the best set at each count on its own, so its sets change "
-             f"from one count to the next. {stage_s}"
-             f"Its best {word(rec)} see more in the worst case, {pct(L['exact_worst'])} against {pct(L['worst'])}, "
-             + ("the same on average" if pct(L["average"]) == pct(L["exact_average"]) else f"{pct(L['exact_average'])} against {pct(L['average'])} on average")
-             + (" and warn of as many overloads" if n_e == n_w else f" and warn of {n_e} of {t_e} overloads")
-             + (f", but together they see {d['exact_together']} of the {d['n']} design wet runs, so they do not answer step 5a. " if d["exact_together"] < d["n"] else ". ")
-             + gap_s +
-             "The list gives up that much worst case for a set that keeps step 5a's sensor and can grow.")
-    return {"title": "Why not the exact best set?", "intro": intro,
-            "table": table(["", "Nested list (recommended)", f"Exact best {word(rec)}"], rows)}
+def why_two(nm, reg, chambers, ctx):
+    """Step 5b's fold: Greedy: average against Greedy: worst case at every count, from numbers.json, the warnings
+    recounted from the runs. Both are nested, so neither moves a sensor as more are bought."""
+    rec = nm["recommend"]
+    lad, ladw = {r["k"]: r for r in nm["ladder"]}, {r["k"]: r for r in nm["ladder_worst"]}
+    wt = nm["warn_universe"]["target"]
+    for L_ in (lad, ladw):
+        assert all(set(L_[a]["chosen"]) < set(L_[a + 1]["chosen"]) for a in range(1, max(L_))), "a greedy list is not nested"
+    n_a, t_a = warned_by(lad[rec]["chosen"], nm, reg, chambers)
+    n_w, t_w = warned_by(ladw[rec]["chosen"], nm, reg, chambers)
+    assert (n_a, t_a) == (lad[rec]["warned_target"], wt) and (n_w, t_w) == (ladw[rec]["warned_target"], wt), "warning count does not match numbers.json"
+    cell = lambda r: f"{pct(r['worst'])} / {pct(r['average'])}, {r['warned_target']} of {wt}"
+    rows = [[k, cell(lad[k]), cell(ladw[k])] for k in sorted(lad)]
+    shared = [m for m in lad[rec]["chosen"] if m in ladw[rec]["chosen"]]
+    wins = [k for k in sorted(lad) if ladw[k]["worst"] > lad[k]["worst"] + 1e-9]
+    intro = (f"Both add one level sensor at a time and never move one, so either can be bought in stages. Greedy: average aims for the "
+             f"average over the {ctx['nwet']} wet cases; Greedy: worst case for the weakest case. "
+             + (f"Greedy: worst case is ahead in the worst case only with {listing([str(k) for k in wins])} sensor{'s' if len(wins) > 1 or wins[-1] > 1 else ''}. " if wins
+                else "Greedy: worst case is never ahead in the worst case. ")
+             + f"At {word(rec)} they share {word(len(shared))} manhole{'s' if len(shared) != 1 else ''}"
+             + (f" ({listing(shared)})" if shared else "") + ". Each cell: worst / average, overloads warned.")
+    return {"title": "Greedy: average or Greedy: worst case?", "intro": intro,
+            "table": table(["Level sensors", "Greedy: average", "Greedy: worst case"], rows)}
 
 
 # ------------------------------------------------------------------------------------------------ more on each step
@@ -757,7 +743,7 @@ def more_folds(F, nm, ctx):
     """'More on this step': the product demo's items that fit the story, re-scored on the story's test by sim4_more.py.
     Returns ({step id: {title, blocks}}, the data the page's two small widgets draw from)."""
     rec, lad = nm["recommend"], {r["k"]: r for r in nm["ladder"]}
-    k0, nw = len(ctx["seed"]), ctx["nwet"]
+    nw = ctx["nwet"]
     labels = [f"S{n + 1}" for n in range(rec)]
     ld, lim, net = ctx["loads"], nm["rule"]["limit"], F["network"]
     M = {}
@@ -818,7 +804,8 @@ def more_folds(F, nm, ctx):
         [f"Judgement or incident history (stand-in: manholes worst today, the {word(rec)} fullest of the {wy['n_today']} surcharged before growth)"] + marks("pnpny") + [pct(wy["today"]["worst"])],
         [f"Desk hydraulics: the {word(rec)} highest flow / capacity, at least {sim4_more.SPACING_M} m apart"] + marks("ypnpy") + [pct(wy["desk"]["worst"])],
         ["Learn from sensor data"] + marks("nnypn") + ["not yet: no records"],
-        ["Simulation and search (this study): the nested list"] + marks("yyyyy") + [pct(wy["list"]["worst"])]]
+        ["Simulation and greedy placement (this study): Greedy: average"] + marks("yyyyy") + [pct(wy["list"]["worst"])],
+        ["Simulation and greedy placement (this study): Greedy: worst case"] + marks("yyyyy") + [pct(wy["worst_list"]["worst"])]]
     M["5a"] = {"title": "Why simulate at all?", "blocks": [
         {"title": "Other ways to choose the sites",
          "html": table(["Approach", "Works before any sensor", "Tests growth not yet built", "Sees water backing up", "Copes with unknown weather", "Gives a reason per site", f"Worst case, {word(rec)} sites"], why_rows),
@@ -832,23 +819,21 @@ def more_folds(F, nm, ctx):
     worst_loss = min(sw, key=lambda m: sw[m]["without_worst"])
     lost_at = labels[lad[rec]["chosen"].index(worst_loss)]
     C = F["compare"]
-    s1 = lad[k0]["chosen"][0]
     rows = []
     for r in C["rows"]:
-        name = r["name"] + (", chosen on this test" if r["name"].startswith("Greedy") else "")
-        rows.append([name, pct(r["worst"]), pct(r["average"]), f"{r['warned']} of {F['nwarn']}", pct(r["unseen"]), pct(r["fails"]), "yes" if s1 in r["set"] else "no"])
+        rows.append([r["name"], pct(r["worst"]), pct(r["average"]), f"{r['warned']} of {F['nwarn']}", pct(r["unseen"]), pct(r["fails"])])
     rd = C["random"]
-    rows.append([f"Random: {C['draws']} draws of {word(rec)} manholes in the regions to monitor or watch", pct(rd["worst"]), pct(rd["average"]), f"{rd['warned']:.1f} of {F['nwarn']}", pct(rd["average"]), "n/a", "n/a"])
-    M["5b"] = {"title": f"Each sensor, and other ways to place {word(rec)}", "blocks": [
+    rows.append([f"Random: {C['draws']} draws of {word(rec)} manholes in the regions to monitor or watch", pct(rd["worst"]), pct(rd["average"]), f"{rd['warned']:.1f} of {F['nwarn']}", pct(rd["average"]), "n/a"])
+    M["5b"] = {"title": "Each sensor, and the greedy lists against simple baselines", "blocks": [
         {"title": "Each sensor alone, by weather case",
          "intro": (f"The share of each wet case's growth runs a sensor sees on its own. {CASE_KEY} Where one sensor carries a case alone, losing it costs that case: "
                    f"without {lost_at}, the worst case falls to {pct(sw[worst_loss]['without_worst'])}."),
          "html": alone},
-        {"title": f"Other ways to place {word(rec)}, on the same test",
-         "html": table(["Method", "Worst", "Average", "Warned", "Unseen weather", "If one fails", "Keeps step 5a's sensor"], rows),
+        {"title": f"The greedy lists and simple baselines, {word(rec)} level sensors, on the same test",
+         "html": table(["Placement", "Worst", "Average", "Warned", "Unseen weather", "If one fails"], rows),
          "intro": (f"Worst and average: the share of growth runs seen over the {nw} wet cases. Unseen weather: each wet case scored with {word(rec)} sensors chosen without it, "
-                   f"averaged over the {nw} cases, the same measure as \"Why not the exact best set?\". If one fails: the worst case after the most damaging single loss. "
-                   "Greedy here is chosen on this test; Explore's Greedy is chosen on the broader test, so its figures there differ. "
+                   f"averaged over the {nw} cases, the same measure as step 5b's. If one fails: the worst case after the most damaging single loss. "
+                   "Both greedy lists are chosen on this test, the same lists as Explore's on the story's test. "
                    f"Random is the average of {C['draws']} draws, a different measure from the {ctx['draws']:,}-draw random in \"How it holds up\". "
                    "The desk methods and random use no weather, so every case is unseen to them and that column repeats their average.")}]}
 
@@ -866,8 +851,8 @@ def more_folds(F, nm, ctx):
          "Dear, needs a clean straight pipe and regular cleaning; usually short campaigns.", "Best for calibrating the model, not for many sites.", "$$$$"]])
     gf = F["greenfield"]
     sure = table(["Firm", "Say carefully"], [
-        ["Where growth shows, and which regions to watch", f"Exact lids: at least {F['ties']} {word(rec)}-sensor sets tie (step 5b)"],
-        [f"{word(rec).capitalize()} sensors beat {word(k0)} when the weather is unknown", "The model is uncalibrated, with steady flows"],
+        ["Where growth shows, and which regions to watch", f"Exact sites: {sum(1 for v in F['standins'].values() if v)} of the {word(rec)} have stand-ins that score the same (step 5b)"],
+        [f"{word(rec).capitalize()} sensors beat one when the weather is unknown", "The model is uncalibrated, with steady flows"],
         ["Level beats floats for early warning", "Timing and costs are assumed"],
         [f"New estates at the edge were tested: {gf['joins']} connections", f"These {word(rec)} see few of them: {pct(gf['worst'])} in the worst wet case, {pct(gf['average'])} on average"]])
     need = ("<ul><li>Level or flow records of a normal day, to tell which weather case is realistic: that decides how many sensors are needed.</li>"
@@ -878,7 +863,7 @@ def more_folds(F, nm, ctx):
          "intro": "Level is the most direct sign that a pipe is running out of room, so the plan uses level sensors. Fit and relative cost are the team's judgement, not quotes."},
         {"title": "How sure we are, and what we need from you", "html": sure + need}]}
     for k in M:
-        assert k in ("1", "2", "3", "5a", "5b", "6")
+        assert k in ("1", "2", "3", "5a", "5b", "5c", "6")
     widgets = {"pipes": {k: {kk: v[kk] for kk in ("label", "unit", "bins", "count", "of", "seq", "note") if kk in v} | ({"rev": True} if v.get("rev") else {}) | ({"unknown": v["unknown"]} if v.get("unknown") else {})
                          for k, v in F["pipes"].items()},
                "cutaway": {k: cu[k] for k in ("manhole", "depthM", "dia", "mat", "steps", "homes", "cases")} | {"limit": lim}}
@@ -886,21 +871,6 @@ def more_folds(F, nm, ctx):
 
 
 # ------------------------------------------------------------------------------------------------ build
-def design_facts(nm, reg, chambers):
-    """Who sees the Design wet growth runs (target regions, up to 100%, a 10 mm rise), counted from the runs: the
-    manholes that see all of them alone, and how the exact solver's set at the recommended count does on them."""
-    tg = {i for i, r in enumerate(reg["regions"]) if r["id"] in nm["targets"]}
-    ok = {s for s, f in enumerate(reg["ladder"]) if f <= 1 + 1e-9}
-    runs = [{j for j, v in x["rise"] if v >= 10} for x in reg["rows"][DESIGN_TAG] if x["r"] in tg and x["s"] in ok]
-    runs = [r for r in runs if r]
-    assert len(runs) == nm["universe"][DESIGN], "Design wet runs do not match numbers.json: rebuild the results"
-    count = lambda names: sum(1 for r in runs if any(chambers.index(m) in r for m in names))
-    full = [chambers[j] for j in sorted({j for r in runs for j in r}) if count([chambers[j]]) == len(runs)]
-    ex = next(r for r in nm["ladder"] if r["k"] == nm["recommend"])
-    return {"n": len(runs), "full": full, "exact": ex["exact_set"], "exact_worst": ex["exact_worst"], "exact_average": ex["exact_average"],
-            "exact_together": count(ex["exact_set"]), "exact_best_alone": max(count([m]) for m in ex["exact_set"])}
-
-
 def greenfield_cover(sensors, reg, chambers, path=None):
     """The share of detectable new-estate growth runs (a 10 mm rise at some manhole) that the sensors see, per wet case,
     from data/greenfield.js: the same score Explore's Greenfield view gives the story's list (greenfield_runs.js)."""
@@ -955,16 +925,14 @@ def build(numbers, regions, handpicked=HANDPICKED, floats=FLOAT, greenfield=None
     """(sim4.js text, redo.html text)."""
     nm, reg, fl = json.load(open(numbers, encoding="utf-8")), read_js(regions), json.load(open(floats, encoding="utf-8"))
     assert fl["scope"]["targets"] == nm["targets"], f"{floats} is for other regions: rerun sim4_float.py after sim4_numbers.py"
-    lad1 = next(r for r in nm["ladder"] if r["k"] == 1)
-    seed_k = next(f["1.0"] for f in nm["fewest"] if f["scope"] == "Design wet only")
+    assert nm.get("method") == "greedy" and "ladder_worst" in nm, f"{numbers} is from before greedy (19 Nov): rerun sim4_numbers.py"
     overlay = [r for r in reg["regions"] if r.get("overlay")]
     geo = read_js(os.path.join(ROOT, "simulation3", "data", "catchment.js"))
     runs = read_js(os.path.join(ROOT, "simulation3", "data", "growth.js"))
     chambers = runs["chambers"]
     hi, lo = band_cuts()
     rec_set = next(r for r in nm["ladder"] if r["k"] == nm["recommend"])["chosen"]
-    ctx = {"seed": nm["ladder"][seed_k - 1]["chosen"] if seed_k else lad1["chosen"],
-           "design": design_facts(nm, reg, chambers), "gf_cover": greenfield_cover(rec_set, reg, chambers),
+    ctx = {"gf_cover": greenfield_cover(rec_set, reg, chambers),
            "nwet": len(nm["universe"]), "pipes": geo["nPipes"], "manholes": len(chambers),
            "draws": int(source_const("sim4_numbers.py", "DRAWS")), "anchor": round(reg["anchor"]), "bisection": any("bisection" in r or r.get("overlay") for r in reg["regions"]),
            "nparts": len(reg["regions"]) - len(overlay), "overlay": [f"{r['id']}, the {r['name'].split(' (')[0]}" for r in overlay],
@@ -973,11 +941,10 @@ def build(numbers, regions, handpicked=HANDPICKED, floats=FLOAT, greenfield=None
            "capacity": json.load(open(CAPACITY, encoding="utf-8")), "loads": read_config()["loads"], "band_hi": hi, "band_lo": lo,
            "design_ii": f"{next(c['ii'] for c in reg['cases'] if c['tag'] == DESIGN_TAG):g}",
            "greenfield": greenfield or greenfield_joins(), "lib": library(), "manning": geo["manning"]}
-    k0, rec = len(ctx["seed"]), nm["recommend"]
+    rec = nm["recommend"]
     st = steps(nm, reg, ctx)
     N = notes(nm, reg, ctx)
-    why = why_nested(nm, reg, chambers, ctx, exact_unseen(nm, chambers))
-    next(s for s in st if s["id"] == "5b")["why"] = why
+    next(s for s in st if s["id"] == "5b")["why"] = why_two(nm, reg, chambers, ctx)
     next(s for s in st if s["id"] == "6")["why"] = why_greenfield(nm, ctx)
     F = sim4_more.figures(nm, reg, geo, runs, fl, ctx["gf_cover"], ctx["greenfield"][0])
     more, widgets = more_folds(F, nm, ctx)
@@ -986,20 +953,29 @@ def build(numbers, regions, handpicked=HANDPICKED, floats=FLOAT, greenfield=None
         if s["id"] in more:
             s["notes"]["more"] = more[s["id"]]
     out = {"design": DESIGN_TAG, "steps": st,
-           "popups": {str(k0): popups(nm, ctx, k0), str(rec): popups(nm, ctx, rec)},
+           "popups": {"1": popups(nm, ctx, 1), str(rec): popups(nm, ctx, rec)},
+           "popupsWorst": {str(rec): popups(nm, ctx, rec, "worst")},
            "triage": {i: v["action"] for i, v in nm["triage"].items()},
-           "ladder": {str(k0): ctx["seed"], str(rec): next(r for r in nm["ladder"] if r["k"] == rec)["chosen"]},
-           # What Explore needs to score on the story's test: the nested list, and the exact solver's own set at each
-           # count on that test (10 mm rule), so its Exact optimum there is the story's, not the broader test's.
+           "ladder": {"1": nm["ladder"][0]["chosen"], str(rec): next(r for r in nm["ladder"] if r["k"] == rec)["chosen"]},
+           "ladderWorst": {str(rec): next(r for r in nm["ladder_worst"] if r["k"] == rec)["chosen"]},
+           # What Explore needs to score on the story's test: both greedy lists (19 Nov: Sim 4 places sensors by greedy only),
+           # so its Greedy: average and Greedy: worst case there are the story's own.
            "explore": {"ladder": [r["chosen"] for r in sorted(nm["ladder"], key=lambda r: r["k"])],
+                       "ladderWorst": [r["chosen"] for r in sorted(nm["ladder_worst"], key=lambda r: r["k"])],
+                       # Kept only for the product demo (demo/app.js, tools/build_demo_data.js), which still compares against
+                       # the exact solver; neither the story nor Explore shows them.
                        "exact": [r["exact_set"] for r in sorted(nm["ladder"], key=lambda r: r["k"])],
                        "targets": nm["targets"], "recommend": rec,
                        # The story's own tables, so Explore's Results tabs show the story's figures on the story's test.
                        "fewest": [{k: f[k] for k in ("scope", "0.8", "0.9", "1.0", "ladder_0.8", "ladder_0.9", "ladder_1.0")} for f in nm["fewest"]],
+                       "fewestWorst": [{k: f[k] for k in ("scope", "ladder_0.8", "ladder_0.9", "ladder_1.0")} for f in nm["fewest_worst"]],
                        "heldOut": [{"k": h["k"], "weather": h["weather_runs"], "weatherAvg": round(unseen_avg(nm, h["k"]), 6)} for h in nm["held_out"]],
                        "heldOutByCase": nm["held_out_by_case"],
+                       "heldOutWorst": [{"k": h["k"], "weather": h["weather_runs"], "weatherAvg": round(unseen_avg(nm, h["k"], "_worst"), 6)} for h in nm["held_out_worst"]],
+                       "heldOutByCaseWorst": nm["held_out_by_case_worst"],
                        "warnTotal": nm["warn_universe"]["target"],
                        "rungs": [{"k": r["k"], "worst": r["worst"], "average": r["average"], "warned": r["warned_target"]} for r in sorted(nm["ladder"], key=lambda r: r["k"])],
+                       "rungsWorst": [{"k": r["k"], "worst": r["worst"], "average": r["average"], "warned": r["warned_target"]} for r in sorted(nm["ladder_worst"], key=lambda r: r["k"])],
                        "price": nm["price"],
                        "float": [{"budget": r["budget"], **{side: {key: r[side][key] for key in ("level", "float", "cost", "worst", "average", "unseen_weather")} | {"unseen_avg": round(case_mean(r[side]["unseen_by_case"]), 6)}
                                                             for side in ("level", "float", "mix")}} for r in fl["budgets"]],

@@ -110,7 +110,9 @@ const Sim4 = (() => {
 
   /* ---------------------------------------------------------- painting a step */
   const step = () => D().steps[st.i];
-  const sensorNames = () => step().k ? D().ladder[step().k] : [];
+  // 19 Nov: Sim 4 places level sensors by greedy only. A step shows Greedy: average unless it says list: "worst" (step 5c).
+  const listKey = () => (step().list === "worst" ? "Worst" : "");
+  const sensorNames = () => step().k ? (D()["ladder" + listKey()] || {})[step().k] || [] : [];
   function paintMap() {
     const s = step(), base = S().base[D().design];
     Growth3D.setPumpRates([]); Growth3D.setPulse([]); Growth3D.setScenario([]);
@@ -273,7 +275,7 @@ const Sim4 = (() => {
       paint();
     },
   };
-  /* A step's own question, folded under its text (step 5b: "Why not the exact best set?"), closed when the step opens.
+  /* A step's own question, folded under its text (step 5b: "Greedy: average or Greedy: worst case?"), closed when the step opens.
      Built by tools/build_sim4_web.py from the runs; the text is escaped here, the table is the builder's. */
   function renderWhy(s) {
     const w = s.why, b = $("#btnWhy"), box = $("#why");
@@ -382,7 +384,7 @@ const Sim4 = (() => {
     if (was) { placeNotes(); placeMap(); }
   }
   function showPop(name) {
-    const k = step().k, info = k ? D().popups[k].find(x => x.name === name) : null;
+    const k = step().k, info = k ? ((D()["popups" + listKey()] || {})[k] || []).find(x => x.name === name) : null;
     if (info) {
       openPop(name, `<b>Level sensor ${info.n} of ${k}: ${esc(name)}</b><dl><dt>Listens to</dt><dd>${esc(info.listens)}</dd><dt>First reacts</dt><dd>${esc(info.reacts)}</dd><dt>Without it</dt><dd>${esc(info.lost)}</dd></dl>${info.note ? `<p>${esc(info.note)}</p>` : ""}`, true);
     } else {

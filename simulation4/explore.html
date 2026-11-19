@@ -76,12 +76,12 @@ h4 .info-i{margin-left:4px}
 #scopeKnob,#methKnob{align-items:center; gap:10px; flex-wrap:nowrap; padding:3px 0}
 #scopeKnob button,#methKnob button{flex:1 1 0; min-width:0; border:0; border-radius:4px; background:none; padding:4px 0;
   color:var(--dim); font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color .15s}
-#scopeKnob button[data-s="story"],#methKnob button[data-m="greedy"]{order:1; text-align:right}
-#scopeKnob button[data-s="broad"],#methKnob button[data-m="greedy-avg"]{order:3; text-align:left}
+#scopeKnob button[data-s="story"],#methKnob button[data-m="greedy-avg"]{order:1; text-align:right}
+#scopeKnob button[data-s="broad"],#methKnob button[data-m="greedy"]{order:3; text-align:left}
 #scopeKnob::before,#methKnob::before{content:""; order:2; flex:none; width:38px; height:22px; border-radius:11px; cursor:pointer;
   background-color:var(--accent); background-image:radial-gradient(circle, #fff 0 8px, transparent 8.5px);
   background-size:22px 22px; background-repeat:no-repeat; background-position:left center; transition:background-position .2s}
-#scopeKnob:has(button[data-s="broad"].on)::before,#methKnob:has(button[data-m="greedy-avg"].on)::before{background-position:right center}
+#scopeKnob:has(button[data-s="broad"].on)::before,#methKnob:has(button[data-m="greedy"].on)::before{background-position:right center}
 #scopeKnob button:hover,#methKnob button:hover{color:var(--ink); background:none}
 #scopeKnob button.on,#methKnob button.on{color:var(--ink); font-weight:600; background:none; box-shadow:none}
 #scopeKnob button:focus-visible,#methKnob button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
@@ -639,8 +639,8 @@ html[data-theme="light"] #themeBtn .moon{display:block}
       <button data-m="story" hidden title="The story's sensors, in its order: the recommendation, so this page and the story name the same manholes. Starts from the design wet day's sensor and grows one at a time, keeping the best 1,500 sets, so no sensor moves as more are added">Nested beam search</button>
       <button data-m="warn" id="methWarn" hidden title="The best set of this size for warning at least one build-out step before the first new surcharge">Warn before surcharge</button>
       <button data-m="exact" id="methExact" hidden title="The best set of this size, solved exactly (integer program)">Exact optimum</button>
-      <button data-m="greedy" title="One sensor at a time, each the one that most raises the WORST case">Greedy: worst case</button>
-      <button data-m="greedy-avg" title="One sensor at a time, each the one that most raises the AVERAGE over the cases">Greedy: average</button>
+      <button data-m="greedy-avg" title="One level sensor at a time, each the one that most raises the AVERAGE over the cases. On the story's test: the story's steps 5a and 5b">Greedy: average</button>
+      <button data-m="greedy" title="One level sensor at a time, each the one that most raises the WORST case. On the story's test: the story's step 5c">Greedy: worst case</button>
       <button data-m="risk" id="methRisk" hidden title="Every scenario weighted by severity x occurrence (Kimbrough 2019): the share of total risk noticed, not the share of scenarios">Risk-weighted</button>
     </div>
     <p class="x quiet" id="methSay"></p>
@@ -780,8 +780,8 @@ html[data-theme="light"] #themeBtn .moon{display:block}
 <script src="../simulation35/growth_3d.js?v=34"></script>
 <script src="../simulation3/osp_core.js?v=9"></script>
 <script src="../simulation3/placement.js?v=9"></script>
-<script src="data/explore.js?v=6"></script>
-<script src="data/sim4.js?v=13"></script>
+<script src="data/explore.js?v=7"></script>
+<script src="data/sim4.js?v=14"></script>
 <script src="library.js?v=1"></script>
 <script src="region_labels.js?v=1"></script>
 <script>/* Region labels at the network's edge, not on a manhole (19 Nov dry run). */
@@ -795,7 +795,7 @@ RegionLabels.init({ avoid: "#mapControls, .legend, #mapOverlays, #stage .mapCred
 <script src="../simulation35/data/room.js?v=1"></script>
 <script src="../simulation35/room_calc.js?v=2"></script>
 <script src="map_help.js?v=1"></script>
-<script src="explore_ui.js?v=43"></script>
+<script src="explore_ui.js?v=45"></script>
 <script type="module">
   Sim35UI.init();
 </script>

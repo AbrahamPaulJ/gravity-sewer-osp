@@ -7,12 +7,12 @@ sim35_mix.py and sim35_capacity.py, and fixes what the Sim 3.5 audit found (docs
                 runs out = monitor; uncertain = watch; room left or already over = leave.
     scope       sensors are chosen only for monitor and watch regions, on build-out up to 100% (the 2041 homes).
                 The 150% and 300% steps are stress steps and never decide a sensor.
-    ladder      ONE nested order of sensors: the k-sensor set is the (k-1)-sensor set plus one. It starts with the
-                smallest set that sees all of Design wet. Then the best 5-sensor set containing it, on worst +
-                average over the 7 wet cases + share of overloads warned, with the 25 mm score breaking ties, is
-                put in the order that scores best on the way up and extended to 8. Compared with the exact solver
-                at every k, so the price of nesting is a reported figure; the 5-sensor pick is checked by brute force.
-    held out    the same search without the weather case or region being tested, always exactly k sensors, so
+    ladder      greedy only (19 Nov), two ways: each level sensor added is the manhole that most raises the average
+                over the 7 wet cases (Greedy: average, the plain keys: ladder, held_out, reasons, ...) or the worst
+                case (Greedy: worst case, the *_worst keys), ties to the other measure, then the lower index. Both
+                are nested: the k-sensor set is the (k-1)-sensor set plus one, so no sensor moves. The exact solver
+                is run at every k as a reference figure only. (Until 19 Nov: a design-day seed and a beam search.)
+    held out    the same greedy without the weather case or region being tested, always exactly k sensors, so
                 "5 sensors" means 5 sensors everywhere.
     baseline    random sets of k, from any manhole and from manholes that respond at all.
     reasons     for each sensor: what it hears, how many homes before it reads, what it adds, what is lost
@@ -120,7 +120,27 @@ def design_seeds(U, Uw):
     return one or two or None
 
 
+GOALS = ("average", "worst")       # Sim 4 places level sensors by greedy only, for each goal; "average" is the map's default
+GOAL_NAME = {"average": "Greedy: average", "worst": "Greedy: worst case"}
+
+
+def greedy_ladder(U, goal, K=KMAX):
+    """Greedy, one level sensor at a time, never moving one already placed: each added manhole is the one that most
+    raises the goal over the cases ('worst' = the lowest case's share, 'average' = the mean share), ties going to the
+    other measure, then the lower index. Nested by construction, so the k-sensor set is the (k-1)-sensor set plus one."""
+    pool = [i for i in range(n) if any(U.mask[t][i] for t in U.cases)]
+    L = []
+    for _ in range(K):
+        def key(i):
+            w, a = U.wa(L + [i])
+            w, a = round(w, 6), round(a, 6)
+            return ((w, a) if goal == "worst" else (a, w)) + (-i,)
+        L.append(max((i for i in pool if i not in L), key=key))
+    return L
+
+
 def beam_ladder(U, Uw, U25, K=KMAX, width=WIDTH):
+    """Not used since 19 Nov (Sim 4 places sensors by greedy only); kept for the record."""
     """The Design wet set, then the best RECOMMEND-sensor set containing it, in the order that scores best on the way
     up, then extended one sensor at a time to K. Returns (ladder, every set tied with the best at RECOMMEND)."""
     seeds = design_seeds(U, Uw) or [()]
@@ -262,95 +282,131 @@ def main():
                              "max_rise_before": max([v for _, v in rows[star - 1]["rise"]] or [0]) if star else 0})
     say(f"  Every overload by 100% in a leave region, warnable or not: {left}")
 
-    say("\n=== 3. The ladder: nested, level sensors, target regions, up to 100%, 7 wet cases")
-    L, equal = beam_ladder(U[10], Uw[10], U[25])
-    say("  Order: " + ", ".join(ch[i] for i in L))
+    # 19 Nov: Sim 4 places level sensors by greedy only, two ways (GOALS): for the best average and for the best worst
+    # case. Sections 3 to 7 run once per goal; "average" fills the payload's plain keys (the map's default), "worst"
+    # the *_worst keys. The exact solver is still run at each count as a reference figure; it chooses nothing.
+    dist = along_pipe()
+    home = defaultdict(list)
+    for r in reg["regions"]:
+        for m in r["manholes"]:
+            home[m].append(r["id"])
+    bD = reg["base"][DESIGN]
     exact = {}
-    rows = []
-    say(f"  {'k':>2s}  {'worst/avg':>10s} {'exact worst/avg':>16s} {'Design':>7s} {'25mm w/a':>10s} {'warned':>7s} {'of 13':>6s} {'all regions':>12s} {'Dry':>5s}   exact set")
-    for k in range(1, KMAX + 1):
-        S = L[:k]
-        w, a = U[10].wa(S); w25, a25 = U[25].wa(S)
-        ex = Det[10].solve(Det[10].groups(wet, d_keep), budget=k * M.PRICE["level"], kinds=("level",))
-        Sx = ex[0]; exact[k] = Sx
-        xw, xa = U[10].wa(Sx)
-        assert w <= xw + 2e-3 + 1e-9 or ex[1] != 0, f"ladder beats the exact solver at k={k}: one of them is wrong"
-        allw, alla = Uall.wa(S)
-        r = {"k": k, "added": ch[L[k - 1]], "chosen": [ch[i] for i in S], "worst": round(w, 4), "average": round(a, 4),
-             "exact_worst": round(xw, 4), "exact_average": round(xa, 4), "exact_status": int(ex[1]), "exact_set": [ch[i] for i in Sx],
-             "design_wet": round(U[10].per(S)[DESIGN], 4), "per_case": {lab[t]: round(v, 4) for t, v in U[10].per(S).items()},
-             "worst_25": round(w25, 4), "average_25": round(a25, 4),
-             "warned_target": Uw[10].seen(S), "warned_target_25": Uw[25].seen(S), "warned_13": Uw13.seen(S), "warned_25_overloads": Uw25.seen(S),
-             "all_regions_worst": round(allw, 4), "all_regions_average": round(alla, 4),
-             "stress_worst": round(Ustress.wa(S)[0], 4), "stress_average": round(Ustress.wa(S)[1], 4),
-             "dry": round(Udry.per(S)[M.tags[0]], 4) if Udry.cases else None, "cost": k * M.PRICE["level"]}
-        rows.append(r)
-        say(f"  {k:2d}  {w:4.0%}/{a:4.0%}  {xw:7.0%}/{xa:4.0%}  {r['design_wet']:7.0%} {w25:4.0%}/{a25:4.0%} {r['warned_target']:4d}/{Uw[10].total():<2d} {r['warned_13']:3d}/13 {allw:6.0%}/{alla:4.0%} {r['dry'] if r['dry'] is None else format(r['dry'], '5.0%')}   {[ch[i] for i in Sx]}")
-    say(f"  [{(time.time() - t0) / 60:.1f} min]")
+    out = {}
+    for goal in GOALS:
+        say(f"\n=== 3. The ladder, {GOAL_NAME[goal]}: greedy, nested, level sensors, target regions, up to 100%, 7 wet cases")
+        L = greedy_ladder(U[10], goal)
+        say("  Order: " + ", ".join(ch[i] for i in L))
+        rows = []
+        say(f"  {'k':>2s}  {'worst/avg':>10s} {'exact worst/avg':>16s} {'Design':>7s} {'25mm w/a':>10s} {'warned':>7s} {'of 13':>6s} {'all regions':>12s} {'Dry':>5s}   exact set")
+        for k in range(1, KMAX + 1):
+            S = L[:k]
+            w, a = U[10].wa(S); w25, a25 = U[25].wa(S)
+            if k not in exact:
+                ex = Det[10].solve(Det[10].groups(wet, d_keep), budget=k * M.PRICE["level"], kinds=("level",))
+                exact[k] = (ex[0], int(ex[1]))
+            Sx, status = exact[k]
+            xw, xa = U[10].wa(Sx)
+            assert w <= xw + 2e-3 + 1e-9 or status != 0, f"greedy beats the exact solver at k={k}: one of them is wrong"
+            allw, alla = Uall.wa(S)
+            r = {"k": k, "added": ch[L[k - 1]], "chosen": [ch[i] for i in S], "worst": round(w, 4), "average": round(a, 4),
+                 "exact_worst": round(xw, 4), "exact_average": round(xa, 4), "exact_status": status, "exact_set": [ch[i] for i in Sx],
+                 "design_wet": round(U[10].per(S)[DESIGN], 4), "per_case": {lab[t]: round(v, 4) for t, v in U[10].per(S).items()},
+                 "worst_25": round(w25, 4), "average_25": round(a25, 4),
+                 "warned_target": Uw[10].seen(S), "warned_target_25": Uw[25].seen(S), "warned_13": Uw13.seen(S), "warned_25_overloads": Uw25.seen(S),
+                 "all_regions_worst": round(allw, 4), "all_regions_average": round(alla, 4),
+                 "stress_worst": round(Ustress.wa(S)[0], 4), "stress_average": round(Ustress.wa(S)[1], 4),
+                 "dry": round(Udry.per(S)[M.tags[0]], 4) if Udry.cases else None, "cost": k * M.PRICE["level"]}
+            rows.append(r)
+            say(f"  {k:2d}  {w:4.0%}/{a:4.0%}  {xw:7.0%}/{xa:4.0%}  {r['design_wet']:7.0%} {w25:4.0%}/{a25:4.0%} {r['warned_target']:4d}/{Uw[10].total():<2d} {r['warned_13']:3d}/13 {allw:6.0%}/{alla:4.0%} {r['dry'] if r['dry'] is None else format(r['dry'], '5.0%')}   {[ch[i] for i in Sx]}")
+        say(f"  [{(time.time() - t0) / 60:.1f} min]")
 
-    freq = Counter(i for S in equal for i in S)
-    say(f"  How firm is the {RECOMMEND}-sensor set? {len(equal)} sets tie for best on worst, average and warned. Each sensor is in: " + ", ".join(f"{ch[i]} {freq[i]}" for i in L[:RECOMMEND]))
-    seed = design_seeds(U[10], Uw[10])
-    if seed is None:
-        S = Det[10].solve(Det[10].groups([DESIGN], d_keep), tau=1.0, kinds=("level",))[0]
-        say(f"  No set of 1 or 2 sensors sees all of Design wet; exact minimum: {None if S is None else len(S)} sensors.")
-        say("  Design wet pair checks, facts and pair-based reasons were skipped because no set of 1 or 2 sensors sees all of Design wet.")
-    else:
-        if LISTED:
-            assert len(seed) == 1 and len(seed[0]) == 2, "the Design wet pair is no longer unique: read the report"
-        pair = list(L[:len(seed[0])])      # the ladder's Design wet set: one of the smallest sets that see all of it
-        assert any(set(pair) == set(x) for x in seed), "the ladder does not start with a Design wet set"
-        say(f"  Smallest sets that see all of Design wet: {len(seed)} of {len(seed[0])} sensor(s); the ladder starts with {[ch[i] for i in pair]}.")
-        pool = sorted({d for t in wet for sc in U[10].scen[t] for d in sc["D"] if d < n} | {d for t in Uw[10].cases for sc in Uw[10].scen[t] for d in sc["D"] if d < n})
-        brute = max(round(value(U[10], Uw[10], pair + list(c)), 6) for c in itertools.combinations([i for i in pool if i not in pair], RECOMMEND - len(pair)))
-        mine = round(value(U[10], Uw[10], L[:RECOMMEND]), 6)
-        say(f"  Brute force over every {RECOMMEND}-sensor set with the Design wet set: best value {brute}, ladder {mine}.")
-        assert mine >= brute - 1e-6, "the beam missed the best five: widen it"
-    say(f"  [{(time.time() - t0) / 60:.1f} min]")
+        say(f"\n=== 4. Fewest sensors by how much of the weather you must cover (exact), and where {GOAL_NAME[goal]} reaches it")
+        scopes = (("Design wet only", [DESIGN]), ("Design wet + Beyond design", [DESIGN, "ii0.25_flat_uniform_b1_sfree"]),
+                  ("Design wet family (3)", [t for t in wet if t.startswith("ii0.11")]), ("All 7 wet cases", wet))
+        fewest = []
+        for name, cs in scopes:
+            e = {"scope": name}
+            for tau in (.8, .9, 1.0):
+                S = Det[10].solve(Det[10].groups(cs, d_keep), tau=tau, kinds=("level",))[0]
+                e[str(tau)] = None if S is None else len(S)
+                e[f"ladder_{tau}"] = next((k for k in range(1, KMAX + 1) if min(U[10].per(L[:k])[t] for t in cs) >= tau - 1e-9), None)
+            fewest.append(e)
+            say(f"  {name:28s} exact 80/90/100%: {e['0.8']}/{e['0.9']}/{e['1.0']}    greedy reaches them at {e['ladder_0.8']}/{e['ladder_0.9']}/{e['ladder_1.0']}")
 
-    say("\n=== 4. Fewest sensors by how much of the weather you must cover (exact, target regions, up to 100%)")
-    scopes = (("Design wet only", [DESIGN]), ("Design wet + Beyond design", [DESIGN, "ii0.25_flat_uniform_b1_sfree"]),
-              ("Design wet family (3)", [t for t in wet if t.startswith("ii0.11")]), ("All 7 wet cases", wet))
-    fewest = []
-    for name, cs in scopes:
-        e = {"scope": name}
-        for tau in (.8, .9, 1.0):
-            S = Det[10].solve(Det[10].groups(cs, d_keep), tau=tau, kinds=("level",))[0]
-            e[str(tau)] = None if S is None else len(S)
-            first = next((k for k in range(1, KMAX + 1) if min(U[10].per(L[:k])[t] for t in cs) >= tau - 1e-9), None)
-            e[f"ladder_{tau}"] = first
-        fewest.append(e)
-        say(f"  {name:28s} exact 80/90/100%: {e['0.8']}/{e['0.9']}/{e['1.0']}    ladder reaches them at {e['ladder_0.8']}/{e['ladder_0.9']}/{e['ladder_1.0']}")
+        say(f"\n=== 5. Held out, {GOAL_NAME[goal]}: exactly k sensors, the same greedy without what is being tested")
+        held = []
+        bw = {hc: greedy_ladder(Universe(Det[10], d_keep, [t for t in wet if t != hc]), goal) for hc in wet}
+        br = {}
+        for ra in sorted(T):
+            k2 = lambda sc, ra=ra: in_T(sc) and d_ok(sc) and sc["r"] != ra
+            br[ra] = greedy_ladder(Universe(Det[10], k2, wet), goal)
+        Uby = {t: (Universe(Det[10], d_keep, [t]), Universe(War[10], w_keep, [t])) for t in wet}
+        Urg = {ra: (Universe(Det[10], lambda sc, ra=ra: d_ok(sc) and sc["r"] == ra, wet), Universe(War[10], lambda sc, ra=ra: w_ok(sc) and sc["r"] == ra, wet)) for ra in T}
+        for k in range(1, KMAX + 1):
+            assert all(len(v[:k]) == k for v in list(bw.values()) + list(br.values()))
+            ws = sum(Uby[t][0].seen(bw[t][:k]) for t in wet); wt = sum(Uby[t][0].total() for t in wet)
+            wo = sum(Uby[t][1].seen(bw[t][:k]) for t in wet); wn = sum(Uby[t][1].total() for t in wet)
+            ww = min(Uby[t][0].per(bw[t][:k])[t] for t in wet)
+            rs = sum(Urg[ra][0].seen(br[ra][:k]) for ra in T); rt = sum(Urg[ra][0].total() for ra in T)
+            ro = sum(Urg[ra][1].seen(br[ra][:k]) for ra in T); rn = sum(Urg[ra][1].total() for ra in T)
+            per_r = {rid[ra]: round(Urg[ra][0].seen(br[ra][:k]) / Urg[ra][0].total(), 4) for ra in T}
+            held.append({"k": k, "weather_runs": [ws, wt], "weather_worst": round(ww, 4), "weather_warned": [wo, wn], "region_runs": [rs, rt], "region_warned": [ro, rn], "region_per": per_r})
+            say(f"  k={k}: unseen weather runs {ws}/{wt} ({ws / wt:.0%}), worst case {ww:.0%}, warned {wo}/{wn} | unseen region runs {rs}/{rt} ({rs / rt:.0%}) {per_r}, warned {ro}/{rn}")
+        held_case = {lab[t]: {str(k): round(Uby[t][0].per(bw[t][:k])[t], 4) for k in range(1, KMAX + 1)} for t in wet}
+        say("  Unseen weather by case, runs seen at k=2/3/5/8:")
+        for t in wet:
+            say(f"   {lab[t]:38s} {len(Uby[t][0].scen[t]):2d} runs: " + " ".join(f"{held_case[lab[t]][str(k)]:4.0%}" for k in (2, 3, 5, 8)))
 
-    say("\n=== 5. Held out, exactly k sensors, same search without what is being tested")
-    held = []
-    bw = {}; br = {}
-    for hc in wet:
-        rest = [t for t in wet if t != hc]
-        bw[hc] = beam_ladder(Universe(Det[10], d_keep, rest), Universe(War[10], w_keep, rest), Universe(Det[25], d_keep, rest))[0]
-    for ra in sorted(T):
-        k2 = lambda sc, ra=ra: in_T(sc) and d_ok(sc) and sc["r"] != ra
-        k3 = lambda sc, ra=ra: in_T(sc) and w_ok(sc) and sc["r"] != ra
-        br[ra] = beam_ladder(Universe(Det[10], k2, wet), Universe(War[10], k3, wet), Universe(Det[25], k2, wet))[0]
-    say(f"  [{(time.time() - t0) / 60:.1f} min]")
-    Uby = {t: (Universe(Det[10], d_keep, [t]), Universe(War[10], w_keep, [t])) for t in wet}
-    Urg = {ra: (Universe(Det[10], lambda sc, ra=ra: d_ok(sc) and sc["r"] == ra, wet), Universe(War[10], lambda sc, ra=ra: w_ok(sc) and sc["r"] == ra, wet)) for ra in T}
-    for k in range(1, KMAX + 1):
-        assert all(len(v[:k]) == k for v in list(bw.values()) + list(br.values()))
-        ws = sum(Uby[t][0].seen(bw[t][:k]) for t in wet); wt = sum(Uby[t][0].total() for t in wet)
-        wo = sum(Uby[t][1].seen(bw[t][:k]) for t in wet); wn = sum(Uby[t][1].total() for t in wet)
-        ww = min(Uby[t][0].per(bw[t][:k])[t] for t in wet)
-        rs = sum(Urg[ra][0].seen(br[ra][:k]) for ra in T); rt = sum(Urg[ra][0].total() for ra in T)
-        ro = sum(Urg[ra][1].seen(br[ra][:k]) for ra in T); rn = sum(Urg[ra][1].total() for ra in T)
-        per_r = {rid[ra]: round(Urg[ra][0].seen(br[ra][:k]) / Urg[ra][0].total(), 4) for ra in T}
-        held.append({"k": k, "weather_runs": [ws, wt], "weather_worst": round(ww, 4), "weather_warned": [wo, wn], "region_runs": [rs, rt], "region_warned": [ro, rn], "region_per": per_r})
-        say(f"  k={k}: unseen weather runs {ws}/{wt} ({ws / wt:.0%}), worst case {ww:.0%}, warned {wo}/{wn} | unseen region runs {rs}/{rt} ({rs / rt:.0%}) {per_r}, warned {ro}/{rn}")
-    held_case = {lab[t]: {str(k): round(Uby[t][0].per(bw[t][:k])[t], 4) for k in range(1, KMAX + 1)} for t in wet}
-    say("  Unseen weather by case, runs seen at k=2/3/5/8:")
-    for t in wet:
-        say(f"   {lab[t]:38s} {len(Uby[t][0].scen[t]):2d} runs: " + " ".join(f"{held_case[lab[t]][str(k)]:4.0%}" for k in (2, 3, 5, 8)))
+        say(f"\n=== 7. Why each sensor is there, {GOAL_NAME[goal]} (Design wet unless stated). No leave region or stress step can appear here")
+        reasons = []
+        for p, i in enumerate(L):
+            before = L[:p]
+            new = []
+            for t in wet:
+                done = U[10].ors(before)[t]
+                for j, sc in enumerate(U[10].scen[t]):
+                    if (U[10].mask[t][i] >> j) & 1 and not (done >> j) & 1:
+                        new.append((t, sc))
+            hears = {}
+            for ri in sorted(T):
+                rr = sorted((x for x in reg["rows"][DESIGN] if x["r"] == ri and x["f"] <= 1.0), key=lambda x: x["s"])
+                ladder_rise = [(C.sets.size_value(reg, x), round(x["dw"]), dict((a, b) for a, b in x["rise"]).get(i, 0.0)) for x in rr]
+                first = next(((s, h, v) for s, h, v in ladder_rise if v >= 10), None)
+                cases = [lab[t] for t in wet if any(x["r"] == ri and x["f"] <= 1.0 and dict((a, b) for a, b in x["rise"]).get(i, 0.0) >= 10 for x in reg["rows"][t])]
+                hears[rid[ri]] = {"first_step": first and first[0], "first_homes": first and first[1], "first_rise": first and round(first[2], 1),
+                                  "rise_at_100": round(ladder_rise[-1][2], 1) if ladder_rise else 0, "cases_heard": cases}
+            o, d = M.gm[i]
+            depth = bD["depthMm"].get(str(i), 0)
+            entry = {"position": p + 1, "manhole": ch[i], "home_regions": home[i], "adds_runs": len(new),
+                     "adds_by_region": dict(Counter(rid[sc["r"]] for _, sc in new)), "adds_by_case": dict(Counter(lab[t] for t, _ in new)),
+                     "hears": hears, "design_wet_silent": not any(v["first_step"] for v in hears.values()),
+                     "design_depth_mm": depth, "bore_mm": d, "design_fullness": None if o is None else round((depth - o) / d, 3),
+                     "surcharged_before_growth": i in bD["surcharged"], "over_alarm_before_growth": i in bD.get("alarm", []),
+                     "nearest_earlier_m": min((d for d in (dist(i, j) for j in before) if d is not None), default=None)}
+            assert set(entry["adds_by_region"]) <= set(Tn) and set(hears) == set(Tn)
+            reasons.append(entry)
+            hh = "; ".join(f"{r_} from {v['first_homes']} homes (+{v['first_rise']} mm), +{v['rise_at_100']} at 100%" if v["first_step"] else f"{r_} silent ({len(v['cases_heard'])}/7 wet cases hear it)" for r_, v in hears.items())
+            say(f"  {p + 1}. {ch[i]} in {','.join(home[i]) or 'no region (downstream)'}{' [leave region: it is there for the flow passing through]' if set(home[i]) and not set(home[i]) & set(Tn) else ''}; adds {len(new)} runs {entry['adds_by_region']}; nearest earlier {entry['nearest_earlier_m']} m; fullness {entry['design_fullness']}{' [SURCHARGED BEFORE GROWTH in the model: check on site]' if entry['surcharged_before_growth'] else ''}; {hh}")
 
-    say("\n=== 6. Random sets of k, same runs")
+        say("\n  Taking one out, and manholes that could stand in with the same worst and average:")
+        swaps = {}
+        for k in range(1, KMAX + 1):
+            S = L[:k]; w0, a0 = U[10].wa(S)
+            for i in S:
+                rest = [x for x in S if x != i]
+                lo = U[10].wa(rest) if rest else (0.0, 0.0)
+                alt = [j for j in range(n) if j not in S and min(U[10].wa(rest + [j])[0] - w0, U[10].wa(rest + [j])[1] - a0) >= -1e-9]
+                alt.sort(key=lambda j: dist(i, j) if dist(i, j) is not None else 1e9)
+                swaps.setdefault(str(k), {})[ch[i]] = {"without_worst": round(lo[0], 4), "without_average": round(lo[1], 4), "without_warned": Uw[10].seen(rest), "without_design": round(U[10].per(rest)[DESIGN], 4) if rest else 0.0,
+                                                     "without_per_case": {lab[t]: round(v, 4) for t, v in U[10].per(rest).items()} if rest else {}, "stand_ins": len(alt), "nearest_stand_ins": [(ch[j], dist(i, j)) for j in alt[:3]]}
+            if k in (2, 4, 5, 6):
+                say(f"   k={k}: " + "; ".join(f"{m} without {pct(v['without_worst'])}/{pct(v['without_average'])}, stand-ins {v['stand_ins']} {[a for a, _ in v['nearest_stand_ins'][:2]]}" for m, v in swaps[str(k)].items()))
+        out[goal] = {"L": L, "rows": rows, "fewest": fewest, "held": held, "held_case": held_case, "reasons": reasons, "swaps": swaps}
+        say(f"  [{(time.time() - t0) / 60:.1f} min]")
+
+    rows = out["average"]["rows"]
+    say("\n=== 6. Random sets of k, same runs (against Greedy: average)")
     rng = random.Random(SEED)
     resp = sorted({d for t in wet for sc in U[10].scen[t] for d in sc["D"] if d < n})
     say(f"  Manholes that respond at 10 mm to any target run by 100%: {len(resp)} of {n}")
@@ -370,59 +426,8 @@ def main():
                        "share_matching_ladder_worst": round(sum(x >= r["worst"] - 1e-9 for x in sw) / DRAWS, 4), "share_matching_ladder_avg": round(sum(x >= r["average"] - 1e-9 for x in sa) / DRAWS, 4)}
         base.append(e)
         a_, b_ = e["any"], e["responsive"]
-        say(f"  k={k}: ladder {rows[k - 1]['worst']:4.0%}/{rows[k - 1]['average']:4.0%} warned {rows[k - 1]['warned_target']} | any {a_['worst_mean']:4.0%}/{a_['avg_mean']:4.0%} warned {a_['warned_mean']:.1f} | responsive {b_['worst_mean']:4.0%}/{b_['avg_mean']:4.0%} warned {b_['warned_mean']:.1f}, 95th pct {b_['worst_p95']:4.0%}/{b_['avg_p95']:4.0%}, draws matching ladder avg {b_['share_matching_ladder_avg']:.2%}")
+        say(f"  k={k}: greedy {rows[k - 1]['worst']:4.0%}/{rows[k - 1]['average']:4.0%} warned {rows[k - 1]['warned_target']} | any {a_['worst_mean']:4.0%}/{a_['avg_mean']:4.0%} warned {a_['warned_mean']:.1f} | responsive {b_['worst_mean']:4.0%}/{b_['avg_mean']:4.0%} warned {b_['warned_mean']:.1f}, 95th pct {b_['worst_p95']:4.0%}/{b_['avg_p95']:4.0%}, draws matching greedy avg {b_['share_matching_ladder_avg']:.2%}")
     say(f"  [{(time.time() - t0) / 60:.1f} min]")
-
-    say("\n=== 7. Why each sensor is there (Design wet unless stated). No leave region or stress step can appear here")
-    dist = along_pipe()
-    home = defaultdict(list)
-    for r in reg["regions"]:
-        for m in r["manholes"]:
-            home[m].append(r["id"])
-    bD = reg["base"][DESIGN]
-    reasons = []
-    for p, i in enumerate(L):
-        before = L[:p]
-        new = []
-        for t in wet:
-            done = U[10].ors(before)[t]
-            for j, sc in enumerate(U[10].scen[t]):
-                if (U[10].mask[t][i] >> j) & 1 and not (done >> j) & 1:
-                    new.append((t, sc))
-        hears = {}
-        for ri in sorted(T):
-            rr = sorted((x for x in reg["rows"][DESIGN] if x["r"] == ri and x["f"] <= 1.0), key=lambda x: x["s"])
-            ladder_rise = [(C.sets.size_value(reg, x), round(x["dw"]), dict((a, b) for a, b in x["rise"]).get(i, 0.0)) for x in rr]
-            first = next(((s, h, v) for s, h, v in ladder_rise if v >= 10), None)
-            cases = [lab[t] for t in wet if any(x["r"] == ri and x["f"] <= 1.0 and dict((a, b) for a, b in x["rise"]).get(i, 0.0) >= 10 for x in reg["rows"][t])]
-            hears[rid[ri]] = {"first_step": first and first[0], "first_homes": first and first[1], "first_rise": first and round(first[2], 1),
-                              "rise_at_100": round(ladder_rise[-1][2], 1) if ladder_rise else 0, "cases_heard": cases}
-        o, d = M.gm[i]
-        depth = bD["depthMm"].get(str(i), 0)
-        entry = {"position": p + 1, "manhole": ch[i], "home_regions": home[i], "adds_runs": len(new),
-                 "adds_by_region": dict(Counter(rid[sc["r"]] for _, sc in new)), "adds_by_case": dict(Counter(lab[t] for t, _ in new)),
-                 "hears": hears, "design_wet_silent": not any(v["first_step"] for v in hears.values()),
-                 "design_depth_mm": depth, "bore_mm": d, "design_fullness": None if o is None else round((depth - o) / d, 3),
-                 "surcharged_before_growth": i in bD["surcharged"], "over_alarm_before_growth": i in bD.get("alarm", []),
-                 "nearest_earlier_m": min((d for d in (dist(i, j) for j in before) if d is not None), default=None)}
-        assert set(entry["adds_by_region"]) <= set(Tn) and set(hears) == set(Tn)
-        reasons.append(entry)
-        hh = "; ".join(f"{r_} from {v['first_homes']} homes (+{v['first_rise']} mm), +{v['rise_at_100']} at 100%" if v["first_step"] else f"{r_} silent ({len(v['cases_heard'])}/7 wet cases hear it)" for r_, v in hears.items())
-        say(f"  {p + 1}. {ch[i]} in {','.join(home[i]) or 'no region (downstream)'}{' [leave region: it is there for the flow passing through]' if set(home[i]) and not set(home[i]) & set(Tn) else ''}; adds {len(new)} runs {entry['adds_by_region']}; nearest earlier {entry['nearest_earlier_m']} m; fullness {entry['design_fullness']}{' [SURCHARGED BEFORE GROWTH in the model: check on site]' if entry['surcharged_before_growth'] else ''}; {hh}")
-
-    say("\n  Taking one out, and manholes that could stand in with the same worst and average:")
-    swaps = {}
-    for k in range(1, KMAX + 1):
-        S = L[:k]; w0, a0 = U[10].wa(S)
-        for i in S:
-            rest = [x for x in S if x != i]
-            lo = U[10].wa(rest) if rest else (0.0, 0.0)
-            alt = [j for j in range(n) if j not in S and min(U[10].wa(rest + [j])[0] - w0, U[10].wa(rest + [j])[1] - a0) >= -1e-9]
-            alt.sort(key=lambda j: dist(i, j) if dist(i, j) is not None else 1e9)
-            swaps.setdefault(str(k), {})[ch[i]] = {"without_worst": round(lo[0], 4), "without_average": round(lo[1], 4), "without_warned": Uw[10].seen(rest), "without_design": round(U[10].per(rest)[DESIGN], 4) if rest else 0.0,
-                                                 "without_per_case": {lab[t]: round(v, 4) for t, v in U[10].per(rest).items()} if rest else {}, "stand_ins": len(alt), "nearest_stand_ins": [(ch[j], dist(i, j)) for j in alt[:3]]}
-        if k in (2, 4, 5, 6):
-            say(f"   k={k}: " + "; ".join(f"{m} without {pct(v['without_worst'])}/{pct(v['without_average'])}, stand-ins {v['stand_ins']} {[a for a, _ in v['nearest_stand_ins'][:2]]}" for m, v in swaps[str(k)].items()))
 
     say("\n=== 8. Where the model really overloads by 100% (replaces the choke list), and the words to use")
     hot = defaultdict(lambda: {"runs": 0, "spill_runs": 0, "cases": set(), "regions": set()})
@@ -463,11 +468,13 @@ def main():
 
     os.makedirs(OUT, exist_ok=True)
     payload = {"rule": {"limit": 0.7, "case": lab[DESIGN], "action": ACTION}, "triage": tri, "targets": Tn,
-               "leave_overloads": left, "warnable_given_up": dropped, "ladder": rows, "tied_best_sets": len(equal), "in_tied_sets": {ch[i]: freq[i] for i in L[:RECOMMEND]}, "recommend": RECOMMEND, "fewest": fewest,
-               "held_out": held, "held_out_by_case": held_case, "random": base, "reasons": reasons, "swaps": swaps, "overloads": over, "facts": facts, "old_sets": compare,
+               "leave_overloads": left, "warnable_given_up": dropped, "method": "greedy", "goals": {g: GOAL_NAME[g] for g in GOALS}, "default_goal": GOALS[0],
+               "ladder": out["average"]["rows"], "ladder_worst": out["worst"]["rows"], "recommend": RECOMMEND,
+               "fewest": out["average"]["fewest"], "fewest_worst": out["worst"]["fewest"],
+               "held_out": out["average"]["held"], "held_out_by_case": out["average"]["held_case"], "held_out_worst": out["worst"]["held"], "held_out_by_case_worst": out["worst"]["held_case"],
+               "random": base, "reasons": out["average"]["reasons"], "reasons_worst": out["worst"]["reasons"], "swaps": out["average"]["swaps"], "swaps_worst": out["worst"]["swaps"],
+               "overloads": over, "facts": facts, "old_sets": compare,
                "price": M.PRICE, "responsive_manholes": len(resp), "universe": {lab[t]: len(U[10].scen[t]) for t in wet}, "warn_universe": {"target": Uw[10].total(), "plausible": Uw13.total(), "all": Uw25.total()}}
-    if seed is None:
-        payload.update(design_wet_pair=None, design_wet_pair_brute_force=None)
     with open(os.path.join(OUT, STEM + ".json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(payload, f, indent=1)
     say(f"\ndone in {(time.time() - t0) / 60:.1f} min")

@@ -69,11 +69,13 @@ function connect(url) {
   const txt = sel => ev(`(document.querySelector(${JSON.stringify(sel)})||{}).innerText||""`);
   // Python's "{:.0%}" rounds a half to even (0.625 is 62%), and the builder writes with it.
   const pc = v => { const x = v * 100, f = Math.floor(x); return (Math.abs(x - f - 0.5) < 1e-9 ? (f % 2 ? f + 1 : f) : Math.round(x)) + '%'; };
-  const L = k => X.ladder[k - 1];
-  const kd = v => '$' + Math.floor(v / 1000) + 'k', K0 = X.fewest.find(f => f.scope === 'Design wet only')['1.0'], REC = X.recommend;
+  // 19 Nov: Sim 4 places level sensors by greedy only. L is Greedy: average (the map's default), LW Greedy: worst case (step 5c).
+  const L = k => X.ladder[k - 1], LW = k => X.ladder_worst[k - 1];
+  const kd = v => '$' + Math.floor(v / 1000) + 'k', K0 = 1, REC = X.recommend;
   const HO = k => X.held_out.find(h => h.k === k);
   // Unseen weather as every page quotes it: each wet case scored by sensors chosen without it, averaged over the cases.
   const UAVG = k => Object.values(X.held_out_by_case).reduce((a, v) => a + v[String(k)], 0) / Object.keys(X.held_out_by_case).length;
+  const UAVGW = k => Object.values(X.held_out_by_case_worst).reduce((a, v) => a + v[String(k)], 0) / Object.keys(X.held_out_by_case_worst).length;
 
   await load('');
   ok('page loads, no exception', c.errors.length === 0, c.errors[0]);
@@ -91,8 +93,8 @@ function connect(url) {
   ok('the card leaves the map clear', layout.cardShare < .22, pc(layout.cardShare));
 
   // Walk every step with the Next button
-  const steps = await ev('window.SIM4.steps.map(s=>({id:s.id,n:s.n,title:s.title,body:s.body,slider:!!s.slider,k:s.k||0}))');
-  ok('six numbered steps', new Set(steps.map(s => s.n)).size === 6 && steps.length === 7);
+  const steps = await ev('window.SIM4.steps.map(s=>({id:s.id,n:s.n,title:s.title,body:s.body,slider:!!s.slider,k:s.k||0,list:s.list||""}))');
+  ok('six numbered steps', new Set(steps.map(s => s.n)).size === 6 && steps.length === 8);
   for (let i = 0; i < steps.length; i++) {
     const s = steps[i];
     ok(`step ${s.id}: title and body shown`, (await txt('#stepTitle')) === s.title && (await txt('#stepBody')) === s.body);
@@ -111,7 +113,7 @@ function connect(url) {
     const size = await ev(`(()=>{const c=document.querySelector('#card'),r=c.getBoundingClientRect();return{w:Math.round(r.width),h:Math.round(r.height),scroll:c.scrollHeight>c.clientHeight+1}})()`);
     ok(`step ${s.id}: card wide and short (w >= 1200, h <= 185, no scrollbar)`, size.w >= 1200 && size.h <= 185 && !size.scroll, JSON.stringify(size));
     const sens = await ev('Sim4.sensors()');
-    ok(`step ${s.id}: ${s.k} sensors on the map`, sens.length === s.k && (!s.k || sens.join() === L(s.k).chosen.join()), sens.join());
+    ok(`step ${s.id}: ${s.k} sensors on the map${s.list === 'worst' ? ', Greedy: worst case' : ''}`, sens.length === s.k && (!s.k || sens.join() === (s.list === 'worst' ? LW(s.k) : L(s.k)).chosen.join()), sens.join());
     if (s.slider) await wait(4000);
     await wait(500);
     await shot(`step_${s.id}`);
@@ -123,10 +125,12 @@ function connect(url) {
   const by = id => steps.find(s => s.id === id).body;
   const fb = X.facts.before_growth;
   ok('step 2 quotes the surcharged counts', by('2').includes(String(fb['Design wet'].surcharged) + ' manholes') && by('2').includes(String(fb['Beyond design'].surcharged)));
-  ok('step 5a quotes all Design wet runs', by('5a').includes(`all ${X.universe['Design wet']} growth runs`) && by('5a').includes(pc(L(K0).average)));
+  const nDW = X.universe['Design wet'], dw1 = Math.round(L(1).design_wet * nDW);
+  ok('step 5a quotes the first level sensor on Design wet and on average', by('5a').includes(dw1 === nDW ? `all ${nDW}` : `${dw1} of the ${nDW} design wet growth runs`) && by('5a').includes(pc(L(1).average)) && by('5a').includes(pc(L(1).worst) + ' in the worst case'));
+  ok('step 5c quotes Greedy: worst case at the recommended count', by('5c').includes(pc(LW(REC).worst)) && by('5c').includes(pc(LW(REC).average)) && by('5c').includes(`${LW(REC).warned_target} of ${X.warn_universe.target} overloads`));
   ok('step 5b quotes the five', by('5b').includes(pc(L(REC).average)) && by('5b').includes(pc(L(REC).worst)) && by('5b').includes(`${L(REC).warned_target} overloads`));
   ok('step 5b quotes unseen weather as the average over the cases, and says so', by('5b').includes(pc(UAVG(REC))) && /averaged by case/.test(by('5b')) && !by('5b').includes(pc(HO(REC).weather_runs[0] / HO(REC).weather_runs[1]) + '.'));
-  ok('step 6 quotes the costs', by('6').includes(kd(K0 * X.price.level)) && by('6').includes(kd(REC * X.price.level)) && by('6').includes(kd((REC - K0) * X.price.level)) && by('6').includes('assumed'));
+  ok('step 6 quotes the costs', by('6').includes(kd(X.price.level)) && by('6').includes(kd(REC * X.price.level)) && by('6').includes('assumed') && /bought in stages/.test(by('6')));
   ok('no word claims an overflow prediction', !steps.some(s => /overflows? (will|predicted)|predict/i.test(s.body)));
 
   // The slider
@@ -179,7 +183,7 @@ function connect(url) {
     await clickSensor(n);
     const t = await txt('#pop'), p = D.popups[String(K0)][i];
     ok(`5a: click ${n} opens its popup`, t.includes(`Level sensor ${i + 1} of ${K0}`) && t.includes(n), t.split('\n')[0]);
-    ok(`5a: ${n} popup speaks of Design wet`, /Design wet falls from 100%/.test(t) && t.includes(p.lost) && t.includes(p.listens) && t.includes(p.reacts));
+    ok(`5a: ${n} popup speaks of Design wet`, t.includes(`Design wet falls from ${pc(L(1).design_wet)}`) && t.includes(p.lost) && t.includes(p.listens) && t.includes(p.reacts));
     if (i === 0) await shot('popup_5a');
   }
   // 20 Nov (dry run, 36:44 to 41:31): region labels read as sensor sites when they sat on a central manhole. They now sit
@@ -286,20 +290,20 @@ function connect(url) {
   ok('a second click closes it', await ev('document.querySelector("#notes").hidden'));
   await load('#step=5b&notes=1&figs=1');
   const n5 = await txt('#notes');
-  ok('5b: the fold says many sets tie, the 25 mm rule picks this one, not chosen for Dry or 150%/300%', /tie/.test(n5) && /25 mm/.test(n5) && /150%/.test(n5) && /300%/.test(n5) && /Dry/.test(n5), n5.slice(0, 160));
+  ok('5b: the fold says other sets score the same (stand-ins), not chosen for Dry or 150%/300%', /stand-ins/.test(n5) && /150%/.test(n5) && /300%/.test(n5) && /Dry/.test(n5), n5.slice(0, 160));
   await shot('fold_5b');
   {
     await load('#step=5b');
-    const W = D.steps.find(s => s.id === '5b').why, R5 = L(REC);
-    ok('5b: one visible line says why the nested list, not the exact best set', /nested list, not the exact best/.test(await txt('#stepBody')));
-    ok('5b: "Why not the exact best set?" is a button closed by default', await txt('#btnWhy') === 'Why not the exact best set?' && await ev('document.querySelector("#why").hidden') && await ev('document.querySelector("#btnWhy").getAttribute("aria-expanded")') === 'false');
+    const W = D.steps.find(s => s.id === '5b').why, R5 = L(REC), W5 = LW(REC);
+    ok('5b: one visible line says they can be bought in stages without moving one', /bought in stages without moving one/.test(await txt('#stepBody')));
+    ok('5b: "Greedy: average or Greedy: worst case?" is a button closed by default', await txt('#btnWhy') === 'Greedy: average or Greedy: worst case?' && await ev('document.querySelector("#why").hidden') && await ev('document.querySelector("#btnWhy").getAttribute("aria-expanded")') === 'false');
     const card0 = await ev('document.querySelector("#card").getBoundingClientRect().height');
     const shift0 = await ev('getComputedStyle(document.documentElement).getPropertyValue("--map-shift")');
     await click('#btnWhy'); await wait(300);
     const w = await txt('#why');
-    ok('5b: a real click opens it, with both sets side by side', !(await ev('document.querySelector("#why").hidden')) && w.includes(R5.chosen.join(', ')) && w.includes(R5.exact_set.join(', ')), w.slice(0, 120));
-    ok('5b: its figures are numbers.json\'s (worst, average, warned)', w.includes(pc(R5.worst)) && w.includes(pc(R5.exact_worst)) && w.includes(pc(R5.average)) && w.includes(`${R5.warned_target} of ${X.warn_universe.target}`));
-    ok('5b: it leads with the reason: bought in stages without moving a sensor', /bought in stages without moving a sensor/.test(W.intro) && W.intro.indexOf('stages') < W.intro.indexOf(pc(R5.exact_worst)));
+    const cell = r => `${pc(r.worst)} / ${pc(r.average)}, ${r.warned_target} of ${X.warn_universe.target}`;
+    ok('5b: a real click opens it, both greedy lists side by side at every count', !(await ev('document.querySelector("#why").hidden')) && X.ladder.every((r, i) => w.includes(cell(r)) && w.includes(cell(X.ladder_worst[i]))), w.slice(0, 120));
+    ok('5b: it leads with the reason: neither moves a level sensor, so either can be bought in stages', /never move one, so either can be bought in stages/.test(W.intro) && W.intro.indexOf('stages') < 90);
     ok('5b: the open fold lies over the map rather than moving it', await ev('getComputedStyle(document.documentElement).getPropertyValue("--map-shift")') === shift0, shift0);
     await shot('why_5b');
     await click('#btnWhy'); await wait(200);
@@ -413,11 +417,12 @@ function connect(url) {
     m = await txt('#more');
     ok("5b: S1 alone, case by case, is step 5a's one-sensor score", Object.values(L(1).per_case).every(v => m.includes(pc(v))));
     const trs = await ev('[...document.querySelectorAll("#more tr")].map(r=>r.innerText)');
-    const nestRow = trs.find(r => /^Nested/.test(r)) || '', exRow = trs.find(r => /^Exact best/.test(r)) || '';
-    ok("5b: the comparison's nested row = numbers.json (worst, average, warned) and the case-average unseen weather",
-      nestRow.includes(pc(L(REC).worst)) && nestRow.includes(pc(L(REC).average)) && nestRow.includes(`${L(REC).warned_target} of ${X.warn_universe.target}`) && nestRow.includes(pc(UAVG(REC))), nestRow);
-    ok("5b: the exact row = numbers.json's exact set", exRow.includes(pc(L(REC).exact_worst)) && exRow.includes(pc(L(REC).exact_average)), exRow);
-    ok('5b: Greedy is named "chosen on this test"; random is 500 draws, a different measure', /chosen on this test/.test(m) && /500 draws/.test(m) && /different measure/.test(m));
+    const aRow = trs.find(r => /^Greedy: average/.test(r)) || '', wRow = trs.find(r => /^Greedy: worst case/.test(r)) || '';
+    const rowOk = (row, r, u) => row.includes(pc(r.worst)) && row.includes(pc(r.average)) && row.includes(`${r.warned_target} of ${X.warn_universe.target}`) && row.includes(pc(u));
+    ok("5b: the Greedy: average row = numbers.json (worst, average, warned) and the case-average unseen weather", rowOk(aRow, L(REC), UAVG(REC)), aRow);
+    ok("5b: the Greedy: worst case row = numbers.json's ladder_worst and its own unseen weather", rowOk(wRow, LW(REC), UAVGW(REC)), wRow);
+    ok("5b: no other placement method in the comparison: only the two greedy lists, two desk baselines and random", !trs.some(r => /^(Nested|Exact|Warn|Risk)/.test(r)), trs.filter(r => /^(Nested|Exact|Warn|Risk)/.test(r)).join(' | '));
+    ok('5b: both greedy lists are "chosen on this test"; random is 500 draws, a different measure', /chosen on this test/.test(m) && /500 draws/.test(m) && /different measure/.test(m));
     const lim5b = D.steps.find(s => s.id === '5b').notes.limit, gf = lim5b.match(/these \w+ see (\d+%) of growth runs on average and (\d+%) in the worst/);
     await load('#step=6&notes=1&more=1');
     m = await txt('#more');
@@ -430,7 +435,8 @@ function connect(url) {
   // Words anywhere on the page
   const all = await ev(`document.querySelector('#card').innerText+document.querySelector('#notes').textContent+JSON.stringify(window.SIM4.popups)+JSON.stringify(window.SIM4.steps)`);
   ok('no em or en dash anywhere', !/[\u2014\u2013]/.test(all));
-  ok('no mention of the old five-sensor figures on the story', !steps.some(s => /80%|86%|90%/.test(s.body)));
+  ok('no mention of the old five-sensor figures on the story (step 5c may quote Greedy: worst case\'s own)', !steps.some(s => /80%|86%|90%/.test(s.body.replace(s.id === '5c' ? pc(LW(REC).worst) : '\u0000', ''))));
+  ok('19 Nov: greedy only: no nested list, beam search, exact solver, design-day seed or tied sets in the story', !/nested list|beam search|exact best|exact solver|Exact optimum|sets tie|tie for best|design day is right/i.test(all));
   ok('no client or suburb name in the words', !/SA Water|Walkerville|Rostrevor|Stonyfell|Woodforde|Malvern|Bolivar/i.test(all));
   ok('no private source: no meeting date, prices called assumed', !/28 Sep|confidential/i.test(all) && /assumed/.test(all));
 
