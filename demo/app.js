@@ -67,7 +67,7 @@ const App = (() => {
   const CHAPTERS = [
     ["Problem", [["problem", "The problem", "Growth is filling sewers sized for fewer homes"], ["setting", "Setting", "Growth uses up the pipes"], ["network", "Network", "What we know about the network"]]],
     ["Approach", [["approach", "End to end", "Our approach, end to end"], ["simulate", "Simulate", "Simulate the growth"], ["insights", "What the runs show", "Where the water rises"], ["regions", "Which regions", "Which regions matter"], ["onesensor", "One is not enough", "One level sensor is not enough"], ["algorithms", "Place sensors", "Turning runs into sensor sites"]]],
-    ["Results", [["compare", "Compare", "How good is each placement?"], ["check", "Cross-check", "Does basic hydraulics agree?"], ["sensors", "Sensor types", "What to install"]]],
+    ["Results", [["compare", "Compare", "How good is each placement?"], ["ninh", "Other methods", "Network-only methods, tested on growth"], ["check", "Cross-check", "Does basic hydraulics agree?"], ["sensors", "Sensor types", "What to install"]]],
     ["Next", [["repeat", "Repeat", "Run the method yourself"], ["future", "Next research", "Where this goes next"], ["conclude", "Conclusion", "What we recommend"]]],
   ];
   const SECTIONS = CHAPTERS.flatMap(([ch, v]) => v.map(x => [...x, ch]));
@@ -313,6 +313,7 @@ const App = (() => {
     insights: { measure: "r10", cases: null, max: 1 },
     algorithms: { method: planMethod(), k: 5, show: false },
     compare: { k: 5, method: planMethod(), mm: 10, failed: new Set() },
+    ninh: { k: 5, m: "ninh" },
     check: { screen: "util", tag: null, extra: 0, ii: null },
     sensors: { type: "ultra", water: null, budget: 125 },
     repeat: { regions: null, cases: null, mm: 10, k: 5, aim: "worst", result: null, manual: false, mine: [] },
@@ -1125,6 +1126,73 @@ const App = (() => {
     },
   };
 
+  // ------------------------------------------------------------------ 7b OTHER METHODS: Ninh's topology rule and global-coverage algorithms
+  // Read from simulation4/data/ninh_compare.js (tools/ninh_compare.js): every method's sites for 1 to 8 sensors, scored on
+  // Ninh et al. (2025)'s blockage coverage and on Sim 4's growth runs, plus NSGA-II's front between the two.
+  const NC = () => window.NINH_COMPARE;
+  const FAMILY = { topology: { label: "Ninh et al. (2025): network only, no simulation", c: () => PAL.orange }, coverage: { label: "General coverage: network only, no simulation", c: () => PAL.purple }, regionless: { label: "Simulated growth, no regions (Sim 3.5)", c: () => PAL.blue }, simulation: { label: "Simulated growth (ours)", c: () => COL.sensor } };
+  // Ninh's greedy and genetic algorithm, against the growth plan picked with the plan switch (Greedy: average or worst case).
+  const ncMethods = () => NC().methods.filter(m => m.family === "topology" || m.family === "coverage" || m.family === "regionless" || m.id === (planMethod() === "worst" ? "gWorst" : "gAvg"));
+  const NC_COL = { ninh: () => PAL.orange, ga: () => PAL.yellow, cov: () => PAL.purple, s35: () => PAL.blue };
+  const ncCol = m => m.family === "simulation" ? COL.sensor : NC_COL[m.id]();
+  const NINH = {
+    m() { const n = st.ninh, ms = ncMethods(); return ms.find(x => x.id === n.m) || ms.find(x => x.family === "simulation"); },
+    covered(set) { const u = new Set(); set.forEach(i => (NC().covers[i] || []).forEach(p => u.add(p))); return u; },
+    layer() {
+      const n = st.ninh, m = this.m(), set = m.sets[n.k - 1], cov = this.covered(set), ours = new Set(planIdx(n.k)), col = ncCol(m);
+      return {
+        pipe: p => cov.has(p) ? [PAL.cover, 2.6] : [COL.pipe, 1],
+        node: i => set.includes(i) ? { fill: col, r: 7, ring: m.family !== "simulation" && ours.has(i) ? COL.sensor : undefined } : m.family !== "simulation" && ours.has(i) ? { ring: COL.sensor, r: 6 } : null,
+        labels: sensorLabels(set),
+        legend: [[col, m.label], [PAL.cover, "Pipe where a blockage would back up to a sensor (Ninh rule)", "line"], ...(m.family !== "simulation" ? [[COL.sensor, "Recommended level sensors", "ring"]] : [])],
+        tip: i => set.includes(i) ? m.label : "",
+      };
+    },
+    // Ninh coverage (x) against scenario coverage (y): one dot per method, NSGA-II's front as a line.
+    chart(k, on) {
+      const W = 380, H = 230, l = 40, b = 34, t = 10, rr = 12, ms = ncMethods(), xs = ms.map(m => m.byK[k - 1].ninh);
+      const xmax = Math.max(0.05, ...xs) * 1.1, X = v => l + (W - l - rr) * v / xmax, Y = v => t + (H - t - b) * (1 - v);
+      const grid = [0, 0.25, 0.5, 0.75, 1].map(v => `<line class="grid" x1="${l}" x2="${W - rr}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${l - 4}" y="${Y(v) + 3}" text-anchor="end" class="ax">${v * 100}%</text>`).join("");
+      const xt = [0, xmax / 2, xmax].map(v => `<text x="${X(v)}" y="${H - b + 14}" text-anchor="middle" class="ax">${Math.round(v * 100)}%</text>`).join("");
+      const dots = ms.map(m => { const x = m.byK[k - 1]; return `<g class="click ${m.id === on ? "on" : ""}" data-nm="${m.id}"><title>${m.label}: ${pct(x.ninh)} blockage coverage, ${pct(x.scenario.avg)} growth runs seen on average</title><circle cx="${X(x.ninh)}" cy="${Y(x.scenario.avg)}" r="${m.id === on ? 7 : 5}" fill="${ncCol(m)}" stroke="${m.id === on ? PAL.hi : "none"}" stroke-width="2"/>${(() => { const right = X(x.ninh) > (l + W) / 2, short = { ninh: "Ninh, greedy", ga: "Ninh, genetic", cov: "Coverage greedy", s35: "Sim 3.5" }[m.id] || "Ours";
+        return `<text x="${X(x.ninh) + (right ? -9 : 9)}" y="${Y(x.scenario.avg) + 4}" text-anchor="${right ? "end" : "start"}" class="ax strong">${short}</text>`; })()}</g>`; }).join("");
+      return `<svg class="nchart" viewBox="0 0 ${W} ${H}" width="100%">${grid}${xt}${dots}
+        <text x="${(l + W - rr) / 2}" y="${H - 4}" text-anchor="middle" class="ax strong">Blockage coverage, Ninh rule (pipe length) →</text>
+        <text x="10" y="${(t + H - b) / 2}" text-anchor="middle" class="ax strong" transform="rotate(-90 10 ${(t + H - b) / 2})">Growth runs seen, average →</text></svg>`;
+    },
+    panel() {
+      const n = st.ninh, d = NC(), k = n.k, m = this.m(), ms = ncMethods();
+      const ev = (x, kind) => { const e = x.all.ev[kind]; return e.series ? `${e.atTime}/${e.series}` : "–"; };
+      const groups = ["topology", "coverage", "regionless", "simulation"];
+      const best = f => Math.max(...ms.map(mm => f(mm.byK[k - 1])));
+      const cell = (x, f, fmt) => `<td class="${f(x) >= best(f) - 1e-9 ? "best" : ""}">${fmt(f(x))}</td>`;
+      const rows = groups.map(g => `<tr class="grp"><th colspan="7">${FAMILY[g].label}</th></tr>` + ms.filter(mm => mm.family === g).map(mm => { const x = mm.byK[k - 1];
+        return `<tr data-nm="${mm.id}" class="${mm.id === m.id ? "on" : ""}"><td><i class="sw" style="background:${ncCol(mm)}"></i>${mm.label}</td>${cell(x, y => y.ninh, pct)}${cell(x, y => y.scenario.worst, pct)}${cell(x, y => y.scenario.avg, pct)}${cell(x, y => y.all.growth, pct)}<td>${ev(x, "alarm")}</td><td>${ev(x, "sur")}</td></tr>`; }).join("")).join("");
+      const top = ms.filter(mm => mm.family === "topology").reduce((a, c) => c.byK[k - 1].ninh > a.byK[k - 1].ninh ? c : a), ours = ms.find(mm => mm.family === "simulation");
+      const a = top.byK[k - 1], o = ours.byK[k - 1];
+      const sel = m.byK[k - 1];
+      return `
+        <p class="lede">Ninh et al. (2025) place level sensors from the network alone, to cover as much pipe as possible: a sensor sees a blockage downstream if the water backing up from it reaches the sensor. Their greedy and genetic-algorithm placements, a general coverage greedy (each sensor covers the manholes within 2 pipes of it), and Sim 3.5's placement (simulated growth, chosen from every manhole with no regions) are scored here on our growth runs, and our simulation-based plan on their coverage.</p>
+        <div class="slider"><input id="ncK" type="range" min="1" max="8" value="${k}" aria-label="Sensors"><span>${k} sensor${k === 1 ? "" : "s"}</span></div>
+        <table class="cmp ncmp"><tr><th>Method</th><th title="Share of pipe length where a blockage would back up to a sensor (Ninh rule)">Blockage cover</th><th title="Growth runs seen in the hardest of the 7 wet cases (Sim 4's test)">Worst</th><th title="Growth runs seen, averaged over the 7 wet cases (Sim 4's test)">Avg</th><th title="All runs in which growth raises some manhole 10 mm or more">Growth seen</th><th title="Weather-and-region series where growth newly takes a manhole past 0.7 of pipe height: seen when it happens">Over 0.7</th><th title="Series where growth newly surcharges a manhole: seen when it happens">Surcharge</th></tr>${rows}</table>
+        <div class="hint">Bold: best in the column. Worst and Avg: Sim 4's scenario coverage. Over 0.7 and Surcharge: series in which growth causes it, seen by a sensor rising 10 mm when it happens. Overflow is seen by almost every method (few series reach the lid).</div>
+        <h3>The trade-off <small>click a dot</small></h3>
+        ${this.chart(k, m.id)}
+        <div class="hint">Network-only placements sit low: they cover the network, not where growth shows. Ours sits high.</div>
+        <div class="stats">${stat(pct(a.ninh) + " / " + pct(o.ninh), `blockage cover: ${top.label} / ours`)}${stat(pct(a.scenario.worst) + " / " + pct(o.scenario.worst), "growth seen in the hardest weather: Ninh / ours")}</div>
+        <div class="card"><b>${m.label}</b> <span class="dim">${m.note}</span><div class="dim small">${sel.scenario.hard.hit} of ${sel.scenario.hard.n} growth runs seen in its hardest weather · overflow ${ev(sel, "spill")} · sites ${m.sites[k - 1].join(", ")}</div></div>
+        ${fold("Ninh's rule, as used here", `<ul class="plain"><li>A level sensor at manhole s sees a blockage at a manhole v downstream when Z<sub>v</sub> + 0.7·H<sub>v</sub> &gt; Z<sub>s</sub> + H<sub>s</sub>: Z the invert level, H<sub>v</sub> the manhole's depth, H<sub>s</sub> the sensor's normal water depth (here the model's dry day); error term 0, as in the paper.</li><li>A covered manhole covers the pipe leaving it; coverage is pipe length (${d.network.km} km).</li><li>On this steep network a sensor in every manhole covers only ${pct(d.ninhFull.max)} of it; ${d.ninhFull.p50} sensors reach half of that. The paper notes the same for steep systems.</li><li>The paper searches with a genetic algorithm; greedy and the genetic algorithm reach about the same coverage here, with different sites.</li></ul>`)}
+        ${fold("The methods", `<ul class="plain">${ms.map(mm => `<li><b>${mm.label}</b>: ${mm.note}.</li>`).join("")}</ul>`)}
+        ${fold("Read these carefully", `<ul class="plain"><li>Blockage cover and growth seen measure different things: the first is a blockage backing up to a sensor, the second the steady rise from new homes.</li><li>Worst and Avg are Sim 4's test: growth in the regions it chose to monitor or watch, up to the 2041 homes. Growth seen, Over 0.7 and Surcharge count every region and every build-out step. Sim 3.5 chose from every manhole, with no regions, so it sees more of the whole network and less of Sim 4's target regions.</li><li>Uncalibrated, steady-flow model: these compare methods on the same runs; they do not forecast.</li><li>Report and code: docs/ninh_compare.md, tools/ninh_compare.js.</li></ul>`)}
+        ${nextBtn()}`;
+    },
+    wire() {
+      const n = st.ninh;
+      $("#ncK").oninput = e => { n.k = +e.target.value; refresh(); };
+      on("[data-nm]", "onclick", e => { n.m = e.currentTarget.dataset.nm; refresh(); });
+    },
+  };
+
   // ------------------------------------------------------------------ 8 SENSOR TYPES
   const SENSOR_TYPES = [
     { id: "ultra", short: "Ultrasonic", name: "Ultrasonic level", get colour() { return PAL.sensor; }, at: () => "lid", reads: "Distance down to the water, every few minutes", good: "Continuous level, no contact with sewage, battery and radio in one unit. Used at scale for blockages.", bad: "Must not be submerged; foam and ladders can confuse it.", fit: "Best fit: level is the direct sign of lost capacity.", cost: "$$" },
@@ -1501,7 +1569,7 @@ const App = (() => {
     return `<div class="stats sur">${stat(S().base[D().design].surcharged.length, w + ", design wet day")}${stat(S().base[wetTags()[1]].surcharged.length, w + ", much wetter day", "bad")}</div>`; };
   const tiles = () => `<div class="tiles"><div><b>Buy in stages</b><span>nothing moves as more are added</span></div><div><b>New suburb</b><span>rerun the method</span></div><div><b>Next</b><span>new estates at the edge</span></div></div>`;
 
-  const HANDLERS = { problem: PROBLEM, regions: REGIONS, onesensor: ONESENSOR, setting: SETTING, network: NETWORK, approach: APPROACH, simulate: SIMULATE, insights: INSIGHTS, algorithms: ALGORITHMS, compare: COMPARE, check: CHECK, sensors: SENSORS, repeat: REPEAT, future: FUTURE, conclude: CONCLUDE };
+  const HANDLERS = { problem: PROBLEM, regions: REGIONS, onesensor: ONESENSOR, setting: SETTING, network: NETWORK, approach: APPROACH, simulate: SIMULATE, insights: INSIGHTS, algorithms: ALGORITHMS, compare: COMPARE, ninh: NINH, check: CHECK, sensors: SENSORS, repeat: REPEAT, future: FUTURE, conclude: CONCLUDE };
   const layer = () => { const pg = isSimple() && PLAIN.pages[st.sec]; return pg && pg.layer ? pg.layer() : HANDLERS[st.sec].layer(); };
 
   // ------------------------------------------------------------------ animation helpers
