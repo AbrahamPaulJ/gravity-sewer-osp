@@ -223,15 +223,21 @@ def figures(nm, reg, geo, runs, fl, gf_cover, gf_joins):
     ii = next(c["ii"] for c in reg["cases"] if c["tag"] == design_tag)
     desk = Desk(geo, runs["lpsPerDwelling"][1])
     desk.names = chambers
-    # Sim 4 places level sensors by greedy only (19 Nov), two ways: Greedy: average (the map's default) and Greedy: worst case.
+    # Sim 4 places level sensors by greedy (19 Nov), two ways: Greedy: average (the map's default) and Greedy: worst case;
+    # Exact optimum is shown beside them as a comparison (20 Nov).
     ladw = {r["k"]: r for r in nm["ladder_worst"]}
     listS = T.ids(lad[rec]["chosen"])
     worstS = T.ids(ladw[rec]["chosen"])
+    # Exact optimum (20 Nov, back as a comparison): numbers.json's exact set of each size, the best bought all at once.
+    exactS = T.ids(lad[rec]["exact_set"])
     # The engine must reproduce numbers.json before anything else is trusted.
     for name, L_ in (("Greedy: average", lad), ("Greedy: worst case", ladw)):
         for k, r in L_.items():
             a = T.score(T.ids(r["chosen"]))
             assert abs(a["worst"] - r["worst"]) < 6e-5 and abs(a["average"] - r["average"]) < 6e-5 and a["warned"] == r["warned_target"], f"{name} at {k} does not match numbers.json"
+    for k, r in lad.items():
+        a = T.score(T.ids(r["exact_set"]))
+        assert abs(a["worst"] - r["exact_worst"]) < 6e-5 and abs(a["average"] - r["exact_average"]) < 6e-5, f"Exact optimum at {k} does not match numbers.json"
     assert T.n == [nm["universe"][c] for c in T.labels], "runs per case do not match numbers.json"
     assert T.nwarn == nm["warn_universe"]["target"], "warnable overloads do not match numbers.json"
 
@@ -339,12 +345,12 @@ def figures(nm, reg, geo, runs, fl, gf_cover, gf_joins):
     deskS = desk.rank(pool, lambda i: util[desk.out_pipe(chambers[i])] if desk.out_pipe(chambers[i]) is not None else -1, rec)
     homesS = desk.rank(pool, lambda i: desk.homes_at[desk.node_of[chambers[i]]], rec)
     out["why"] = {"today": T.score(today), "today_set": [chambers[i] for i in today], "desk": T.score(deskS), "desk_set": [chambers[i] for i in deskS],
-                  "list": T.score(listS), "worst_list": T.score(worstS), "n_today": len(base_d["surcharged"])}
+                  "list": T.score(listS), "worst_list": T.score(worstS), "exact": T.score(exactS), "n_today": len(base_d["surcharged"])}
 
     # Each sensor alone, per wet case, step 5b.
     out["alone"] = [{"name": chambers[i], "per": T.per_case([i])} for i in listS]
 
-    # The two greedy lists against simple baselines, step 5b.
+    # The two greedy lists and Exact optimum against simple baselines, step 5b.
     rng = _random.Random()
     seed = RANDOM_SEED
 
@@ -370,6 +376,8 @@ def figures(nm, reg, geo, runs, fl, gf_cover, gf_joins):
                      "unseen": unseen, "fails": T.one_fails(S), "note": note})
     row("Greedy: average", listS, sum(hb[c][str(rec)] for c in hb) / len(hb))
     row("Greedy: worst case", worstS, sum(hbw[c][str(rec)] for c in hbw) / len(hbw))
+    # Unseen weather for Exact optimum: each wet case scored with the exact best set chosen without it (the same search).
+    row("Exact optimum", exactS, T.unseen(lambda k, cs: T.exact(k, cs), rec))
     row("Desk: flow / capacity", deskS, None)
     row("Desk: most homes upstream", homesS, None)
     for r in rows:

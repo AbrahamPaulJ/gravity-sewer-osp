@@ -81,8 +81,9 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
     }
   }
   ok("Simple, as presented: no sentence blocks on any page", quiet, quietBad);
-  // Round 2. 19 Nov: Sim 4 places level sensors by greedy only; the two plans are Greedy: average (the story's 5a and 5b,
-  // the default) and Greedy: worst case (step 5c). Expected figures come from numbers.json, not from this file.
+  // Round 2. 19 Nov: Sim 4 places level sensors by greedy; the two plans are Greedy: average (the story's 5a and 5b,
+  // the default) and Greedy: worst case (step 5c). 20 Nov: Exact optimum is back beside them as a comparison (numbers.json's
+  // exact_* keys). Expected figures come from numbers.json, not from this file.
   const X = JSON.parse(fs.readFileSync(path.join(ROOT, "simulation_src", "results", "sim4", "numbers.json"), "utf8"));
   const P = v => Math.round(v * 100) + "%", L = k => X.ladder[k - 1], LW = k => X.ladder_worst[k - 1], WT = X.warn_universe.target;
   const UA = (by, k) => Object.values(by).reduce((a, v) => a + v[String(k)], 0) / Object.keys(by).length;
@@ -206,18 +207,25 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await shot("04b_regions");
   // 5 Algorithms
   await click('#secs button[data-sec="algorithms"]'); await wait(300);
-  ok("algorithms: Greedy: average at 5 shows its worst case", (await panel()).includes(P(L(5).worst)) && /Greedy: average/.test(await panel()) && !/Buy all at once|Buy in stages \(nested\)|beam search|exact/i.test(await panel()));
+  ok("algorithms: Greedy: average at 5 shows its worst case", (await panel()).includes(P(L(5).worst)) && /Greedy: average/.test(await panel()) && !/Buy all at once|Buy in stages \(nested\)|beam search/i.test(await panel()));
+  ok("algorithms: the methods are the two greedy plans, Exact optimum, two desk methods and random", await ev(`[...document.querySelectorAll('[data-mth]')].map(b=>b.dataset.mth).join()`) === "greedyAvg,greedyWorst,exact,hydraulic,homes,random");
+  await click('[data-mth="exact"]'); await wait(300);
+  ok("algorithms: Exact optimum at 5 = numbers.json, says it is the comparison, and has no next-choice map (it is not built one at a time)",
+     (await panel()).includes(P(L(5).exact_worst)) && (await panel()).includes(P(L(5).exact_average)) && /comparison/.test(await panel()) && /move sensors/.test(await panel()) && await ev(`!document.querySelector('#alShow')`), (await panel()).slice(0, 600));
   await click('[data-mth="greedyWorst"]'); await wait(200); await click("#alShow"); await wait(1200);
   ok("algorithms: the next-choice heat map draws", await ev(`/Choice for sensor/.test(document.querySelector('#legend').textContent)`));
   await shot("05_algorithms");
   // 6 Compare
   await click('#secs button[data-sec="compare"]'); await wait(1500); await click('#zreset'); await wait(200);
-  ok("compare: five rows: the two greedy plans, two desk methods and random", await ev(`[...document.querySelectorAll('table.cmp tr[data-row]')].map(r=>r.dataset.row).join()`) === "greedyAvg,greedyWorst,hydraulic,homes,random");
+  ok("compare: six rows: the two greedy plans, Exact optimum, two desk methods and random", await ev(`[...document.querySelectorAll('table.cmp tr[data-row]')].map(r=>r.dataset.row).join()`) === "greedyAvg,greedyWorst,exact,hydraulic,homes,random");
   const row = id => ev(`[...document.querySelectorAll('table.cmp tr[data-row="${id}"] td')].map(x=>x.textContent).join('|')`);
   // The story quotes unseen weather as the average over the cases, so the demo, which reads the story's data, does too.
   const rowWant = (r, by) => `|${P(r.average)}|${P(r.worst)}|${r.warned_target}/${WT}|${P(UA(by, 5))}|`;
   ok("compare: Greedy: average row = numbers.json (average, worst, warned, unseen weather)", (await row("greedyAvg")).includes(rowWant(L(5), X.held_out_by_case)), await row("greedyAvg"));
   ok("compare: Greedy: worst case row = numbers.json's ladder_worst", (await row("greedyWorst")).includes(rowWant(LW(5), X.held_out_by_case_worst)), await row("greedyWorst"));
+  // Exact optimum's unseen weather is the story's own (step 5b's comparison table), read from its data.
+  const exUnseen = await ev(`(()=>{const b=SIM4.steps.find(s=>s.id==='5b').notes.more.blocks[1].html,r=new DOMParser().parseFromString('<table>'+b+'</table>','text/html');const tr=[...r.querySelectorAll('tr')].find(t=>/^Exact optimum/.test(t.cells[0].textContent));return tr?tr.cells[4].textContent:''})()`);
+  ok("compare: Exact optimum row = numbers.json's exact set at 5, unseen weather = the story's", (await row("exact")).includes(`|${P(L(5).exact_average)}|${P(L(5).exact_worst)}|`) && (await row("exact")).includes(`|${exUnseen}|`), (await row("exact")) + " / story " + exUnseen);
   // Fail the sensor the nested plan rests on (the callout's): the worst case drops to what the other four see.
   const weak = await ev(`(()=>{const s=App.planIdx(5),o=App.SIM4_TEST(),f=s.map(i=>App.score(s.filter(j=>j!==i),o).worst);return {k:f.indexOf(Math.min(...f)),w:Math.round(100*Math.min(...f))+'%'}})()`);
   await clickSensor(weak.k); await wait(300);
@@ -275,6 +283,9 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   const tc2 = await panel(); ok("conclusion: Greedy: worst case at 5 = numbers.json's ladder_worst", tc2.includes(stats(LW(5), X.held_out_by_case_worst)), tc2.slice(0, 400));
   await click('[data-plan="avg"]'); await wait(300);
   ok("conclusion: back to Greedy: average", await ev(`App._.plan()==='avg'`));
+  const exMoved = L(4).exact_set.filter(m => !L(5).exact_set.includes(m)).length;
+  const exRow = await ev(`(document.querySelector('table.plancmp tr.cmpx')||{}).innerText||''`);
+  ok("conclusion: Exact optimum is the comparison row, numbers.json's at 5, and says how many sensors it moves from 4", exRow.includes(P(L(5).exact_worst)) && exRow.includes(P(L(5).exact_average)) && /comparison/.test(exRow) && exRow.includes(exMoved ? `Yes: ${exMoved} from 4` : "Not from 4"), exRow);
   await shot("11_conclude");
   // Other methods: Ninh's topology rule and the global-coverage algorithms, scored on growth and on blockage cover
   await ev(`App.go('ninh')`); await wait(500);
@@ -324,10 +335,10 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await ev(`App.go('simulate')`); await wait(250); await click('[data-sp="1"]'); await wait(300);
   ok("Simple: the followed scenario appears, with its early warning", /scenario we follow/.test(await panel()) && /already risen/.test(await panel()));
   await ev(`App.go('compare')`); await wait(800);
-  ok(`Simple: compare shows four rows of dots (ours ${h5.hit}, desk 4)`, await ev(`document.querySelectorAll('.rowwrap svg.dots').length===4`) && (await panel()).includes(`${h5.hit} of ${h5.n}`) && /\b4 of 16/.test(await panel()), await panel());
+  ok(`Simple: compare shows five rows of dots (ours ${h5.hit}, the best bought all at once, desk 4)`, await ev(`document.querySelectorAll('.rowwrap svg.dots').length===5`) && /bought all at once/.test(await panel()) && (await panel()).includes(`${h5.hit} of ${h5.n}`) && /\b4 of 16/.test(await panel()), await panel());
   await ev(`document.documentElement.removeAttribute('data-notes')`);
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "d", code: "KeyD", windowsVirtualKeyCode: 68 }); await wait(300);
-  ok("D switches to Detailed", await ev(`!App.isSimple()`) && await ev(`document.querySelectorAll('table.cmp tr[data-row]').length===5`));
+  ok("D switches to Detailed", await ev(`!App.isSimple()`) && await ev(`document.querySelectorAll('table.cmp tr[data-row]').length===6`));
   await ev(`App.setMode('simple')`); await ev(`App.go('conclude')`); await wait(300);
   // Keys and names
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowLeft", code: "ArrowLeft", windowsVirtualKeyCode: 37 }); await wait(300);

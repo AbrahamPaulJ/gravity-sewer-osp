@@ -296,7 +296,7 @@ function connect(url) {
     await load('#step=5b');
     const W = D.steps.find(s => s.id === '5b').why, R5 = L(REC), W5 = LW(REC);
     ok('5b: one visible line says they can be bought in stages without moving one', /bought in stages without moving one/.test(await txt('#stepBody')));
-    ok('5b: "Greedy: average or Greedy: worst case?" is a button closed by default', await txt('#btnWhy') === 'Greedy: average or Greedy: worst case?' && await ev('document.querySelector("#why").hidden') && await ev('document.querySelector("#btnWhy").getAttribute("aria-expanded")') === 'false');
+    ok('5b: "Greedy: average, Greedy: worst case or Exact optimum?" is a button closed by default', await txt('#btnWhy') === 'Greedy: average, Greedy: worst case or Exact optimum?' && await ev('document.querySelector("#why").hidden') && await ev('document.querySelector("#btnWhy").getAttribute("aria-expanded")') === 'false');
     const card0 = await ev('document.querySelector("#card").getBoundingClientRect().height');
     const shift0 = await ev('getComputedStyle(document.documentElement).getPropertyValue("--map-shift")');
     await click('#btnWhy'); await wait(300);
@@ -304,6 +304,13 @@ function connect(url) {
     const cell = r => `${pc(r.worst)} / ${pc(r.average)}, ${r.warned_target} of ${X.warn_universe.target}`;
     ok('5b: a real click opens it, both greedy lists side by side at every count', !(await ev('document.querySelector("#why").hidden')) && X.ladder.every((r, i) => w.includes(cell(r)) && w.includes(cell(X.ladder_worst[i]))), w.slice(0, 120));
     ok('5b: it leads with the reason: neither moves a level sensor, so either can be bought in stages', /never move one, so either can be bought in stages/.test(W.intro) && W.intro.indexOf('stages') < 90);
+    // 20 Nov: Exact optimum beside them, the comparison: numbers.json's exact_* at every count, and how many sensors it moves.
+    const xcell = r => `${pc(r.exact_worst)} / ${pc(r.exact_average)}`;
+    const xrows = await ev('[...document.querySelectorAll("#why tr")].slice(1).map(r=>[...r.cells].map(c=>c.textContent))');
+    const moved = X.ladder.map((r, i) => i ? String(X.ladder[i - 1].exact_set.filter(m => !r.exact_set.includes(m)).length) : 'n/a');
+    ok('5b: the fold has Exact optimum at every count (numbers.json) and the sensors it moves from the size before',
+       xrows.length === X.ladder.length && xrows.every((c, i) => c[3].startsWith(xcell(X.ladder[i])) && c[4] === moved[i]), JSON.stringify(xrows.map(c => c.slice(3))) + ' want moved ' + moved.join());
+    ok('5b: the fold says Exact optimum is the comparison and cannot be bought in stages without moving sensors', /Exact optimum, the comparison/.test(W.intro) && /cannot be bought in stages without moving level sensors/.test(W.intro), W.intro);
     ok('5b: the open fold lies over the map rather than moving it', await ev('getComputedStyle(document.documentElement).getPropertyValue("--map-shift")') === shift0, shift0);
     await shot('why_5b');
     await click('#btnWhy'); await wait(200);
@@ -421,7 +428,9 @@ function connect(url) {
     const rowOk = (row, r, u) => row.includes(pc(r.worst)) && row.includes(pc(r.average)) && row.includes(`${r.warned_target} of ${X.warn_universe.target}`) && row.includes(pc(u));
     ok("5b: the Greedy: average row = numbers.json (worst, average, warned) and the case-average unseen weather", rowOk(aRow, L(REC), UAVG(REC)), aRow);
     ok("5b: the Greedy: worst case row = numbers.json's ladder_worst and its own unseen weather", rowOk(wRow, LW(REC), UAVGW(REC)), wRow);
-    ok("5b: no other placement method in the comparison: only the two greedy lists, two desk baselines and random", !trs.some(r => /^(Nested|Exact|Warn|Risk)/.test(r)), trs.filter(r => /^(Nested|Exact|Warn|Risk)/.test(r)).join(' | '));
+    const xRow = trs.find(r => /^Exact optimum/.test(r)) || '';
+    ok("5b: the Exact optimum row = numbers.json's exact set at five (worst, average)", xRow.includes(pc(L(REC).exact_worst)) && xRow.includes(pc(L(REC).exact_average)), xRow);
+    ok("5b: no other placement method in the comparison: the two greedy lists, Exact optimum, two desk baselines and random", !trs.some(r => /^(Nested|Warn|Risk)/.test(r)), trs.filter(r => /^(Nested|Warn|Risk)/.test(r)).join(' | '));
     ok('5b: both greedy lists are "chosen on this test"; random is 500 draws, a different measure', /chosen on this test/.test(m) && /500 draws/.test(m) && /different measure/.test(m));
     const lim5b = D.steps.find(s => s.id === '5b').notes.limit, gf = lim5b.match(/these \w+ see (\d+%) of growth runs on average and (\d+%) in the worst/);
     await load('#step=6&notes=1&more=1');
@@ -436,7 +445,8 @@ function connect(url) {
   const all = await ev(`document.querySelector('#card').innerText+document.querySelector('#notes').textContent+JSON.stringify(window.SIM4.popups)+JSON.stringify(window.SIM4.steps)`);
   ok('no em or en dash anywhere', !/[\u2014\u2013]/.test(all));
   ok('no mention of the old five-sensor figures on the story (step 5c may quote Greedy: worst case\'s own)', !steps.some(s => /80%|86%|90%/.test(s.body.replace(s.id === '5c' ? pc(LW(REC).worst) : '\u0000', ''))));
-  ok('19 Nov: greedy only: no nested list, beam search, exact solver, design-day seed or tied sets in the story', !/nested list|beam search|exact best|exact solver|Exact optimum|sets tie|tie for best|design day is right/i.test(all));
+  ok('19 Nov: greedy, with Exact optimum only as the comparison: no nested list, beam search, design-day seed or tied sets in the story', !/nested list|beam search|exact best|exact solver|sets tie|tie for best|design day is right/i.test(all));
+  ok('20 Nov: Exact optimum is named in the story only as the comparison, never as the plan', !/recommend[^.]*Exact optimum|Exact optimum[^.]*recommend/i.test(all) && /Exact optimum/.test(all));
   ok('no client or suburb name in the words', !/SA Water|Walkerville|Rostrevor|Stonyfell|Woodforde|Malvern|Bolivar/i.test(all));
   ok('no private source: no meeting date, prices called assumed', !/28 Sep|confidential/i.test(all) && /assumed/.test(all));
 

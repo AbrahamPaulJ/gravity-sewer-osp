@@ -151,8 +151,9 @@ def steps(nm, reg, ctx):
     if by("leave"):
         parts.append(f"Leave {listing(by('leave'))}: {why_leave}.")
     s4 = " ".join(parts) + " Leaving a region unmonitored is a valid answer, if a design wet day is the right test and growth comes one region at a time."
-    # 19 Nov: Sim 4 places level sensors by greedy only, two ways. Greedy: average is the map's default (5a, 5b);
-    # Greedy: worst case is step 5c. Each card stays under 65 words (verify_sim4_web.js).
+    # 19 Nov: Sim 4 places level sensors by greedy, two ways. Greedy: average is the map's default (5a, 5b);
+    # Greedy: worst case is step 5c. 20 Nov: Exact optimum is back as a comparison, in 5b's text and folds.
+    # Each card stays under 65 words (verify_sim4_web.js).
     nd = nm["universe"][DESIGN]
     L1, L5, W5, wt = lad[1], lad[rec], ladw[rec], nm["warn_universe"]["target"]
     seen1 = f"all {nd}" if L1["design_wet"] >= 1 - 1e-9 else f"{round(L1['design_wet'] * nd)} of the {nd}"
@@ -162,7 +163,8 @@ def steps(nm, reg, ctx):
     warned = lambda r: f"all {wt}" if r["warned_target"] == wt else f"{r['warned_target']} of {wt}"
     s5b = (f"Greedy: average, {rec} level sensors: across the {ctx['nwet']} wet cases they see {pct(L5['average'])} of growth runs on average "
            f"and {pct(L5['worst'])} in the worst case, and warn of {warned(L5)} overloads. On unseen weather: "
-           f"{pct(unseen_avg(nm, rec))}, averaged by case. Each was added to the ones before, so they can be bought in stages without moving one.")
+           f"{pct(unseen_avg(nm, rec))}, averaged by case. Each was added to the ones before, so they can be bought in stages without moving one."
+           + (" No set of five does better (Exact optimum)." if rec == 5 and abs(L5["exact_worst"] - L5["worst"]) < 1e-9 and abs(L5["exact_average"] - L5["average"]) < 1e-9 else ""))
     lead = [k for k in sorted(lad) if ladw[k]["worst"] > lad[k]["worst"] + 1e-9]
     prefix = lead and lead == list(range(1, len(lead) + 1)) and all(lad[k]["worst"] >= ladw[k]["worst"] - 1e-9 for k in lad if k > len(lead))
     lead_s = (f"It leads in the worst case with {' or '.join(str(k) for k in lead) if len(lead) <= 2 else f'1 to {lead[-1]}'} "
@@ -268,11 +270,12 @@ def tables(nm, ctx):
     show = lambda v: f"more than {max(r['k'] for r in nm['ladder'])}" if v is None else v
     T["fewest"] = figure(
         "Fewest sensors by weather covered",
-        table(["Weather to cover", "Greedy: average, 80%", "90%", "100%", "Greedy: worst case, 80%", "90%", "100%"],
+        table(["Weather to cover", "Greedy: average, 80%", "90%", "100%", "Greedy: worst case, 80%", "90%", "100%", "Exact optimum, 80%", "90%", "100%"],
               [[f["scope"]] + [show(f[f"ladder_{t}"]) for t in ("0.8", "0.9", "1.0")] + [show(g[f"ladder_{t}"]) for t in ("0.8", "0.9", "1.0")]
+               + [show(f[t]) for t in ("0.8", "0.9", "1.0")]
                for f, g in zip(nm["fewest"], nm["fewest_worst"])]),
-        "How many level sensors each greedy list needs before it sees this share of growth runs in the worst of the weather cases named. "
-        "Target regions, up to 100%.")
+        "How many level sensors each greedy list needs before it sees this share of growth runs in the worst of the weather cases named, "
+        "and the fewest any set needs (Exact optimum, solved on its own, so not a list to buy in stages). Target regions, up to 100%.")
     if ctx["bisection"] and ctx["handpicked"]:
         T["compare"] = compare(nm, ctx["handpicked"], ctx)
     return T_rest(T, nm, ctx)
@@ -682,8 +685,9 @@ def why_greenfield(nm, ctx):
 
 
 def why_two(nm, reg, chambers, ctx):
-    """Step 5b's fold: Greedy: average against Greedy: worst case at every count, from numbers.json, the warnings
-    recounted from the runs. Both are nested, so neither moves a sensor as more are bought."""
+    """Step 5b's fold: Greedy: average against Greedy: worst case at every count, and Exact optimum beside them (20 Nov),
+    from numbers.json, the warnings recounted from the runs. Both greedy lists are nested, so neither moves a sensor as
+    more are bought; Exact optimum is the best set of each size on its own, so it can move sensors between sizes."""
     rec = nm["recommend"]
     lad, ladw = {r["k"]: r for r in nm["ladder"]}, {r["k"]: r for r in nm["ladder_worst"]}
     wt = nm["warn_universe"]["target"]
@@ -693,7 +697,14 @@ def why_two(nm, reg, chambers, ctx):
     n_w, t_w = warned_by(ladw[rec]["chosen"], nm, reg, chambers)
     assert (n_a, t_a) == (lad[rec]["warned_target"], wt) and (n_w, t_w) == (ladw[rec]["warned_target"], wt), "warning count does not match numbers.json"
     cell = lambda r: f"{pct(r['worst'])} / {pct(r['average'])}, {r['warned_target']} of {wt}"
-    rows = [[k, cell(lad[k]), cell(ladw[k])] for k in sorted(lad)]
+    ex = {k: lad[k]["exact_set"] for k in lad}
+    xwarn = {k: warned_by(ex[k], nm, reg, chambers)[0] for k in ex}
+    moved = {k: len(set(ex[k - 1]) - set(ex[k])) if k > 1 else 0 for k in ex}
+    xcell = lambda k: f"{pct(lad[k]['exact_worst'])} / {pct(lad[k]['exact_average'])}, {xwarn[k]} of {wt}"
+    rows = [[k, cell(lad[k]), cell(ladw[k]), xcell(k), "n/a" if k == 1 else str(moved[k])] for k in sorted(lad)]
+    ahead = [k for k in sorted(lad) if lad[k]["exact_worst"] > max(lad[k]["worst"], ladw[k]["worst"]) + 1e-9]
+    ties = [k for k in sorted(lad) if abs(lad[k]["exact_worst"] - lad[k]["worst"]) < 1e-9 and abs(lad[k]["exact_average"] - lad[k]["average"]) < 1e-9]
+    mv = [k for k in sorted(lad) if moved[k]]
     shared = [m for m in lad[rec]["chosen"] if m in ladw[rec]["chosen"]]
     wins = [k for k in sorted(lad) if ladw[k]["worst"] > lad[k]["worst"] + 1e-9]
     intro = (f"Both add one level sensor at a time and never move one, so either can be bought in stages. Greedy: average aims for the "
@@ -701,9 +712,15 @@ def why_two(nm, reg, chambers, ctx):
              + (f"Greedy: worst case is ahead in the worst case only with {listing([str(k) for k in wins])} sensor{'s' if len(wins) > 1 or wins[-1] > 1 else ''}. " if wins
                 else "Greedy: worst case is never ahead in the worst case. ")
              + f"At {word(rec)} they share {word(len(shared))} manhole{'s' if len(shared) != 1 else ''}"
-             + (f" ({listing(shared)})" if shared else "") + ". Each cell: worst / average, overloads warned.")
-    return {"title": "Greedy: average or Greedy: worst case?", "intro": intro,
-            "table": table(["Level sensors", "Greedy: average", "Greedy: worst case"], rows)}
+             + (f" ({listing(shared)})" if shared else "") + ". "
+             + "Exact optimum, the comparison, solves each size on its own: the best worst case, then the best average, of any set of that size. "
+             + (f"It is ahead of both greedy lists in the worst case with {listing([str(k) for k in ahead])} level sensors" if ahead else "It is never ahead of both greedy lists in the worst case")
+             + (f", and Greedy: average matches it at {listing([str(k) for k in ties])}. " if ties else ". ")
+             + (f"But its sets are not nested: going up to {', '.join(str(k) for k in mv[:-1]) + ' or ' + str(mv[-1]) if len(mv) > 1 else mv[0]} sensors moves some of the ones before (the last column), "
+                "so it cannot be bought in stages without moving level sensors. " if mv else "Its sets happen to be nested here. ")
+             + "Each cell: worst / average, overloads warned.")
+    return {"title": "Greedy: average, Greedy: worst case or Exact optimum?", "intro": intro,
+            "table": table(["Level sensors", "Greedy: average", "Greedy: worst case", "Exact optimum", "Exact: sensors moved from the size before"], rows)}
 
 
 # ------------------------------------------------------------------------------------------------ more on each step
@@ -824,16 +841,17 @@ def more_folds(F, nm, ctx):
         rows.append([r["name"], pct(r["worst"]), pct(r["average"]), f"{r['warned']} of {F['nwarn']}", pct(r["unseen"]), pct(r["fails"])])
     rd = C["random"]
     rows.append([f"Random: {C['draws']} draws of {word(rec)} manholes in the regions to monitor or watch", pct(rd["worst"]), pct(rd["average"]), f"{rd['warned']:.1f} of {F['nwarn']}", pct(rd["average"]), "n/a"])
-    M["5b"] = {"title": "Each sensor, and the greedy lists against simple baselines", "blocks": [
+    M["5b"] = {"title": "Each sensor, and the greedy lists against Exact optimum and simple baselines", "blocks": [
         {"title": "Each sensor alone, by weather case",
          "intro": (f"The share of each wet case's growth runs a sensor sees on its own. {CASE_KEY} Where one sensor carries a case alone, losing it costs that case: "
                    f"without {lost_at}, the worst case falls to {pct(sw[worst_loss]['without_worst'])}."),
          "html": alone},
-        {"title": f"The greedy lists and simple baselines, {word(rec)} level sensors, on the same test",
+        {"title": f"The greedy lists, Exact optimum and simple baselines, {word(rec)} level sensors, on the same test",
          "html": table(["Placement", "Worst", "Average", "Warned", "Unseen weather", "If one fails"], rows),
          "intro": (f"Worst and average: the share of growth runs seen over the {nw} wet cases. Unseen weather: each wet case scored with {word(rec)} sensors chosen without it, "
                    f"averaged over the {nw} cases, the same measure as step 5b's. If one fails: the worst case after the most damaging single loss. "
                    "Both greedy lists are chosen on this test, the same lists as Explore's on the story's test. "
+                   f"Exact optimum is the best set of {word(rec)} on this test, solved on its own; its unseen-weather figure re-solves it without each case. "
                    f"Random is the average of {C['draws']} draws, a different measure from the {ctx['draws']:,}-draw random in \"How it holds up\". "
                    "The desk methods and random use no weather, so every case is unseen to them and that column repeats their average.")}]}
 
@@ -958,12 +976,12 @@ def build(numbers, regions, handpicked=HANDPICKED, floats=FLOAT, greenfield=None
            "triage": {i: v["action"] for i, v in nm["triage"].items()},
            "ladder": {"1": nm["ladder"][0]["chosen"], str(rec): next(r for r in nm["ladder"] if r["k"] == rec)["chosen"]},
            "ladderWorst": {str(rec): next(r for r in nm["ladder_worst"] if r["k"] == rec)["chosen"]},
-           # What Explore needs to score on the story's test: both greedy lists (19 Nov: Sim 4 places sensors by greedy only),
-           # so its Greedy: average and Greedy: worst case there are the story's own.
+           # What Explore needs to score on the story's test: both greedy lists (19 Nov: Sim 4 places sensors by greedy),
+           # so its Greedy: average and Greedy: worst case there are the story's own, and Exact optimum's sets (20 Nov).
            "explore": {"ladder": [r["chosen"] for r in sorted(nm["ladder"], key=lambda r: r["k"])],
                        "ladderWorst": [r["chosen"] for r in sorted(nm["ladder_worst"], key=lambda r: r["k"])],
-                       # Kept only for the product demo (demo/app.js, tools/build_demo_data.js), which still compares against
-                       # the exact solver; neither the story nor Explore shows them.
+                       # Exact optimum, the comparison: Explore's third method on the story's test, and the product demo's
+                       # (demo/app.js, tools/build_demo_data.js).
                        "exact": [r["exact_set"] for r in sorted(nm["ladder"], key=lambda r: r["k"])],
                        "targets": nm["targets"], "recommend": rec,
                        # The story's own tables, so Explore's Results tabs show the story's figures on the story's test.
