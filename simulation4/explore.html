@@ -69,8 +69,15 @@ h4 .info-i{margin-left:4px}
 .knob button .knobNum{display:block; font-size:9.5px; font-weight:400; opacity:.72;
   margin-top:3px; font-variant-numeric:tabular-nums}
 .knob button.on .knobNum{opacity:.85}
-#iiKnob,#ruleKnob,#famKnob,#methKnob{flex-wrap:wrap}
-#methKnob button{flex:1 1 calc(50% - 4px); white-space:normal; line-height:1.25}
+#iiKnob,#ruleKnob,#famKnob{flex-wrap:wrap}
+/* Scored on and the method: two choices each, so a segmented control (one pill, the chosen half filled) instead of
+   separate buttons. The method's hidden buttons stay out of it. */
+#scopeKnob,#methKnob{gap:2px; flex-wrap:nowrap; padding:2px; background:var(--panel-2); border:1px solid var(--line); border-radius:8px}
+#scopeKnob button,#methKnob button{flex:1 1 0; min-width:0; border:0; border-radius:6px; background:transparent;
+  padding:6px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:background .15s, color .15s}
+#scopeKnob button:hover,#methKnob button:hover{background:var(--panel); color:var(--ink)}
+#scopeKnob button.on,#methKnob button.on{background:var(--accent); color:#06131f; font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,.25)}
+#scopeKnob button:focus-visible,#methKnob button:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
 #iiKnob button,#ruleKnob button{flex:1 1 calc(50% - 4px); white-space:normal; line-height:1.25}
 #famKnob button{flex:1 1 calc(33% - 4px); white-space:normal; line-height:1.25}
 #typeKnob button{white-space:normal; line-height:1.25}
@@ -156,6 +163,12 @@ html[data-theme="light"] #curve{--c-nested:#1a7f37; --c-exact:#c4432b; --c-greed
 /* 19 Nov: Worst case and Average are display toggles, either or both on. */
 #objKnob{align-items:center}
 #objKnob .knobLbl{flex:none; font-size:12px; color:var(--dim); padding-right:4px}
+/* Worst case and Average are checkboxes; the only one ticked is disabled, so at least one stays on. */
+#objKnob{gap:14px}
+#objKnob .chk{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink); cursor:pointer; user-select:none}
+#objKnob .chk input{width:15px; height:15px; margin:0; accent-color:var(--accent); cursor:pointer}
+#objKnob .chk:has(input:disabled){cursor:default}
+#objKnob .chk input:disabled{cursor:default; opacity:1}
 #curve .cv-other{opacity:.38}
 #curve .lg span.on{color:var(--ink); font-weight:600}
 #curve .lg span:not(.on){opacity:.65}
@@ -620,10 +633,12 @@ html[data-theme="light"] #themeBtn .moon{display:block}
       </div>
       <p class="quiet" id="scopeNote"></p>
     </div>
+    <!-- Only the two greedy methods are offered. The other buttons stay hidden, with their code and data, so one can come
+         back by adding it to SHOWN_METHODS in explore_ui.js. -->
     <div class="knob x" id="methKnob">
-      <button data-m="story" title="The story's sensors, in its order: the recommendation, so this page and the story name the same manholes. Starts from the design wet day's sensor and grows one at a time, keeping the best 1,500 sets, so no sensor moves as more are added">Nested beam search</button>
-      <button data-m="warn" id="methWarn" title="The best set of this size for warning at least one build-out step before the first new surcharge">Warn before surcharge</button>
-      <button data-m="exact" id="methExact" title="The best set of this size, solved exactly (integer program)">Exact optimum</button>
+      <button data-m="story" hidden title="The story's sensors, in its order: the recommendation, so this page and the story name the same manholes. Starts from the design wet day's sensor and grows one at a time, keeping the best 1,500 sets, so no sensor moves as more are added">Nested beam search</button>
+      <button data-m="warn" id="methWarn" hidden title="The best set of this size for warning at least one build-out step before the first new surcharge">Warn before surcharge</button>
+      <button data-m="exact" id="methExact" hidden title="The best set of this size, solved exactly (integer program)">Exact optimum</button>
       <button data-m="greedy" title="One sensor at a time, each the one that most raises the WORST case">Greedy: worst case</button>
       <button data-m="greedy-avg" title="One sensor at a time, each the one that most raises the AVERAGE over the cases">Greedy: average</button>
       <button data-m="risk" id="methRisk" hidden title="Every scenario weighted by severity x occurrence (Kimbrough 2019): the share of total risk noticed, not the share of scenarios">Risk-weighted</button>
@@ -631,11 +646,11 @@ html[data-theme="light"] #themeBtn .moon{display:block}
     <p class="x quiet" id="methSay"></p>
     <label class="fld" for="kRange">Number of sensors: <b id="kVal"></b></label>
     <input type="range" id="kRange" min="1" max="10" step="1">
-    <p class="x quiet" id="methNote" hidden>A new estate: the nested beam search list, or the greenfield runs' greedy order as a comparison. The exact solver has run on infill growth only.</p>
+    <p class="x quiet" id="methNote" hidden>A new estate: the greenfield runs' own greedy order, for the best worst case or the best average.</p>
     <div class="knob x" id="objKnob" role="group" aria-label="Show on the chart and in the figures">
       <span class="knobLbl">Show</span>
-      <button data-o="worst" aria-pressed="true" title="Show the worst case: solid lines on the chart, and the worst-case figures. Either or both can be on">Worst case</button>
-      <button data-o="mean" aria-pressed="true" title="Show the average over the cases: dashed lines on the chart, and the average figures. Either or both can be on">Average</button>
+      <label class="chk" title="Show the worst case: solid lines on the chart, and the worst-case figures. Either or both can be on"><input type="checkbox" data-o="worst" checked> Worst case</label>
+      <label class="chk" title="Show the average over the cases: dashed lines on the chart, and the average figures. Either or both can be on"><input type="checkbox" data-o="mean" checked> Average</label>
     </div>
     <div id="curve" class="x"></div>
     <div id="sensorList"></div>
@@ -701,7 +716,7 @@ html[data-theme="light"] #themeBtn .moon{display:block}
     <div class="grp" id="coverKey" hidden><b>Coverage</b><span id="coverKeyList"></span></div>
     <div class="grp s" id="simpleKey"><b>Map</b>
       <span class="eligibleKey" hidden><span class="k" style="background:#d66be8"></span>Edge connection that can take an estate</span><span class="eligibleKey" hidden><span class="k" style="background:#8b949e"></span>Exit: sewage leaves the model, never a connection</span>
-      <span><span class="k" style="background:#2ef56b"></span>sensor, numbered as in the list: S1, S2, ... the story's; C1, C2, ... a comparison set</span>
+      <span><span class="k" style="background:#2ef56b"></span>sensor, numbered as in the list: S1, S2, ...</span>
       <span><span class="k" style="background:#ff2d55"></span>sees this growth</span>
       <span><span class="k" style="background:#ffa500"></span>over the alarm before any growth</span>
       <span><span class="kl" style="background:#00d4ff"></span>the selected region's pipes</span>
@@ -723,7 +738,7 @@ html[data-theme="light"] #themeBtn .moon{display:block}
       <span><span class="k" style="background:#ffa500"></span>over the alarm before growth</span>
       <span><span class="kr" style="border-color:#bc8cff"></span>overflowing before growth</span>
       <span><span class="kr" style="border-color:#ff3df5"></span>overflows because of the growth</span>
-      <span><span class="k" style="background:#2ef56b"></span>proposed sensor: green pin, numbered as in the sensor list: S1, S2, ... the story's; C1, C2, ... a comparison set</span>
+      <span><span class="k" style="background:#2ef56b"></span>proposed sensor: green pin, numbered as in the sensor list: S1, S2, ...</span>
       <span><span class="kl" style="background:#00d4ff"></span>the selected region's pipes</span>
     </div>
     <div class="grp lg-network" id="pumpKey" hidden><b>Pumped</b>
@@ -785,7 +800,7 @@ RegionLabels.init({ avoid: "#mapControls, .legend, #mapOverlays, #stage .mapCred
 <script src="../simulation35/data/room.js?v=1"></script>
 <script src="../simulation35/room_calc.js?v=2"></script>
 <script src="map_help.js?v=1"></script>
-<script src="explore_ui.js?v=37"></script>
+<script src="explore_ui.js?v=41"></script>
 <script type="module">
   Sim35UI.init();
 </script>
