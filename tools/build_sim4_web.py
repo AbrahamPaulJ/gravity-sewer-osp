@@ -161,9 +161,9 @@ def steps(nm, reg, ctx):
            f"and {pct(L5['worst'])} in the worst case, and warn of {warned} overloads. On weather they were not chosen for: "
            f"{pct(unseen_avg(nm, rec))}, averaged by case. "
            f"A nested list, not the exact best {word(rec)}: it keeps step 5a's sensor and grows from {k0} to {rec} to {max(lad)} without moving one.")
-    s6 = (f"{kdollars(k0 * price)} or {kdollars(rec * price)}, at assumed prices. Real records of a normal day could confirm the design day "
-          f"and save up to {rec - k0} sensors, about {kdollars((rec - k0) * price)}. A new suburb needs its own model runs: the method repeats, "
-          f"this sensor list does not. New estates at the network's edge (greenfield) need sensors of their own: the next piece of work.")
+    s6 = (f"{kdollars(k0 * price)} or {kdollars(rec * price)}, at assumed prices. Normal-day records could confirm the design day "
+          f"and save up to {rec - k0} sensors, about {kdollars((rec - k0) * price)}. Level sensors, not floats: a float only switches at one height, "
+          f"so it cannot follow a gradual rise. A new suburb needs its own model runs. New estates at the edge (greenfield) are the next piece of work.")
     return [
         {"id": "1", "n": 1, "title": "The network", "map": "plain",
          "body": f"{ctx['pipes']} pipes and {ctx['manholes']} manholes, with new homes coming by 2041. The question is what data shows growth using up these pipes, and where to collect it."},
@@ -370,9 +370,13 @@ def notes(nm, reg, ctx):
         "figures": [T["ladder"], T["standins"], T["held"]]}
     N["6"] = {
         "assumes": f"{kdollars(price['level'])} a level sensor and {kdollars(price['float'])} a float switch, bought once.",
-        "source": "Prices: assumed, not quotes.",
-        "limit": "No installation, communications or upkeep costs.",
-        "next": "Whole-life costs. Before placing sensors, look for rising load in the pump station and treatment plant records that already exist.",
+        "source": "Prices: assumed, not quotes. Floats: Wani et al. (2015) found an on/off sensor records only how long a level is passed, "
+                  "so it misses peak flows, and that its value depends on the switch height; they suggest many cheap sensors with a few accurate ones.",
+        "limit": "No installation, communications or upkeep costs. Floats were judged only on seeing growth, with an assumed switch height "
+                 "(25 mm above the normal level, quiet on a design wet day); another height changes their score. Their usual job, "
+                 "a cheap overflow alarm, was not tested.",
+        "next": "Whole-life costs. Test floats as overflow alarms beside the level sensors, and at other switch heights. "
+                "Before placing sensors, look for rising load in the pump station and treatment plant records that already exist.",
         "figures": [T["float"]]}
     for sid, n in N.items():
         n["redo"] = "step-" + sid

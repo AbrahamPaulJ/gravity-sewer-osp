@@ -331,7 +331,8 @@ function connect(url) {
     await load('#step=6');
     const b6 = await txt('#stepBody');
     const W6 = D.steps.find(s => s.id === '6').why;
-    ok('6: one visible line: new estates at the edge (greenfield) are the next piece of work', /New estates at the network's edge \(greenfield\)/.test(b6) && /next piece of work/.test(b6), b6.slice(-120));
+    ok('6: one visible line: new estates at the edge (greenfield) are the next piece of work', /New estates at the (network's )?edge \(greenfield\)/.test(b6) && /next piece of work/.test(b6), b6.slice(-120));
+    ok('6: one visible line: level sensors, not floats, and why', /Level sensors, not floats: a float only switches at one height/.test(b6), b6);
     ok('6: "New estates at the edge" is a fold closed by default', await txt('#btnWhy') === 'New estates at the edge' && await ev('document.querySelector("#why").hidden'));
     await click('#btnWhy'); await wait(300);
     const w6 = await txt('#why'), gf5 = D.steps.find(s => s.id === '5b').notes.limit.match(/these \w+ see (\d+%) of growth runs on average and (\d+%) in the worst/);
