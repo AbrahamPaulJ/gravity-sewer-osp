@@ -696,8 +696,9 @@ const App = (() => {
     ["2b", "What each home sends", "Sewage per home: 2.3 people × 200 L a day, peaking at twice the average, loaded where each home connects.", "simulate", "sim"],
     ["2c", "How wet it is", "Infiltration that depends on the weather: 8 cases, from a dry day to severe leakage into old pipes, because the weather to plan for is unknown.", "simulate", "sim"],
     ["3", "Simulate sewer levels", "PySWMM runs EPA SWMM 5 for every scenario until flows settle: 504 runs, each giving the water level at every manhole.", "insights", "sim"],
-    ["4", "Find the best sensor locations", "Search the simulated levels for the few manholes that see the most growth, one level sensor at a time (greedy); desk heuristics as baselines.", "algorithms", "alg"],
-    ["5", "Evaluate by scenario coverage", "Score each placement by the share of growth scenarios it sees, in the worst and the average weather, and the overloads it warns of. Then stress it.", "compare", "alg"],
+    ["4", "Choose the regions to watch", "Each region is marked monitor, watch or leave by how soon its growth uses up the room in its pipes on a design wet day (limit 0.7 of pipe height): runs out by the 2041 homes, monitor; could go either way, watch; room left or already over, leave. Sensors go only in monitor and watch regions.", "regions", "alg"],
+    ["5", "Place level sensors, one at a time", "Greedy: each level sensor added is the manhole that most raises the growth seen over the 7 wet cases, up to the 2041 homes: on average (Greedy: average) or in the hardest case (Greedy: worst case). The list is nested, so buying more never moves a sensor already in.", "algorithms", "alg"],
+    ["6", "Evaluate by scenario coverage", "Score each plan by the growth scenarios it sees in the hardest and the average wet weather, the overloads it warns of a step ahead, weather it was not chosen on, and a failed sensor; then against desk and network-only methods.", "compare", "alg"],
   ];
   const ALTERNATIVES = [
     { id: "judgement", label: "Judgement or incident history", get colour() { return PAL.orange; }, note: "What utilities mostly do now: sites by experience or where problems were reported. Stand-in here: the manholes already worst today.",
@@ -729,6 +730,13 @@ const App = (() => {
         return { pipe: () => [COL.pipe, 1], node: i => c[i] ? { fill: heat(c[i] / max), r: 2.5 + 7 * Math.sqrt(c[i] / max) } : null, legend: [[heat(0), "Rises 10 mm in few runs"], [heat(1), "In many runs"]], tip: i => `Rises 10 mm or more in ${c[i]} runs` };
       }
       if (k === "4") {
+        const pool = new Set(targetPool()), tri = ri => D().triage[regionId(ri)] || "leave";
+        return { pipe: triagePipe(false), node: i => pool.has(i) ? { fill: COL[tri(S().regions.findIndex(r => r.manholes.includes(i)))], r: 2.5 } : null,
+          labels: regionLabels(ri => COL[tri(ri)]),
+          legend: [[COL.monitor, "Monitor region: runs out of room by the 2041 homes"], [COL.watch, "Watch region: could go either way"], [COL.leave, "Leave: room to spare, or already over"]],
+          tip: i => pool.has(i) ? "Candidate for a level sensor" : "" };
+      }
+      if (k === "5") {
         const ms = [["greedyAvg", PAL.orange, "Greedy"], ["hydraulic", PAL.yellow, "Desk heuristic: flow/capacity"], ["homes", PAL.pink, "Desk heuristic: most homes upstream"]];
         const of = i => ms.find(([id]) => C().methods[id].sets[4].includes(i));
         return { pipe: triagePipe(true), node: i => set.includes(i) ? { fill: COL.sensor, r: 7 } : of(i) ? { ring: of(i)[1], r: 6, rw: 2.6 } : null, labels: sensorLabels(set),
@@ -744,12 +752,12 @@ const App = (() => {
       const mark = m => `<td class="mk ${m === "✓" ? "y" : m === "✗" ? "n" : "p"}">${m}</td>`;
       const alt = a.alt && ALTERNATIVES.find(x => x.id === a.alt);
       return `
-        <p class="lede">Two parts. <b>Simulate</b> many possible growth scenarios on a model of the whole network, then <b>search</b> those runs for the few manholes that would see the most of them.</p>
+        <p class="lede">Three parts. <b>Simulate</b> many possible growth scenarios on a model of the whole network, <b>choose</b> the regions whose pipes growth will fill, then <b>place</b> level sensors one at a time where they see the most growth.</p>
         <div class="pipe6">${(() => { const btn = ([id, t, , , part]) => `<button type="button" data-ap="${id}" class="${!a.alt && a.step === id ? "on" : ""} ${part}"><i>${id.length > 1 ? id.slice(1) : id}</i>${t}</button>`;
           return btn(PIPELINE[0]) + `<div class="nest"><div class="nesth"><i>2</i>Design the simulation scenarios</div>${PIPELINE.slice(1, 4).map(btn).join("")}</div>` + PIPELINE.slice(4).map(btn).join(""); })()}</div>
-        <div class="pipekey"><span class="sim">Simulation (steps 1–3)</span><span class="alg">Algorithm and evaluation (steps 4–5)</span></div>
+        <div class="pipekey"><span class="sim">Simulation (steps 1–3)</span><span class="alg">Placement and evaluation (steps 4–6)</span></div>
         <div class="card"><b>${a.step}. ${step[1]}</b><div>${step[2]}</div><button type="button" class="link" data-go="${step[3]}">In detail: ${target[1]} →</button></div>
-        <div class="matrix3">${stat(nRuns, "simulated scenarios")}<i>→</i>${stat(R().chambers.length, "candidate manholes")}<i>→</i>${stat(5, "level sensors", "big")}</div>
+        <div class="matrix3">${stat(nRuns, "simulated scenarios")}<i>→</i>${stat(`${targetPool().length} of ${R().chambers.length}`, "manholes in regions to watch")}<i>→</i>${stat(5, "level sensors", "big")}</div>
         <h3>Why simulate? <small>(click an approach to map its five sites)</small></h3>
         <table class="alts"><tr><th></th>${CRITERIA.map((c, k) => `<th title="${c}">${["Before sensors", "Future growth", "Backwater", "Unknown weather", "Reasons"][k]}</th>`).join("")}<th title="Worst weather case, 5 sites, on the same runs">Worst</th></tr>
           ${rows.map(({ x, sc }) => `<tr data-alt="${x.id}" class="${a.alt === x.id ? "on" : ""}"><td><i class="sw" style="background:${x.colour}"></i>${x.label}</td>${x.marks.map(mark).join("")}<td class="num">${sc ? pct(sc.worst) : "–"}</td></tr>`).join("")}</table>

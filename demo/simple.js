@@ -125,8 +125,9 @@
           ["2b", "What each home sends", "About 460 litres a day from a typical home (2.3 people), more at peak times.", "simulate"],
           ["2c", "How wet it is", `From a dry day to an extreme wet one. On a normal wet day, rain leaks in at about half a running garden tap for every 100 m of pipe.`, "simulate"],
           ["3", "Run the model", "504 possible growth scenarios (an area, a number of new homes, a kind of weather), each giving the water level in every manhole.", "insights"],
-          ["4", "Pick the sensors", "Search all 328 manholes for the 5 that notice the most scenarios.", "algorithms"],
-          ["5", "Check the pick", "Count how many scenarios they notice, even in the hardest weather.", "compare"]];
+          ["4", "Choose the areas to watch", `Will the new homes use up the room in each area's pipes by 2041? Sensors go only where the answer is yes or maybe: ${App.targetPool().length} of ${_.R().chambers.length} manholes.`, "regions"],
+          ["5", "Pick the sensors, one at a time", "Each new level sensor goes where it notices the most extra scenarios. Buying more later never moves one already in.", "algorithms"],
+          ["6", "Check the pick", "Count how many scenarios they notice, even in the hardest weather, and compare with other ways of choosing.", "compare"]];
         if (!STEPS.some(z => z[0] === a.step)) a.step = "1";
         const cur = STEPS.find(z => z[0] === a.step), btn = ([id, t]) => `<button type="button" data-ap="${id}" class="${!a.alt && a.step === id ? "on" : ""} ${+id[0] <= 3 ? "sim" : "alg"}"><i>${id.length > 1 ? id.slice(1) : id}</i>${t}</button>`;
         return `
@@ -137,7 +138,7 @@
           ${dotRow("Where problems are today", x.today, x.n, _.pal().orange, "judgement")}
           ${dotRow("A desk study of the fullest pipes", x.desk, x.n, _.pal().yellow, "desk")}
           ${dotRow("Our model", x.hard.hit, x.n, COL.sensor, "ours")}
-          <div class="hint">Learning from sensor readings is not possible yet: there are no sensors, and the new homes are not built. Growth has not happened, so a model is the only way to see it coming.</div>
+          <div class="hint">No sensors and no new homes yet, so a model is the only way to see the growth coming.</div>
           ${nextBtn()}`;
       },
       wire() { const a = st.approach; on("[data-ap]", "onclick", e => { a.step = e.currentTarget.dataset.ap; a.alt = null; refresh(); }); on("[data-alt]", "onclick", e => { const id = e.currentTarget.dataset.alt; a.alt = a.alt === id ? null : id; refresh(); }); },

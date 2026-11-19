@@ -166,7 +166,12 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await shot("02_network");
   // Approach, end to end
   await click('#secs button[data-sec="approach"]'); await wait(300);
-  ok("approach: seven pipeline steps (step 2 in three parts) and four approaches", await ev(`document.querySelectorAll('.pipe6 button').length===7 && document.querySelectorAll('.pipe6 .nest button').length===3 && document.querySelectorAll('table.alts tr[data-alt]').length===4`));
+  ok("approach: eight pipeline steps (step 2 in three parts) and four approaches", await ev(`document.querySelectorAll('.pipe6 button').length===8 && document.querySelectorAll('.pipe6 .nest button').length===3 && document.querySelectorAll('table.alts tr[data-alt]').length===4`));
+  await click('[data-ap="4"]'); await wait(300);
+  ok("approach: step 4 chooses the regions to watch, and the map shows monitor, watch and leave", /Choose the regions to watch/.test(await panel()) && await ev(`/Monitor region/.test(document.querySelector('#legend').textContent) && /Leave/.test(document.querySelector('#legend').textContent)`));
+  await click('[data-ap="5"]'); await wait(300);
+  ok("approach: step 5 places level sensors one at a time, by greedy, nested", /Place level sensors, one at a time/.test(await panel()) && /nested/.test(await panel()));
+  await click('[data-ap="1"]'); await wait(200);
   ok("approach: ours (Greedy: average) scores its worst case, the desk study 25%", await ev(`(()=>{const v=id=>document.querySelector('tr[data-alt="'+id+'"] td.num').textContent;return v('ours')==='${P(L(5).worst)}'&&v('desk')==='25%'&&v('ml')==='–'})()`));
   await click('[data-ap="3"]'); await wait(200);
   ok("approach: a step shows its detail link", /In detail: What the runs show/.test(await panel()));
