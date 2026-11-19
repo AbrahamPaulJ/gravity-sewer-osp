@@ -242,6 +242,43 @@ const server = http.createServer((q, s) => {
   ok("method: the line under it explains greedy (worst case, one at a time, no sensor moves)", /^Greedy: worst case/.test(say) && /one sensor at a time/.test(say) && /worst case/.test(say) && /no sensor moves/.test(say), say.slice(0, 200));
   ok("method: Explore names no other placement method anywhere it shows (Exact optimum is the comparison)", !/Nested beam search|Warn before surcharge|Risk-weighted/.test(await ev('document.body.innerText')));
 
+  // ---- the heatmap (20 Nov): what each manhole would add as the next level sensor, beside the ones placed, by the
+  // method's own goal, recounted here from the runs; a manhole that adds nothing stays plain; the key gives the numbers.
+  {
+    const hg = () => ev(`(()=>{const h=Sim35UI.nextGain(),n=GROWTH_RUNS.chambers,k=document.getElementById("heatKey");return{by:h.by,top:h.top,best:h.best>=0?n[h.best]:null,near:h.near,adds:h.adds,placed:h.placed,
+      key:k.innerText,shown:!k.hidden&&k.getClientRects().length>0,gain:Object.fromEntries(h.gain.map((v,i)=>[n[i],v]).filter(x=>x[1]!=null))}})()`);
+    // The best next sensor by a recount: each manhole added to the placed set, scored on the story's test.
+    const recount = (placed, by) => { const b = score(placed)[by]; let top = 0; for (const m of GR.chambers) if (!placed.includes(m)) top = Math.max(top, score([...placed, m])[by] - b); return top; };
+    ok("heatmap: its button is hidden from the map's bar (20 Nov), but still in the page", await ev('(()=>{const b=document.getElementById("toggleHeat");return !!b&&b.hidden&&b.getClientRects().length===0})()'));
+    await click("#toggleHeat"); await wait(1800);          // a click in code still turns it on: the heatmap's code stays
+    let h = await hg();
+    const gA = recount(L[rec].chosen, "average");
+    ok("heatmap: on, its key says in sentences what each manhole would add as level sensor " + (rec + 1) + ", what is placed, when a scenario is seen and which count",
+       h.shown && h.placed === rec && h.key.includes("as level sensor " + (rec + 1) + ".") && h.key.includes("Placed: Greedy: average's " + rec + " level sensors.") &&
+       h.key.includes("A scenario counts as seen when a sensor's water rises 10 mm.") && h.key.includes("Counted on the story's test: " + wet.length + " wet weather cases, the regions to monitor or watch, up to the 2041 homes."), h.key.slice(0, 400));
+    ok("heatmap, Greedy: average: by the average; the brightest adds = a recount from the runs, and the story's next sensor (" + L[rec + 1].added + ") is among the best",
+       h.by === "average" && Math.abs(h.top - gA) < 1e-9 && Math.abs(h.gain[L[rec + 1].added] - h.top) < 1e-9 && Math.abs(gA - (L[rec + 1].average - L[rec].average)) < 6e-4, `${h.top} / recount ${gA} / ${L[rec + 1].added} ${h.gain[L[rec + 1].added]}`);
+    ok("heatmap: the key gives the top in points and the near ties, and says grey adds nothing", h.key.includes("+" + (Math.round(h.top * 1000) / 10) + " point") && /Brightest/.test(h.key) && /Grey: adds nothing/.test(h.key), h.key);
+    ok("heatmap: most manholes add nothing and stay plain", h.adds > 0 && h.adds < GR.chambers.length - rec, `${h.adds} add something`);
+    const ties = Object.values(h.gain).filter(v => Math.abs(v - h.top) < 1e-9).length;
+    ok("heatmap: the ties it names are manholes that add exactly the best amount, never ones that add nothing", h.near === ties && ties <= h.adds && (ties > 1 ? h.key.includes(ties + " manholes add exactly as much") : !/add exactly as much/.test(h.key)), `${h.near} / ${ties} / ${h.adds}`);
+    await click('#methKnob button[data-m="greedy"]'); await wait(1800);
+    h = await hg();
+    const gW = recount(LW[rec].chosen, "worst");
+    ok("heatmap, Greedy: worst case: by the worst case; the brightest = a recount, and the story's next sensor (" + LW[rec + 1].added + ") is among the best",
+       h.by === "worst" && Math.abs(h.top - gW) < 1e-9 && Math.abs(h.gain[LW[rec + 1].added] - h.top) < 1e-9, `${h.top} / recount ${gW} / ${h.gain[LW[rec + 1].added]}`);
+    await click('#methKnob button[data-m="exact"]'); await wait(1800);
+    h = await hg();
+    const gX = recount(L[rec].exact_set, "worst");
+    ok("heatmap, Exact optimum: by the worst case beside the exact set, = a recount, and says its own next size can differ",
+       h.by === "worst" && Math.abs(h.top - gX) < 1e-9 && /not nested/.test(h.key), `${h.top} / recount ${gX}`);
+    await click('#methKnob button[data-m="greedy-avg"]'); await wait(1200);
+    await click("#toggleHeat"); await wait(1200);
+    ok("heatmap: off again, its key hides", await ev('document.getElementById("heatKey").hidden'));
+    ok("heatmap: the new colours are Sim 4's own: Sim 3.5's page never sets them", !/setHeatStyle/.test(fs.readFileSync(path.join(PUB, "simulation35/sim35_ui.js"), "utf8")) &&
+       /setHeatStyle\(HEAT_STYLE\)/.test(fs.readFileSync(path.join(PUB, "simulation4/explore_ui.js"), "utf8")));
+  }
+
   // ---- the chart: one line per greedy, each by its own goal (worst case / average), the selected one bold, pulsing on change
   const chart = () => ev(`(()=>{const c=document.getElementById("curve");return{sel:(c.querySelector(".cv-sel")||{}).dataset?.m||null,
     lines:c.querySelectorAll(".cv-line").length,dashed:c.querySelectorAll("path[stroke-dasharray]").length,

@@ -328,7 +328,8 @@ html[data-theme="light"] .rlabels .rlbl{box-shadow:0 0 0 2px #fff}
   transform:translate(-50%,-50%); text-shadow:none; box-shadow:0 0 0 2px #0d1117; opacity:.95}
 .heatbar{display:inline-flex; align-items:center; gap:6px}
 .heatbar i{display:inline-block; width:120px; height:9px; border-radius:2px;
-  background:linear-gradient(90deg,#104281,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb)}
+  background:linear-gradient(90deg,#4a2511,#934416,#d96d1c,#f9a64a,#ffe199)}
+html[data-theme="light"] .heatbar i{background:linear-gradient(90deg,#f1d29a,#e39a45,#c45a1c,#862b13,#601b0f)}
 /* The one overlay on the map: the sentence (its long form behind the (i)) and, under it, the
    homes line (the selected region's homes, or the hovered manhole's). Foot of the map, both views. */
 #inWords{position:absolute; left:12px; bottom:calc(var(--foot, 0px) + var(--ovh, 0px) + 10px); z-index:3; max-width:min(760px, calc(100% - min(272px,36vw) - 40px));
@@ -703,7 +704,8 @@ html[data-theme="light"] #themeBtn .moon{display:block}
         <button id="toggleLegend" title="Show what the colours mean">Legend</button>
       </div>
       <div class="ovGrp x">
-        <button id="toggleHeat" class="x" title="Colour every manhole by how much growth it would see on its own">Heatmap</button>
+        <!-- 20 Nov: the Heatmap button is hidden, not deleted; its code in explore_ui.js still works. Remove "hidden" to bring it back. -->
+        <button id="toggleHeat" class="x" hidden title="Colour every manhole by what it would add as the next level sensor, beside the ones placed">Heatmap</button>
         <button id="toggleEstates" hidden title="Draw every imaginary estate at its largest size.">Estates</button>
         <button id="toggleConn" title="Show or hide houses and their connection pipes">Houses</button>
         <button id="toggleIds" class="x" title="Label every manhole with its number">Manhole ids</button>
@@ -726,10 +728,11 @@ html[data-theme="light"] #themeBtn .moon{display:block}
       <span><span class="k" style="background:#ffa500"></span>over the alarm before any growth</span>
       <span><span class="kl" style="background:#00d4ff"></span>the selected region's pipes</span>
     </div>
-    <div class="grp lg-results" id="heatKey" hidden><b>Heatmap</b>
-      <span>manholes ranked by the share of detectable growth each sees on its own, <span id="heatWhich"></span>:</span>
-      <span class="heatbar"><span>lowest</span><i></i><span>highest</span></span>
-      <span>bigger = higher rank; hover a manhole for its real percentages</span>
+    <div class="grp lg-results" id="heatKey" hidden><b>Heatmap: the next level sensor</b>
+      <span id="heatWhich"></span>
+      <span class="heatbar"><span>+0</span><i></i><span id="heatHi"></span></span>
+      <span id="heatNote"></span>
+      <span>Points: percentage points of detectable growth seen. Brighter and bigger adds more; click a manhole for its figure.</span>
     </div>
     <div class="grp lg-results x"><b>Pipes</b>
       <span><span class="kl" style="background:#4c8bf5"></span>room to spare</span>
@@ -787,7 +790,7 @@ html[data-theme="light"] #themeBtn .moon{display:block}
 <script src="data/osm_buildings.js?v=1"></script>
 <script src="data/msft_buildings.js?v=1"></script>
 <script src="footprints.js?v=1"></script>
-<script src="../simulation35/growth_3d.js?v=34"></script>
+<script src="../simulation35/growth_3d.js?v=35"></script>
 <script src="../simulation3/osp_core.js?v=9"></script>
 <script src="../simulation3/placement.js?v=9"></script>
 <script src="data/explore.js?v=8"></script>
@@ -805,7 +808,7 @@ RegionLabels.init({ avoid: "#mapControls, .legend, #mapOverlays, #stage .mapCred
 <script src="../simulation35/data/room.js?v=1"></script>
 <script src="../simulation35/room_calc.js?v=2"></script>
 <script src="map_help.js?v=1"></script>
-<script src="explore_ui.js?v=49"></script>
+<script src="explore_ui.js?v=53"></script>
 <script type="module">
   Sim35UI.init();
 </script>
