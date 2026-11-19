@@ -100,7 +100,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   ok("which regions: each edge label carries its rise with the 2041 homes", edgeT.length === 9 && edgeT.every(t => /\+\d+ mm/.test(t)) && (chartT.match(/\+\d+ mm/g) || []).length === 9, edgeT.join());
   await ev(`App.go('conclude')`); await wait(300);
   ok("conclusion: three tiles: buy in stages, rerun for a new suburb, new estates next", await ev(`document.querySelectorAll('.tiles > div').length===3`) && /Buy in stages/.test(await panel()) && /nothing moves as more are added/.test(await panel()) && /rerun the method/.test(await panel()) && /new estates at the edge/.test(await panel()));
-  const MAP = { network: "1", simulate: "2", insights: "3", regions: "4", onesensor: "5a", algorithms: "5b", sensors: "6", conclude: "6" };
+  const MAP = { network: "1", simulate: "2", insights: "3", regions: "4", algorithms: "5b", sensors: "6", conclude: "6" };
   let bOk = true, bBad = "", bScroll = "";
   for (const [w, h] of [[1920, 1080], [1366, 768]]) {
     await send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile: false }); await wait(250);
@@ -109,7 +109,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
       const has = await ev(`!!document.querySelector('#behindBtn')`), closed = await ev(`document.querySelector('#behind').hidden`);
       if (!!MAP[v] !== has || !closed) { bOk = false; bBad += `${v}@${w} `; continue; }
       if (!MAP[v]) continue;
-      if (["insights", "regions", "onesensor", "algorithms", "conclude"].includes(v)) await shot(`r2_${w}_${v}_closed`);
+      if (["insights", "regions", "algorithms", "conclude"].includes(v)) await shot(`r2_${w}_${v}_closed`);
       await click('#behindBtn'); await wait(250);
       const t = await ev(`document.querySelector('#behind').hidden?'':document.querySelector('#behind').innerText`), want = await ev(`SIM4.steps.find(s=>s.id==='${MAP[v]}').title`);
       if (!t.includes(want) || !/Assumes/.test(t) || !/Source/.test(t)) { bOk = false; bBad += `${v}@${w}:content `; }
@@ -142,8 +142,8 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   const fig = await ev(`(()=>{const o=App.SIM4_TEST();const a=App.score(App.ladderIdx(1),o),b=App.score(App.ladderIdx(5),o),c=App.score(App.ladderIdx(5),{...o,mm:25}),w=App.score(App._.ladderWorstIdx(5),o);return [a.worst,a.avg,a.warned,b.worst,b.avg,b.warned,b.warnable,c.worst,c.avg,w.worst,w.avg,w.warned].map(x=>Math.round(x*100)/100)})()`);
   const r2 = x => Math.round(x * 100) / 100, want = [L(1).worst, L(1).average, L(1).warned_target, L(5).worst, L(5).average, L(5).warned_target, WT, L(5).worst_25, L(5).average_25, LW(5).worst, LW(5).average, LW(5).warned_target].map((v, j) => [2, 5, 6, 11].includes(j) ? v : r2(v));
   ok("engine reproduces Sim 4's two greedy lists (numbers.json): 1 and 5 level sensors, warnings, the 25 mm rule", JSON.stringify(fig) === JSON.stringify(want), JSON.stringify(fig) + " vs " + JSON.stringify(want));
-  ok("sixteen views in four chapters, The problem first", await ev(`document.querySelectorAll('#secs .ch').length===4 && document.querySelectorAll('#secs button[data-sec]').length===16 && document.querySelector('#secs button[data-sec]').dataset.sec==='problem'`));
-  ok("order: Which regions, One is not enough, Place sensors, then Compare and Other methods", await ev(`App.SECTIONS.map(s=>s[0]).join()`) === "problem,setting,network,approach,simulate,insights,regions,onesensor,algorithms,compare,ninh,check,sensors,repeat,future,conclude", await ev(`App.SECTIONS.map(s=>s[0]).join()`));
+  ok("fifteen views in four chapters, The problem first", await ev(`document.querySelectorAll('#secs .ch').length===4 && document.querySelectorAll('#secs button[data-sec]').length===15 && document.querySelector('#secs button[data-sec]').dataset.sec==='problem'`));
+  ok("order: Which regions, Place sensors, then Compare and Other methods", await ev(`App.SECTIONS.map(s=>s[0]).join()`) === "problem,setting,network,approach,simulate,insights,regions,algorithms,compare,ninh,check,sensors,repeat,future,conclude", await ev(`App.SECTIONS.map(s=>s[0]).join()`));
   ok("the plan defaults to Greedy: average (the story's step 5b)", await ev(`App._.plan()==='avg' && App.planIdx(5).join()===App.ladderIdx(5).join()`));
   ok("sensor labels read S1 to S5", await ev(`(()=>{App.go('conclude');return [...document.querySelectorAll('#labels .lbl.sensor')].map(e=>e.textContent).join()==='S1,S2,S3,S4,S5'})()`));
   await ev(`App.go('setting')`); await wait(300);
@@ -205,15 +205,6 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await click('[data-mth="greedyWorst"]'); await wait(200); await click("#alShow"); await wait(1200);
   ok("algorithms: the next-choice heat map draws", await ev(`/Choice for sensor/.test(document.querySelector('#legend').textContent)`));
   await shot("05_algorithms");
-  // One level sensor is not enough
-  await click('#secs button[data-sec="onesensor"]'); await wait(400);
-  const os1 = await ev(`[...document.querySelectorAll('table.wx td.r')].map(e=>e.textContent).join(',')`);
-  ok("one sensor: S1's design wet day share first, less in most of the others", os1.startsWith(P(L(1).design_wet) + ",") && await ev(`document.querySelectorAll('table.wx td.arr.down').length>=4`), os1);
-  ok("one sensor: design wet day, hardest weather and average = numbers.json", (await panel()).includes(`${P(L(1).design_wet)} design wet day ${P(L(1).worst)} hardest weather ${P(L(1).average)} average`), (await panel()).slice(0, 200));
-  const ramp = await ev(`[...document.querySelectorAll('table.ramp tr')].slice(1).map(r=>[...r.querySelectorAll('td.r')].slice(1).map(e=>e.textContent).join('/')).join(' ')`);
-  const rampWant = X.ladder.map(r => `${P(r.worst)}/${P(r.average)}`).join(" ");
-  ok("one sensor: the 1 to 8 ramp = Greedy: average in numbers.json", ramp === rampWant, ramp + " vs " + rampWant);
-  await shot("05b_onesensor");
   // 6 Compare
   await click('#secs button[data-sec="compare"]'); await wait(1500); await click('#zreset'); await wait(200);
   ok("compare: five rows: the two greedy plans, two desk methods and random", await ev(`[...document.querySelectorAll('table.cmp tr[data-row]')].map(r=>r.dataset.row).join()`) === "greedyAvg,greedyWorst,hydraulic,homes,random");
@@ -337,7 +328,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowLeft", code: "ArrowLeft", windowsVirtualKeyCode: 37 }); await wait(300);
   ok("← steps back a view", await ev(`App.st.sec==='future'`));
   let names = ""; for (const s of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${s}')`); await wait(150); names += await ev("document.body.innerText"); }
-  for (const v of ["network", "simulate", "insights", "regions", "onesensor", "algorithms", "sensors", "conclude"]) { await ev(`App.go('${v}')`); await wait(150); await click('#behindBtn'); await wait(150); names += await ev(`document.querySelector('#behind').innerText`); }
+  for (const v of ["network", "simulate", "insights", "regions", "algorithms", "sensors", "conclude"]) { await ev(`App.go('${v}')`); await wait(150); await click('#behindBtn'); await wait(150); names += await ev(`document.querySelector('#behind').innerText`); }
   ok("no words name the client or the suburb, in any view", !/SA Water|Walkerville|Rostrevor|Stonyfell|Woodforde|Malvern|Bolivar|Adelaide/i.test(names));
   await ev(`App.setMode('detailed')`); let all = ""; for (const s of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${s}')`); await wait(150); all += await ev("document.body.textContent"); } await ev(`App.setMode('simple')`);
   const unsourced = /US EPA|Auckland|88\.6|Sydney Water|United Utilities|Nemhauser|Dual use|[Ff]loat[^.]{0,80}(150 mm|5 to 10 mm)|\u2014/.exec(names + all);

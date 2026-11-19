@@ -322,7 +322,6 @@
     ninh: "Numbered dots: the chosen method's sensors. Coloured pipes: where a blocked pipe would back water up to one of them. Green rings: our 5 sensors.",
     problem: "The network, before any colour: every line is a pipe.",
     regions: "Pipe colour: monitor (red), keep an eye on (amber) or room to spare (grey). Region names sit at the edge.",
-    onesensor: "The big dot is the first level sensor placed; the small dots are the rest of the plan.",
     setting: "Coloured pipes: the area getting new homes. Rings: manholes already backing up on this day. The blue dot is the manhole in the drawing; click any other.",
     network: "Each line is a pipe, coloured by what you picked. Rings: manholes already backing up on a wet day.",
     approach: "The map follows the step you pick on the left.",

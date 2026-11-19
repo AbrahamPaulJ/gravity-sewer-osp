@@ -66,7 +66,7 @@ const App = (() => {
   // [id, short name, title], grouped in chapters
   const CHAPTERS = [
     ["Problem", [["problem", "The problem", "Growth is filling sewers sized for fewer homes"], ["setting", "Setting", "Growth uses up the pipes"], ["network", "Network", "What we know about the network"]]],
-    ["Approach", [["approach", "End to end", "Our approach, end to end"], ["simulate", "Simulate", "Simulate the growth"], ["insights", "What the runs show", "Where the water rises"], ["regions", "Which regions", "Which regions matter"], ["onesensor", "One is not enough", "One level sensor is not enough"], ["algorithms", "Place sensors", "Turning runs into sensor sites"]]],
+    ["Approach", [["approach", "End to end", "Our approach, end to end"], ["simulate", "Simulate", "Simulate the growth"], ["insights", "What the runs show", "Where the water rises"], ["regions", "Which regions", "Which regions matter"], ["algorithms", "Place sensors", "Turning runs into sensor sites"]]],
     ["Results", [["compare", "Compare", "How good is each placement?"], ["ninh", "Other methods", "Network-only methods, tested on growth"], ["check", "Cross-check", "Does basic hydraulics agree?"], ["sensors", "Sensor types", "What to install"]]],
     ["Next", [["repeat", "Repeat", "Run the method yourself"], ["future", "Next research", "Where this goes next"], ["conclude", "Conclusion", "What we recommend"]]],
   ];
@@ -319,7 +319,6 @@ const App = (() => {
     repeat: { regions: null, cases: null, mm: 10, k: 5, aim: "worst", result: null, manual: false, mine: [] },
     future: { alpha: 0.5, risk: null, vsK: 5, r2: 0.8 },
     conclude: { k: 5 },
-    onesensor: {},
     regions: {},
   };
 
@@ -1487,33 +1486,6 @@ const App = (() => {
     },
   };
 
-  // The business case for more than one level sensor: the first greedy pick does well on the design wet day, then falls in other weather.
-  const ONESENSOR = {
-    layer() {
-      const set = planIdx(5), s1 = planIdx(1)[0];
-      return {
-        pipe: triagePipe(true), node: i => i === s1 ? { fill: COL.sensor, r: 9 } : set.includes(i) ? { fill: COL.sensor, r: 6 } : null,
-        labels: sensorLabels(set), callout: { i: s1, text: "One level sensor: the first one placed" },
-        legend: [[COL.sensor, "Level sensors, " + planName().toLowerCase()]],
-      };
-    },
-    panel() {
-      const o = SIM4_TEST(), s1 = planIdx(1), tags = wetTags(), per = tags.map(tag => ({ tag, v: score(s1, { ...o, cases: [tag] }).per[0].share })), one = score(s1, o);
-      const dw = per[0].v, rows = per.map((x, k) => `<tr><td>${shortCase(caseLabel(x.tag))}</td><td class="r">${pct(x.v)}</td><td class="arr ${k ? (x.v < dw ? "down" : "same") : ""}">${k ? (x.v < dw ? "▼" : "=") : ""}</td></tr>`).join("");
-      const ramp = [1, 2, 3, 4, 5, 6, 7, 8].map(k => ({ k, sc: score(planIdx(k), o) }));
-      const rr = ramp.map((x, j) => { const up = j && x.sc.worst > ramp[j - 1].sc.worst + 1e-9; return `<tr class="${x.k === 5 ? "on" : ""}"><td>${x.k}</td><td class="r">${money(x.k * PRICE)}</td><td class="r">${pct(x.sc.worst)}</td><td class="arr ${up ? "up" : ""}">${up ? "▲" : ""}</td><td class="r">${pct(x.sc.avg)}</td></tr>`; }).join("");
-      return `
-        <div class="stats three">${stat(pct(dw), "design wet day")}${stat(pct(one.worst), "hardest weather", "bad")}${stat(pct(one.avg), "average")}</div>
-        <div class="two">
-          <div><h3>One level sensor, by weather</h3><table class="mini wx">${rows}</table></div>
-          <div><h3>Add level sensors <small>(${planName().toLowerCase()})</small></h3><table class="mini ramp"><tr><th>#</th><th class="r">Cost</th><th class="r">Worst</th><th></th><th class="r">Avg</th></tr>${rr}</table></div>
-        </div>
-        ${planChips()}
-        <div class="key">Share of growth runs seen · costs at ${PRICE_NOTE}</div>
-        ${nextBtn()}`;
-    },
-  };
-
   // ------------------------------------------------------------------ round 2 (19 Nov): more of the story on screen
   // Level sensors already in the ground that a plan moves when bought 1, then 5, then 8: none, for greedy (verify_demo checks it).
   const moved = sets => sets.slice(1).reduce((t, s, j) => t + sets[j].filter(i => !s.includes(i)).length, 0);
@@ -1539,7 +1511,7 @@ const App = (() => {
     return `<div class="plancards">${card("avg", score(planIdx(5, "avg"), o), planMoves("avg"))}${card("worst", score(planIdx(5, "worst"), o), planMoves("worst"))}</div>`;
   };
   // The story's "Behind this step", read from Sim 4's own data (simulation4/data/sim4.js), so the two never differ.
-  const STORY_STEP = { network: "1", simulate: "2", insights: "3", regions: "4", onesensor: "5a", algorithms: "5b", sensors: "6", conclude: "6" };
+  const STORY_STEP = { network: "1", simulate: "2", insights: "3", regions: "4", algorithms: "5b", sensors: "6", conclude: "6" };
   let behindOpen = false;
   const esc = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const cite = t => window.SIM4_LIBRARY ? window.SIM4_LIBRARY.link(esc(t)) : esc(t);
@@ -1569,7 +1541,7 @@ const App = (() => {
     return `<div class="stats sur">${stat(S().base[D().design].surcharged.length, w + ", design wet day")}${stat(S().base[wetTags()[1]].surcharged.length, w + ", much wetter day", "bad")}</div>`; };
   const tiles = () => `<div class="tiles"><div><b>Buy in stages</b><span>nothing moves as more are added</span></div><div><b>New suburb</b><span>rerun the method</span></div><div><b>Next</b><span>new estates at the edge</span></div></div>`;
 
-  const HANDLERS = { problem: PROBLEM, regions: REGIONS, onesensor: ONESENSOR, setting: SETTING, network: NETWORK, approach: APPROACH, simulate: SIMULATE, insights: INSIGHTS, algorithms: ALGORITHMS, compare: COMPARE, ninh: NINH, check: CHECK, sensors: SENSORS, repeat: REPEAT, future: FUTURE, conclude: CONCLUDE };
+  const HANDLERS = { problem: PROBLEM, regions: REGIONS, setting: SETTING, network: NETWORK, approach: APPROACH, simulate: SIMULATE, insights: INSIGHTS, algorithms: ALGORITHMS, compare: COMPARE, ninh: NINH, check: CHECK, sensors: SENSORS, repeat: REPEAT, future: FUTURE, conclude: CONCLUDE };
   const layer = () => { const pg = isSimple() && PLAIN.pages[st.sec]; return pg && pg.layer ? pg.layer() : HANDLERS[st.sec].layer(); };
 
   // ------------------------------------------------------------------ animation helpers
