@@ -426,6 +426,8 @@ const App = (() => {
   const regionLabels = (colour) => S().regions.map((r, ri) => ({ node: paint.edge[ri], text: regionLabel(ri), cls: "region edge", bg: colour(ri) }));
   const sensorLabels = (set, cls = "sensor") => set.map((i, j) => ({ node: chNode[i], text: "S" + (j + 1), cls }));
   const triagePipe = (dim = false) => p => { const ri = pipeRegion(p); const t = ri >= 0 && D().triage[regionId(ri)]; return t && t !== "leave" ? [COL[t] + (dim ? "88" : ""), 2.2] : [COL.pipe, 1.1]; };
+  // R9 is a corridor laid over other regions, so the base colouring above never reaches it: it is drawn as an overlay.
+  const triageOverlay = (dim = false) => p => { const t = D().triage[regionId(paint.overlayOf[G().up[p]])]; return t && t !== "leave" ? [COL[t] + (dim ? "88" : ""), 3.2] : null; };
   function riseColour(mm) {
     if (mm >= 10) return PAL.rise[3];
     if (mm >= 5) return PAL.rise[2];
@@ -717,7 +719,7 @@ const App = (() => {
       const a = st.approach;
       if (a.alt) {
         const alt = ALTERNATIVES.find(x => x.id === a.alt), set = alt.picks() || [], rec = new Set(planIdx(5));
-        return { pipe: triagePipe(true), node: i => set.includes(i) ? { fill: alt.colour, r: 7, ring: alt.id !== "ours" && rec.has(i) ? COL.sensor : undefined } : alt.id !== "ours" && rec.has(i) ? { ring: COL.sensor, r: 6 } : null,
+        return { pipe: triagePipe(true), overlayPipe: triageOverlay(true), node: i => set.includes(i) ? { fill: alt.colour, r: 7, ring: alt.id !== "ours" && rec.has(i) ? COL.sensor : undefined } : alt.id !== "ours" && rec.has(i) ? { ring: COL.sensor, r: 6 } : null,
           labels: sensorLabels(set), legend: [[alt.colour, alt.label + (set.length ? ": its 5 sites" : ": no sites possible yet")], ...(alt.id !== "ours" ? [[COL.sensor, "Our recommended level sensor sites", "ring"]] : [])] };
       }
       const k = a.step, g = G(), set = planIdx(5);
@@ -740,11 +742,11 @@ const App = (() => {
       if (k === "5") {
         const ms = [["greedyAvg", PAL.orange, "Greedy"], ["hydraulic", PAL.yellow, "NS: flow/capacity"], ["homes", PAL.pink, "NS: most homes upstream"]];
         const of = i => ms.find(([id]) => C().methods[id].sets[4].includes(i));
-        return { pipe: triagePipe(true), node: i => set.includes(i) ? { fill: COL.sensor, r: 7 } : of(i) ? { ring: of(i)[1], r: 6, rw: 2.6 } : null, labels: sensorLabels(set),
+        return { pipe: triagePipe(true), overlayPipe: triageOverlay(true), node: i => set.includes(i) ? { fill: COL.sensor, r: 7 } : of(i) ? { ring: of(i)[1], r: 6, rw: 2.6 } : null, labels: sensorLabels(set),
           legend: [[COL.sensor, "Greedy search"], ...ms.map(([, c, l]) => [c, l, "ring"])], tip: i => [set.includes(i) ? "Greedy search" : null, ...ms.filter(([id]) => C().methods[id].sets[4].includes(i)).map(m => m[2])].filter(Boolean).join(" · ") };
       }
       const sc = score(set, SIM4_TEST()), per = new Map(set.map(i => [i, score([i], SIM4_TEST()).avg]));
-      return { pipe: triagePipe(true), node: i => set.includes(i) ? { fill: COL.sensor, r: 7 } : null, labels: sensorLabels(set), legend: [[COL.sensor, `Recommended: ${pct(sc.avg)} of scenarios seen on average, ${pct(sc.worst)} in the worst weather`], [COL.monitor, "Monitor region"], [COL.watch, "Watch region"]], tip: i => per.has(i) ? `Alone, this sensor sees ${pct(per.get(i))} of scenarios on average` : "" };
+      return { pipe: triagePipe(true), overlayPipe: triageOverlay(true), node: i => set.includes(i) ? { fill: COL.sensor, r: 7 } : null, labels: sensorLabels(set), legend: [[COL.sensor, `Recommended: ${pct(sc.avg)} of scenarios seen on average, ${pct(sc.worst)} in the worst weather`], [COL.monitor, "Monitor region"], [COL.watch, "Watch region"]], tip: i => per.has(i) ? `Alone, this sensor sees ${pct(per.get(i))} of scenarios on average` : "" };
     },
     panel() {
       const a = st.approach, o = SIM4_TEST(), step = PIPELINE.find(x => x[0] === a.step), target = SECTIONS.find(x => x[0] === step[3]);
@@ -971,7 +973,7 @@ const App = (() => {
       if (a.show && (a.method === "greedyAvg" || a.method === "greedyWorst")) {
         const g = this.gainMap(), max = Math.max(...g.filter(v => v != null)), next = g.indexOf(max);
         return {
-          pipe: triagePipe(true),
+          pipe: triagePipe(true), overlayPipe: triageOverlay(true),
           node: i => set.slice(0, a.k - 1).includes(i) ? { fill: m.colour, r: 7 } : i === next ? { fill: PAL.hi, r: 7, ring: m.colour } : g[i] > 0 ? { fill: heat(g[i] / max), r: 2 + 6 * g[i] / max } : null,
           labels: sensorLabels(set.slice(0, a.k - 1)),
           legend: [[m.colour, `Sensors 1 to ${a.k - 1}`], [PAL.hi, `Choice for sensor ${a.k}`], [heat(1), "Adds a lot"], [heat(0), "Adds a little"]],
@@ -980,7 +982,7 @@ const App = (() => {
         };
       }
       return {
-        pipe: triagePipe(), node: i => set.includes(i) ? { fill: m.colour, r: 7 } : null, labels: sensorLabels(set),
+        pipe: triagePipe(), overlayPipe: triageOverlay(), node: i => set.includes(i) ? { fill: m.colour, r: 7 } : null, labels: sensorLabels(set),
         legend: [[m.colour, m.id === "random" ? "Random sites: one typical draw (scores are the mean of 500)" : m.label], [COL.monitor, "Monitor region"], [COL.watch, "Watch region"]],
       };
     },
@@ -1040,7 +1042,7 @@ const App = (() => {
     layer() {
       const c = st.compare, m = METHODS.find(x => x.id === c.method), set = methodSets(c.method, c.k) || [], rec = new Set(planIdx(c.k)), other = c.method !== planMethod();
       return {
-        pipe: triagePipe(true),
+        pipe: triagePipe(true), overlayPipe: triageOverlay(true),
         node: i => set.includes(i) ? (c.failed.has(i) ? { fill: COL.failed, r: 7, ring: COL.tip } : { fill: m.colour, r: 7, ring: other && rec.has(i) ? COL.sensor : undefined }) : other && rec.has(i) ? { ring: COL.sensor, r: 6 } : null,
         labels: sensorLabels(set),
         legend: [[m.colour, `${m.label} (click a sensor to fail it)`], ...(other ? [[COL.sensor, "Recommended level sensors", "ring"]] : []), [COL.failed, "Failed sensor"]],
@@ -1246,7 +1248,7 @@ const App = (() => {
     init() { const s = st.sensors; if (s.water == null) s.water = baseMm(D().design, this.site()) + 15; },
     layer() {
       const t = SENSOR_TYPES.find(x => x.id === st.sensors.type), set = planIdx(5);
-      return { pipe: triagePipe(true), node: i => set.includes(i) ? { fill: t.colour, r: 7 } : null, labels: sensorLabels(set), legend: [[t.colour, `${t.name} at the five recommended sites`]] };
+      return { pipe: triagePipe(true), overlayPipe: triageOverlay(true), node: i => set.includes(i) ? { fill: t.colour, r: 7 } : null, labels: sensorLabels(set), legend: [[t.colour, `${t.name} at the five recommended sites`]] };
     },
     panel() {
       const s = st.sensors, t = SENSOR_TYPES.find(x => x.id === s.type), i = this.site(), f = manholeFacts(i), base = baseMm(D().design, i), depthM = f.nd.depth;
@@ -1705,7 +1707,7 @@ const App = (() => {
   const _ = { $, $$, G, R, S, D, C, COL, pal: () => PAL, heat, rgba, nameOf, regionId, regionIndex, caseOf, caseLabel, wetTags, allTags, stepsTo, FULL, pct, money, list,
     regionLabel, rowAt, riseAt, baseMm, stepLabel, table, trow, tcol, seenSet, score, SIM4_TEST, planIdx, ladderIdx, H: () => H, util, SCREENS, responseAt, spearman, st,
     focus, manholeFacts, bars, lineChart, cutaway, stat, chips, fold, nextBtn, on, refresh, draw, go, HANDLERS, ALTERNATIVES, PIPELINE, SENSOR_TYPES, METHODS, methodSets,
-    triagePipe, sensorLabels, load, homeFlow, ladderSvg, planCards, planMoves, tiles, surTiles, regionRise, plan: () => PLAN, planChips, planName, planMethod, setPlan, ladderIdx, ladderWorstIdx, GF, LIB, verdict, regionLabels, REGION_COLS, riseColour, riseScale, sensorWhy, stopPlay, play, PRICE, SECTIONS, setMode, isSimple };
+    triagePipe, triageOverlay, sensorLabels, load, homeFlow, ladderSvg, planCards, planMoves, tiles, surTiles, regionRise, plan: () => PLAN, planChips, planName, planMethod, setPlan, ladderIdx, ladderWorstIdx, GF, LIB, verdict, regionLabels, REGION_COLS, riseColour, riseScale, sensorWhy, stopPlay, play, PRICE, SECTIONS, setMode, isSimple };
   const registerPlain = o => { Object.assign(PLAIN.pages, o.pages || {}); Object.assign(PLAIN.read, o.read || {}); PLAIN.words.push(...(o.words || [])); };
   return { _, registerPlain, setMode, isSimple: () => isSimple(), init, prepare, go, st, toScreen, setTheme, togglePresent, THEMES, score, greedy, ladderIdx, planIdx, SIM4_TEST, unseenWeather, screenOf, chamberName: i => R().chambers[i], targetPool, screenRank, spearman, responseAt, SCREENS, util, H: () => H, SECTIONS };
 })();

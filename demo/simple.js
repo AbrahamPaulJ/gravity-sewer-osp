@@ -270,7 +270,7 @@
       wire() { const s = st.sensors; on("[data-sty]", "onclick", e => { s.type = e.currentTarget.dataset.sty; refresh(); }); $("#snW").oninput = e => { s.water = +e.target.value; refresh(); }; },
     },
     repeat: {
-      layer() { const set = planIdx(st.repeat.k); return { pipe: _.triagePipe(true), node: i => set.includes(i) ? { fill: COL.sensor, r: 7 } : null, labels: _.sensorLabels(set), legend: [[COL.sensor, "Our sensors"], [COL.monitor, "Area to monitor"], [COL.watch, "Area to watch"]] }; },
+      layer() { const set = planIdx(st.repeat.k); return { pipe: _.triagePipe(true), overlayPipe: _.triageOverlay(true), node: i => set.includes(i) ? { fill: COL.sensor, r: 7 } : null, labels: _.sensorLabels(set), legend: [[COL.sensor, "Our sensors"], [COL.monitor, "Area to monitor"], [COL.watch, "Area to watch"]] }; },
       panel() {
         const r = st.repeat, x = facts(), k = Math.min(8, Math.max(1, r.k));
         return `
