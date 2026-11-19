@@ -1,8 +1,10 @@
 /* verify_sim4_consistency.js - Sim 4's story and its explorer must say the same thing.
 
-   Opens simulation4/explore.html headless and checks that, at its defaults (the story's test, the story's list), the
+   Opens simulation4/explore.html headless and checks that, at its defaults (the story's test, Greedy: worst case), the
    Results tabs and the side panel give the story's own figures, read from the files the story is built from:
    simulation_src/results/sim4/numbers.json, float.json, capacity.json and simulation4/data/sim4.js.
+   Explore offers only the two greedy methods (Greedy: worst case, Greedy: average); the others are hidden, not deleted.
+   Greedy's figures are recounted here from the runs (regions.js), since the story quotes the nested list.
 
      Warning          overloads warned = the ladder's warned_target, of the story's total; held out = held_out_by_case averaged
      Unseen weather   one measure everywhere (19 Nov): each wet case scored by sensors chosen without it, averaged over the cases
@@ -11,8 +13,9 @@
      Room for homes   each region's band and 10th to 90th range = numbers.json triage (step 4), at the published settings
      Level or float   every budget row = float.json (step 6)
      Fewest sensors   every cell = numbers.json fewest (step 5a), exact and on the list
-     Sensors panel    worst / average = the ladder; leave one case out = held_out_by_case; greenfield = step 5b's sentence
-     Findings         no old Sim 3 report; comparison sets are numbered C1, C2, ...; the map card's homes = regions.js
+     Sensors panel    worst / average = greedy's first k recounted from the runs; leave one case out = held_out_by_case;
+                      greenfield = the greenfield runs' own greedy order
+     Findings         no old Sim 3 report; every set is numbered S1, S2, ...; the map card's homes = regions.js
 
      node tools/verify_sim4_consistency.js
 */
@@ -33,6 +36,21 @@ const ok = (n, c, note) => { if (c) pass++; else fail++; console.log(`  ${c ? "o
 // Python's "{:.0%}" rounds a half to even, and the story is written with it; the explorer uses Math.round. Accept either.
 const pcs = v => { const x = v * 100, f = Math.floor(x); return new Set([Math.round(x) + "%", (Math.abs(x - f - 0.5) < 1e-9 ? (f % 2 ? f + 1 : f) : Math.round(x)) + "%"]); };
 const hasPc = (text, v) => [...pcs(v)].some(p => text.includes(p));
+
+// The story's test recounted from the runs (regions.js): per wet case, the target-region runs up to 100% in which some
+// manhole rises 10 mm or more, and which manholes see each. Scores any set by manhole name, independent of the page.
+const GR = (() => { global.window = global; eval(fs.readFileSync(path.join(PUB, "simulation3/data/growth.js"), "utf8")); return window.GROWTH_RUNS; })();
+const idx = Object.fromEntries(GR.chambers.map((n, i) => [n, i]));
+const wet = REG.cases.filter(c => c.ii > 0), steps = REG.ladder.map((v, s) => [v, s]).filter(([v]) => v <= 1 + 1e-9).map(([, s]) => s);
+const tg = REG.regions.map((r, i) => [r.id, i]).filter(([id]) => X.targets.includes(id)).map(([, i]) => i);
+const sees = wet.map(c => {
+  const rows = new Map(REG.rows[c.tag].map(x => [x.r + ":" + x.s, x])), runs = [];
+  for (const ri of tg) for (const s of steps) { const x = rows.get(ri + ":" + s); if (x.rise.some(([, v]) => v >= 10)) runs.push(new Set(x.rise.filter(([, v]) => v >= 10).map(([j]) => j))); }
+  return runs;
+});
+const score = S => { const per = sees.map(runs => runs.filter(r => S.some(m => r.has(idx[m]))).length / runs.length); return { per, worst: Math.min(...per), average: per.reduce((a, b) => a + b, 0) / per.length }; };
+// Explore's Greedy: worst case, as published in regions.js (rules.r10.greedy, chosen on the broader test), by manhole name.
+const GREEDY = REG.rules.r10.greedy.chosen.map(i => GR.chambers[i]);
 
 const server = http.createServer((q, s) => {
   let u = decodeURIComponent(q.url.split("?")[0]);
@@ -75,8 +93,12 @@ const server = http.createServer((q, s) => {
   // ---- the side panel, default
   await click('#viewKnob button[data-v="expert"]'); await wait(1500);
   const side = await ev('document.getElementById("sensorList").innerText');
-  ok("side panel: the story's list at its recommended count, worst and average", hasPc(side, L[rec].worst) && hasPc(side, L[rec].average), side.split("\n")[0]);
-  ok("side panel: overloads warned as the story", side.includes(`${L[rec].warned_target} of ${wt}`));
+  const g5 = score(GREEDY.slice(0, rec));
+  const opened = await ev('({m:(document.querySelector("#methKnob button.on")||{}).dataset?.m, k:+document.getElementById("kRange").value})');
+  ok("side panel: opens on Greedy: worst case at the recommended count", opened.m === "greedy" && opened.k === rec, JSON.stringify(opened));
+  ok("side panel: worst and average = greedy's first sensors recounted from the runs", hasPc(side, g5.worst) && hasPc(side, g5.average), side.split("\n")[0] + " / recount " + [...pcs(g5.worst)][0] + " " + [...pcs(g5.average)][0]);
+  const sideWarn = (side.match(new RegExp("(\\d+) of " + wt + "\\b")) || [])[1];
+  ok("side panel: overloads warned, out of the story's total", sideWarn != null && +sideWarn <= wt, sideWarn + " of " + wt);
   const hoc = X.held_out_by_case;
   const loo = await rows("#sensorList table.sm tr");
   const looOk = Object.entries(hoc).every(([c, v]) => loo.some(r => r[0] === c && pcs(v[String(rec)]).has(r[1])));
@@ -91,8 +113,8 @@ const server = http.createServer((q, s) => {
   await click("#btn-results"); await wait(1500);
   let t = await tab("warn");
   ok("Warning: opens on the story's test", t.includes("The story's test") && /story's test/.test(t));
-  ok("Warning: overloads warned = the story's", t.includes(`${L[rec].warned_target} of ${wt}`), (t.match(/\d+ of \d+\s*\n?overloads/) || [""])[0]);
-  ok("Warning: held out = the story's unseen weather, average of the cases", hasPc(t.split("average of the cases")[0].slice(-12), uavg(rec)), (t.match(/\d+%, average of the cases/) || [""])[0]);
+  ok("Warning: overloads warned = the side panel's, for the same greedy set", sideWarn != null && t.includes(`${sideWarn} of ${wt}`), (t.match(/\d+ of \d+\s*\n?overloads/) || [""])[0]);
+  ok("Warning: greedy does not borrow the nested list's unseen-weather figure", !/the story's unseen-weather figure/.test(t));
   const warnRegs = (await rows("#modalBox table.ladder tbody tr")).map(r => r[0]);
   ok("Warning: only the regions to monitor or watch", JSON.stringify(warnRegs) === JSON.stringify(X.targets), warnRegs.join(","));
   const warnCols = (await rows("#modalBox table.ladder thead tr"))[0].slice(1, -1);
@@ -152,50 +174,66 @@ const server = http.createServer((q, s) => {
   await click("#modalClose");
   await click('#scopeKnob button[data-s="story"]'); await wait(1500);
 
-  // ---- comparison sets are C1, C2, ...; the story's are S1, S2, ...
-  await click('#methKnob button[data-m="exact"]'); await wait(2500);
-  let pins = await ev('[...document.querySelectorAll(".labels .lbl.sensor")].map(e=>e.textContent)');
+  // ---- sensors are S1, S2, ... (S for sensor); a hidden method's button, clicked anyway, leaves greedy in place
+  const pins = await ev('[...document.querySelectorAll(".labels .lbl.sensor")].map(e=>e.textContent)');
   const cards = await ev('[...document.querySelectorAll("#sensorList .pin")].map(e=>e.textContent)');
-  ok("Exact optimum: pins and cards are C1, C2, ...", pins.length && pins.every(p => /^C\d$/.test(p)) && cards.every(p => /^C\d$/.test(p)), pins.join(",") + " / " + cards.join(","));
-  await click('#methKnob button[data-m="story"]'); await wait(2500);
-  pins = await ev('[...document.querySelectorAll(".labels .lbl.sensor")].map(e=>e.textContent)');
-  ok("Nested beam search: pins are S1, S2, ...", pins.length && pins.every(p => /^S\d$/.test(p)), pins.join(","));
+  ok("Greedy: pins and cards are S1, S2, ...", pins.length && pins.every(p => /^S\d$/.test(p)) && cards.every(p => /^S\d$/.test(p)), pins.join(",") + " / " + cards.join(","));
+  const stay = [];
+  for (const m of ["story", "exact", "warn", "risk"]) { await click(`#methKnob button[data-m="${m}"]`); await wait(900); stay.push(await ev('(document.querySelector("#methKnob button.on")||{}).dataset?.m')); }
+  ok("hidden methods: clicking their buttons anyway leaves Greedy: worst case selected", stay.every(m => m === "greedy"), stay.join(","));
 
   // ---- greedy: the running worst case on a card equals the panel's figure at that count
   await click('#methKnob button[data-m="greedy"]'); await wait(2500);
   const g = await ev('[...document.querySelectorAll("#sensorList .why .cov")].map(e=>e.textContent)');
   const glead = await ev('document.getElementById("sensorList").innerText.split("\\n")[0]');
   ok("Greedy: the last card's running worst case = the panel's worst case", g.length && glead.includes(g[g.length - 1].replace("worst ", "")), g.join(",") + " / " + glead);
-  await click('#methKnob button[data-m="story"]'); await wait(1500);
 
-  // ---- 19 Nov: the recommendation is named for its algorithm, and explained where it is chosen
-  const btnName = await ev('document.querySelector(\'#methKnob button[data-m="story"]\').textContent');
+  // ---- only the two greedy methods are offered, and the line under them explains the selected one
+  const visible = await ev('[...document.querySelectorAll("#methKnob button")].filter(b=>!b.hidden&&b.getClientRects().length).map(b=>b.dataset.m).join()');
   const say = await ev('document.getElementById("methSay").innerText');
-  const src = fs.readFileSync(path.join(PUB, "simulation_src/sim4_numbers.py"), "utf8");
-  const width = (src.match(/^WIDTH = (\d+)/m) || [])[1];
-  ok("method: the recommendation is called Nested beam search, nowhere Sim 4's list", btnName === "Nested beam search" &&
-     !/Sim 4's list/.test(fs.readFileSync(path.join(PUB, "simulation4/explore.html"), "utf8")) && !/"Sim 4's list|Sim 4's list[:,]/.test(fs.readFileSync(path.join(PUB, "simulation4/explore_ui.js"), "utf8")), btnName);
-  ok("method: the line under it explains it (seed, beam width from sim4_numbers.py, score, nested, brute force)",
-     say.includes(L[1].chosen[0]) && width && say.includes(Number(width).toLocaleString("en-AU")) && /worst case plus the average/.test(say) && /25 mm rule breaks ties/.test(say) && /no sensor moves/.test(say) && /brute force/.test(say), say.slice(0, 200));
+  ok("method: only Greedy: worst case and Greedy: average are offered", visible === "greedy,greedy-avg", visible);
+  // Scored on and the method are switches: label, track (the row's ::before), label; the knob on the chosen label's side.
+  const sw = () => ev(`["#scopeKnob","#methKnob"].map(k=>{const el=document.querySelector(k),bs=[...el.querySelectorAll("button")].filter(b=>b.getClientRects().length),tr=getComputedStyle(el,"::before");
+    const r=bs.map(b=>b.getBoundingClientRect());return{k,n:bs.length,on:bs.findIndex(b=>b.classList.contains("on")),fit:bs.every(b=>b.scrollWidth<=b.clientWidth+1),
+    row:new Set(r.map(x=>Math.round(x.top+x.height/2))).size,track:tr.width,knob:tr.backgroundPositionX,gap:r.length===2?[Math.round(r[0].right),Math.round(r[1].left)]:null,y:r.length?Math.round(r[0].top+r[0].height/2):0}})`);
+  let sws = await sw();
+  ok("Scored on and the method are switches: two labels either side of a track on one row, knob on the chosen side, no label cut off",
+     sws.every(x => x.n === 2 && x.on === 0 && x.row === 1 && x.fit && x.track === "38px" && x.knob === "0%" && x.gap[1] - x.gap[0] > 38), JSON.stringify(sws));
+  const tap = async x => { await send("Input.dispatchMouseEvent", { type: "mousePressed", x: (x.gap[0] + x.gap[1]) / 2, y: x.y, button: "left", clickCount: 1 }); await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: (x.gap[0] + x.gap[1]) / 2, y: x.y, button: "left", clickCount: 1 }); await wait(1200); };
+  await ev('document.getElementById("methKnob").scrollIntoView({block:"center"})'); await wait(400);
+  await tap((await sw())[1]);
+  const flipped = await ev('(document.querySelector("#methKnob button.on")||{}).dataset?.m'), knobR = (await sw())[1].knob;
+  await tap((await sw())[1]);
+  const back = await ev('(document.querySelector("#methKnob button.on")||{}).dataset?.m');
+  ok("method switch: a click on the track flips to Greedy: average (knob right) and back", flipped === "greedy-avg" && knobR === "100%" && back === "greedy", `${flipped} ${knobR} ${back}`);
+  ok("method: the old name Sim 4's list appears nowhere", !/Sim 4's list/.test(fs.readFileSync(path.join(PUB, "simulation4/explore.html"), "utf8")) && !/"Sim 4's list|Sim 4's list[:,]/.test(fs.readFileSync(path.join(PUB, "simulation4/explore_ui.js"), "utf8")));
+  ok("method: the line under it explains greedy (worst case, one at a time, no sensor moves)", /^Greedy: worst case/.test(say) && /one sensor at a time/.test(say) && /worst case/.test(say) && /no sensor moves/.test(say), say.slice(0, 200));
 
-  // ---- the chart: one line per method, the selected one bold with its average dashed, pulsing when the method changes
-  const chart = () => ev(`(()=>{const c=document.getElementById("curve");return{sel:(c.querySelector(".cv-sel")||{}).dataset?.m||null,avg:!!c.querySelector(".cv-sel .cv-avg"),
-    dash:(c.querySelector(".cv-sel .cv-avg")||{getAttribute:()=>null}).getAttribute("stroke-dasharray"),same:(()=>{const a=c.querySelector(".cv-sel .cv-avg"),w=c.querySelector(".cv-sel .cv-worst");return!!a&&!!w&&a.getAttribute("stroke")===w.getAttribute("stroke")})(),
-    others:[...c.querySelectorAll(".cv-other")].map(g=>g.dataset.m).sort().join(),otherAvg:c.querySelectorAll(".cv-other .cv-avg").length,pulse:!!c.querySelector(".cv-sel.pulse"),
-    fade:+getComputedStyle(c.querySelector(".cv-other")||c).opacity,legend:(c.querySelector(".lg span.on")||{}).textContent||""}})()`);
+  // ---- the chart: one line per greedy, each by its own goal (worst case / average), the selected one bold, pulsing on change
+  const chart = () => ev(`(()=>{const c=document.getElementById("curve");return{sel:(c.querySelector(".cv-sel")||{}).dataset?.m||null,
+    lines:c.querySelectorAll(".cv-line").length,dashed:c.querySelectorAll("path[stroke-dasharray]").length,
+    others:[...c.querySelectorAll(".cv-other")].map(g=>g.dataset.m).sort().join(),pulse:!!c.querySelector(".cv-sel.pulse"),
+    fade:+getComputedStyle(c.querySelector(".cv-other")||c).opacity,legend:[...c.querySelectorAll(".lg span")].map(s=>s.textContent).join("|"),
+    on:(c.querySelector(".lg span.on")||{}).textContent||"",note:(document.getElementById("curveNote")||{}).textContent||""}})()`);
   let ch = await chart();
-  ok("chart: the nested beam search is drawn bold, its average dashed in the same colour", ch.sel === "story" && ch.avg && ch.dash && ch.same && ch.legend === "Nested beam search", JSON.stringify(ch));
-  ok("chart: every other method drawn faded, with Worst case and Average both on its average dashed too", /exact/.test(ch.others) && /greedy-avg/.test(ch.others) && /warn/.test(ch.others) && ch.otherAvg >= 3 && ch.fade < 0.6, JSON.stringify(ch));
+  ok("chart: two lines, one per greedy, Greedy: worst case bold and Greedy: average lighter, no dashed lines", ch.sel === "greedy" && ch.others === "greedy-avg" && ch.lines === 2 && ch.dashed === 0 && ch.fade > 0.4 && ch.fade < 1 && ch.legend === "Greedy: worst case|Greedy: average" && ch.on === "Greedy: worst case", JSON.stringify(ch));
+  ok("chart: each greedy drawn by its own goal, as the note says", /Greedy: worst case by its worst case; Greedy: average by its average/.test(ch.note), ch.note.slice(0, 160));
   const pulses = [];
-  for (const m of ["exact", "greedy", "warn", "story"]) {
+  for (const m of ["greedy-avg", "greedy"]) {
     await click(`#methKnob button[data-m="${m}"]`); await wait(1200);
     ch = await chart();
-    pulses.push(ch.sel === m && ch.avg && ch.pulse && !ch.others.split(",").includes(m));
+    pulses.push(ch.sel === m && ch.pulse && ch.lines === 2 && ch.others === (m === "greedy" ? "greedy-avg" : "greedy"));
   }
-  ok("chart: each method selected in turn is the bold one, with its average, and pulses as it changes", pulses.every(Boolean), pulses.join());
+  ok("chart: each greedy selected in turn is the bold one, the other still drawn, and it pulses as it changes", pulses.every(Boolean), pulses.join());
+  // The chart follows Scored on: the same sets rescored, so the lines move. Each line's y at 1..n sensors, read off its path.
+  const ys = () => ev(`[...document.querySelectorAll("#curve .cv-line")].map(p=>p.closest("g").dataset.m+":"+(p.getAttribute("d").match(/[ML][\\d.]+ ([\\d.]+)/g)||[]).map(s=>Math.round(+s.split(" ")[1])).join(",")).join(" | ")`);
+  const yStory = await ys(), leadStory = await ev('document.getElementById("sensorList").innerText.split("\\n")[0]');
   await click('#scopeKnob button[data-s="broad"]'); await wait(1500);
+  const yBroad = await ys(), leadBroad = await ev('document.getElementById("sensorList").innerText.split("\\n")[0]');
+  ok("chart: switching Scored on redraws the lines (the story's test and the broader test differ)", yStory && yBroad && yStory !== yBroad, "story " + yStory + "  //  broad " + yBroad);
+  ok("side panel: switching Scored on changes the figures too", leadStory !== leadBroad, leadStory + "  //  " + leadBroad);
   ch = await chart();
-  ok("chart: on the broader test too, the selected method shows its average", ch.sel === "story" && ch.avg, JSON.stringify(ch));
+  ok("chart: on the broader test too, both greedy lines, the selected one bold", ch.sel === "greedy" && ch.lines === 2, JSON.stringify(ch));
   ok("chart: changing the test is not a method change, so no pulse", !ch.pulse);
   ok("chart: the pulse respects reduced motion", /prefers-reduced-motion:reduce\)\{#curve \.cv-sel\.pulse\{animation:none\}/.test(fs.readFileSync(path.join(PUB, "simulation4/explore.html"), "utf8")));
 
@@ -215,27 +253,17 @@ const server = http.createServer((q, s) => {
   const r0 = REG.regions[0];
   ok("map card: the region's homes = regions.js (as the side panel and the story)", card.includes(r0.dwellings + " homes in the region") || card.includes(r0.dwellings + "\nhomes in the region"), card.slice(0, 80));
 
-  // ---- greenfield: the story's list scored on the wet cases, as step 5b says
+  // ---- greenfield: the greenfield runs' own greedy order (greenfield_runs.js, sensors.r10.worst), scored on the wet cases
   await click('#famKnob button[data-f="one"]'); await wait(3500);
   const gs = await ev('document.getElementById("sensorList").innerText');
-  const s5b = D.steps.find(s => s.id === "5b").notes.limit;
-  const m = s5b.match(/see (\d+%) of growth runs on average and (\d+%) in the worst wet case \(Explore, Greenfield\)/);
-  ok("greenfield: Explore's figures = step 5b's sentence", m && new RegExp("catch " + m[2] + " of detectable greenfield growth in the worst case and " + m[1] + " on average").test(gs), (m ? m.slice(1).join(" / ") : "no sentence") + " vs " + gs.split("\n").find(l => /greenfield growth in the worst/.test(l)));
+  const gk = await ev('(()=>{const p=SIM4_GF_RUNS.sensors.r10.worst,k=Math.min(+document.getElementById("kRange").value,p.order.length);return{k,w:p.worst[k-1],a:p.mean[k-1]}})()');
+  const gline = gs.split("\n").find(l => /greenfield growth in the worst/.test(l)) || "";
+  ok("greenfield: Explore's figures = the greenfield runs' greedy order at that count", gline.startsWith(gk.k + " sensor") && [...pcs(gk.w)].some(w => [...pcs(gk.a)].some(a => gline.includes("catch " + w + " of detectable greenfield growth in the worst case and " + a + " on average"))), JSON.stringify(gk) + " vs " + gline);
   ok("greenfield: scored on the wet cases", /scored on the 7 wet cases/i.test(await ev('document.getElementById("sensHead").innerText')));
 
   // ---- 19 Nov: the story's "More on this step" figures, recounted here from the runs (regions.js), not from the builder
   {
-    const G = (() => { global.window = global; eval(fs.readFileSync(path.join(PUB, "simulation3/data/growth.js"), "utf8")); return window.GROWTH_RUNS; })();
-    const idx = Object.fromEntries(G.chambers.map((n, i) => [n, i]));
-    const wet = REG.cases.filter(c => c.ii > 0), steps = REG.ladder.map((v, s) => [v, s]).filter(([v]) => v <= 1 + 1e-9).map(([, s]) => s);
-    const tg = REG.regions.map((r, i) => [r.id, i]).filter(([id]) => X.targets.includes(id)).map(([, i]) => i);
-    // Per case: the runs that count (some manhole rises 10 mm or more), and which of them each manhole sees.
-    const sees = wet.map(c => {
-      const rows = new Map(REG.rows[c.tag].map(x => [x.r + ":" + x.s, x])), runs = [];
-      for (const ri of tg) for (const s of steps) { const x = rows.get(ri + ":" + s); if (x.rise.some(([, v]) => v >= 10)) runs.push(new Set(x.rise.filter(([, v]) => v >= 10).map(([j]) => j))); }
-      return runs;
-    });
-    const score = S => { const per = sees.map(runs => runs.filter(r => S.some(m => r.has(idx[m]))).length / runs.length); return { per, worst: Math.min(...per), average: per.reduce((a, b) => a + b, 0) / per.length }; };
+    // sees, score, wet: the recount from the runs, set up at the top of this file.
     ok("recount: each wet case's runs = numbers.json's universe", wet.every((c, k) => sees[k].length === X.universe[c.label]), wet.map((c, k) => sees[k].length).join(","));
     const more5 = D.steps.find(s => s.id === "5b").notes.more.blocks;
     const cells = h => [...h.matchAll(/<tr>(.*?)<\/tr>/g)].map(m => [...m[1].matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1].replace(/<[^>]+>/g, ""))).filter(r => r.length);
@@ -265,24 +293,10 @@ const server = http.createServer((q, s) => {
     await click("#btn-compass"); await wait(1500);
     ok("first load: the compass still turns it to the tilted view and back", !tilted && await ev("Growth3D.isTop()"), tilted);
     await click('#viewKnob button[data-v="expert"]'); await wait(1500);
-    const tog = () => ev('[...document.querySelectorAll("#objKnob button")].map(b=>(b.classList.contains("on")&&b.getAttribute("aria-pressed")==="true"?"1":"0")).join("")');
-    const lines = () => ev('({w:document.querySelectorAll("#curve .cv-worst").length,a:document.querySelectorAll("#curve .cv-avg").length,lead:document.getElementById("sensorList").innerText.split("\\n")[0]})');
-    const shown = [];
-    for (const m of ["story", "exact", "warn"]) { await click(`#methKnob button[data-m="${m}"]`); await wait(900); shown.push(await ev('!!document.querySelector("#objKnob").getClientRects().length') && await tog() === "11"); }
-    ok("Show: Worst case and Average show for every method, both on to start", shown.every(Boolean), shown.join());
-    await click('#methKnob button[data-m="story"]'); await wait(1200);
-    const both = await lines();
-    await click('#objKnob button[data-o="worst"]'); await wait(900);
-    const aOnly = await lines(), t1 = await tog();
-    await click('#objKnob button[data-o="mean"]'); await wait(900);
-    const t2 = await tog();
-    ok("Show: Worst case off leaves the dashed averages only, and the figures say average", t1 === "01" && aOnly.w === 0 && aOnly.a >= 4 && /average/.test(aOnly.lead) && !/worst/.test(aOnly.lead), JSON.stringify(aOnly));
-    ok("Show: the last one on cannot be turned off", t2 === "01", t2);
-    await click('#objKnob button[data-o="worst"]'); await click('#objKnob button[data-o="mean"]'); await wait(900);
-    const wOnly = await lines();
-    ok("Show: Average off leaves the solid worst cases only, and the figures say worst", await tog() === "10" && wOnly.a === 0 && wOnly.w >= 4 && /worst/.test(wOnly.lead) && !/average/.test(wOnly.lead), JSON.stringify(wOnly));
-    await click('#objKnob button[data-o="mean"]'); await wait(900);
-    ok("Show: both on draws both", both.w >= 4 && both.a >= 4 && await tog() === "11", JSON.stringify(both));
+    const lead = () => ev('document.getElementById("sensorList").innerText.split("\\n")[0]');
+    const quotes = [];
+    for (const m of ["greedy", "greedy-avg"]) { await click(`#methKnob button[data-m="${m}"]`); await wait(900); const l = await lead(); quotes.push(/worst case/.test(l) && /on average/.test(l)); }
+    ok("no Show checkboxes: the figures quote both the worst case and the average, for either greedy", !(await ev('!!document.getElementById("objKnob")')) && quotes.every(Boolean), quotes.join());
     const names = await ev('[...document.querySelectorAll("#methKnob button")].filter(b=>!b.hidden).map(b=>b.textContent)');
     ok('Greedy is two methods: "Greedy: worst case" and "Greedy: average"', names.includes("Greedy: worst case") && names.includes("Greedy: average") && !names.some(n => /one at a time/.test(n)), names.join(" | "));
     await click('#scopeKnob button[data-s="broad"]'); await wait(1200);
@@ -294,7 +308,7 @@ const server = http.createServer((q, s) => {
     await send("Page.navigate", { url: `http://127.0.0.1:${HTTP}/simulation4/explore.html#view=expert&method=greedy&obj=mean&show=average` });
     for (let i = 0; i < 240; i++) { await wait(250); if (await ev('!!(document.querySelector("#sensorList") && document.querySelector("#sensorList").innerText.length > 50)')) break; }
     await wait(1500);
-    ok("hash: an old Greedy + Best average link opens Greedy: average; #show=average opens Average only", await ev('document.querySelector("#methKnob button.on").dataset.m') === "greedy-avg" && await tog() === "01");
+    ok("hash: an old Greedy + Best average link opens Greedy: average; an old #show=average is ignored, both figures quoted", await ev('document.querySelector("#methKnob button.on").dataset.m') === "greedy-avg" && /worst case/.test(await lead()) && /on average/.test(await lead()));
     // The map controls card
     const help = await ev(`(()=>{const b=document.querySelector("#btn-maphelp"),c=document.querySelector("#btn-compass").getBoundingClientRect(),r=b.getBoundingClientRect();
       return{next:Math.abs(r.top-c.top)<4&&Math.abs(r.left-c.right)<24,label:b.getAttribute("aria-label"),pop:!!document.querySelector("#btn-maphelpPop")}})()`);
