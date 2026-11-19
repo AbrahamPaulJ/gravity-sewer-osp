@@ -539,12 +539,68 @@ window.Sim35UI = (function () {
     return st.fam === "one" ? onePlacement() : infillPlacement();
   }
   const sensorSet = () => (st.showSensors ? placement().chosen.map(nameOf) : []);
+  /* The heatmap (20 Nov): what each manhole would add as the next level sensor, given the sensors placed now (the
+     selected method at the selected count), on the test and rule shown, by the method's own goal: the average over the
+     cases for Greedy: average, the worst case for Greedy: worst case and Exact optimum. Where no single manhole lifts
+     the worst case it shows the average instead (greedy's own tie-break) and says so. Before 20 Nov it ranked each
+     manhole on its own coverage, which on the worst case was 0% for 325 of 328 manholes and so said little. */
+  function runLists() {
+    if (st.fam === "one") return R().cases.map((c, ci) => (c.ii > 0 ? R().cells.filter(x => x.case === ci && x.rule === st.rule).flatMap(x => x.rows).filter(r => r.tip.length).map(r => r.tip) : []))
+      .filter(d => d.length);
+    return scopeCases(st.scope).map(c => detRuns(c.tag, st.rule, st.scope)).filter(d => d.length);
+  }
+  function nextGain() {
+    const chosen = placement().chosen, goal = greedyObj() === "mean" ? "average" : "worst";
+    return remember("next|" + st.fam + "|" + st.rule + "|" + st.scope + "|" + goal + "|" + chosen.join(","), () => {
+      const cases = runLists(), n = names().length, have = new Set(chosen);
+      if (!cases.length) return { gain: new Array(n).fill(null), by: goal, goal, fellBack: false, top: 0, best: -1, near: 0, adds: 0, placed: chosen.length };
+      const seenBy = cases.map(runs => runs.map(who => who.some(i => have.has(i))));
+      const base = cases.map((runs, c) => seenBy[c].filter(Boolean).length / runs.length);
+      const add = Array.from({ length: n }, () => cases.map(() => 0));
+      cases.forEach((runs, c) => runs.forEach((who, r) => { if (!seenBy[c][r]) who.forEach(i => { if (!have.has(i)) add[i][c]++; }); }));
+      const mean = v => v.reduce((a, b) => a + b, 0) / v.length, bW = Math.min(...base), bA = mean(base);
+      const gW = [], gA = [];
+      for (let i = 0; i < n; i++) {
+        if (have.has(i)) { gW.push(null); gA.push(null); continue; }
+        const per = cases.map((runs, c) => base[c] + add[i][c] / runs.length);
+        gW.push(Math.min(...per) - bW); gA.push(mean(per) - bA);
+      }
+      const EPS = 1e-9, by = goal === "average" || !gW.some(v => v > EPS) ? "average" : "worst", g = by === "average" ? gA : gW;
+      const top = Math.max(0, ...g.filter(v => v != null));
+      return { gain: g, by, goal, fellBack: by !== goal, top, best: top > EPS ? g.indexOf(top) : -1,
+               near: top > EPS ? g.filter(v => v != null && v >= top - EPS).length : 0,       // manholes that tie with the best
+               adds: g.filter(v => v != null && v > EPS).length, placed: chosen.length };
+    });
+  }
+  // Warm, one way: dim to bright on the dark map, pale to deep on the light one. A manhole that adds nothing stays plain.
+  const HEAT_STYLE = { zeroHidden: true, ramp: {
+    dark: [0x4a2511, 0x6e3414, 0x934416, 0xb85718, 0xd96d1c, 0xf0882a, 0xf9a64a, 0xfcc46f, 0xffe199],
+    light: [0xf1d29a, 0xeab86a, 0xe39a45, 0xd77a28, 0xc45a1c, 0xa83e17, 0x862b13, 0x601b0f] } };
+  const pts = v => { const p = v * 100; return (p >= 9.95 ? Math.round(p) : Math.round(p * 10) / 10) + (Math.abs(p - 1) < 0.05 ? " point" : " points"); };
   function heatValues() {
     if (!st.showHeat) return null;
-    const h = st.fam === "infill" ? infillHeat() : R().heat[st.rule];
-    const v = h[heatObj()], levels = [...new Set(v)].sort((a, b) => a - b), n = levels.length, out = {};
-    v.forEach((x, i) => { out[nameOf(i)] = n > 1 ? levels.indexOf(x) / (n - 1) : 1; });
-    return out;
+    const h = nextGain(), out = {};
+    if (h.top > 1e-9) h.gain.forEach((v, i) => { if (v != null && v > 1e-9) out[nameOf(i)] = v / h.top; });
+    return out;                                   // empty: nothing adds anything, every manhole stays plain
+  }
+  function heatKeyText() {
+    const h = nextGain(), what = h.by === "average" ? "the average over the " + scoredCases().length + " cases" : "the worst case";
+    // 20 Nov: the settings in plain sentences (the sensors placed, when a scenario counts as seen, which scenarios count),
+    // rather than a bracket of control names.
+    const rl = ruleOf(st.rule), nc = scoredCases().length;
+    const seenAt = rl.thr ? "a sensor's water rises " + rl.thr + " mm" : "a sensor's water newly passes " + ALARM_MM + " mm above the pipe floor";
+    const counted = st.fam === "one" ? "Counted on the greenfield runs: a new estate at each edge connection, in the " + nc + " wet weather cases."
+      : storyScope() ? "Counted on the story's test: " + nc + " wet weather cases, the regions to monitor or watch, up to the 2041 homes."
+      : "Counted on the broader test: all " + nc + " weather cases including Dry, every region, and the 150% and 300% stress steps.";
+    $("#heatWhich").textContent = "What each manhole would add to " + what + " as level sensor " + (h.placed + 1) + ". " +
+      "Placed: " + methodName() + "'s " + (h.placed === 1 ? "1 level sensor" : h.placed + " level sensors") + ". " +
+      "A scenario counts as seen when " + seenAt + ". " + counted;
+    $("#heatHi").textContent = h.top > 1e-9 ? "+" + pts(h.top) : "+0";
+    $("#heatNote").textContent = h.top > 1e-9
+      ? "Brightest: " + label(h.best) + ", +" + pts(h.top) + "." + (h.near > 1 ? " " + h.near + " manholes add exactly as much, so read the next site as an area, not one lid." : "") +
+        (h.fellBack ? " No single manhole raises the worst case now, so this shows the average, greedy's tie-break." : "") +
+        (st.method === "exact" ? " Exact optimum's own next size can differ: its sets are not nested." : "") + " Grey: adds nothing."
+      : "No manhole adds anything: the " + h.placed + " placed already see every run a sensor can.";
   }
 
   /* ------------------------------------------------------------------ paint */
@@ -589,6 +645,7 @@ window.Sim35UI = (function () {
     } else {
       Growth3D.setRegionTints(null);
       if (Growth3D.setSensorPrefix) Growth3D.setSensorPrefix(SP());
+      if (Growth3D.setHeatStyle) Growth3D.setHeatStyle(HEAT_STYLE);
       Growth3D.paint(named, site, sensors, heatValues());
       if (st.fam === "infill") {
         Growth3D.setPulse(region().manholes.map(nameOf));
@@ -609,8 +666,7 @@ window.Sim35UI = (function () {
     renderCover();
     renderWords();
     legendKeys();
-    $("#heatWhich").textContent = (heatObj() === "worst" ? "worst of the " : "average of the ") + scoredCases().length +
-      " cases, " + ruleOf(st.rule).label.toLowerCase() + (st.fam === "infill" ? ", infill scenarios" : ", greenfield scenarios");
+    if (st.showHeat) heatKeyText();
   }
 
   /* ------------------------------------------------------------------ homes */
@@ -1163,6 +1219,10 @@ window.Sim35UI = (function () {
       row2("Drains through it", up.chambers + " manholes, " + (up.metres / 1000).toFixed(2) + " km of pipe") +
       (!chamber ? "" : row2("As a sensor", "alone it sees " + pct(h.mean[i]) + " of " + (st.fam === "one" ? "greenfield" : "infill") + " growth on average, " + pct(h.worst[i]) + " in the worst case; rank " + rank + " of " + names().length +
         (k >= 0 ? ", <b>chosen as S" + (k + 1) + "</b>" : ""))) +
+      (!chamber || k >= 0 ? "" : (() => { const ng = nextGain(), v = ng.gain[i], what = ng.by === "average" ? "average" : "worst case";
+        return v == null ? "" : row2("As the next sensor", v > 1e-9 ? "beside the " + ng.placed + " placed, it would add <b>" + pts(v) + "</b> to the " + what +
+          "; " + (v >= ng.top - 1e-9 ? "the most of any manhole" : "rank " + (1 + ng.gain.filter(x => x != null && x > v + 1e-9).length) + " of the " + ng.adds + " that add anything")
+          : "beside the " + ng.placed + " placed, it adds nothing to the " + what); })()) +
       "";
   }
 
@@ -2391,5 +2451,5 @@ window.Sim35UI = (function () {
       window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); e.preventDefault();
     };
   }
-  return { init, state: st, repaint, placement, infillScore, storyWarn };
+  return { init, state: st, repaint, placement, infillScore, storyWarn, nextGain };
 })();

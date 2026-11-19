@@ -1298,6 +1298,7 @@ window.Growth3D = (function () {
   };
   function setTheme(name) {
     const t = THEMES[name] || THEMES.dark;
+    themeName = THEMES[name] ? name : "dark";
     ["junction", "chamber", "houseDim", "region", "heatPipe", "datum", "bottleneck", "entryIn", "rise"].forEach(k => { COL[k] = t[k]; });
     B_FILL = t.bFill; B_EDGE = t.bEdge;
     if (!built) return;
@@ -1836,10 +1837,16 @@ window.Growth3D = (function () {
      sees little recedes into the dark background, light near 100%. */
   const HEAT_RAMP = [0x104281, 0x184f95, 0x1c5cab, 0x256abf, 0x2a78d6, 0x3987e5,
                      0x5598e7, 0x6da7ec, 0x86b6ef, 0x9ec5f4, 0xb7d3f6, 0xcde2fb];
+  /* SIM4 (20 Nov): a page may set its own heatmap style: a ramp per theme ({ dark: [...], light: [...] }, low to
+     high), and zeroHidden, which draws a manhole with no value (or 0) as a small, dim, plain mark rather than the
+     ramp's lowest colour. With no call, the reference blue above and the old look stay, so Sim 3.5 is unchanged. */
+  let heatStyle = null, themeName = "dark";
+  function setHeatStyle(sty) { heatStyle = sty || null; }
   function heatHex(v) {
-    const x = Math.max(0, Math.min(1, v)) * (HEAT_RAMP.length - 1), i = Math.floor(x);
-    if (i >= HEAT_RAMP.length - 1) return HEAT_RAMP[HEAT_RAMP.length - 1];
-    const a = HEAT_RAMP[i], b = HEAT_RAMP[i + 1], f = x - i, ch = s => (h => (h >> s) & 255);
+    const R = heatStyle && heatStyle.ramp ? (heatStyle.ramp[themeName] || heatStyle.ramp.dark) : HEAT_RAMP;
+    const x = Math.max(0, Math.min(1, v)) * (R.length - 1), i = Math.floor(x);
+    if (i >= R.length - 1) return R[R.length - 1];
+    const a = R[i], b = R[i + 1], f = x - i, ch = s => (h => (h >> s) & 255);
     const mix = s => Math.round(ch(s)(a) + (ch(s)(b) - ch(s)(a)) * f);
     return (mix(16) << 16) | (mix(8) << 8) | mix(0);
   }
@@ -1886,7 +1893,7 @@ window.Growth3D = (function () {
       const st = nodeState(nm);
       const rt = regionTint && regionTint[nm];
       const c = nm !== siteName && eligible.has(nm) ? COL.eligible : sensorSet.has(nm) ? COL.sensor
-        : heat ? heatHex(heat[nm] || 0)
+        : heat ? (heat && heatStyle && heatStyle.zeroHidden && !(heat[nm] > 0) ? COL.junction : heatHex(heat[nm] || 0))
         : st === "tip" ? 0xff2d55 : st === "was" ? 0xffa500 : st === "rise" ? COL.rise
         : st === "fall" ? COL.fall
         // SIM3: a manhole with nothing to report wears its area's colour, lightened so it
@@ -1894,7 +1901,7 @@ window.Growth3D = (function () {
         : rt ? ((Math.round(rt[0] + (255 - rt[0]) * 0.45) << 16) | (Math.round(rt[1] + (255 - rt[1]) * 0.45) << 8) | Math.round(rt[2] + (255 - rt[2]) * 0.45))
         : COL.chamber;
       m.material.color.setHex(c);
-      m.userData.baseScale = nm !== siteName && eligible.has(nm) ? 3.4 : sensorSet.has(nm) ? 2.1 : heat ? 0.9 + 1.4 * (heat[nm] || 0)
+      m.userData.baseScale = nm !== siteName && eligible.has(nm) ? 3.4 : sensorSet.has(nm) ? 2.1 : heat ? (heatStyle && heatStyle.zeroHidden && !(heat[nm] > 0) ? 0.7 : 0.9 + 1.4 * (heat[nm] || 0))
         : st === "ok" ? 1 : st === "rise" || st === "fall" ? 1.3 : 1.6;
       m.scale.setScalar(m.userData.baseScale);
       if (nm === siteName) {
@@ -2325,7 +2332,7 @@ window.Growth3D = (function () {
 /* SIM35 END */  return { build, liveCamera, paint, highlight, reach, showBottlenecks, showRegion, showPumps, showConnections, setHouseShapes, setScenario, setSpills, setPumpRates, mapState, frameNodes, setEstate, frameBox, setStreets, showGrid, setTheme,
            setRegionTints, setRegionLabels, showRegionLabels, setPulse, setEligible, setExtraNodes, setFlow,
            viewTop, viewTilt, heading, isTop, onViewChange, getCamera, setCamera, setTopDefault,
-           frame, resize, heatHex, setExaggeration,
+           frame, resize, heatHex, setHeatStyle, setExaggeration,
            get ZEXAG() { return ZEXAG; }/* SIM35 BEGIN */, setCoverSelect, coverSelectInfo, mapCam, screenOf,
            setSensorPrefix: p => { sensorPrefix = p || "S"; }/* SIM35 END */ };
 })();
