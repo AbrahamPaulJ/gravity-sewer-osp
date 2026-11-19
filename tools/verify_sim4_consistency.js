@@ -102,10 +102,22 @@ const server = http.createServer((q, s) => {
   ok("side panel: worst and average = the story's (numbers.json) and a recount from the runs", hasPc(side, L[rec].worst) && hasPc(side, L[rec].average) && hasPc(side, g5.worst) && hasPc(side, g5.average), side.split("\n")[0] + " / recount " + [...pcs(g5.worst)][0] + " " + [...pcs(g5.average)][0]);
   const sideWarn = (side.match(new RegExp("(\\d+) of " + wt + "\\b")) || [])[1];
   ok("side panel: overloads warned as the story", sideWarn != null && +sideWarn === L[rec].warned_target, sideWarn + " of " + wt);
+  const scopeTxt = await ev('document.getElementById("scopeNote").innerText');
+  // 19 Nov: the info tips add to the visible lines, never repeat them (on both tests).
+  const tipsRepeat = async () => ev(`(()=>{const say=document.getElementById("methSay").innerText.replace(/^[^:]*:\\s*/,""),note=document.getElementById("scopeNote").innerText,
+    a=document.getElementById("sensInfo").dataset.tip,b=document.querySelector("#scopeBox .info-i").dataset.tip,cut=t=>t.slice(0,40);
+    return [a.includes(cut(say)),a.includes(cut(note)),b.includes(cut(note)),/Greedy, (average|worst case):/.test(a)]})()`);
+  const rp1 = await tipsRepeat();
+  await click('#scopeKnob button[data-s="broad"]'); await wait(1200);
+  const rp2 = await tipsRepeat();
+  await click('#scopeKnob button[data-s="story"]'); await wait(1200);
+  ok("info tips: the Sensors and Scored on tips repeat neither the method line nor the test note, on either test", [...rp1, ...rp2].every(x => !x), JSON.stringify([rp1, rp2]));
+  ok("side panel: the test is described once, under Scored on, not again under the figures", /regions to monitor or watch, build-out up to 100%/.test(scopeTxt) && !/build-out up to 100%/.test(side.split("Leave one case out")[0]) && /The story's Greedy: average list \(step 5b\)/.test(side), side.split("\n").slice(0, 4).join(" / "));
   const hoc = X.held_out_by_case;
   const loo = await rows("#sensorList table.sm tr");
   const looOk = Object.entries(hoc).every(([c, v]) => loo.some(r => r[0] === c && pcs(v[String(rec)]).has(r[1])));
-  ok("leave one case out = the story's held-out score per case", looOk && side.includes("the story's test"), JSON.stringify(loo).slice(0, 160));
+  const looHead = await ev('[...document.querySelectorAll("#sensorList h4")].map(h=>h.textContent).find(t=>/^Leave one case out/.test(t))||""');
+  ok("leave one case out = the story's held-out score per case, under a heading naming the story's test", looOk && /the story's test/.test(looHead), looHead + " " + JSON.stringify(loo).slice(0, 120));
   const h5 = X.held_out.find(h => h.k === rec);
   const uavg = k => Object.values(hoc).reduce((a, v) => a + v[String(k)], 0) / Object.keys(hoc).length;
   ok("leave one case out: the average of the cases is the story's unseen weather", hasPc(side.slice(side.toLowerCase().indexOf("leave one case out")).split("Average of the cases")[1] || "", uavg(rec)));
@@ -225,7 +237,7 @@ const server = http.createServer((q, s) => {
     on:(c.querySelector(".lg span.on")||{}).textContent||"",note:(document.getElementById("curveNote")||{}).textContent||""}})()`);
   let ch = await chart();
   ok("chart: two lines, one per greedy, Greedy: average bold and Greedy: worst case lighter, no dashed lines", ch.sel === "greedy-avg" && ch.others === "greedy" && ch.lines === 2 && ch.dashed === 0 && ch.fade > 0.4 && ch.fade < 1 && ch.legend === "Greedy: average|Greedy: worst case" && ch.on === "Greedy: average", JSON.stringify(ch));
-  ok("chart: each greedy drawn by its own goal, as the note says", /Greedy: average by its average; Greedy: worst case by its worst case/.test(ch.note), ch.note.slice(0, 160));
+  ok("chart: each greedy drawn by its own goal, and the note says only that", /^Greedy: average by its average; Greedy: worst case by its worst case\.$/.test(ch.note), ch.note.slice(0, 160));
   const pulses = [];
   for (const m of ["greedy", "greedy-avg"]) {
     await click(`#methKnob button[data-m="${m}"]`); await wait(1200);
@@ -266,7 +278,7 @@ const server = http.createServer((q, s) => {
   const gs = await ev('document.getElementById("sensorList").innerText');
   const gk = await ev('(()=>{const p=SIM4_GF_RUNS.sensors.r10.worst,k=Math.min(+document.getElementById("kRange").value,p.order.length);return{k,w:p.worst[k-1],a:p.mean[k-1]}})()');
   const gline = gs.split("\n").find(l => /greenfield growth in the worst/.test(l)) || "";
-  ok("greenfield: Explore's figures = the greenfield runs' greedy order at that count", gline.startsWith(gk.k + " sensor") && [...pcs(gk.w)].some(w => [...pcs(gk.a)].some(a => gline.includes("catch " + w + " of detectable greenfield growth in the worst case and " + a + " on average"))), JSON.stringify(gk) + " vs " + gline);
+  ok("greenfield: Explore's figures = the greenfield runs' greedy order at that count", gline.startsWith(gk.k + " level sensor") && [...pcs(gk.w)].some(w => [...pcs(gk.a)].some(a => gline.includes("catch " + w + " of detectable greenfield growth in the worst case and " + a + " on average"))), JSON.stringify(gk) + " vs " + gline);
   ok("greenfield: scored on the wet cases", /scored on the 7 wet cases/i.test(await ev('document.getElementById("sensHead").innerText')));
 
   // ---- 19 Nov: the story's "More on this step" figures, recounted here from the runs (regions.js), not from the builder
