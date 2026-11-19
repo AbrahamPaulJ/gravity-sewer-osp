@@ -324,16 +324,35 @@ const App = (() => {
 
   // ------------------------------------------------------------------ map: pan, zoom, hover, click
   const cv = () => $("#map");
-  const view = { dpr: 1, k: 1, tx: 0, ty: 0, base: null };
+  // 20 Nov: the map also turns (view.rot, radians) about the middle of the canvas. P is the one world-to-screen
+  // transform (pan and zoom, then the turn), so drawing, labels, tags and hit-testing all follow it; unP is its inverse.
+  const view = { dpr: 1, k: 1, tx: 0, ty: 0, rot: 0, w: 0, h: 0, base: null, pad: 30 };
   function fitView() {
-    const c = cv(), r = c.getBoundingClientRect(), g = G();
+    const c = cv(), r = c.getBoundingClientRect();
     view.dpr = window.devicePixelRatio || 1; c.width = r.width * view.dpr; c.height = r.height * view.dpr;
-    const minX = Math.min(...g.px), maxX = Math.max(...g.px), minY = Math.min(...g.py), maxY = Math.max(...g.py), pad = 30;
-    const k = Math.min((r.width - 2 * pad) / (maxX - minX), (r.height - 2 * pad) / (maxY - minY));
-    view.base = { minX, maxY, k, ox: (r.width - (maxX - minX) * k) / 2, oy: (r.height - (maxY - minY) * k) / 2 };
+    view.w = r.width; view.h = r.height; fitBase(view.pad);
   }
-  function resetView() { view.k = 1; view.tx = 0; view.ty = 0; draw(); }
-  const P = (x, y) => { const b = view.base; return [(b.ox + (x - b.minX) * b.k) * view.k + view.tx, (b.oy + (b.maxY - y) * b.k) * view.k + view.ty]; };
+  // The whole network fitted inside the canvas with `pad` pixels spare: more when region tags sit outside it.
+  function fitBase(pad) {
+    const g = G(), minX = Math.min(...g.px), maxX = Math.max(...g.px), minY = Math.min(...g.py), maxY = Math.max(...g.py);
+    const narrow = view.w < 600 && pad > 30; // a phone: tags beside the network need more room either side
+    const padX = Math.min(narrow ? 80 : pad, view.w / 5), padY = Math.min(pad, view.h / 5);
+    const k = Math.min((view.w - 2 * padX) / (maxX - minX), (view.h - 2 * padY) / (maxY - minY));
+    view.pad = pad; view.base = { minX, maxY, k, ox: (view.w - (maxX - minX) * k) / 2, oy: (view.h - (maxY - minY) * k) / 2 };
+  }
+  function resetView() { view.k = 1; view.tx = 0; view.ty = 0; view.rot = 0; draw(); }
+  // Turn a screen point about the canvas middle by angle a; turnV turns a screen vector (a drag) the same way.
+  const turn = (x, y, a) => { if (!a) return [x, y]; const cx = view.w / 2, cy = view.h / 2, c = Math.cos(a), s = Math.sin(a), dx = x - cx, dy = y - cy; return [cx + dx * c - dy * s, cy + dx * s + dy * c]; };
+  const turnV = (dx, dy, a) => { const c = Math.cos(a), s = Math.sin(a); return [dx * c - dy * s, dx * s + dy * c]; };
+  const P = (x, y) => { const b = view.base; return turn((b.ox + (x - b.minX) * b.k) * view.k + view.tx, (b.oy + (b.maxY - y) * b.k) * view.k + view.ty, view.rot); };
+  const unP = (sx, sy) => { const b = view.base, [x, y] = turn(sx, sy, -view.rot); return [((x - view.tx) / view.k - b.ox) / b.k + b.minX, b.maxY - ((y - view.ty) / view.k - b.oy) / b.k]; };
+  // Zoom by f about a screen point, keeping the world point under it still (works at any turn: the turn's centre is fixed).
+  function zoomAt(mx, my, f) {
+    const [ux, uy] = turn(mx, my, -view.rot), nk = Math.max(0.6, Math.min(14, view.k * f)), ff = nk / view.k;
+    view.tx = ux - (ux - view.tx) * ff; view.ty = uy - (uy - view.ty) * ff; view.k = nk; draw();
+  }
+  // Move the map by a screen drag (dx, dy).
+  function panBy(dx, dy) { const [ux, uy] = turnV(dx, dy, -view.rot); view.tx += ux; view.ty += uy; }
   function nearestChamber(mx, my, within = 12) {
     let best = null, bd = within;
     chNode.forEach((a, i) => { const nd = G().nodes[a], [x, y] = P(nd.x, nd.y), d = Math.hypot(x - mx, y - my); if (d < bd) { bd = d; best = i; } });
@@ -350,20 +369,61 @@ const App = (() => {
   }
   const picksPipes = () => !!layer().pickPipe;
   function wireMap() {
-    const c = cv(); let drag = null, moved = false;
+    // 20 Nov: left drag turns the map about its middle, right drag moves it, the wheel zooms toward the pointer.
+    // Touch: one finger turns, two move (and pinch to zoom). No tilt: the map stays flat.
+    const c = cv(), ptrs = new Map(); let drag = null, moved = false;
     c.addEventListener("wheel", e => {
       e.preventDefault();
-      const r = c.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, f = Math.exp(-e.deltaY * 0.0015);
-      const nk = Math.max(0.6, Math.min(14, view.k * f)), ff = nk / view.k;
-      view.tx = mx - (mx - view.tx) * ff; view.ty = my - (my - view.ty) * ff; view.k = nk; draw();
+      const r = c.getBoundingClientRect();
+      zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015));
     }, { passive: false });
-    c.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty }; moved = false; c.setPointerCapture(e.pointerId); });
+    c.addEventListener("contextmenu", e => e.preventDefault());
+    const local = p => { const r = c.getBoundingClientRect(); return [p.x - r.left, p.y - r.top]; };
+    // A gesture starts from the view as it is now, so a second finger landing (or lifting) carries on smoothly.
+    function start(mode) {
+      const ps = [...ptrs.values()];
+      if (!mode || !ps.length) { drag = null; return; }
+      const [x, y] = local(ps[0]);
+      drag = { mode, x, y, tx: view.tx, ty: view.ty, k: view.k };
+      if (mode === "turn") { const cx = view.w / 2, cy = view.h / 2; drag.dial = Math.hypot(x - cx, y - cy) > 40; drag.last = Math.atan2(y - cy, x - cx); drag.rot = view.rot; }
+      if (mode === "move" && ps.length > 1) { const [x2, y2] = local(ps[1]); drag.x = (x + x2) / 2; drag.y = (y + y2) / 2; drag.dist = Math.hypot(x2 - x, y2 - y); }
+    }
+    c.addEventListener("pointerdown", e => {
+      if (e.pointerType !== "touch" && e.button !== 0 && e.button !== 2) return;
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); c.setPointerCapture(e.pointerId);
+      if (ptrs.size === 1) moved = false; else moved = true; // a second finger is never a click
+      start(e.pointerType === "touch" ? (ptrs.size > 1 ? "move" : "turn") : e.button === 2 ? "move" : "turn");
+    });
+    function end(e, click) {
+      if (!ptrs.has(e.pointerId)) return;
+      ptrs.delete(e.pointerId);
+      if (click && !moved && drag && drag.mode === "turn" && !ptrs.size) {
+        const r = c.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+        const i = nearestChamber(mx, my); if (i === null && picksPipes()) onPipeClick(nearestPipe(mx, my)); else onMapClick(i);
+      }
+      if (ptrs.size) start(e.pointerType === "touch" ? (ptrs.size > 1 ? "move" : "turn") : drag && drag.mode); else drag = null;
+      c.style.cursor = "grab";
+    }
     c.addEventListener("pointermove", e => {
       const r = c.getBoundingClientRect();
-      if (drag) {
-        const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-        if (Math.hypot(dx, dy) > 4) moved = true;
-        if (moved) { view.tx = drag.tx + dx; view.ty = drag.ty + dy; c.style.cursor = "grabbing"; draw(); return; }
+      if (drag && ptrs.has(e.pointerId)) {
+        ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        const ps = [...ptrs.values()], [x, y] = local(ps[0]);
+        if (!moved && Math.hypot(x - drag.x, y - drag.y) > 4) moved = true;
+        if (!moved) return;
+        c.style.cursor = "grabbing";
+        if (drag.mode === "turn") {
+          if (drag.dial) { const a = Math.atan2(y - view.h / 2, x - view.w / 2); let d = a - drag.last; d = Math.atan2(Math.sin(d), Math.cos(d)); drag.last = a; view.rot += d; }
+          else view.rot = drag.rot + (x - drag.x) * 0.008; // started on the middle: turn by sideways drag
+          view.rot = Math.atan2(Math.sin(view.rot), Math.cos(view.rot));
+        } else {
+          // Move (and pinch-zoom with two fingers): the world point under the start point follows the pointer.
+          let mx = x, my = y, f = 1;
+          if (ps.length > 1 && drag.dist) { const [x2, y2] = local(ps[1]); mx = (x + x2) / 2; my = (y + y2) / 2; f = Math.hypot(x2 - x, y2 - y) / drag.dist; }
+          const nk = Math.max(0.6, Math.min(14, drag.k * f)), ff = nk / drag.k, [u0x, u0y] = turn(drag.x, drag.y, -view.rot), [u1x, u1y] = turn(mx, my, -view.rot);
+          view.tx = u1x - (u0x - drag.tx) * ff; view.ty = u1y - (u0y - drag.ty) * ff; view.k = nk;
+        }
+        draw(); return;
       }
       const mx = e.clientX - r.left, my = e.clientY - r.top;
       const h = nearestChamber(mx, my), hp = h === null && picksPipes() ? nearestPipe(mx, my) : null;
@@ -371,25 +431,26 @@ const App = (() => {
       h !== null ? showTip(h, e.clientX, e.clientY) : hp !== null ? showPipeTip(hp, e.clientX, e.clientY) : ($("#tip").hidden = true);
       c.style.cursor = h !== null || hp !== null ? "pointer" : "grab";
     });
-    c.addEventListener("pointerup", e => {
-      const r = c.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
-      if (!moved) { const i = nearestChamber(mx, my); if (i === null && picksPipes()) onPipeClick(nearestPipe(mx, my)); else onMapClick(i); }
-      drag = null; c.style.cursor = "grab";
-    });
+    c.addEventListener("pointerup", e => end(e, true));
+    c.addEventListener("pointercancel", e => end(e, false));
     c.addEventListener("pointerleave", () => { st.hover = null; st.hoverPipe = null; $("#tip").hidden = true; draw(); });
     $("#zin").onclick = () => zoomBy(1.4); $("#zout").onclick = () => zoomBy(1 / 1.4); $("#zreset").onclick = resetView;
+    if (window.MapHelp) MapHelp.attach($("#zhelp"), { sub: "Mouse controls for the map", turnSub: "Round, either way (no tilt)", flat: true,
+      touch: "one finger turns the map, two fingers move it, pinch to zoom" });
     $("#homesToggle").onchange = draw;
     window.addEventListener("resize", () => { fitView(); draw(); });
   }
-  function zoomBy(f) { const r = cv().getBoundingClientRect(), mx = r.width / 2, my = r.height / 2; const nk = Math.max(0.6, Math.min(14, view.k * f)), ff = nk / view.k; view.tx = mx - (mx - view.tx) * ff; view.ty = my - (my - view.ty) * ff; view.k = nk; draw(); }
+  function zoomBy(f) { zoomAt(view.w / 2, view.h / 2, f); }
   // Centre the map on a manhole, keeping the zoom (used by lists of manholes).
-  function focus(i) { const r = cv().getBoundingClientRect(), nd = G().nodes[chNode[i]], [x, y] = P(nd.x, nd.y); if (view.k < 2.5) { zoomBy(2.5 / view.k); return focus(i); } view.tx += r.width / 2 - x; view.ty += r.height / 2 - y; draw(); }
+  function focus(i) { const nd = G().nodes[chNode[i]], [x, y] = P(nd.x, nd.y); if (view.k < 2.5) { zoomBy(2.5 / view.k); return focus(i); } panBy(view.w / 2 - x, view.h / 2 - y); draw(); }
 
   // ------------------------------------------------------------------ drawing
   // Each view supplies a layer: pipe colour and width, manhole styles, labels and legend.
   function draw() {
     if (!view.base) return;
     const c = cv().getContext("2d"), g = G(), L = layer();
+    const want = (L.labels || []).some(l => l.ri != null && /\bedge\b/.test(l.cls || "")) ? EDGE_PAD : 30;
+    if (view.pad !== want) fitBase(want); // room round the network for the region tags
     c.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
     c.clearRect(0, 0, cv().width, cv().height);
     if ($("#homesToggle").checked) {
@@ -409,8 +470,9 @@ const App = (() => {
     $("#labels").innerHTML = labels.map(l => `<span class="lbl ${l.cls || ""}" style="left:${l.x}px;top:${l.y}px;${l.bg ? `background:${l.bg}` : ""}">${l.text}</span>`).join("");
     $("#legend").innerHTML = (L.legend || []).map(([c2, t, shape]) => `<span><i class="${shape || ""}" style="${shape === "ring" ? `border-color:${c2}` : shape === "line" ? `background:${c2}` : `background:${c2}`}"></i>${plain(t)}</span>`).join("") + plain(L.scale || "");
     const read = (isSimple() && PLAIN.read[st.sec]) || L.read; $("#read").innerHTML = read ? `<b>How to read the map</b> ${typeof read === "function" ? read() : read}` : ""; $("#read").hidden = !read;
-    $("#status").textContent = isSimple() ? "Model results, not yet checked against real readings · Drag to move, scroll to zoom" : "Uncalibrated model: a guide to where to look first · Drag to move, scroll to zoom";
+    $("#status").textContent = isSimple() ? "Model results, not yet checked against real readings · Left drag to turn, right drag to move, scroll to zoom" : "Uncalibrated model: a guide to where to look first · Left drag to turn, right drag to move, scroll to zoom";
     $("#legend").hidden = !(L.legend || []).length && !L.scale;
+    placeEdgeTags(c, labels); // last: it keeps clear of the legend and the reading note, so they must be filled in first
   }
   function line(c, p, col, w) {
     const g = G(); c.strokeStyle = col; c.lineWidth = w; c.lineCap = "round"; c.beginPath();
@@ -423,7 +485,91 @@ const App = (() => {
     if (v.ring) { c.strokeStyle = v.ring; c.lineWidth = v.rw || 2.2; c.beginPath(); c.arc(x, y, r + (v.fill ? 3 : 0), 0, 7); c.stroke(); }
   }
   // Region names sit at the region's outer edge, not its middle, so they do not read as sensor sites (19 Nov dry run).
-  const regionLabels = (colour) => S().regions.map((r, ri) => ({ node: paint.edge[ri], text: regionLabel(ri), cls: "region edge", bg: colour(ri) }));
+  const regionLabels = (colour) => S().regions.map((r, ri) => ({ node: paint.edge[ri], ri, text: regionLabel(ri), cls: "region edge", bg: colour(ri) }));
+  // 20 Nov: region tags sit outside the network, beside it, each joined to its region by a thin dashed leader, as in the
+  // story (simulation4/region_labels.js). A tag goes where the ray from the network's middle through its region's outer
+  // manhole meets a box round the network, then slides round that box to the nearest spot that covers nothing: not the
+  // network's outline, not another tag, not a sensor tag or callout, not the map's own boxes. Positions come from P, so
+  // tags follow pan, zoom and turn; the text stays upright. R9, the corridor, points at the corridor's own manholes.
+  const EDGE_PAD = 44;
+  let hullW = null, edgeState = [];
+  function hullWorld() {
+    if (hullW) return hullW;
+    const g = G(), p = []; for (let v = 0; v < g.px.length; v++) p.push([g.px[v], g.py[v]]);
+    p.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], up = [];
+    for (const q of p) { while (lo.length > 1 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+    for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (up.length > 1 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+    return (hullW = lo.slice(0, -1).concat(up.slice(0, -1)));
+  }
+  // Does box b overlap the convex polygon poly (screen points)? Separating axes: the box's two and each polygon edge's.
+  function boxHitsPoly(b, poly) {
+    const xs = poly.map(q => q[0]), ys = poly.map(q => q[1]);
+    if (b.r <= Math.min(...xs) || b.l >= Math.max(...xs) || b.b <= Math.min(...ys) || b.t >= Math.max(...ys)) return false;
+    const cs = [[b.l, b.t], [b.r, b.t], [b.r, b.b], [b.l, b.b]];
+    for (let i = 0; i < poly.length; i++) {
+      const [x1, y1] = poly[i], [x2, y2] = poly[(i + 1) % poly.length], nx = y1 - y2, ny = x2 - x1;
+      const pp = poly.map(q => q[0] * nx + q[1] * ny), pc = cs.map(q => q[0] * nx + q[1] * ny);
+      if (Math.max(...pc) <= Math.min(...pp) || Math.min(...pc) >= Math.max(...pp)) return false;
+    }
+    return true;
+  }
+  function placeEdgeTags(c, labels) {
+    edgeState = [];
+    const els = [...$("#labels").children], tags = labels.map((l, n) => ({ l, el: els[n] })).filter(t => t.el && t.l.ri != null && /\bedge\b/.test(t.l.cls || ""));
+    if (!tags.length) return;
+    const g = G(), hp = hullWorld().map(([x, y]) => P(x, y));
+    const x0 = Math.min(...hp.map(q => q[0])), x1 = Math.max(...hp.map(q => q[0])), y0 = Math.min(...hp.map(q => q[1])), y1 = Math.max(...hp.map(q => q[1]));
+    const lim = { l: 6, t: 6, r: view.w - 6, b: view.h - 6 }, pad = 12;
+    let R = { l: Math.max(lim.l, x0 - pad), t: Math.max(lim.t, y0 - pad), r: Math.min(lim.r, x1 + pad), b: Math.min(lim.b, y1 + pad) };
+    if (R.r - R.l < 40 || R.b - R.t < 40) R = { ...lim };
+    const W = R.r - R.l, H = R.b - R.t, PM = 2 * (W + H), cx = (R.l + R.r) / 2, cy = (R.t + R.b) / 2;
+    const wrap = $("#mapwrap").getBoundingClientRect(), box = e => { const b = e.getBoundingClientRect(); return { l: b.left - wrap.left, t: b.top - wrap.top, r: b.right - wrap.left, b: b.bottom - wrap.top }; };
+    const avoid = ["#tools", "#legend", "#read", "#status"].map(q => $(q)).filter(e => e && !e.hidden && e.offsetParent).map(box)
+      .concat(els.filter(e => !e.classList.contains("edge")).map(box)).filter(b => b.r > b.l && b.b > b.t);
+    const hit = (a, list) => list.some(b => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t);
+    const at = (t, s0) => {
+      s0 = ((s0 % PM) + PM) % PM; let x, y;
+      if (s0 < W) { x = R.l + s0; y = R.t - t.h / 2; }
+      else if (s0 < W + H) { x = R.r + t.w / 2; y = R.t + (s0 - W); }
+      else if (s0 < 2 * W + H) { x = R.r - (s0 - W - H); y = R.b + t.h / 2; }
+      else { x = R.l - t.w / 2; y = R.b - (s0 - 2 * W - H); }
+      x = Math.min(lim.r - t.w / 2, Math.max(lim.l + t.w / 2, x)); y = Math.min(lim.b - t.h / 2, Math.max(lim.t + t.h / 2, y));
+      return { x, y, l: x - t.w / 2, t: y - t.h / 2, r: x + t.w / 2, b: y + t.h / 2 };
+    };
+    tags.forEach(t => {
+      const nd = g.nodes[t.l.node]; [t.ax, t.ay] = P(nd.x, nd.y);
+      t.w = t.el.offsetWidth + 4; t.h = t.el.offsetHeight + 4; // + the tag's 2px outline
+      let dx = t.ax - cx, dy = t.ay - cy; if (Math.hypot(dx, dy) < 1) { dx = 0; dy = -1; }
+      const ts = [];
+      if (dx > 0) ts.push([(R.r - cx) / dx, "r"]); if (dx < 0) ts.push([(R.l - cx) / dx, "l"]);
+      if (dy > 0) ts.push([(R.b - cy) / dy, "b"]); if (dy < 0) ts.push([(R.t - cy) / dy, "t"]);
+      const [k, side] = ts.reduce((m, x) => x[0] < m[0] ? x : m, [Infinity, "t"]), px = cx + dx * k, py = cy + dy * k;
+      t.s = side === "t" ? px - R.l : side === "r" ? W + (py - R.t) : side === "b" ? W + H + (R.r - px) : 2 * W + H + (R.b - py);
+    });
+    tags.sort((a, b) => a.s - b.s);
+    const placed = [], step = 6;
+    tags.forEach(t => {
+      let best = null;
+      // First a spot clear of the network too; failing that (zoomed right in), one clear of the other tags and boxes.
+      for (const strict of [true, false]) {
+        for (let k = 0; k <= PM / (2 * step) && !best; k++) for (const sg of k ? [1, -1] : [1]) {
+          const b = at(t, t.s + sg * k * step), b2 = { l: b.l - 3, t: b.t - 2, r: b.r + 3, b: b.b + 2 };
+          if (!hit(b2, avoid) && !hit(b2, placed) && !(strict && boxHitsPoly(b, hp))) { best = b; break; }
+        }
+        if (best) break;
+      }
+      if (!best) best = at(t, t.s);
+      placed.push(best);
+      t.el.style.left = best.x + "px"; t.el.style.top = best.y + "px";
+      // The leader ends at the region's manhole nearest the tag: its edge, not a site inside it.
+      let end = [t.ax, t.ay], d = Infinity;
+      (S().regions[t.l.ri].manholes || []).forEach(i => { const n2 = g.nodes[chNode[i]]; if (!n2) return; const q = P(n2.x, n2.y), e = Math.hypot(q[0] - best.x, q[1] - best.y); if (e < d) { d = e; end = q; } });
+      c.save(); c.strokeStyle = t.l.bg || PAL.hi; c.lineWidth = 1.5; c.setLineDash([4, 3]); c.globalAlpha = 0.9;
+      c.beginPath(); c.moveTo(best.x, best.y); c.lineTo(end[0], end[1]); c.stroke(); c.restore();
+      edgeState.push({ text: t.el.textContent, ri: t.l.ri, box: { l: best.l + 2, t: best.t + 2, r: best.r - 2, b: best.b - 2 }, end, anchor: [t.ax, t.ay] });
+    });
+  }
   const sensorLabels = (set, cls = "sensor") => set.map((i, j) => ({ node: chNode[i], text: "S" + (j + 1), cls }));
   const triagePipe = (dim = false) => p => { const ri = pipeRegion(p); const t = ri >= 0 && D().triage[regionId(ri)]; return t && t !== "leave" ? [COL[t] + (dim ? "88" : ""), 2.2] : [COL.pipe, 1.1]; };
   // R9 is a corridor laid over other regions, so the base colouring above never reaches it: it is drawn as an overlay.
@@ -1630,7 +1776,7 @@ const App = (() => {
   function go(sec, push = true) {
     Object.values(st).forEach(v => v && v.playing && stopPlay(v));
     st.sec = sec; st.sel = null; st.selPipe = null; $("#panel").innerHTML = ""; behindOpen = false;
-    view.k = 1; view.tx = 0; view.ty = 0; // each view opens on the whole network
+    view.k = 1; view.tx = 0; view.ty = 0; view.rot = 0; // each view opens on the whole network, unturned
     HANDLERS[sec].init && HANDLERS[sec].init();
     $$("#secs button").forEach(b => b.classList.toggle("on", b.dataset.sec === sec));
     $$("#secs .ch").forEach(c => c.classList.toggle("on", !!c.querySelector("button.on")));
@@ -1695,6 +1841,8 @@ const App = (() => {
       if (e.key === "t" || e.key === "T") { const k = Object.keys(THEMES); setTheme(k[(k.indexOf(document.documentElement.dataset.theme) + 1) % k.length]); }
     });
     fitView(); wireMap();
+    // Region tags are placed from measured boxes (theirs, the legend's, the status line's): measure again once the web font is in.
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => draw());
     const start = SECTIONS.find(s => "#" + s[0] === location.hash);
     go(start ? start[0] : "problem", false);
     window.addEventListener("hashchange", () => { const s = SECTIONS.find(x => "#" + x[0] === location.hash); if (s && s[0] !== st.sec) go(s[0], false); });
@@ -1703,11 +1851,15 @@ const App = (() => {
   // Where a manhole is on screen, for tests.
   function screenOf(name) { const nd = G().nodes[idx[name]], [x, y] = P(nd.x, nd.y), r = cv().getBoundingClientRect(); return { x: r.left + x, y: r.top + y }; }
   const toScreen = (x, y) => { const [a, b] = P(x, y), r = cv().getBoundingClientRect(); return { x: r.left + a, y: r.top + b }; };
+  // The inverse, for tests: a page point back to plan coordinates. And the map's state, its outline and region tags (canvas px).
+  const toWorld = (x, y) => { const r = cv().getBoundingClientRect(), [a, b] = unP(x - r.left, y - r.top); return { x: a, y: b }; };
+  const mapView = () => ({ k: view.k, tx: view.tx, ty: view.ty, rot: view.rot, w: view.w, h: view.h });
+  const mapTags = () => ({ tags: edgeState.map(t => ({ ...t })), outline: hullWorld().map(([x, y]) => P(x, y)), w: view.w, h: view.h });
   // simple.js builds the plain pages from these.
   const _ = { $, $$, G, R, S, D, C, COL, pal: () => PAL, heat, rgba, nameOf, regionId, regionIndex, caseOf, caseLabel, wetTags, allTags, stepsTo, FULL, pct, money, list,
     regionLabel, rowAt, riseAt, baseMm, stepLabel, table, trow, tcol, seenSet, score, SIM4_TEST, planIdx, ladderIdx, H: () => H, util, SCREENS, responseAt, spearman, st,
     focus, manholeFacts, bars, lineChart, cutaway, stat, chips, fold, nextBtn, on, refresh, draw, go, HANDLERS, ALTERNATIVES, PIPELINE, SENSOR_TYPES, METHODS, methodSets,
     triagePipe, triageOverlay, sensorLabels, load, homeFlow, ladderSvg, planCards, planMoves, tiles, surTiles, regionRise, plan: () => PLAN, planChips, planName, planMethod, setPlan, ladderIdx, ladderWorstIdx, GF, LIB, verdict, regionLabels, REGION_COLS, riseColour, riseScale, sensorWhy, stopPlay, play, PRICE, SECTIONS, setMode, isSimple };
   const registerPlain = o => { Object.assign(PLAIN.pages, o.pages || {}); Object.assign(PLAIN.read, o.read || {}); PLAIN.words.push(...(o.words || [])); };
-  return { _, registerPlain, setMode, isSimple: () => isSimple(), init, prepare, go, st, toScreen, setTheme, togglePresent, THEMES, score, greedy, ladderIdx, planIdx, SIM4_TEST, unseenWeather, screenOf, chamberName: i => R().chambers[i], targetPool, screenRank, spearman, responseAt, SCREENS, util, H: () => H, SECTIONS };
+  return { _, registerPlain, setMode, isSimple: () => isSimple(), init, prepare, go, st, toScreen, setTheme, togglePresent, THEMES, score, greedy, ladderIdx, planIdx, SIM4_TEST, unseenWeather, screenOf, chamberName: i => R().chambers[i], targetPool, screenRank, spearman, responseAt, SCREENS, util, H: () => H, SECTIONS, toWorld, mapView, mapTags, setRot: a => { view.rot = a; draw(); } };
 })();

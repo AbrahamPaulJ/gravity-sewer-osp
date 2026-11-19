@@ -365,6 +365,67 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   ok("no words name the client or the suburb, in any view", !/SA Water|Walkerville|Rostrevor|Stonyfell|Woodforde|Malvern|Bolivar|Adelaide/i.test(names));
   await ev(`App.setMode('detailed')`); let all = ""; for (const s of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${s}')`); await wait(150); all += await ev("document.body.textContent"); } await ev(`App.setMode('simple')`);
   const unsourced = /US EPA|Auckland|88\.6|Sydney Water|United Utilities|Nemhauser|Dual use|[Ff]loat[^.]{0,80}(150 mm|5 to 10 mm)|\u2014/.exec(names + all);
+  // 20 Nov: the map turns (left drag), moves (right drag) and zooms (wheel); region tags sit outside the network.
+  {
+    await ev(`App.setMode('simple')`); await ev(`App.go('conclude')`); await wait(300);
+    const C = await ev(`(()=>{const r=document.querySelector('#map').getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2,l:r.left,t:r.top,w:r.width,h:r.height}})()`);
+    const mouse = async (type, x, y, button, buttons) => send("Input.dispatchMouseEvent", { type, x, y, button, buttons, clickCount: 1 });
+    await ev(`App.setRot(0.9)`);
+    const rt = await ev(`(()=>{const pts=[[${C.x - 200},${C.y - 120}],[${C.x + 150},${C.y + 90}],[${C.x},${C.y}]];let e=0;for(const[x,y]of pts){const w=App.toWorld(x,y),s=App.toScreen(w.x,w.y);e=Math.max(e,Math.hypot(s.x-x,s.y-y))}
+      const n=App.chamberName(App.planIdx(5)[0]),p=App.screenOf(n),w=App.toWorld(p.x,p.y),s=App.toScreen(w.x,w.y);return Math.max(e,Math.hypot(s.x-p.x,s.y-p.y))})()`);
+    ok("map turn: screen to world to screen round-trips at a 0.9 rad turn", rt < 1e-6, rt);
+    await ev(`App.st.sel=null`); await clickSensor(1); await wait(200);
+    ok("map turn: clicking a sensor's manhole on the turned map still picks it", await ev(`App.st.sel===App.planIdx(5)[1]`), await ev(`App.st.sel`));
+    const w0 = await ev(`App.toWorld(${C.x + 60},${C.y - 40})`), v0 = await ev(`App.mapView()`);
+    await send("Input.dispatchMouseEvent", { type: "mouseWheel", x: C.x + 60, y: C.y - 40, deltaX: 0, deltaY: -240 }); await wait(250);
+    const w1 = await ev(`App.toWorld(${C.x + 60},${C.y - 40})`), v1 = await ev(`App.mapView()`);
+    ok("map turn: the wheel zooms toward the pointer on the turned map", v1.k > v0.k * 1.2 && Math.hypot(w1.x - w0.x, w1.y - w0.y) < 0.5, JSON.stringify([w0, w1, v0.k, v1.k]));
+    // Right drag moves: the plan point under the pointer follows it, the turn holds.
+    const a0 = await ev(`App.toWorld(${C.x - 50},${C.y + 20})`), r0 = (await ev(`App.mapView()`)).rot;
+    await mouse("mouseMoved", C.x - 50, C.y + 20, "none", 0); await mouse("mousePressed", C.x - 50, C.y + 20, "right", 2);
+    for (let i = 1; i <= 6; i++) { await mouse("mouseMoved", C.x - 50 + i * 20, C.y + 20 + i * 10, "right", 2); await wait(20); }
+    await mouse("mouseReleased", C.x + 70, C.y + 80, "right", 0); await wait(200);
+    const a1 = await ev(`App.toWorld(${C.x + 70},${C.y + 80})`), r1 = (await ev(`App.mapView()`)).rot;
+    ok("map: right drag moves the map (the point grabbed follows the pointer), without turning it", Math.hypot(a1.x - a0.x, a1.y - a0.y) < 0.5 && Math.abs(r1 - r0) < 1e-9, JSON.stringify([a0, a1, r0, r1]));
+    // Left drag turns it about the middle: a quarter circle round the centre turns the map a quarter turn.
+    await ev(`App.setRot(0)`); const k0 = (await ev(`App.mapView()`)).k;
+    await mouse("mouseMoved", C.x + 150, C.y, "none", 0); await mouse("mousePressed", C.x + 150, C.y, "left", 1);
+    for (let i = 1; i <= 10; i++) { const a = i / 10 * Math.PI / 2; await mouse("mouseMoved", C.x + 150 * Math.cos(a), C.y + 150 * Math.sin(a), "left", 1); await wait(20); }
+    await mouse("mouseReleased", C.x, C.y + 150, "left", 0); await wait(200);
+    const v2 = await ev(`App.mapView()`);
+    ok("map: left drag turns the map about its middle (a quarter circle, a quarter turn), zoom unchanged", Math.abs(v2.rot - Math.PI / 2) < 0.05 && Math.abs(v2.k - k0) < 1e-9, JSON.stringify(v2));
+    ok("map: the browser's right-click menu is suppressed on the map", await ev(`!document.querySelector('#map').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))`));
+    const tagsOk = await ev(`(()=>{const m=App.mapTags(),T=m.tags,ov=(a,b)=>a.l<b.r&&a.r>b.l&&a.t<b.b&&a.b>b.t;return T.length===9&&T.every((x,i)=>T.every((y,j)=>i===j||!ov(x.box,y.box)))&&T.every(x=>x.box.l>=0&&x.box.t>=0&&x.box.r<=m.w&&x.box.b<=m.h)})()`);
+    ok("map turn: region tags follow the turn, still apart and inside the map", tagsOk);
+    await click('#zreset'); await wait(200);
+    ok("map: the fit button shows the whole network and turns it back to north up", await ev(`(()=>{const v=App.mapView();return v.rot===0&&v.k===1&&v.tx===0&&v.ty===0})()`));
+    await click('#zhelp'); await wait(250);
+    ok("map: a '?' beside the zoom buttons opens the controls card (turn, move, zoom; no tilt)", await ev(`(()=>{const p=document.querySelector('#zhelpPop');return !!p&&!p.hidden&&/Drag to turn/.test(p.textContent)&&/Drag to move/.test(p.textContent)&&/zoom/.test(p.textContent)&&/no tilt/.test(p.textContent)&&!/tilt, both/.test(p.textContent)})()`));
+    await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 }); await wait(150);
+    ok("map: the status line says left drag turns, right drag moves", /Left drag to turn, right drag to move, scroll to zoom/.test(await ev(`document.querySelector('#status').textContent`)));
+    // Region tags on every page that has them, both reading levels: outside the network's outline, apart, inside the map.
+    const pages = [["simple", "regions"], ["simple", "conclude"], ["detailed", "regions"], ["detailed", "conclude"], ["detailed", "repeat"], ["detailed", "approach", "2a"], ["detailed", "approach", "4"]];
+    let tBad = [];
+    for (const [mode, sec, stp] of pages) {
+      await ev(`App.setMode('${mode}')`); await ev(`App.go('${sec}')`); await wait(sec === "repeat" ? 700 : 300);
+      if (stp) { await ev(`(()=>{App.st.approach.alt=null;App.st.approach.step='${stp}';App._.refresh()})()`); await wait(300); }
+      const r = await ev(`(()=>{const m=App.mapTags(),T=m.tags,P=m.outline,ov=(a,b)=>a.l<b.r&&a.r>b.l&&a.t<b.b&&a.b>b.t;
+        const inPoly=(x,y)=>{let s=0;for(let i=0;i<P.length;i++){const[a,b]=P[i],[c,d]=P[(i+1)%P.length];const z=(c-a)*(y-b)-(d-b)*(x-a);if(z!==0){if(s===0)s=Math.sign(z);else if(Math.sign(z)!==s)return false}}return true};
+        const segX=(p1,p2,q1,q2)=>{const o=(a,b,c)=>Math.sign((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]));return o(p1,p2,q1)!==o(p1,p2,q2)&&o(q1,q2,p1)!==o(q1,q2,p2)};
+        const hitsNet=b=>{const cs=[[b.l,b.t],[b.r,b.t],[b.r,b.b],[b.l,b.b]];if(cs.some(c=>inPoly(c[0],c[1])))return true;if(P.some(q=>q[0]>b.l&&q[0]<b.r&&q[1]>b.t&&q[1]<b.b))return true;
+          for(let i=0;i<4;i++)for(let j=0;j<P.length;j++)if(segX(cs[i],cs[(i+1)%4],P[j],P[(j+1)%P.length]))return true;return false};
+        const bad=[];if(T.length!==9)bad.push('count '+T.length);
+        T.forEach((x,i)=>{if(hitsNet(x.box))bad.push(x.text+' on the network');if(T.some((y,j)=>i!==j&&ov(x.box,y.box)))bad.push(x.text+' overlaps a tag');if(x.box.l<0||x.box.t<0||x.box.r>m.w||x.box.b>m.h)bad.push(x.text+' off the map');
+          const dx=(x.box.l+x.box.r)/2-x.end[0],dy=(x.box.t+x.box.b)/2-x.end[1];if(Math.hypot(dx,dy)<15)bad.push(x.text+' no leader')});
+        const r9=T.find(x=>/^R9/.test(x.text));if(r9){const S=SIM3_REGIONS.regions.find(q=>q.id==='R9'),pts=S.manholes.map(i=>App.screenOf(App.chamberName(i))),c=document.querySelector('#map').getBoundingClientRect();
+          if(!pts.some(p=>Math.hypot(p.x-c.left-r9.end[0],p.y-c.top-r9.end[1])<0.5))bad.push('R9 leader not on the corridor')}
+        return bad})()`);
+      if (r && r.length) tBad.push(`${mode}/${sec}${stp || ""}: ${r.join(", ")}`);
+      await shot(`20_tags_${mode}_${sec}${stp || ""}`);
+    }
+    await ev(`App.setMode('simple')`);
+    ok("region tags: outside the network's outline, apart, inside the map, each with a leader (R9's to the corridor), on every page with tags", !tBad.length, tBad.join(" | "));
+  }
   ok("no unsourced claims, float figures or em dashes, in either reading level", !unsourced, unsourced && (names + all).slice(Math.max(0, unsourced.index - 80), unsourced.index + 60));
   ok("no page errors", !logs.length, logs.join("\n"));
   console.log(`\n${pass} passed, ${fail} failed`);

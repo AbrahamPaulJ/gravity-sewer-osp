@@ -46,11 +46,11 @@ html[data-theme="light"] .mh-card.l{--mh-c:#0969da} html[data-theme="light"] .mh
   // A flat block of town, seen at an angle, with arrows round it (turn) or out from it (move).
   const plate = `<path d="M75 20 L118 36 L75 52 L32 36 Z" fill="color-mix(in srgb, currentColor 14%, transparent)" stroke="currentColor" stroke-opacity=".55" stroke-width="1.2"/>
     <g fill="currentColor" fill-opacity=".5"><rect x="66" y="26" width="6" height="10"/><rect x="76" y="29" width="5" height="8"/><rect x="58" y="33" width="5" height="6"/><rect x="84" y="35" width="6" height="5"/><rect x="72" y="39" width="5" height="6"/></g>`;
-  const turnArt = c => `<svg class="mh-art" viewBox="0 0 150 72" aria-hidden="true">${plate}
+  const turnArt = (c, flat) => `<svg class="mh-art" viewBox="0 0 150 72" aria-hidden="true">${plate}
     <path d="M20 40 C 22 60, 128 60, 130 40" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round"/>
-    <path d="M124 45 L131 38 L134 48" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M124 45 L131 38 L134 48" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${flat ? "</svg>" : `
     <path d="M75 6 C 92 8, 94 64, 75 66" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round" stroke-opacity=".85"/>
-    <path d="M81 63 L74 67 L80 71" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-opacity=".85"/></svg>`;
+    <path d="M81 63 L74 67 L80 71" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-opacity=".85"/></svg>`}`;
   const arrow = (x1, y1, x2, y2, c) => {
     const a = Math.atan2(y2 - y1, x2 - x1), h = 6, p = (t, d) => [x2 - h * Math.cos(a - t) * d, y2 - h * Math.sin(a - t) * d];
     const [ax, ay] = p(0.6, 1), [bx, by] = p(-0.6, 1);
@@ -59,26 +59,29 @@ html[data-theme="light"] .mh-card.l{--mh-c:#0969da} html[data-theme="light"] .mh
   const moveArt = c => `<svg class="mh-art" viewBox="0 0 150 72" aria-hidden="true">${plate}
     ${arrow(30, 36, 8, 36, c)}${arrow(120, 36, 142, 36, c)}${arrow(75, 18, 75, 3, c)}${arrow(75, 54, 75, 69, c)}</svg>`;
   const touch = `<svg viewBox="0 0 24 30" aria-hidden="true"><path d="M9 14 V5 a2 2 0 0 1 4 0 v8 l5.2 1.3 a2.4 2.4 0 0 1 1.8 2.6 L19 25 a3 3 0 0 1 -3 3 H11 a3 3 0 0 1 -2.4 -1.2 L4.4 21 a2 2 0 0 1 3 -2.6 L9 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  function html() {
+  // Wording can be changed per page (the product demo's flat map turns but does not tilt); the defaults are the 3D map's.
+  const TEXT = { sub: "Mouse controls for the 3D map", turnSub: "Round and tilt, both ways", flat: false,
+    touch: "one finger turns the map, two fingers move it" };
+  function html(t) {
     const L = "var(--mh-c)";
-    return `<div class="mh-head"><span class="mh-q" aria-hidden="true">?</span><div><b>Map controls</b><span>Mouse controls for the 3D map</span></div></div>
+    return `<div class="mh-head"><span class="mh-q" aria-hidden="true">?</span><div><b>Map controls</b><span>${t.sub}</span></div></div>
       <div class="mh-grid">
         <div class="mh-card l"><div class="mh-top">${mouse("l", L)}<span class="mh-pill">Left click</span></div>
-          <b>Drag to turn the map</b><span class="mh-sub">Round and tilt, both ways</span>${turnArt(L)}</div>
+          <b>Drag to turn the map</b><span class="mh-sub">${t.turnSub}</span>${turnArt(L, t.flat)}</div>
         <div class="mh-card r"><div class="mh-top">${mouse("r", L)}<span class="mh-pill">Right click</span></div>
           <b>Drag to move the map</b><span class="mh-sub">Left, right, up and down</span>${moveArt(L)}</div>
       </div>
       <div class="mh-row">${mouse("w", "currentColor")}<div><b>Scroll</b> to zoom in or out<div class="mh-sub">towards wherever the pointer is</div></div></div>
-      <div class="mh-row">${touch}<div><b>On a touch screen</b><div class="mh-sub">one finger turns the map, two fingers move it</div></div></div>`;
+      <div class="mh-row">${touch}<div><b>On a touch screen</b><div class="mh-sub">${t.touch}</div></div></div>`;
   }
   let styled = false;
-  function attach(btn) {
+  function attach(btn, text) {
     if (!btn || btn._mapHelp) return null;
     if (!styled) { const st = document.createElement("style"); st.textContent = CSS; document.head.appendChild(st); styled = true; }
     const pop = document.createElement("div");
     pop.className = "mh-pop"; pop.id = (btn.id || "mapHelp") + "Pop"; pop.hidden = true;
     pop.setAttribute("role", "dialog"); pop.setAttribute("aria-label", "Map controls");
-    pop.innerHTML = html();
+    pop.innerHTML = html(Object.assign({}, TEXT, text || {}));
     document.body.appendChild(pop);
     btn.setAttribute("aria-controls", pop.id);
     btn.setAttribute("aria-expanded", "false");

@@ -199,6 +199,11 @@ table.alts td.num{font-weight:700;color:var(--ink)}
 #tools{position:absolute;right:14px;top:14px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;zoom:var(--z)}
 #tools button{width:34px;height:34px;font:600 17px/1 var(--font);color:var(--ink);background:var(--overlay);border:1px solid var(--line);border-radius:8px;cursor:pointer}
 #tools label{background:var(--overlay);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12.5px;color:var(--dim);display:flex;gap:6px;align-items:center}
+/* 20 Nov: the map controls card (simulation4/map_help.js) from the "?" under the zoom buttons, in the demo's themes. */
+#tools #zhelp{border-radius:50%;color:var(--dim)} #tools #zhelp:hover{color:var(--ink)}
+.mh-pop{background:var(--panel)!important;color:var(--ink)!important}
+html:is([data-theme="paper"],[data-theme="clear"]) .mh-pop{box-shadow:0 12px 32px #1f232833}
+html:is([data-theme="paper"],[data-theme="clear"]) .mh-card.l{--mh-c:#0969da} html:is([data-theme="paper"],[data-theme="clear"]) .mh-card.r{--mh-c:#8250df}
 #tip{position:fixed;z-index:9;pointer-events:none;background:var(--tip);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px;max-width:320px;box-shadow:0 2px 10px rgba(0,0,0,.18)}
 #tip b{display:block} #tip span{display:block;color:var(--dim)} #tip em{display:block;font-style:normal;color:var(--sensor);margin-top:2px;font-weight:600}
 /* How to read the map: next to the map, not in the panel (spatial contiguity). */
@@ -295,17 +300,18 @@ table.cmp tr.grp th{text-align:left;font-size:11px;text-transform:uppercase;lett
 <aside id="panel" aria-live="polite"></aside>
 <aside id="behind" hidden aria-label="Behind this step"></aside>
 <main id="mapwrap">
-  <canvas id="map" aria-label="Map of the sewer network: drag to move, scroll to zoom, hover or click a manhole"></canvas>
+  <canvas id="map" aria-label="Map of the sewer network: left drag to turn, right drag to move, scroll to zoom, hover or click a manhole"></canvas>
   <div id="labels"></div>
   <div id="tools">
     <button id="zin" type="button" title="Zoom in">+</button>
     <button id="zout" type="button" title="Zoom out">−</button>
-    <button id="zreset" type="button" title="Show the whole network">⤢</button>
+    <button id="zreset" type="button" title="Show the whole network, unturned">⤢</button>
+    <button id="zhelp" type="button" aria-label="Map controls">?</button>
     <label><input type="checkbox" id="homesToggle"> Homes</label>
   </div>
   <div id="read" hidden></div>
   <div id="legend" hidden></div>
-  <div id="status">Uncalibrated model: a guide to where to look first · Drag to move, scroll to zoom</div>
+  <div id="status">Uncalibrated model: a guide to where to look first · Left drag to turn, right drag to move, scroll to zoom</div>
 </main>
 <div id="tip" hidden></div>
 
@@ -317,7 +323,8 @@ table.cmp tr.grp th{text-align:left;font-size:11px;text-transform:uppercase;lett
 <script src="data/extra_methods.js?v=1"></script>
 <script src="../simulation4/data/ninh_compare.js?v=4"></script>
 <script src="../simulation4/library.js?v=3"></script>
-<script src="app.js?v=57"></script>
+<script src="../simulation4/map_help.js?v=2"></script>
+<script src="app.js?v=58"></script>
 <script src="simple.js?v=30"></script>
 <script>App.init();</script>
 </body>
