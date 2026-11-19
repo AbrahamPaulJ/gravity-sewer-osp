@@ -34,7 +34,10 @@ window.SIM4_LIBRARY = {
      "match": ["Ding, Z\\. et al\\. \\(2025\\)", "Ding et al\\. \\(2025\\)"]},
     {"key": "wani2015", "paper": "57", "pdf": "./contributors/wimukthi/papers/Omar_2015_Parameter-Estimation-of-Urban-Drainage-Models-Using-Binary-Observations.pdf",
      "title": "Parameter estimation of urban drainage models using binary observations from low-cost sensors",
-     "match": ["Wani, O\\., Blumensaat, F\\., Scheidegger, A\\., Doppler, T\\. and Rieckermann, J\\. \\(2015\\)", "Wani et al\\. \\(2015\\)"]}
+     "match": ["Wani, O\\., Blumensaat, F\\., Scheidegger, A\\., Doppler, T\\. and Rieckermann, J\\. \\(2015\\)", "Wani et al\\. \\(2015\\)"]},
+    {"key": "he2025", "paper": "49", "pdf": "./contributors/rijoy-john/papers/2025_Li He_Spatiotemporal graph convolutional network using sparse monitoring data.pdf",
+     "title": "Spatiotemporal graph convolutional network using sparse monitoring data for real-time water-level reconstruction in urban drainage networks",
+     "match": ["He et al\\. \\(2025\\)", "He et al\\. 2025"]}
   ]
 };
 (function (L) {

@@ -43,25 +43,50 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await click('#tabs button[data-tab="demo"]');
   let ready = false; for (let i = 0; i < 60 && !ready; i++) { await wait(250); ready = await ev(`(()=>{const f=document.querySelector('#pane-demo iframe');return !!(f && f.contentDocument && f.contentDocument.body && f.contentDocument.body.dataset.ready==='1')})()`); }
   ok("demo tab loads the demo in its pane", ready);
+  ok("demo tab opens in the light theme", await ev(`document.querySelector('#pane-demo iframe').contentDocument.documentElement.dataset.theme==='paper'`));
   await shot("00_site_tab");
 
   // The demo alone
   await send("Page.navigate", { url: `http://127.0.0.1:${HTTP}/demo/index.html` });
   for (let i = 0; i < 80; i++) { await wait(250); if (await ev("document.body.dataset.ready")) break; }
   ok("opens in the Simple reading level by default", await ev(`App.isSimple()`));
+  ok("opens in the light theme, on The problem", await ev(`document.documentElement.dataset.theme==='paper' && App.st.sec==='problem'`));
+  // 19 Nov dry run: the presenting view has no sentences; a heading, a few words, numbers and charts only
+  ok("problem: three items and the value line, no sentences shown", await ev(`document.querySelectorAll('.pitems > div').length===3 && !!document.querySelector('.valueline')`) && /Growth is filling sewers sized for fewer homes/.test(await panel()));
+  const SENT = `[...document.querySelectorAll('#panel :is(.lede,.hint,.analogy,.thread)')].filter(e=>e.offsetParent!==null).length`;
+  let quiet = true, quietBad = "", noScroll = true, scrollBad = "";
+  for (const [w, h] of [[1920, 1080], [1366, 768]]) {
+    await send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile: false }); await wait(300);
+    for (const v of await ev(`App.SECTIONS.map(s=>s[0])`)) {
+      await ev(`App.go('${v}')`); await wait(v === "compare" || v === "check" || v === "future" ? 900 : 300);
+      const n = await ev(SENT); if (n) { quiet = false; quietBad += v + ":" + n + " "; }
+      const sc = await ev(`(()=>{const p=document.querySelector('#panel');return p.scrollHeight-p.clientHeight})()`); if (sc > 2) { noScroll = false; scrollBad += `${v}@${w}:${sc}px `; }
+      await shot(`present_${w}_${v}`);
+    }
+  }
+  ok("Simple, as presented: no sentence blocks on any page", quiet, quietBad);
+  ok("Simple, as presented: no panel scrolling at 1920x1080 or 1366x768", noScroll, scrollBad);
+  await send("Emulation.setDeviceMetricsOverride", { width: 1600, height: 900, deviceScaleFactor: 1, mobile: false }); await ev(`App.go('problem')`); await wait(200);
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "n", code: "KeyN", windowsVirtualKeyCode: 78 }); await wait(200);
+  ok("N brings the sentences back (Notes)", await ev(`document.documentElement.hasAttribute('data-notes')`));
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "n", code: "KeyN", windowsVirtualKeyCode: 78 }); await wait(200);
   await ev(`App.setMode('detailed')`); await wait(200);
   const fig = await ev(`(()=>{const o=App.SIM4_TEST();const a=App.score(App.ladderIdx(1),o),b=App.score(App.ladderIdx(5),o),c=App.score(App.ladderIdx(5),{...o,mm:25});return [a.worst,a.avg,a.warned,b.worst,b.avg,b.warned,b.warnable,c.worst,c.avg].map(x=>Math.round(x*100)/100)})()`);
   ok("engine reproduces Sim 4: 0%/53%, 8 warned; 81%/94%, 11 of 11; 25 mm 36%/45%", JSON.stringify(fig) === JSON.stringify([0, 0.53, 8, 0.81, 0.94, 11, 11, 0.36, 0.45]), JSON.stringify(fig));
-  ok("twelve views in four chapters", await ev(`document.querySelectorAll('#secs .ch').length===4 && document.querySelectorAll('#secs button[data-sec]').length===12`));
+  ok("fifteen views in four chapters, The problem first", await ev(`document.querySelectorAll('#secs .ch').length===4 && document.querySelectorAll('#secs button[data-sec]').length===15 && document.querySelector('#secs button[data-sec]').dataset.sec==='problem'`));
+  ok("the plan defaults to Buy in stages (the nested list)", await ev(`App._.plan()==='stages' && App.planIdx(5).join()===App.ladderIdx(5).join()`));
+  ok("sensor labels read S1 to S5", await ev(`(()=>{App.go('conclude');return [...document.querySelectorAll('#labels .lbl.sensor')].map(e=>e.textContent).join()==='S1,S2,S3,S4,S5'})()`));
+  await ev(`App.go('setting')`); await wait(300);
 
   // 1 Setting
   ok("setting: a cutaway and a state badge", await ev(`!!document.querySelector('svg.cut') && !!document.querySelector('.badge')`));
-  ok("setting starts on a surcharged manhole", /Surcharged/.test(await ev(`document.querySelector('.badge').textContent`)));
+  ok("setting starts on the design wet day", await ev(`App.st.setting.tag===SIM4.design`));
   await input("#stS", -1); await wait(150);
-  ok("setting: no growth, the badge drops", !/Surcharged/.test(await ev(`document.querySelector('.badge').textContent`)), await ev(`document.querySelector('.badge').textContent`));
+  ok("setting: no growth, the badge reads below the limit", !/Surcharged/.test(await ev(`document.querySelector('.badge').textContent`)), await ev(`document.querySelector('.badge').textContent`));
   await shot("01_setting");
   // 2 Network
   await click('#secs button[data-sec="network"]'); await wait(300);
+  ok("network: 2,851 connected beside 2,565 in the regions, and the 2041 source", await ev(`(()=>{const t=document.querySelector('#panel').textContent;return /2,851/.test(t)&&/2,565/.test(t)&&/PlanSA 2021 to 2041/.test(t)})()`), await ev(`document.querySelector('#panel .stats').textContent`));
   ok("network: histogram", await ev(`document.querySelectorAll('svg.hist .click').length>3`));
   await click('svg.hist g.click:last-of-type'); await wait(200);
   ok("network: clicking a bar picks those pipes out", await ev(`App.st.network.bin!==null`));
@@ -72,7 +97,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   // Approach, end to end
   await click('#secs button[data-sec="approach"]'); await wait(300);
   ok("approach: seven pipeline steps (step 2 in three parts) and four approaches", await ev(`document.querySelectorAll('.pipe6 button').length===7 && document.querySelectorAll('.pipe6 .nest button').length===3 && document.querySelectorAll('table.alts tr[data-alt]').length===4`));
-  ok("approach: ours scores 88% worst, the desk study 25%", await ev(`(()=>{const v=id=>document.querySelector('tr[data-alt="'+id+'"] td.num').textContent;return v('ours')==='88%'&&v('desk')==='25%'&&v('ml')==='–'})()`));
+  ok("approach: ours (buy in stages) scores 81% worst, the desk study 25%", await ev(`(()=>{const v=id=>document.querySelector('tr[data-alt="'+id+'"] td.num').textContent;return v('ours')==='81%'&&v('desk')==='25%'&&v('ml')==='–'})()`));
   await click('[data-ap="3"]'); await wait(200);
   ok("approach: a step shows its detail link", /In detail: What the runs show/.test(await panel()));
   await click('tr[data-alt="judgement"]'); await wait(200);
@@ -82,7 +107,8 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   ok("approach: the detail link opens that view", await ev(`App.st.sec==='network'`));
   // 3 Simulate
   await click('#secs button[data-sec="simulate"]'); await wait(300);
-  ok("simulate: 504 simulated scenarios", /504/.test(await panel()));
+  ok("simulate: 504 simulated scenarios, as a funnel to 315, 175 and 119", /504/.test(await panel()) && /315/.test(await panel()) && /175/.test(await panel()) && /119/.test(await panel()), await panel());
+  ok("simulate: the design wet day in plain words", /the wet day these pipes are designed to carry/.test(await panel()));
   await click('[data-preset="2"]'); await wait(200);
   ok("simulate preset: the corridor on a wetter day spills", /\b1 newly spilling/.test(await panel()));
   await click('[data-stage="3"]'); await wait(150);
@@ -96,21 +122,38 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await click('[data-find]'); await wait(300);
   ok("insights: clicking a hotspot selects it", await ev(`App.st.sel!==null`));
   await shot("04_insights");
+  // Which regions
+  await click('#secs button[data-sec="regions"]'); await wait(300);
+  ok("regions: a bar per region, coloured by action, with 2 Monitor / 3 Watch / 4 Leave", await ev(`document.querySelectorAll('svg.regchart rect').length===6 && (document.querySelector('svg.regchart').textContent.match(/not reached/g)||[]).length===3`) && /2 Monitor 3 Watch 4 Leave/.test(await panel()), await panel());
+  ok("regions: names the 0.7 limit and its source", /0\.7/.test(await panel()) && /Kimbrough/.test(await panel()));
+  ok("regions: Detailed links the source to the team's library", await ev(`!!document.querySelector('#panel a[href*="siddhu-123.github.io"]')`));
+  ok("regions: region names sit at the edge, not on manholes in the middle", await ev(`document.querySelectorAll('#labels .lbl.region.edge').length===9`));
+  await shot("04b_regions");
   // 5 Algorithms
   await click('#secs button[data-sec="algorithms"]'); await wait(300);
-  ok("algorithms: the recommended best-coverage set at 5 shows 88% worst", /88%/.test(await panel()) && /Best coverage/.test(await panel()));
+  ok("algorithms: Buy in stages at 5 shows 81% worst", /81%/.test(await panel()) && /Buy in stages/.test(await panel()));
   await click('[data-mth="greedyAvg"]'); await wait(200); await click("#alShow"); await wait(1200);
   ok("algorithms: the next-choice heat map draws", await ev(`/Choice for sensor/.test(document.querySelector('#legend').textContent)`));
   await shot("05_algorithms");
+  // One level sensor is not enough
+  await click('#secs button[data-sec="onesensor"]'); await wait(400);
+  const os1 = await ev(`[...document.querySelectorAll('table.wx td.r')].map(e=>e.textContent).join(',')`);
+  ok("one sensor: S1 sees all of the design wet day, less in the others", /^100%,/.test(os1) && await ev(`document.querySelectorAll('table.wx td.arr.down').length>=4`), os1);
+  ok("one sensor: worst 0%, average 53%", /100% design wet day 0% hardest weather 53% average/.test(await panel()), (await panel()).slice(0, 200));
+  const ramp = await ev(`[...document.querySelectorAll('table.ramp tr')].slice(1).map(r=>[...r.querySelectorAll('td.r')].slice(1).map(e=>e.textContent).join('/')).join(' ')`);
+  ok("one sensor: the 1 to 8 ramp reads 0/53 0/72 44/86 69/92 81/94 88/96 94/97 94/98", ramp === "0%/53% 0%/72% 44%/86% 69%/92% 81%/94% 88%/96% 94%/97% 94%/98%", ramp);
+  await shot("05b_onesensor");
   // 6 Compare
   await click('#secs button[data-sec="compare"]'); await wait(1500); await click('#zreset'); await wait(200);
   ok("compare: seven methods in the table", await ev(`document.querySelectorAll('table.cmp tr[data-row]').length===7`));
   const row = id => ev(`[...document.querySelectorAll('table.cmp tr[data-row="${id}"] td')].map(x=>x.textContent).join('|')`);
-  ok("compare: recommended row reads 94% / 88% / 11/11 / 75%", /^[^|]*\|94%\|88%\|11\/11\|75%/.test(await row("exact")), await row("exact"));
+  ok("compare: Buy all at once row reads 94% / 88% / 11/11 / 75%", /^[^|]*\|94%\|88%\|11\/11\|75%/.test(await row("exact")), await row("exact"));
   // 19 Nov: the story quotes unseen weather as the average over the cases (75%), so the demo, which reads the story's table, does too.
-  ok("compare: nested list row reads 94% / 81% / 11/11 / 75%", /^[^|]*\|94%\|81%\|11\/11\|75%/.test(await row("sim4")), await row("sim4"));
-  await clickSensor(0); await wait(300);
-  ok("compare: failing Sensor 1 drops the worst case to 0%", /1 failed/.test(await panel()) && await ev(`document.querySelectorAll('.stats .stat b')[1].textContent==='0%'`));
+  ok("compare: Buy in stages row reads 94% / 81% / 11/11 / 75%", /^[^|]*\|94%\|81%\|11\/11\|75%/.test(await row("sim4")), await row("sim4"));
+  // Fail the sensor the nested plan rests on (the callout's): the worst case drops to what the other four see.
+  const weak = await ev(`(()=>{const s=App.planIdx(5),o=App.SIM4_TEST(),f=s.map(i=>App.score(s.filter(j=>j!==i),o).worst);return {k:f.indexOf(Math.min(...f)),w:Math.round(100*Math.min(...f))+'%'}})()`);
+  await clickSensor(weak.k); await wait(300);
+  ok(`compare: failing S${weak.k + 1} drops the worst case to ${weak.w}`, /1 failed/.test(await panel()) && await ev(`document.querySelectorAll('.stats .stat b')[1].textContent==='${weak.w}'`), JSON.stringify(weak) + " " + (await panel()).slice(0, 500));
   await click('tr[data-row="hydraulic"]'); await wait(1000);
   ok("compare: clicking a row maps that method", await ev(`App.st.compare.method==='hydraulic'`));
   await shot("06_compare");
@@ -129,6 +172,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await input("#snW", 400); await wait(200);
   ok("sensors: float switch turns on when the water reaches it", /ON: water has reached it/.test(await panel()));
   ok("sensors: level beats floats at $125k (81% vs 0%)", /\$125k/.test(await panel()));
+  ok("sensors: the verdict, floats not feasible for growth, other types next work", /not feasible for watching growth/.test(await panel()) && /untested, next work/.test(await panel()) && !/150 mm|5 to 10 mm/.test(await panel()));
   await shot("08_sensors");
   // 9 Repeat
   await click('#secs button[data-sec="repeat"]'); await wait(300);
@@ -155,7 +199,12 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await shot("10_future");
   // 11 Conclude
   await click('#secs button[data-sec="conclude"]'); await wait(300);
-  const tc = await panel(); ok("conclusion: the recommended 5 figures (94% / 88% / 11 of 11 / 75%)", /94%/.test(tc) && /88%/.test(tc) && /11 of 11/.test(tc) && /75%/.test(tc), tc.slice(tc.indexOf("THE PLAN"), tc.indexOf("THE PLAN") + 300));
+  const tc = await panel(); ok("conclusion: buy in stages at 5 (94% / 81% / 11 of 11 / 75%)", /94% seen on average 81% hardest weather 11 of 11 overloads warned 75% weather not chosen for/.test(tc), tc.slice(0, 400));
+  ok("conclusion: five levels off on the nested numbers", /a sixth adds 7 points/.test(tc), tc.slice(tc.indexOf("Five is"), tc.indexOf("Five is") + 120));
+  await click('[data-plan="once"]'); await wait(300);
+  const tc2 = await panel(); ok("conclusion: Buy all at once gives 94% / 88% / 11 of 11 / 75%", /94% seen on average 88% hardest weather 11 of 11 overloads warned 75% weather not chosen for/.test(tc2), tc2.slice(0, 400));
+  await click('[data-plan="stages"]'); await wait(300);
+  ok("conclusion: back to Buy in stages", await ev(`App._.plan()==='stages'`));
   await shot("11_conclude");
   // Design: titles, callouts, themes, presentation mode
   let heads = true; for (const v of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${v}')`); await wait(120); heads = heads && await ev(`(()=>{const h=document.querySelector('#panel h2.title');return !!h && h.textContent===App.SECTIONS.find(s=>s[0]==='${v}')[2]})()`); }
@@ -173,26 +222,28 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   // Simple reading level: every page in plain words
   await ev(`App.setMode('simple')`); await wait(300);
   const JARGON = /surcharg|infiltrat|spearman|\u03c1|greedy|heuristic|quantile|worst case|manning|future|I&I|d\/D|exact solver|heat map/i;
-  let plainOk = true, plainBad = "", plainHeads = true;
+  let plainOk = true, plainBad = "", plainHeads = true, plainMiss = "";
   for (const v of await ev(`App.SECTIONS.map(s=>s[0])`)) {
     await ev(`App.go('${v}')`); await wait(v === "compare" || v === "check" || v === "future" ? 900 : 250);
     const txt = await ev(`[...document.querySelectorAll('#panel, #legend, #read, #labels .callout')].map(e=>e.innerText).join(' ')`);
     const m = JARGON.exec(txt); if (m) { plainOk = false; plainBad += `${v}: "${txt.slice(Math.max(0, m.index - 40), m.index + 40)}" `; }
-    plainHeads = plainHeads && await ev(`!!document.querySelector('#panel h2.title') && !document.querySelector('#read').hidden`);
+    const hd = await ev(`!!document.querySelector('#panel h2.title') && !document.querySelector('#read').hidden`); if (!hd) plainMiss += v + " "; plainHeads = plainHeads && hd;
     await shot("simple_" + v);
   }
   ok("Simple: no jargon on any page (panel, legend, map notes, callouts)", plainOk, plainBad);
-  ok("Simple: every page has its title and a 'how to read the map' note", plainHeads);
+  ok("Simple: every page has its title and a 'how to read the map' note", plainHeads, plainMiss);
+  await ev(`document.documentElement.setAttribute('data-notes','')`);
   await ev(`App.go('setting')`); await wait(250);
   ok("Simple: the first page has the road analogy and the five words", /roads for wastewater/.test(await panel()) && await ev(`document.querySelectorAll('.words > div').length===5`));
   await ev(`App.go('algorithms')`); await wait(250);
-  ok("Simple: 5 sensors notice 14 of 16 scenarios in the hardest weather, as dots", /14 of 16/.test(await panel()) && await ev(`document.querySelectorAll('svg.dots circle').length===16`));
+  ok("Simple: 5 level sensors (in stages) notice 13 of 16 scenarios in the hardest weather, as dots", /13 of 16/.test(await panel()) && await ev(`document.querySelectorAll('svg.dots circle').length===16`));
   await ev(`(()=>{const e=document.querySelector('#alK');e.value=1;e.dispatchEvent(new Event('input'))})()`); await wait(250);
-  ok("Simple: with 1 sensor, 2 of 16", /2 of 16/.test(await panel()));
+  ok("Simple: with 1 level sensor, none seen in its hardest weather", /\b0 of \d+ scenarios/.test(await panel()), (await panel()).slice(300, 700));
   await ev(`App.go('simulate')`); await wait(250); await click('[data-sp="1"]'); await wait(300);
   ok("Simple: the followed scenario appears, with its early warning", /scenario we follow/.test(await panel()) && /already risen/.test(await panel()));
   await ev(`App.go('compare')`); await wait(800);
-  ok("Simple: compare shows four rows of dots (ours 14, desk 4)", await ev(`document.querySelectorAll('.rowwrap svg.dots').length===4`) && /14 of 16/.test(await panel()) && /4 of 16/.test(await panel()));
+  ok("Simple: compare shows four rows of dots (ours 13, desk 4)", await ev(`document.querySelectorAll('.rowwrap svg.dots').length===4`) && /13 of 16/.test(await panel()) && /\b4 of 16/.test(await panel()), await panel());
+  await ev(`document.documentElement.removeAttribute('data-notes')`);
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "d", code: "KeyD", windowsVirtualKeyCode: 68 }); await wait(300);
   ok("D switches to Detailed", await ev(`!App.isSimple()`) && await ev(`document.querySelectorAll('table.cmp tr[data-row]').length===7`));
   await ev(`App.setMode('simple')`); await ev(`App.go('conclude')`); await wait(300);
@@ -201,6 +252,9 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   ok("← steps back a view", await ev(`App.st.sec==='future'`));
   let names = ""; for (const s of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${s}')`); await wait(150); names += await ev("document.body.innerText"); }
   ok("no words name the client or the suburb, in any view", !/SA Water|Walkerville|Rostrevor|Stonyfell|Woodforde|Malvern|Bolivar|Adelaide/i.test(names));
+  await ev(`App.setMode('detailed')`); let all = ""; for (const s of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${s}')`); await wait(150); all += await ev("document.body.textContent"); } await ev(`App.setMode('simple')`);
+  const unsourced = /US EPA|Auckland|88\.6|Sydney Water|United Utilities|Nemhauser|Dual use|[Ff]loat[^.]{0,80}(150 mm|5 to 10 mm)|\u2014/.exec(names + all);
+  ok("no unsourced claims, float figures or em dashes, in either reading level", !unsourced, unsourced && (names + all).slice(Math.max(0, unsourced.index - 80), unsourced.index + 60));
   ok("no page errors", !logs.length, logs.join("\n"));
   console.log(`\n${pass} passed, ${fail} failed`);
   ch.kill(); server.close(); process.exit(fail ? 1 : 0);
