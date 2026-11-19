@@ -32,7 +32,8 @@
     "sim3": true,
     "sim3e": false,
     "sim25": true,
-    "sim25legacy": true
+    "sim25legacy": true,
+    "demolegacy": true
   },
 
   "pumps": {
