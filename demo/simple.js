@@ -13,7 +13,7 @@
   const weather = tag => WEATHER[caseLabel(tag)] || caseLabel(tag);
   // Map words (legends, callouts, tooltips) in plain language. Order matters: longer phrases first.
   const WORDS = [
-    [/Ninh rule, greedy/g, "Pipe-map method, first search"], [/Ninh rule, genetic algorithm/g, "Pipe-map method, second search"], [/Coverage greedy \(2-pipe radius\)/g, "Spread to reach the most manholes nearby"], [/Sim 3\.5, region-less/g, "Our earlier way, no areas"], [/ \(Ninh rule\)/g, ""], [/Sim 4 Greedy: average \(current\)/g, "Our level sensors"], [/Sim 4 Greedy: worst case/g, "Our level sensors"], [/Greedy: average/g, "Best on average"], [/Greedy: worst case/g, "Best in the hardest weather"], [/Exact optimum/g, "Best set bought all at once"],
+    [/Ninh rule, greedy/g, "Pipe-map method, first search"], [/Ninh rule, genetic algorithm/g, "Pipe-map method, second search"], [/Coverage greedy \(2-pipe radius\)/g, "Spread to reach the most manholes nearby"], [/Sim 3\.5, region-less/g, "Our earlier way, no areas"], [/ \(Ninh rule\)/g, ""], [/Sim 4 Greedy: average \(current\)/g, "Our level sensors"], [/Sim 4 Greedy: worst case/g, "Our level sensors"], [/^NR greedy/g, "Any area: one at a time"], [/^NR exact optimum/g, "Any area: best possible"], [/^NS: /g, "Without simulation: "], [/Greedy: average/g, "Best on average"], [/Greedy: worst case/g, "Best in the hardest weather"], [/Exact optimum/g, "Best set bought all at once"],
     [/\s*\(manning\)/gi, ""], [/^Watch$/, "Keep an eye on"], [/^Leave$/, "Room to spare"], [/^Level sensor$/, "Level sensor"], [/Low flow \/ capacity/gi, "Pipes with room"], [/^High$/, "Fuller pipes"],
     [/Surcharged by infiltration alone/g, "Already backing up from rain leaking in"], [/Surcharged before growth/g, "Already backing up today"],
     [/surcharged before growth/g, "already backing up today"], [/Newly surcharged/g, "Starts backing up"], [/newly surcharged/g, "starts backing up"],
@@ -23,7 +23,7 @@
     [/Responds in many \(up to (\d+)\)/g, "Notices many (up to $1)"], [/in (\d+) runs/g, "in $1 scenarios"], [/(\d+) runs/g, "$1 scenarios"],
     [/the worst case drops to/g, "one kind of wet weather drops to"], [/in the worst weather\)/g, "in one kind of wet weather)"], [/worst case/gi, "hardest weather"], [/in the worst weather/g, "in the hardest weather"],
     [/Monitor region/g, "Area to monitor"], [/Watch region/g, "Area to watch"], [/Greedy search/g, "Our search"],
-    [/Desk heuristic: flow\/capacity/g, "Desk study: fullest pipes"], [/Desk heuristic: most homes upstream/g, "Rule of thumb: most homes upstream"],
+    [/Desk heuristic: flow\/capacity/g, "Without simulation: fullest pipes"], [/Desk heuristic: most homes upstream/g, "Rule of thumb: most homes upstream"],
     [/Best coverage \(exact\)/g, "Our 5 sensors"], [/Flow \/ capacity \(Manning\)/g, "How full the pipe is"], [/Flow \/ capacity/gi, "How full"], [/flow \/ capacity \(manning\)/g, "how full the pipe is"],
     [/Before growth (\d+) mm deep/g, "Before the new homes: $1 mm deep"], [/with these homes/g, "with the new homes"], [/Infiltration/g, "Rain leaking in"],
     [/water backs up from downstream/g, "water queues back from a full pipe below"], [/Responds in/g, "Notices"],
@@ -78,19 +78,19 @@
         const s = st.setting, h = HANDLERS.setting, f = manholeFacts(s.mh), w = h.water(), dia = f.dia || 150, depthM = f.nd.depth || 2;
         const state = w.water >= depthM * 1000 ? ["bad", "Spilling out of the lid"] : w.water > dia ? ["bad", "Pipe full: water backing up the manhole"] : w.water > 0.7 * dia ? ["warn", "Past the design limit"] : ["ok", "Room to spare"];
         return `
-          <div class="analogy"><b>Think of the sewer as roads for wastewater.</b> Pipes are roads, every new home adds traffic, and rain leaking into old pipes is extra traffic.
+          <div class="analogy"><b>Think of the sewer as roads for wastewater.</b> Pipes are roads, every new home adds traffic (extra homes in existing streets, or a new estate at the edge), and rain leaking into old pipes is extra traffic.
             When a pipe is full, water queues back up the manhole, like a jam onto side streets. If it reaches the lid, it spills.
             <span class="dim">Where the comparison stops: sewage only flows downhill, so a jam lower down backs up everything above it.</span></div>
           <div class="cutwrap">${cutaway({ depthM, dia, water: w.water, base: w.base, title: f.name })}<div class="badge ${state[0]}">${state[1]}</div></div>
           <h3>New homes upstream <small>(in ${regionLabel(s.r)})</small></h3>
           <div class="slider"><input id="stS" type="range" min="-1" max="${S().ladder.length - 1}" value="${s.s}" aria-label="New homes"><span>${s.s < 0 ? "None yet" : stepLabel(s.s).replace("(stress)", "(test)")}${w.row ? ` · +${Math.round(w.row.dw)}` : ""}</span></div>
-          <h3>How wet</h3>
+          <h3>Weather conditions</h3>
           ${chips(allTags().slice(1, 4).map(t => [t, weather(t)]), k => k === s.tag, "stc")}
           ${s.mh === fol().sur ? thread(`This manhole is in ${followName()}: with all the homes added, its pipe fills and water starts backing up.`) : ""}
           ${fold("Five words used in this demo", words([["manhole", "Manhole", "The shaft from the street down to the pipe."], ["full", "Design limit", `Pipes are meant to run at most about 70% full.`],
             ["backup", "Backing up", "The pipe is full, so water rises up the manhole."], ["spill", "Spill", "Water reaches the lid and comes out into the street or a creek."],
             ["sensor", "Level sensor", "A small box under the lid that measures how high the water is."]]), true)}
-          <div class="hint"><b>Why it matters:</b> a spill puts sewage into streets and creeks, and a bigger pipe takes years to plan and build. A sensor buys that warning time.</div>
+          <div class="hint"><b>Why it matters:</b> a spill means cleaning, disruption for the people nearby and, if it reaches a creek, an environmental incident. A bigger pipe takes years to plan and build: a sensor buys that warning time.</div>
           ${nextBtn()}`;
       },
       wire() { const s = st.setting; $("#stS").oninput = e => { s.s = +e.target.value; refresh(); }; on("[data-stc]", "onclick", e => { s.tag = e.currentTarget.dataset.stc; refresh(); }); },
@@ -123,7 +123,7 @@
           ["1", "Map the pipes", "Every pipe and manhole, from public maps, into a computer model.", "network"],
           ["2a", "Where new homes go", "The homes expected by 2041, added one area at a time, in small steps. The sensors were picked on this, then tried on new estates at the edge of the network.", "simulate"],
           ["2b", "What each home sends", "About 460 litres a day from a typical home (2.3 people), more at peak times.", "simulate"],
-          ["2c", "How wet it is", `From a dry day to an extreme wet one. On a normal wet day, rain leaks in at about half a running garden tap for every 100 m of pipe.`, "simulate"],
+          ["2c", "Weather conditions", `From a dry day to an extreme wet one. On a normal wet day, rain leaks in at about half a running garden tap for every 100 m of pipe.`, "simulate"],
           ["3", "Run the model", "504 possible growth scenarios (an area, a number of new homes, a kind of weather), each giving the water level in every manhole.", "insights"],
           ["4", "Choose the areas to watch", `Will the new homes use up the room in each area's pipes by 2041? Sensors go only where the answer is yes or maybe: ${App.targetPool().length} of ${_.R().chambers.length} manholes.`, "regions"],
           ["5", "Pick the sensors, one at a time", "Each new level sensor goes where it notices the most extra scenarios. Buying more later never moves one already in.", "algorithms"],
@@ -149,11 +149,11 @@
         const presets = [["2041 homes, wet day", "R3", _.S().ladder.indexOf(1), D().design], ["2041 homes, very wet day (the scenario we follow)", "R3", _.S().ladder.indexOf(1), wetTags()[1]], ["Three times the homes, wet day", "R3", _.S().ladder.indexOf(3), D().design]];
         const isFollow = p.r === fol().r && p.s === FULL() && p.tag === fol().tag;
         return `
-          <p class="lede">Choose where new homes go, how many and how wet it is. The map shows how much the water rises in every manhole.</p>
+          <p class="lede">Choose where new homes go, how many, and the weather conditions. The map shows how much the water rises in every manhole.</p>
           <div class="presets">${presets.map((x, k) => `<button type="button" data-sp="${k}">${x[0]}</button>`).join("")}</div>
           <h3>Area</h3>${chips(S().regions.map((r, ri) => [ri, regionLabel(ri), _.REGION_COLS[r.id]]), k => +k === p.r, "region")}
           <h3>How many new homes</h3><div class="slider"><input id="pStep" type="range" min="-1" max="${S().ladder.length - 1}" value="${p.s}"><span>${p.s < 0 ? "None" : stepLabel(p.s).replace("(stress)", "(test)")}${row ? ` · +${Math.round(row.dw)}` : ""}</span></div>
-          <h3>How wet</h3>${chips(allTags().slice(1, 4).map(t => [t, weather(t)]), k => k === p.tag, "stc")}
+          <h3>Weather conditions</h3>${chips(allTags().slice(1, 4).map(t => [t, weather(t)]), k => k === p.tag, "stc")}
           <div class="stats">${stat(up, `manholes rise ${CM} or more`)}${stat(row ? row.sur.length : 0, "start backing up", row && row.sur.length ? "bad" : "")}</div>
           ${isFollow ? thread(`This is the scenario we follow: one manhole starts backing up. One step earlier, at ${pct(fol().warnStep)} of the homes, S${fol().warnSensor + 1} of our plan has already risen ${(fol().warnMm / 10).toFixed(0)} cm.`) : ""}
           ${nextBtn()}`;
@@ -193,8 +193,6 @@
           <p class="lede">A sensor <b>notices</b> a scenario if its water rises ${CM}. We let the computer add one manhole at a time, always the one that notices the most new scenarios, so nothing moves as more are bought. We also checked every combination for the best set bought all at once.</p>
           <h3>How many level sensors</h3>
           <div class="slider"><input id="alK" type="range" min="1" max="8" value="${a.k}"><span>${a.k} level sensor${a.k > 1 ? "s" : ""} · ${money(a.k * _.PRICE)}</span></div>
-          ${_.ladderSvg()}
-          ${_.planCards()}
           ${dotRow("scenarios noticed in the hardest weather", hit, hk.n, COL.sensor)}
           <div class="hint">${a.k < 5 ? `Add sensors and watch the dots fill.` : a.k === 5 ? `<b>Five is where it levels off:</b> ${[6, 7, 8].map(n => (d => `${n === 6 ? "a sixth" : n === 7 ? "a seventh" : "an eighth"} adds ${d} point${d === 1 ? "" : "s"}`)(Math.round(100 * x.byK[n - 1].share) - Math.round(100 * x.byK[n - 2].share))).join(", ")} in the hardest weather.` : "Past five, each sensor adds little."} Many nearby manholes would do almost as well, so the sites are areas, not exact lids.</div>
           ${thread(`In the scenario we follow, S${fol().warnSensor + 1} rises ${(fol().riseMm / 10).toFixed(0)} cm: it notices.`)}
@@ -258,7 +256,7 @@
       panel() {
         const s = st.sensors; if (!["ultra", "float"].includes(s.type)) s.type = "ultra";
         const h = HANDLERS.sensors, i = h.site(), f = manholeFacts(i), base = baseMm(D().design, i), depthM = f.nd.depth, t = _.SENSOR_TYPES.find(x => x.id === s.type);
-        const reading = t.id === "float" ? (s.water >= base + 25 ? "ON: it says “full”" : "off: says nothing yet") : (s.water >= depthM * 1000 - 150 ? "under water: no reading" : `${Math.round(s.water)} mm`);
+        const reading = t.id === "float" ? (s.water >= t.at({ base, dia: f.dia }) ? "ON: it says “full”" : "off: says nothing yet") : (s.water >= depthM * 1000 - 150 ? "under water: no reading" : `${Math.round(s.water)} mm`);
         return `
           <p class="lede">Drag the water up and compare what each sensor tells you.</p>
           ${chips([["ultra", "Level sensor", _.pal().sensor], ["float", "Float switch", _.pal().orange]], k => k === s.type, "sty")}

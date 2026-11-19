@@ -68,7 +68,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   ok("opens in the Simple reading level by default", await ev(`App.isSimple()`));
   ok("opens in the light theme, on The problem", await ev(`document.documentElement.dataset.theme==='paper' && App.st.sec==='problem'`));
   // 19 Nov dry run: the presenting view has no sentences; a heading, a few words, numbers and charts only
-  ok("problem: three items and the value line, no sentences shown", await ev(`document.querySelectorAll('.pitems > div').length===3 && !!document.querySelector('.valueline')`) && /Growth is filling sewers sized for fewer homes/.test(await panel()));
+  ok("problem: four items and the value line, no sentences shown", await ev(`document.querySelectorAll('.pitems > div').length===4 && !!document.querySelector('.valueline')`) && /Growth is filling sewers sized for fewer homes/.test(await panel()));
   const SENT = `[...document.querySelectorAll('#panel :is(.lede,.hint,.analogy,.thread)')].filter(e=>e.offsetParent!==null).length`;
   let quiet = true, quietBad = "", noScroll = true, scrollBad = "";
   for (const [w, h] of [[1920, 1080], [1366, 768]]) {
@@ -89,11 +89,13 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   const UA = (by, k) => Object.values(by).reduce((a, v) => a + v[String(k)], 0) / Object.keys(by).length;
   const hardOf = r => { const c = Object.entries(r.per_case).reduce((a, b) => b[1] < a[1] ? b : a); return { hit: Math.round(c[1] * X.universe[c[0]]), n: X.universe[c[0]] }; };
   await ev(`App.go('algorithms')`); await wait(300);
-  ok("place sensors: the ladder diagram, S1 to 5 to 8, one at a time, nothing moves", await ev(`(()=>{const t=(document.querySelector('svg.ladder')||{}).textContent||'';return /S1/.test(t)&&/adds most/.test(t)&&/Nothing moves/.test(t)&&!/beam|sets kept|every possible/.test(t)})()`));
-  const cards = (await ev(`[...document.querySelectorAll('.plancard')].map(c=>c.innerText).join(' | ')`)).replace(/\s+/g, ' ');
-  const card = r => `${P(r.worst)} worst ${P(r.average)} average ${r.warned_target} of ${WT} warned Nothing moves`;
-  ok("place sensors: Greedy: average card = numbers.json at 5, nothing moves, highlighted", new RegExp(`^(Greedy: average|Best on average) ${card(L(5))}`).test(cards) && await ev(`document.querySelector('.plancard[data-plan="avg"]').classList.contains('on')`), cards);
-  ok("place sensors: Greedy: worst case card = numbers.json's ladder_worst at 5, nothing moves", new RegExp(`(Greedy: worst case|Best in the hardest weather) ${card(LW(5))}`).test(cards) && await ev(`App._.planMoves('avg')===0 && App._.planMoves('worst')===0`), cards);
+  ok("place sensors: no one-at-a-time illustration, no plan cards and no plan buttons", await ev(`!document.querySelector('#panel svg.ladder') && !document.querySelector('#panel .plancard') && !document.querySelector('#panel .planpick')`));
+  ok("place sensors: both greedy plans at 5 = numbers.json, and nested (nothing moves)", await ev(`(()=>{const o=App.SIM4_TEST(),a=App.score(App.planIdx(5,'avg'),o),w=App.score(App.planIdx(5,'worst'),o);return Math.round(a.worst*100)+','+Math.round(a.avg*100)+','+Math.round(w.worst*100)+','+Math.round(w.avg*100)})()`) === [L(5).worst, L(5).average, LW(5).worst, LW(5).average].map(v => Math.round(v * 100)).join() && await ev(`App._.planMoves('avg')===0 && App._.planMoves('worst')===0`));
+  const wasSimple = await ev(`App.isSimple()`);
+  await ev(`(()=>{App.st.algorithms.method='random';App.st.algorithms.k=5;App.setMode('detailed');App.go('algorithms')})()`); await wait(600);
+  ok("place sensors: method buttons in four groups (simulation-based, region-less, non-simulation, floor)", await ev(`[...document.querySelectorAll('.mgroup')].map(g=>g.querySelectorAll('[data-mth]').length).join()==='3,2,4,1'`));
+  ok("place sensors: random shows one typical draw of 5 on the map, scored as the mean of 500", await ev(`App._.methodSets('random',5).length===5 && document.querySelectorAll('#labels .lbl.sensor').length===5`) && /mean of draws/.test(await panel()));
+  await ev(`(()=>{App.st.algorithms.method=App._.planMethod();App.setMode('${wasSimple ? "simple" : "detailed"}')})()`);
   await ev(`App.go('insights')`); await wait(300);
   ok("what the runs show: 7 and 107 surcharged before growth", await ev(`[...document.querySelectorAll('.stats.sur .stat b')].map(b=>b.textContent).join()`) === "7,107" && /7 manholes surcharged/.test(await ev(`SIM4.steps.find(s=>s.id==='2').body`)) && /it has 107/.test(await ev(`SIM4.steps.find(s=>s.id==='2').body`)));
   await ev(`App.go('regions')`); await wait(300);
@@ -208,7 +210,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   // 5 Algorithms
   await click('#secs button[data-sec="algorithms"]'); await wait(300);
   ok("algorithms: Greedy: average at 5 shows its worst case", (await panel()).includes(P(L(5).worst)) && /Greedy: average/.test(await panel()) && !/Buy all at once|Buy in stages \(nested\)|beam search/i.test(await panel()));
-  ok("algorithms: the methods are the two greedy plans, Exact optimum, two desk methods and random", await ev(`[...document.querySelectorAll('[data-mth]')].map(b=>b.dataset.mth).join()`) === "greedyAvg,greedyWorst,exact,hydraulic,homes,random");
+  ok("algorithms: the methods are the two greedy plans, Exact optimum, region-less greedy and exact, four non-simulation methods and random", await ev(`[...document.querySelectorAll('[data-mth]')].map(b=>b.dataset.mth).join()`) === "greedyAvg,greedyWorst,exact,rGreedy,rExact,hydraulic,homes,mGreedy,mNsga,random");
   await click('[data-mth="exact"]'); await wait(300);
   ok("algorithms: Exact optimum at 5 = numbers.json, says it is the comparison, and has no next-choice map (it is not built one at a time)",
      (await panel()).includes(P(L(5).exact_worst)) && (await panel()).includes(P(L(5).exact_average)) && /comparison/.test(await panel()) && /move sensors/.test(await panel()) && await ev(`!document.querySelector('#alShow')`), (await panel()).slice(0, 600));
@@ -217,8 +219,13 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await shot("05_algorithms");
   // 6 Compare
   await click('#secs button[data-sec="compare"]'); await wait(1500); await click('#zreset'); await wait(200);
-  ok("compare: six rows: the two greedy plans, Exact optimum, two desk methods and random", await ev(`[...document.querySelectorAll('table.cmp tr[data-row]')].map(r=>r.dataset.row).join()`) === "greedyAvg,greedyWorst,exact,hydraulic,homes,random");
-  const row = id => ev(`[...document.querySelectorAll('table.cmp tr[data-row="${id}"] td')].map(x=>x.textContent).join('|')`);
+  ok("in sync with Sim 4: Greedy: average, Greedy: worst case and Exact optimum are Sim 4's own sets at 1 to 8 sensors", await ev(`[1,2,3,4,5,6,7,8].every(k=>{const n=s=>s.map(i=>GROWTH_RUNS.chambers[i]).sort().join(),m=App._.methodSets;return n(m('greedyAvg',k))===SIM4.explore.ladder[k-1].slice().sort().join()&&n(m('greedyWorst',k))===SIM4.explore.ladderWorst[k-1].slice().sort().join()&&n(m('exact',k))===SIM4.explore.exact[k-1].slice().sort().join()})`));
+  ok("compare: no \"1 fails\" column; a Target / All regions toggle", await ev(`![...document.querySelectorAll('table.cmp th')].some(t=>/fails/.test(t.textContent)) && document.querySelectorAll('.seg [data-csc]').length===2`));
+  ok("compare: grouped rows: simulation-based, region-less, non-simulation (incl. Manning greedy and NSGA-II), random", await ev(`[...document.querySelectorAll('table.cmp tr[data-row]')].map(r=>r.dataset.row).join()`) === "greedyAvg,greedyWorst,exact,rGreedy,rExact,hydraulic,homes,mGreedy,mNsga,random" && await ev(`document.querySelectorAll('table.cmp tr.grp').length===4`));
+  await click('[data-csc="all"]'); await wait(800);
+  ok("compare: scored on every region, region-less exact beats Sim 4's plan in its hardest weather", await ev(`(()=>{const t=App._.HANDLERS.compare,a=t.metrics('rExact',5,10),b=t.metrics(App._.planMethod(),5,10);return a.worst>b.worst})()`));
+  await click('[data-csc="target"]'); await wait(800);
+  const row = id => ev(`[...document.querySelectorAll('table.cmp tr[data-row="${id}"] td')].map(x=>x.textContent).join('|')+'|'`);  // trailing | so the last column matches too
   // The story quotes unseen weather as the average over the cases, so the demo, which reads the story's data, does too.
   const rowWant = (r, by) => `|${P(r.average)}|${P(r.worst)}|${r.warned_target}/${WT}|${P(UA(by, 5))}|`;
   ok("compare: Greedy: average row = numbers.json (average, worst, warned, unseen weather)", (await row("greedyAvg")).includes(rowWant(L(5), X.held_out_by_case)), await row("greedyAvg"));
@@ -263,6 +270,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   ok("network: pipes can be coloured by flow today, beside capacity and flow ÷ capacity", /Flow today/.test(await panel()) && await ev(`document.querySelectorAll('svg.hist g.click').length===7`));
   const worstRed = await ev(`(()=>{const s=App._.pal().seq,last=s[s.length-1],first=s[0];return ['load','util','flow','cap','size','age','slope','depth'].every(k=>{App.st.network.by=k;App.st.network.bin=null;App._.refresh();
     const sw=[...document.querySelectorAll('svg.hist g.click rect+rect')].map(r=>r.getAttribute('fill'));const bad={load:sw.length-1,util:sw.length-1,flow:sw.length-1,slope:0,depth:0,cap:0,size:0,age:0}[k];return sw[bad]===last&&sw[sw.length-1-bad]===first;})})()`);
+  ok("network: every pipe with a year is in an Age band (none before the first band)", await ev(`(()=>{App.st.network.by='age';App.st.network.bin=null;App._.refresh();const n=[...document.querySelectorAll('svg.hist g.click title')].reduce((t,e)=>t+parseInt(e.textContent.split(': ').pop()),0);return n===App._.G().pyr.filter(Boolean).length})()`));
   ok("network: on every measure, red is the worse end (full, flat, shallow, small, low capacity, old)", worstRed);
   for (const th of ["night", "clear", "paper"]) { await ev(`(()=>{App.setTheme('${th}');App.st.network.by='age';App.st.network.bin=null;App._.refresh()})()`); await wait(250); await shot("network_age_" + th); }
   ok("network: no pink or purple in the pipe colour scale, in any theme", await ev(`Object.values(App.THEMES).every(t=>t.seq.every(c=>{const [r,g,b]=[1,3,5].map(k=>parseInt(c.slice(k,k+2),16));return !(r>200&&b>150&&g<120)&&!(b>r&&r>g+40)}))`));
@@ -300,6 +308,15 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   // Design: titles, callouts, themes, presentation mode
   let heads = true; for (const v of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${v}')`); await wait(120); heads = heads && await ev(`(()=>{const h=document.querySelector('#panel h2.title');return !!h && h.textContent===App.SECTIONS.find(s=>s[0]==='${v}')[2]})()`); }
   ok("every view opens with its own title", heads);
+  ok("Detailed opens with Notes on", await ev(`document.documentElement.hasAttribute('data-notes')`));
+  await click('#notesBtn'); await wait(200);
+  let bare = true, bareBad = ""; for (const v of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${v}')`); await wait(150);
+    const n = await ev(`[...document.querySelectorAll('#panel :is(.lede,.hint,details.fold,ul.plain)')].filter(e=>e.offsetParent!==null).length`); if (n) { bare = false; bareBad += v + ":" + n + " "; } await shot("bare_" + v); }
+  ok("Detailed, Notes off: no explanations or wordy text on any page", bare, bareBad);
+  await click('#notesBtn'); await wait(200);
+  let tiles = true, tilesBad = ""; for (const v of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${v}')`); await wait(150);
+    const bad = await ev(`[...document.querySelectorAll('#panel .stats')].some(r=>{const R=r.getBoundingClientRect();return [...r.children].some(c=>{const b=c.getBoundingClientRect();return b.right>R.right+1||c.scrollWidth>c.clientWidth+1})})`); if (bad) { tiles = false; tilesBad += v + " "; } }
+  ok("stat tiles stay inside their row on every page (Detailed)", tiles, tilesBad);
   await ev(`(()=>{App.st.compare.method='greedyAvg';App.st.compare.failed.clear();App.go('compare')})()`); await wait(1200);
   const drop = await ev(`(()=>{const s=App.planIdx(5),o=App.SIM4_TEST();return Math.round(100*Math.min(...s.map(i=>App.score(s.filter(j=>j!==i),o).worst)))+'%'})()`);
   ok("compare: a callout marks the sensor the plan rests on", (await ev(`(document.querySelector('.lbl.callout')||{}).textContent||''`)).includes(`worst case drops to ${drop}`), drop);
@@ -338,7 +355,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   ok(`Simple: compare shows five rows of dots (ours ${h5.hit}, the best bought all at once, desk 4)`, await ev(`document.querySelectorAll('.rowwrap svg.dots').length===5`) && /bought all at once/.test(await panel()) && (await panel()).includes(`${h5.hit} of ${h5.n}`) && /\b4 of 16/.test(await panel()), await panel());
   await ev(`document.documentElement.removeAttribute('data-notes')`);
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "d", code: "KeyD", windowsVirtualKeyCode: 68 }); await wait(300);
-  ok("D switches to Detailed", await ev(`!App.isSimple()`) && await ev(`document.querySelectorAll('table.cmp tr[data-row]').length===6`));
+  ok("D switches to Detailed", await ev(`!App.isSimple()`) && await ev(`document.querySelectorAll('table.cmp tr[data-row]').length===10`));
   await ev(`App.setMode('simple')`); await ev(`App.go('conclude')`); await wait(300);
   // Keys and names
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowLeft", code: "ArrowLeft", windowsVirtualKeyCode: 37 }); await wait(300);
