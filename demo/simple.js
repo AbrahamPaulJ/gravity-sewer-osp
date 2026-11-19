@@ -13,7 +13,7 @@
   const weather = tag => WEATHER[caseLabel(tag)] || caseLabel(tag);
   // Map words (legends, callouts, tooltips) in plain language. Order matters: longer phrases first.
   const WORDS = [
-    [/Greedy: average/g, "Best on average"], [/Greedy: worst case/g, "Best in the hardest weather"],
+    [/Greedy: average/g, "Best on average"], [/Greedy: worst case/g, "Best in the hardest weather"], [/Exact optimum/g, "Best set bought all at once"],
     [/\s*\(manning\)/gi, ""], [/^Watch$/, "Keep an eye on"], [/^Leave$/, "Room to spare"], [/^Level sensor$/, "Level sensor"], [/Low flow \/ capacity/gi, "Pipes with room"], [/^High$/, "Fuller pipes"],
     [/Surcharged by infiltration alone/g, "Already backing up from rain leaking in"], [/Surcharged before growth/g, "Already backing up today"],
     [/surcharged before growth/g, "already backing up today"], [/Newly surcharged/g, "Starts backing up"], [/newly surcharged/g, "starts backing up"],
@@ -61,7 +61,7 @@
     const row = rows[rows.length - 1], warnRow = rows[Math.max(0, k - 1)], warnRise = plan.map(i => riseAt(warnRow, i)), ws = warnRise.indexOf(Math.max(...warnRise));
     let all = 0, allN = 0; sc.per.forEach(c => { all += c.hit; allN += c.n; });
     F = { planKind: _.plan(), plan, sc, hard, hardTag: hard.tag, n: hard.n, all, allN,
-      desk: on(C().methods.hydraulic.sets[4], hard.tag).hit, today: on(_.ALTERNATIVES[0].picks(), hard.tag).hit, homes: on(C().methods.homes.sets[4], hard.tag).hit, random: Math.round(C().random[4].worst * hard.n),
+      desk: on(C().methods.hydraulic.sets[4], hard.tag).hit, exact: on(C().methods.exact.sets[4], hard.tag).hit, today: on(_.ALTERNATIVES[0].picks(), hard.tag).hit, homes: on(C().methods.homes.sets[4], hard.tag).hit, random: Math.round(C().random[4].worst * hard.n),
       // each count's own hardest weather, so 1 level sensor reads as the One-is-not-enough page does (0 in its hardest case)
       byK: [1, 2, 3, 4, 5, 6, 7, 8].map(n => score(planIdx(n), o).per.reduce((a, c) => c.share < a.share ? c : a)),
       f: { r, tag, row, homes: Math.round(row.dw), sur: row.sur[0], warnStep: _.S().ladder[Math.max(0, k - 1)], warnSensor: ws, warnMm: warnRise[ws], riseMm: riseAt(row, plan[ws]) },
@@ -189,7 +189,7 @@
       panel() {
         const a = st.algorithms; a.method = _.planMethod(); a.show = false; const x = facts(), hk = x.byK[a.k - 1], hit = hk.hit;
         return `
-          <p class="lede">A sensor <b>notices</b> a scenario if its water rises ${CM}. We let the computer try combinations of the 328 manholes and keep the set that notices the most scenarios in the hardest weather.</p>
+          <p class="lede">A sensor <b>notices</b> a scenario if its water rises ${CM}. We let the computer add one manhole at a time, always the one that notices the most new scenarios, so nothing moves as more are bought. We also checked every combination for the best set bought all at once.</p>
           <h3>How many level sensors</h3>
           <div class="slider"><input id="alK" type="range" min="1" max="8" value="${a.k}"><span>${a.k} level sensor${a.k > 1 ? "s" : ""} · ${money(a.k * _.PRICE)}</span></div>
           ${_.ladderSvg()}
@@ -203,12 +203,13 @@
     },
     compare: {
       panel() {
-        const c = st.compare; c.k = 5; c.mm = 10; const own = _.planMethod(); if (![own, "hydraulic", "homes"].includes(c.method)) c.method = own; const x = facts();
+        const c = st.compare; c.k = 5; c.mm = 10; const own = _.planMethod(); if (![own, "exact", "hydraulic", "homes"].includes(c.method)) c.method = own; const x = facts();
         const after = x.plan.map(i => score(x.plan.filter(j => j !== i), SIM4_TEST()).per.reduce((a, q) => q.share < a.share ? q : a)), weak = after.reduce((b, q, k) => q.share < after[b].share ? k : b, 0), wq = after[weak];
         return `
-          <p class="lede">Five sensors each, placed four ways, counted on the same ${x.n} scenarios in the hardest weather. Click a row to see its sensors.</p>
+          <p class="lede">Five sensors each, placed five ways, counted on the same ${x.n} scenarios in the hardest weather. Click a row to see its sensors.</p>
           ${_.planChips()}
           <div data-row="${own}" class="rowwrap ${c.method === own ? "on" : ""}">${dotRow("Our 5 level sensors", x.hard.hit, x.n, COL.sensor)}</div>
+          <div data-row="exact" class="rowwrap ${c.method === "exact" ? "on" : ""}">${dotRow("The best 5 bought all at once (they change as more are added)", x.exact, x.n, _.pal().blue)}</div>
           <div data-row="hydraulic" class="rowwrap ${c.method === "hydraulic" ? "on" : ""}">${dotRow("A desk study: the 5 fullest pipes", x.desk, x.n, _.pal().yellow)}</div>
           <div data-row="homes" class="rowwrap ${c.method === "homes" ? "on" : ""}">${dotRow("Rule of thumb: most homes upstream", x.homes, x.n, _.pal().pink)}</div>
           <div class="rowwrap">${dotRow("5 manholes picked at random (typical)", x.random, x.n, _.pal().failed)}</div>

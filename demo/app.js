@@ -925,6 +925,9 @@ const App = (() => {
   const METHODS = [
     { id: "greedyAvg", label: "Greedy: average", get colour() { return PLAN === "avg" ? COL.sensor : PAL.orange; }, how: "From nothing, add the manhole that most lifts the share of growth runs seen on average over the 7 wet cases; never move one.", why: "The story's steps 5a and 5b: one level sensor at a time, so nothing moves as more are bought." },
     { id: "greedyWorst", label: "Greedy: worst case", get colour() { return PLAN === "worst" ? COL.sensor : PAL.purple; }, how: "From nothing, add the manhole that most lifts the worst weather case; never move one.", why: "The story's step 5c. Max–min: aims first at the weather you did not plan for." },
+    // 20 Nov: Exact optimum is back, as the comparison: the best set of each size on its own (Sim 4's exact sets, the same
+    // as compare.js's), so it can move sensors between sizes. The plans stay greedy.
+    { id: "exact", label: "Exact optimum", get colour() { return PAL.blue; }, how: "The best set of each size on its own, searched over every combination: the best worst case, then the best average.", why: "The comparison: the most any set of this size can see. Its sets change from one size to the next, so buying in stages would move sensors." },
     { id: "hydraulic", label: "Desk: flow/capacity", get colour() { return PAL.yellow; }, dash: true, how: "No model runs: the fullest pipes by Manning's equation, at least 150 m apart.", why: "What a desk study would choose. A baseline to beat." },
     { id: "homes", label: "Desk: most homes upstream", get colour() { return PAL.pink; }, dash: true, how: "No model runs: the manholes draining the most homes, at least 150 m apart.", why: "The 'watch the trunk' rule of thumb." },
     { id: "random", label: "Random sites (500 draws, mean)", get colour() { return PAL.failed; }, dash: true, how: "Random manholes in the target regions, 500 draws.", why: "The floor any method must clear." },
@@ -933,7 +936,7 @@ const App = (() => {
   const ALGORITHMS = {
     layer() {
       const a = st.algorithms, set = methodSets(a.method, a.k) || [], m = METHODS.find(x => x.id === a.method);
-      if (a.show && a.method !== "random") {
+      if (a.show && a.method !== "random" && a.method !== "exact") {
         const g = this.gainMap(), max = Math.max(...g.filter(v => v != null)), next = g.indexOf(max);
         return {
           pipe: triagePipe(true),
@@ -969,11 +972,12 @@ const App = (() => {
         <h3>Sensors</h3>
         <div class="slider"><input id="alK" type="range" min="1" max="8" value="${a.k}" aria-label="Sensors"><span>${a.k} sensor${a.k === 1 ? "" : "s"}</span></div>
         <div class="stats">${sc ? `${stat(pct(sc.avg), "seen on average")}${stat(pct(sc.worst), "in the worst weather case")}` : `${stat(pct(rnd.avg), "seen on average (mean of draws)")}${stat(pct(rnd.worst), "worst case (mean)")}`}</div>
-        ${a.method !== "random" ? `<label class="tog"><input type="checkbox" id="alShow" ${a.show ? "checked" : ""}> Show how sensor ${a.k} is chosen: what every manhole would add</label>` : ""}
+        ${a.method !== "random" && a.method !== "exact" ? `<label class="tog"><input type="checkbox" id="alShow" ${a.show ? "checked" : ""}> Show how sensor ${a.k} is chosen: what every manhole would add</label>` : ""}
         ${fold("Why these methods", `<ul class="plain">
           <li><b>Coverage, not prediction.</b> The runs say which manhole sees which growth. Choosing sensors is then a set-cover problem, a standard formulation for sensor placement.</li>
           <li><b>Greedy, two ways, the client's choice.</b> One level sensor at a time, the manhole that adds most, never moving one, so the plan can be bought in stages. Greedy: average aims for the average over the 7 wet cases; Greedy: worst case for the hardest weather.</li>
           <li><b>Greedy</b> is fast and explainable ("this site adds most").</li>
+          <li><b>Exact optimum, the comparison.</b> The best set of each size, searched over every combination: what buying all at once could reach. ${(() => { const o = SIM4_TEST(), x = score(methodSets("exact", 5), o), g = score(planIdx(5, "avg"), o); return Math.abs(x.worst - g.worst) < 1e-9 && Math.abs(x.avg - g.avg) < 1e-9 ? "At 5, Greedy: average matches it." : `At 5 it sees ${pct(x.worst)} in the worst case, against ${pct(g.worst)} for Greedy: average.`; })()} Its sets are not nested, so a 4 → 5 upgrade would move sensors.</li>
           <li><b>Desk methods and random</b> are the baselines: what you get without the simulation.</li></ul>`)}
         ${nextBtn()}`;
     },
@@ -1020,7 +1024,7 @@ const App = (() => {
       const series = METHODS.map(m => ({ key: m.id, label: m.label, colour: m.colour, dash: m.dash, on: m.id === c.method, ys: Array.from({ length: 8 }, (_, k) => m.id === "random" ? C().random[k].worst : score(methodSets(m.id, k + 1), { ...SIM4_TEST(), mm: c.mm }).worst) }));
       const wet = wetTags(), alone = set.map(i => wet.map(tag => score([i], { ...SIM4_TEST(), mm: c.mm, cases: [tag] }).per[0]));
       return `
-        <p class="lede">${["", "One way", "Two ways", "Three ways", "Four ways", "Five ways", "Six ways"][METHODS.length] || METHODS.length + " ways"} to place the same number of sensors, scored the same way on the same runs: the two greedy plans and three baselines. Click a row to map it.</p>
+        <p class="lede">${["", "One way", "Two ways", "Three ways", "Four ways", "Five ways", "Six ways"][METHODS.length] || METHODS.length + " ways"} to place the same number of sensors, scored the same way on the same runs: the two greedy plans, Exact optimum (the best set of each size, bought all at once) and three baselines. Click a row to map it.</p>
         <div class="slider"><input id="cmK" type="range" min="1" max="8" value="${c.k}" aria-label="Sensors"><span>${c.k} sensor${c.k === 1 ? "" : "s"} · ${money(c.k * PRICE)}</span></div>
         ${chips(RULES.map(m => [m, `Seen at ${m} mm`]), k => +k === c.mm, "cmm")}
         <table class="cmp"><tr><th>Method</th><th title="Share of growth runs seen, averaged over the 7 wet cases">Avg</th><th title="The worst of the 7 wet cases">Worst</th><th title="Overloads with a sensor rising one step before the first new surcharge">Warned</th><th title="Each weather case scored with sensors chosen without it">Unseen</th><th title="Worst case after the most damaging single sensor failure">1 fails</th></tr>
@@ -1034,7 +1038,7 @@ const App = (() => {
           <table class="matrix"><tr><th></th>${wet.map(t => `<th title="${caseLabel(t)}">${caseTiny(t)}</th>`).join("")}</tr>
           ${alone.map((row, j) => `<tr><th>S${j + 1}</th>${row.map(x => `<td style="background:${rgba(PAL.sensor, (x.share * 0.85).toFixed(2))};${x.share > 0.5 ? `color:${PAL.bg}` : ""}" title="${x.hit} of ${x.n}">${Math.round(x.share * 100)}</td>`).join("")}</tr>`).join("")}</table>
           <div class="hint">% of runs each sensor sees alone, per weather case. A column with one strong cell rests on one site.</div>` : `<div class="card muted">Random has no single set to stress.</div>`}
-        ${fold("Read these carefully", `<ul class="plain"><li>Percentages count only growth that shows somewhere (≥ 10 mm at some manhole).</li><li>Other sites score the same as some of the plan's: read the plan as areas, not exact lids.</li><li>Both greedy plans add one level sensor at a time and never move one, so either can be bought in stages. ${(() => { const o = SIM4_TEST(), a = score(planIdx(5, "avg"), o), w = score(planIdx(5, "worst"), o); return `At 5, Greedy: average sees ${pct(a.worst)} in the worst case and ${pct(a.avg)} on average; Greedy: worst case ${pct(w.worst)} and ${pct(w.avg)}.`; })()}</li><li>One site can carry the worst case: click the plan's sensors on the map to see what each failure costs. Check that site first, or double it.</li><li>Costs are ${PRICE_NOTE}.</li><li>New estates were tested separately: the five were chosen on infill growth, then tried on greenfield growth (a new estate joining at one of 9 edge connections). ${GF() ? `They see ${pct(GF().worst)} of it in the worst wet case and ${pct(GF().avg)} on average, so a new estate needs a placement of its own.` : ""}</li></ul>`)}
+        ${fold("Read these carefully", `<ul class="plain"><li>Percentages count only growth that shows somewhere (≥ 10 mm at some manhole).</li><li>Other sites score the same as some of the plan's: read the plan as areas, not exact lids.</li><li>Both greedy plans add one level sensor at a time and never move one, so either can be bought in stages. ${(() => { const o = SIM4_TEST(), a = score(planIdx(5, "avg"), o), w = score(planIdx(5, "worst"), o); return `At 5, Greedy: average sees ${pct(a.worst)} in the worst case and ${pct(a.avg)} on average; Greedy: worst case ${pct(w.worst)} and ${pct(w.avg)}.`; })()}</li><li>Exact optimum is the comparison: the best set of each size on its own. It can beat both plans at some sizes, but its sets change from one size to the next, so it cannot be bought in stages without moving sensors.</li><li>One site can carry the worst case: click the plan's sensors on the map to see what each failure costs. Check that site first, or double it.</li><li>Costs are ${PRICE_NOTE}.</li><li>New estates were tested separately: the five were chosen on infill growth, then tried on greenfield growth (a new estate joining at one of 9 edge connections). ${GF() ? `They see ${pct(GF().worst)} of it in the worst wet case and ${pct(GF().avg)} on average, so a new estate needs a placement of its own.` : ""}</li></ul>`)}
         ${nextBtn()}`;
     },
     click(i) {
@@ -1332,7 +1336,9 @@ const App = (() => {
         <div class="slider"><input id="coK" type="range" min="1" max="8" value="${k}" aria-label="Level sensors"><span>${k} level sensor${k === 1 ? "" : "s"} · ${money(k * PRICE)}</span></div>
         <div class="stats">${stat(pct(sc.avg), "seen on average")}${stat(pct(sc.worst), "hardest weather")}${stat(`${sc.warned} of ${sc.warnable}`, "overloads warned")}${stat(pct(unseen), "weather not chosen for")}</div>
         <table class="mini plancmp"><tr><th></th><th>Worst</th><th>Average</th><th>Moves a sensor?</th></tr>
-          ${["avg", "worst"].map(p => `<tr class="${PLAN === p ? "on" : ""}"><td>${planName(p)}</td><td>${pct(score(planIdx(k, p), o).worst)}</td><td>${pct(score(planIdx(k, p), o).avg)}</td><td>Never</td></tr>`).join("")}</table>
+          ${["avg", "worst"].map(p => `<tr class="${PLAN === p ? "on" : ""}"><td>${planName(p)}</td><td>${pct(score(planIdx(k, p), o).worst)}</td><td>${pct(score(planIdx(k, p), o).avg)}</td><td>Never</td></tr>`).join("")}
+          ${(() => { const x = score(methodSets("exact", k), o), mv = k > 1 ? methodSets("exact", k - 1).filter(i => !methodSets("exact", k).includes(i)).length : 0;
+            return `<tr class="cmpx"><td>${plain("Exact optimum")} <span class="dim">(comparison)</span></td><td>${pct(x.worst)}</td><td>${pct(x.avg)}</td><td>${k === 1 ? "–" : mv ? `Yes: ${mv} from ${k - 1}` : `Not from ${k - 1}`}</td></tr>`; })()}</table>
         <div class="hint">${k === 5 && k < 8 ? `<b>Five is where it levels off:</b> a sixth adds ${add(6)} points to the worst case, a seventh ${add(7)}, an eighth ${add(8)}. ` : ""}${planName(otherPlan())} reaches ${pct(other.worst)} in the hardest weather with ${k}. ${k > 1 ? `Without S${weakest + 1}: ${pct(fails[weakest])}.` : ""} Costs at ${PRICE_NOTE}.</div>
         ${verdict()}
         ${fold("How sure we are", `<table class="mini"><tr><th class="in">Firm</th><th class="out">Say carefully</th></tr>

@@ -11,7 +11,9 @@ sim35_mix.py and sim35_capacity.py, and fixes what the Sim 3.5 audit found (docs
                 over the 7 wet cases (Greedy: average, the plain keys: ladder, held_out, reasons, ...) or the worst
                 case (Greedy: worst case, the *_worst keys), ties to the other measure, then the lower index. Both
                 are nested: the k-sensor set is the (k-1)-sensor set plus one, so no sensor moves. The exact solver
-                is run at every k as a reference figure only. (Until 19 Nov: a design-day seed and a beam search.)
+                is run at every k too (exact_* keys): Exact optimum, shown beside the greedy lists as the best set
+                of each size bought all at once, which can move sensors between sizes. It chooses nothing.
+                (Until 19 Nov: a design-day seed and a beam search.)
     held out    the same greedy without the weather case or region being tested, always exactly k sensors, so
                 "5 sensors" means 5 sensors everywhere.
     baseline    random sets of k, from any manhole and from manholes that respond at all.
@@ -284,7 +286,8 @@ def main():
 
     # 19 Nov: Sim 4 places level sensors by greedy only, two ways (GOALS): for the best average and for the best worst
     # case. Sections 3 to 7 run once per goal; "average" fills the payload's plain keys (the map's default), "worst"
-    # the *_worst keys. The exact solver is still run at each count as a reference figure; it chooses nothing.
+    # the *_worst keys. The exact solver is still run at each count: Exact optimum, the comparison the story, Explore and
+    # the demo show beside the greedy lists (20 Nov). It chooses nothing.
     dist = along_pipe()
     home = defaultdict(list)
     for r in reg["regions"]:
