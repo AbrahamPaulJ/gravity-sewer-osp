@@ -361,13 +361,14 @@ window.Sim35UI = (function () {
   }
   function storySentence(pl) {
     const w = pl.story, n = pl.chosen.length, story = storyScope();
-    const where = story ? "over the " + scopeCases("story").length + " wet cases in the regions to monitor or watch" : "over all " + S().cases.length + " cases and every region";
+    // 19 Nov: the test is already named under Scored on (#scopeNote) and the method under its switch (#methSay), so this
+    // only adds what neither says: which story step the set is, or that it was chosen on another test.
     const who = st.method === "story" ? "These are the story's " + (n === 1 ? "first sensor" : "first " + n + " sensors") + ", in its order. "
-      : pl.chosenOn === "story" && isGreedy(st.method) ? "This is the story's " + methodName() + " list, chosen on this test. "
+      : pl.chosenOn === "story" && isGreedy(st.method) ? "The story's " + methodName() + " list (step " + (st.method === "greedy" ? "5c" : "5b") + "). "
       : pl.chosenOn === "story" ? "This is the exact optimum on the story's own test. "
       : story ? "This set was chosen on the broader test and is scored here on the story's. " : "";
-    return (story ? "" : wetNote(pl)) + (w && w.total ? "<p style='margin:0 0 8px'>They warn of <b>" + w.warned + " of " + w.total + "</b> overloads by 100% build-out, before the first surcharge, " + where + ".</p>" : "") +
-      "<p class='quiet' style='margin:0 0 8px' id='scopeSay'>" + who + "Scored on " + (story ? TEST_NOTE.story.charAt(0).toLowerCase() + TEST_NOTE.story.slice(1) : TEST_NOTE.broad.charAt(0).toLowerCase() + TEST_NOTE.broad.slice(1)) + "</p>";
+    return (story ? "" : wetNote(pl)) + (w && w.total ? "<p style='margin:0 0 8px'>They warn of <b>" + w.warned + " of " + w.total + "</b> overloads by 100% build-out, before the first surcharge.</p>" : "") +
+      (who ? "<p class='quiet' style='margin:0 0 8px' id='scopeSay'>" + who.trim() + "</p>" : "");
   }
   function infillPlacement() {
     const rr = S().rules[st.rule];
@@ -816,7 +817,8 @@ window.Sim35UI = (function () {
     $("#scopeBox").hidden = st.fam !== "infill";
     $$("#scopeKnob button").forEach(b => b.classList.toggle("on", b.dataset.s === st.scope));
     $("#scopeNote").textContent = TEST_NOTE[storyScope() ? "story" : "broad"];
-    $("#sensHead").textContent = st.fam === "infill" ? (storyScope() ? "Sensors, scored on the story's test" : "Sensors, scored on the broader test") : "Sensors, scored on the " + scoredCases().length + " wet cases";
+    // The test is named by the Scored on switch just below, so the heading only names the sensors (greenfield has no switch).
+    $("#sensHead").textContent = st.fam === "infill" ? "Level sensors" : "Level sensors, scored on the " + scoredCases().length + " wet cases";
     const kMax = st.method === "story" ? storyMax() : storyGreedyList() ? storyGreedyList().length : (R().maxSensors || 10);
     $("#kRange").max = String(kMax);
     if (st.k > kMax) st.k = kMax;
@@ -859,20 +861,6 @@ window.Sim35UI = (function () {
     $("#methRisk").hidden = !hasRisk;
     if (!hasRisk && st.method === "risk") st.method = DEFAULT_METHOD;
     $$("#methKnob button").forEach(b => { if (!SHOWN_METHODS.includes(b.dataset.m)) b.hidden = true; });
-    const methText = st.method === "story"
-      ? (st.fam !== "one"
-        ? "Nested beam search: the story's sensors, in the story's order. The recommendation. " + NESTED_HOW + " Chosen for the regions to monitor or watch, up to the 2041 homes, and scored here on " + (storyScope() ? "that same test" : "the broader test, which adds Dry, the regions the story leaves and the stress steps") + ". The other methods are comparisons."
-        : "Nested beam search: the story's sensors, chosen for infill growth, tested here on new estates joining at the 9 edge connections. The placement does not change. Greedy is the greenfield runs' own order, as a comparison.")
-      : st.fam !== "one"
-      ? (st.method === "warn" ? "Warn before surcharge: the best set of this size for warning at least one build-out step before the first new surcharge, worst of the 7 wet cases." : st.method === "exact" ? (storyScope() && storyExact(st.k)
-           ? "Exact: the best set of this size on the story's own test, solved exactly for the worst case (sim4_numbers.py, HiGHS). A comparison: the recommendation is the nested beam search list, which keeps step 5a's sensor and grows without moving one."
-           : "Exact: the best set of this size, solved exactly over all cases for the worst case (PuLP + HiGHS). A comparison: the recommendation is the nested beam search list.")
-         : st.method === "risk" ? "Risk-weighted: a severity x occurrence score of the kind Kimbrough (2019) uses, with this page's own scales. Severity is homes draining through the manhole where it bites; occurrence is how far it pushes that manhole towards 0.7 of its bore. The set that notices the most risk, solved exactly. A comparison, not the recommendation: it pulls sensors towards trunk mains already near capacity."
-                               : st.method === "greedy-avg" ? "Greedy, average: each level sensor is the best addition to the ones before it for the average over the cases. On the story's test at the 10 mm rule it is the story's own list (steps 5a and 5b); elsewhere it is worked out on this page on the broader test."
-                               : "Greedy, worst case: each level sensor is the best addition to the ones before it for the worst of the cases. On the story's test at the 10 mm rule it is the story's own list (step 5c); elsewhere it is the broader test's greedy order.")
-      : "Greedy is the greenfield runs' own order, " + (st.method === "greedy-avg" ? "for the best average" : "for the best worst case") + ".";
-    const objText = " The chart draws each greedy by its own goal: Greedy: worst case by its worst case, Greedy: average by its average.";
-    const scopeText = st.fam === "infill" && st.method !== "story" ? (storyScope() ? ((storyExact(st.k) && st.method === "exact") || storyGreedyList() ? "" : " Chosen on the broader test, scored here on the story's.") : " Scored on the broader test.") : "";
     // The selected method in one visible line, under its buttons (expert view).
     $("#methSay").innerHTML = st.method === "story" ? "<b>Nested beam search</b>: " + esc(NESTED_HOW) + " The recommendation."
       : st.fam === "one" ? "<b>" + esc(methodName()) + "</b>: the greenfield runs' own order, one sensor at a time, each the one that most raises the " + (st.method === "greedy-avg" ? "average" : "worst case") + "."
@@ -881,7 +869,9 @@ window.Sim35UI = (function () {
       : st.method === "greedy-avg" ? "<b>Greedy: average</b>: one sensor at a time, each the one that most raises the average over the cases, with no look-ahead, so no sensor moves as more are added."
       : st.method === "warn" ? "<b>Warn before surcharge</b>: the set that warns of the most overloads a build-out step before the first new surcharge. A comparison."
       : st.method === "risk" ? "<b>Risk-weighted</b>: the set that notices the most severity x occurrence (" + cite("Kimbrough 2019") + "). A comparison." : "";
-    $("#sensInfo").dataset.tip = methText + objText + scopeText + " Detectable growth: scenarios that at least one manhole sees. This scores whether a sensor would notice growth, not whether it watches a choke point; the choke points are under No growth.";
+    // 19 Nov: the method is described under its switch (#methSay), the test under Scored on (#scopeNote) and the chart's
+    // lines in its note (#curveNote), so this tip says only what none of them does.
+    $("#sensInfo").dataset.tip = "Detectable growth: the runs in which at least one manhole's water rises 10 mm or more over its level before the growth; the percentages are the share of those the level sensors notice. Each card says which regions its sensor is first to notice and how much drains past it. This scores whether a sensor would notice growth, not whether it watches a choke point; the choke points are under No growth.";
   }
 
   function setView(v) {
@@ -1196,7 +1186,7 @@ window.Sim35UI = (function () {
     const row = st.fam === "infill" ? curRow() : null, seen = isIn ? new Set(seers(row, st.rule)) : null;
     const oneRow = !isIn && st.fam === "one" && st.site != null ? rowFor(cell(), st.site) : null;
     const type = st.rule === "alarm" ? "float switch at the alarm level" : "level sensor";
-    const lead = "<p><b>" + k + "</b> sensor" + (k === 1 ? "" : "s") + (pl.worst != null ? " catch " + figsOf(pl, isIn ? "infill" : "greenfield") : "") +
+    const lead = "<p><b>" + k + "</b> " + (st.rule === "alarm" ? "float switch" + (k === 1 ? "" : "es") : "level sensor" + (k === 1 ? "" : "s")) + (pl.worst != null ? " catch " + figsOf(pl, isIn ? "infill" : "greenfield") : "") +
       (pl.riskWorst != null ? ", and <b>" + pct(pl.riskWorst) + "</b> of the risk-weighted total" : "") + ".</p>";
     const cards = chosen.map((i, j) => {
       const nm = nameOf(i), ri = regionOf[i];
@@ -1222,7 +1212,7 @@ window.Sim35UI = (function () {
       return '<div class="why' + (miss ? " miss" : "") + '"><div class="hd"><span class="pin">' + SP() + (j + 1) + "</span>" + esc(label(i)) +
         (ri >= 0 ? ' <span class="quiet">' + esc(S().regions[ri].id) + "</span>" : "") +
         '<span class="cov">' + (isIn && isGreedy(st.method) ? greedyCardCov(rr, j) : "") + "</span></div>" +
-        "<p>" + watch + "Watches <b>" + upc.chambers + "</b> manholes and " + upc.homes + " homes draining through it. A " + type + ". " + sees + "</p></div>";
+        "<p>" + watch + "Watches <b>" + upc.chambers + "</b> manholes and " + upc.homes + " homes draining through it. " + (type === "level sensor" ? "" : "A " + type + ". ") + sees + "</p></div>";
     }).join("");
     let extra = "";
     if (isIn && st.view === "expert" && pl.compare && pl.compare.plain_set) {
@@ -1314,7 +1304,7 @@ window.Sim35UI = (function () {
     const mine = '<g class="cv-sel' + (pulse ? " pulse" : "") + '" data-m="' + sel.id + '">' + one(sel, true) + "</g>";
     const shows = series.map(s => s.name + " by its " + goal(s)).join("; ");
     el.innerHTML = '<div class="lg">' + series.map(s => '<span class="' + (s === sel ? "on" : "") + '"><i style="background:' + s.col + '"></i>' + esc(s.name) + "</span>").join("") + "</div>" +
-      '<p class="quiet" id="curveNote">Each greedy by its own goal: ' + esc(shows) + ". <b>" + esc(sel.name) + "</b> in bold. " + esc(note) + "</p>" +
+      '<p class="quiet" id="curveNote">' + esc(shows) + "." + (st.fam === "one" ? " " + esc(note) : "") + "</p>" +
       '<svg viewBox="0 0 ' + W + " " + (H + 10) + '" role="img" aria-label="Share of detectable growth caught against number of sensors: ' + esc(shows) + ", " + esc(sel.name) + ' highlighted">' + grid +
       '<line x1="' + x(k - 1) + '" x2="' + x(k - 1) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--dim)" stroke-dasharray="3 3"/>' +
       others + mine +
