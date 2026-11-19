@@ -784,6 +784,16 @@ window.Sim35UI = (function () {
     on("#addKnob", b => { st.add = +b.dataset.i; repaint(); });
     on("#methKnob", b => { st.method = shownMethod(b.dataset.m); st.pickedGreedy = isGreedy(st.method); repaint(); });
     on("#scopeKnob", b => { st.scope = b.dataset.s === "broad" ? "broad" : "story"; repaint(); });
+    // Scored on and the method are switches (explore.html): a click on the track between the two labels flips to the other one.
+    ["#scopeKnob", "#methKnob"].forEach(k => $(k).addEventListener("click", e => {
+      if (e.target.closest("button")) return;
+      const bs = [...$(k).querySelectorAll("button")].filter(b => !b.hidden && b.getClientRects().length);
+      if (bs.length !== 2) return;
+      const [a, z] = bs.map(b => b.getBoundingClientRect()).sort((p, q) => p.left - q.left);
+      if (e.clientX < a.right || e.clientX > z.left) return;
+      const off = bs.find(b => !b.classList.contains("on"));
+      if (off) off.click();
+    }));
     $("#region").onchange = () => { st.region = +$("#region").value; st.pick = null; repaint(); };
     $("#stepRange").oninput = () => { st.step = +$("#stepRange").value; repaint(); };
     $("#kRange").oninput = () => { st.k = +$("#kRange").value; repaint(); };

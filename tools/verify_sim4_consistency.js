@@ -192,9 +192,20 @@ const server = http.createServer((q, s) => {
   const visible = await ev('[...document.querySelectorAll("#methKnob button")].filter(b=>!b.hidden&&b.getClientRects().length).map(b=>b.dataset.m).join()');
   const say = await ev('document.getElementById("methSay").innerText');
   ok("method: only Greedy: worst case and Greedy: average are offered", visible === "greedy,greedy-avg", visible);
-  const seg = await ev(`["#scopeKnob","#methKnob"].map(k=>{const bs=[...document.querySelectorAll(k+" button")].filter(b=>b.getClientRects().length);
-    return{k,n:bs.length,on:bs.filter(b=>b.classList.contains("on")).length,fit:bs.every(b=>b.scrollWidth<=b.clientWidth+1),row:new Set(bs.map(b=>Math.round(b.getBoundingClientRect().top))).size,w:bs.map(b=>Math.round(b.clientWidth))}})`);
-  ok("Scored on and the method are segmented controls: two halves on one row, one filled, no label cut off", seg.every(x => x.n === 2 && x.on === 1 && x.row === 1 && x.fit), JSON.stringify(seg));
+  // Scored on and the method are switches: label, track (the row's ::before), label; the knob on the chosen label's side.
+  const sw = () => ev(`["#scopeKnob","#methKnob"].map(k=>{const el=document.querySelector(k),bs=[...el.querySelectorAll("button")].filter(b=>b.getClientRects().length),tr=getComputedStyle(el,"::before");
+    const r=bs.map(b=>b.getBoundingClientRect());return{k,n:bs.length,on:bs.findIndex(b=>b.classList.contains("on")),fit:bs.every(b=>b.scrollWidth<=b.clientWidth+1),
+    row:new Set(r.map(x=>Math.round(x.top+x.height/2))).size,track:tr.width,knob:tr.backgroundPositionX,gap:r.length===2?[Math.round(r[0].right),Math.round(r[1].left)]:null,y:r.length?Math.round(r[0].top+r[0].height/2):0}})`);
+  let sws = await sw();
+  ok("Scored on and the method are switches: two labels either side of a track on one row, knob on the chosen side, no label cut off",
+     sws.every(x => x.n === 2 && x.on === 0 && x.row === 1 && x.fit && x.track === "38px" && x.knob === "0%" && x.gap[1] - x.gap[0] > 38), JSON.stringify(sws));
+  const tap = async x => { await send("Input.dispatchMouseEvent", { type: "mousePressed", x: (x.gap[0] + x.gap[1]) / 2, y: x.y, button: "left", clickCount: 1 }); await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: (x.gap[0] + x.gap[1]) / 2, y: x.y, button: "left", clickCount: 1 }); await wait(1200); };
+  await ev('document.getElementById("methKnob").scrollIntoView({block:"center"})'); await wait(400);
+  await tap((await sw())[1]);
+  const flipped = await ev('(document.querySelector("#methKnob button.on")||{}).dataset?.m'), knobR = (await sw())[1].knob;
+  await tap((await sw())[1]);
+  const back = await ev('(document.querySelector("#methKnob button.on")||{}).dataset?.m');
+  ok("method switch: a click on the track flips to Greedy: average (knob right) and back", flipped === "greedy-avg" && knobR === "100%" && back === "greedy", `${flipped} ${knobR} ${back}`);
   ok("method: the old name Sim 4's list appears nowhere", !/Sim 4's list/.test(fs.readFileSync(path.join(PUB, "simulation4/explore.html"), "utf8")) && !/"Sim 4's list|Sim 4's list[:,]/.test(fs.readFileSync(path.join(PUB, "simulation4/explore_ui.js"), "utf8")));
   ok("method: the line under it explains greedy (worst case, one at a time, no sensor moves)", /^Greedy: worst case/.test(say) && /one sensor at a time/.test(say) && /worst case/.test(say) && /no sensor moves/.test(say), say.slice(0, 200));
 
@@ -214,7 +225,13 @@ const server = http.createServer((q, s) => {
     pulses.push(ch.sel === m && ch.pulse && ch.lines === 2 && ch.others === (m === "greedy" ? "greedy-avg" : "greedy"));
   }
   ok("chart: each greedy selected in turn is the bold one, the other still drawn, and it pulses as it changes", pulses.every(Boolean), pulses.join());
+  // The chart follows Scored on: the same sets rescored, so the lines move. Each line's y at 1..n sensors, read off its path.
+  const ys = () => ev(`[...document.querySelectorAll("#curve .cv-line")].map(p=>p.closest("g").dataset.m+":"+(p.getAttribute("d").match(/[ML][\\d.]+ ([\\d.]+)/g)||[]).map(s=>Math.round(+s.split(" ")[1])).join(",")).join(" | ")`);
+  const yStory = await ys(), leadStory = await ev('document.getElementById("sensorList").innerText.split("\\n")[0]');
   await click('#scopeKnob button[data-s="broad"]'); await wait(1500);
+  const yBroad = await ys(), leadBroad = await ev('document.getElementById("sensorList").innerText.split("\\n")[0]');
+  ok("chart: switching Scored on redraws the lines (the story's test and the broader test differ)", yStory && yBroad && yStory !== yBroad, "story " + yStory + "  //  broad " + yBroad);
+  ok("side panel: switching Scored on changes the figures too", leadStory !== leadBroad, leadStory + "  //  " + leadBroad);
   ch = await chart();
   ok("chart: on the broader test too, both greedy lines, the selected one bold", ch.sel === "greedy" && ch.lines === 2, JSON.stringify(ch));
   ok("chart: changing the test is not a method change, so no pulse", !ch.pulse);
