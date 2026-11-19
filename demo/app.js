@@ -66,8 +66,8 @@ const App = (() => {
   // [id, short name, title], grouped in chapters
   const CHAPTERS = [
     ["Problem", [["problem", "The problem", "Growth is filling sewers sized for fewer homes"], ["setting", "Setting", "Growth uses up the pipes"], ["network", "Network", "What we know about the network"]]],
-    ["Approach", [["approach", "End to end", "Our approach, end to end"], ["simulate", "Simulate", "Simulate the growth"], ["insights", "What the runs show", "Where the water rises"], ["regions", "Which regions", "Which regions matter"], ["algorithms", "Place sensors", "Turning runs into sensor sites"]]],
-    ["Results", [["onesensor", "One is not enough", "One level sensor is not enough"], ["compare", "Compare", "How good is each placement?"], ["check", "Cross-check", "Does basic hydraulics agree?"], ["sensors", "Sensor types", "What to install"]]],
+    ["Approach", [["approach", "End to end", "Our approach, end to end"], ["simulate", "Simulate", "Simulate the growth"], ["insights", "What the runs show", "Where the water rises"], ["regions", "Which regions", "Which regions matter"], ["onesensor", "One is not enough", "One level sensor is not enough"], ["algorithms", "Place sensors", "Turning runs into sensor sites"]]],
+    ["Results", [["compare", "Compare", "How good is each placement?"], ["check", "Cross-check", "Does basic hydraulics agree?"], ["sensors", "Sensor types", "What to install"]]],
     ["Next", [["repeat", "Repeat", "Run the method yourself"], ["future", "Next research", "Where this goes next"], ["conclude", "Conclusion", "What we recommend"]]],
   ];
   const SECTIONS = CHAPTERS.flatMap(([ch, v]) => v.map(x => [...x, ch]));
@@ -899,6 +899,7 @@ const App = (() => {
       const base = allTags().map(t => ({ label: caseShort(t), value: S().base[t].surcharged.length / 120, text: String(S().base[t].surcharged.length), get colour() { return PAL.barBase; } }));
       const sim4 = new Set(planIdx(5));
       return `
+        ${surTiles()}
         <p class="lede">All the runs at once: which manholes respond, how often, and how that changes with the weather and with the number of homes.</p>
         <h3>Count runs where a manhole</h3>
         ${chips(Object.entries(MEASURES).map(([k, m]) => [k, m[0]]), k => k === q.measure, "ms")}
@@ -966,6 +967,8 @@ const App = (() => {
       const sc = set ? score(set, o) : null, rnd = C().random[a.k - 1];
       return `
         <p class="lede">A run is <b>seen</b> if a sensor's water rises by 10 mm or more. The task: pick a few manholes that see as many runs as possible, in every weather case, and warn before an overload.</p>
+        ${ladderSvg()}
+        ${planCards()}
         <h3>Method</h3>
         ${chips(METHODS.map(x => [x.id, x.label, x.colour]), k => k === a.method, "mth")}
         <div class="card"><b>${m.label}</b><div>${m.how}</div><div class="dim">${m.why}</div></div>
@@ -1331,6 +1334,7 @@ const App = (() => {
       const add = n => Math.round(100 * score(planIdx(n), o).worst) - Math.round(100 * score(planIdx(n - 1), o).worst); // the shown percentages' difference
       return `
         <div class="tri">${groups.map(([t, rs]) => `<div class="${t}"><b>${t[0].toUpperCase() + t.slice(1)}</b>${rs.join(", ")}</div>`).join("")}</div>
+        ${tiles()}
         <h3>The plan: the client's choice</h3>
         ${planChips()}
         <div class="slider"><input id="coK" type="range" min="1" max="8" value="${k}" aria-label="Level sensors"><span>${k} level sensor${k === 1 ? "" : "s"} · ${money(k * PRICE)}</span></div>
@@ -1397,17 +1401,17 @@ const App = (() => {
       return {
         pipe: p => { const ri = pipeRegion(p); const t = ri >= 0 && D().triage[regionId(ri)]; return t ? [COL[t], t === "leave" ? 1.2 : 2.6] : [COL.pipe, 1]; },
         overlayPipe: p => [COL[D().triage[regionId(paint.overlayOf[G().up[p]])]], 4],
-        node: () => null, labels: regionLabels(ri => COL[D().triage[regionId(ri)]]),
+        node: () => null, labels: regionLabels(ri => COL[D().triage[regionId(ri)]]).map((l, ri) => ({ ...l, text: `${l.text} +${regionRise(ri)} mm` })),
         legend: ["monitor", "watch", "leave"].map(t => [COL[t], actName(t)]),
       };
     },
     chart(rows) {
-      const W = 400, lw = 40, rw = 18, Hh = 15, gap = 9, top = 18, X = v => lw + (W - lw - rw) * Math.min(v, 3) / 3, n = rows.length;
+      const W = 400, lw = 92, rw = 18, Hh = 15, gap = 9, top = 18, X = v => lw + (W - lw - rw) * Math.min(v, 3) / 3, n = rows.length;
       const body = rows.map((r, k) => {
         const y = top + k * (Hh + gap), c = COL[r.action];
-        const band = r.lo == null ? `<text x="${X(0) + 4}" y="${y + 12}" class="bl" text-anchor="start">not reached by 3×</text>`
+        const band = r.lo == null ? `<text x="${X(1) + 6}" y="${y + 12}" class="bl" text-anchor="start">not reached by 3×</text>`
           : `<rect x="${X(r.lo / r.homes)}" y="${y}" width="${Math.max(3, X(Math.min(r.hi, 3 * r.homes) / r.homes) - X(r.lo / r.homes))}" height="${Hh}" rx="3" fill="${c}"/>` + (r.hi === Infinity ? `<text x="${W - rw + 3}" y="${y + 12}" class="bl" text-anchor="start" fill="${c}">▶</text>` : "");
-        return `<text x="${lw - 8}" y="${y + 12}" text-anchor="end" class="bl" font-weight="700" fill="${c}">${r.id}</text>${band}`;
+        return `<text x="${lw - 8}" y="${y + 12}" text-anchor="end" class="bl"><tspan font-weight="700" fill="${c}">${r.id}</tspan> +${regionRise(regionIndex(r.id))} mm</text>${band}`;
       }).join("");
       const ax = [0, 1, 2, 3].map(v => `<line x1="${X(v)}" x2="${X(v)}" y1="${top - 4}" y2="${top + n * (Hh + gap) - gap + 4}" class="${v === 1 ? "now" : "grid"}"/><text x="${X(v)}" y="${top - 7}" text-anchor="middle" class="bl">${v === 1 ? "2041" : v === 0 ? "0" : v + "×"}</text>`).join("");
       return `<svg class="bars regchart" viewBox="0 0 ${W} ${top + n * (Hh + gap)}" width="100%">${ax}${body}</svg>`;
@@ -1416,7 +1420,7 @@ const App = (() => {
       const rows = this.rows(), count = t => rows.filter(r => r.action === t).length;
       return `
         <div class="stats three">${["monitor", "watch", "leave"].map(t => stat(count(t), actName(t), t)).join("")}</div>
-        <h3>New homes until a pipe is 0.7 full <small>(400 tries each)</small></h3>
+        <h3>New homes until a pipe is 0.7 full <small>(rise with 2041 homes; 400 tries)</small></h3>
         ${this.chart(rows)}
         <div class="key">Bar: 10th to 90th of 400 tries · line: the region's 2041 homes · limit: ${LIB("Kimbrough (2019)")}</div>
         ${fold("How a region is sorted", `<ul class="plain"><li><b>${actName("monitor")}:</b> runs out before its 2041 homes in at least 80% of 400 tries.</li><li><b>${actName("leave")}:</b> in at most 20%.</li><li><b>${actName("watch")}:</b> in between.</li><li>Each try shifts every manhole's starting level by a typical 0.05 of its pipe height, because the model is uncalibrated.</li><li>Only one region grows at a time; the design wet day.</li></ul>`)}
@@ -1451,6 +1455,62 @@ const App = (() => {
     },
   };
 
+  // ------------------------------------------------------------------ round 2 (19 Nov): more of the story on screen
+  const BEAM = 1500; // sim4_numbers.py WIDTH: the sets kept at each step of the nested search (verify_demo checks it)
+  // Level sensors already in the ground that a plan moves when bought 1, then 5, then 8 (the story's 5b fold counts the same).
+  const moved = sets => sets.slice(1).reduce((t, s, j) => t + sets[j].filter(i => !s.includes(i)).length, 0);
+  const planMoves = p => moved([1, 5, 8].map(k => p === "stages" ? ladderIdx(k) : exactIdx(k)));
+  const ladderSvg = () => {
+    // Labels sit above the arrows (the search) and below the nodes they name, so none overlap at panel width.
+    const W = 380, H = 100, xs = [24, 118, 198, 296, 356], y = 42;
+    const node = (x, t, big) => `<circle cx="${x}" cy="${y}" r="${big ? 15 : 12}" fill="${big ? COL.sensor : "var(--panel)"}" stroke="${COL.sensor}" stroke-width="2"/><text x="${x}" y="${y + 4.5}" text-anchor="middle" font-size="12" font-weight="700" fill="${big ? "var(--on-sensor)" : COL.sensor}">${t}</text>`;
+    const lab = (x, yy, t, a = "middle") => `<text x="${x}" y="${yy}" text-anchor="${a}" class="bl">${t}</text>`;
+    const arrow = (a, b) => `<path d="M${a + 16} ${y} H${b - 18}" stroke="${COL.sensor}" stroke-width="1.6" marker-end="url(#lad-ar)"/>`;
+    return `<svg class="ladder" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="The nested list: S1, then one at a time, to 5, then 8">
+      <defs><marker id="lad-ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="${COL.sensor}"/></marker></defs>
+      ${arrow(xs[0], xs[1])}${arrow(xs[1], xs[2])}${arrow(xs[2], xs[3])}${arrow(xs[3], xs[4])}
+      ${node(xs[0], "S1", true)}${node(xs[1], "+1")}${node(xs[2], "+1")}${node(xs[3], "5", true)}${node(xs[4], "8")}
+      ${lab((xs[0] + xs[3]) / 2, 14, `+1 at a time · best ${BEAM.toLocaleString("en-AU")} sets kept`)}
+      ${lab(6, y + 32, "every design", "start")}${lab(6, y + 45, "wet run", "start")}
+      ${lab(xs[3], y + 32, "checked against")}${lab(xs[3], y + 45, "every possible 5")}
+      <text x="${(xs[1] + xs[2]) / 2}" y="${y + 38}" text-anchor="middle" class="bl" font-weight="700" fill="${COL.sensor}">Nothing moves</text></svg>`;
+  };
+  const planCards = () => {
+    const o = SIM4_TEST(), card = (p, sc, mv) => `<button type="button" class="plancard ${PLAN === p ? "on" : ""}" data-plan="${p}"><b>${planName(p)}</b>
+      <span><i>${pct(sc.worst)}</i>worst</span><span><i>${pct(sc.avg)}</i>average</span><span><i>${sc.warned} of ${sc.warnable}</i>warned</span><span><i>${mv ? mv : "Nothing"}</i>${mv ? `level sensor${mv === 1 ? "" : "s"} moved, 1 → 5 → 8` : "moves"}</span></button>`;
+    return `<div class="plancards">${card("stages", score(ladderIdx(5), o), planMoves("stages"))}${card("once", score(exactIdx(5), o), planMoves("once"))}</div>`;
+  };
+  // The story's "Behind this step", read from Sim 4's own data (simulation4/data/sim4.js), so the two never differ.
+  const STORY_STEP = { network: "1", simulate: "2", insights: "3", regions: "4", onesensor: "5a", algorithms: "5b", sensors: "6", conclude: "6" };
+  let behindOpen = false;
+  const esc = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const cite = t => window.SIM4_LIBRARY ? window.SIM4_LIBRARY.link(esc(t)) : esc(t);
+  function behindHTML(id) {
+    const s = D().steps.find(x => x.id === id); if (!s) return "";
+    const n = s.notes, row = (k, l) => n[k] ? `<div class="bn"><b>${l}</b><span>${cite(n[k])}</span></div>` : "";
+    const fig = f => `<h5>${esc(f.title)}</h5>${f.intro ? `<p>${cite(f.intro)}</p>` : ""}${f.table || ""}`;
+    const more = n.more ? `<h4>${esc(n.more.title)}</h4>` + n.more.blocks.map(b => `<h5>${esc(b.title)}</h5>${b.intro ? `<p>${cite(b.intro)}</p>` : ""}${b.html || (b.widget ? `<p class="dim">Interactive in Simulation 4, step ${esc(s.id)}.</p>` : "")}`).join("") : "";
+    return `<div class="bhead"><b>Behind this step</b><span class="dim">Simulation 4, step ${esc(s.id)}: ${esc(s.title)}</span><button type="button" id="behindClose" aria-label="Close">✕</button></div>
+      <div class="bnotes">${row("assumes", "Assumes")}${row("source", "Source")}${row("limit", "Limit")}${row("next", "Next")}</div>
+      ${(n.figures || []).map(fig).join("")}${s.why ? fig(s.why) : ""}${more}`;
+  }
+  function renderBehind() {
+    const id = STORY_STEP[st.sec], el = $("#behind"); if (!el) return;
+    if (!id || !behindOpen) { el.hidden = true; el.innerHTML = ""; return; }
+    el.innerHTML = behindHTML(id); el.hidden = false;
+    $("#behindClose").onclick = () => { behindOpen = false; refresh(); };
+  }
+  // Each region's largest rise in any manhole with its 2041 homes, design wet day (story step 3), in mm.
+  const regionRise = ri => { const row = rowAt(D().design, ri, FULL()); return row ? Math.round(Math.max(0, ...row.rise.map(x => x[1]))) : 0; };
+  // Conclusion tiles, from the data: with normal-day records proving the design wet day, step 5a's fewest sensors suffice.
+  // Story step 2's two numbers: manholes surcharged before any growth, design wet day and a much wetter day.
+  const surTiles = () => { const w = isSimple() ? "backing up before new homes" : "surcharged before growth";
+    return `<div class="stats sur">${stat(S().base[D().design].surcharged.length, w + ", design wet day")}${stat(S().base[wetTags()[1]].surcharged.length, w + ", much wetter day", "bad")}</div>`; };
+  const tiles = () => {
+    const t = table("Fewest sensors by weather covered"), r = t && t.rows.find(x => /^Design wet only/.test(x[0])), need = r ? +r[r.length - 1] : 1, save = 5 - need;
+    return `<div class="tiles"><div><b>Normal-day records</b><span>save up to ${save} level sensor${save === 1 ? "" : "s"}, about ${money(save * PRICE)}</span></div><div><b>New suburb</b><span>rerun the method</span></div><div><b>Next</b><span>new estates at the edge</span></div></div>`;
+  };
+
   const HANDLERS = { problem: PROBLEM, regions: REGIONS, onesensor: ONESENSOR, setting: SETTING, network: NETWORK, approach: APPROACH, simulate: SIMULATE, insights: INSIGHTS, algorithms: ALGORITHMS, compare: COMPARE, check: CHECK, sensors: SENSORS, repeat: REPEAT, future: FUTURE, conclude: CONCLUDE };
   const layer = () => { const pg = isSimple() && PLAIN.pages[st.sec]; return pg && pg.layer ? pg.layer() : HANDLERS[st.sec].layer(); };
 
@@ -1474,11 +1534,18 @@ const App = (() => {
     on("[data-go]", "onclick", e => go(e.currentTarget.dataset.go));
     on("[data-plan]", "onclick", e => setPlan(e.currentTarget.dataset.plan));
     on("#panel [data-mode]", "onclick", e => setMode(e.currentTarget.dataset.mode));
+    if (STORY_STEP[st.sec]) {
+      const nx = $("#panel .next"), b = `<button type="button" id="behindBtn" class="behindbtn ${behindOpen ? "on" : ""}" aria-expanded="${behindOpen}">Behind this step ${behindOpen ? "▾" : "▸"}</button>`;
+      if (nx) { nx.insertAdjacentHTML("beforebegin", `<div class="nextrow">${b}</div>`); nx.previousElementSibling.appendChild(nx); }
+      else $("#panel .inner").insertAdjacentHTML("beforeend", b);
+      $("#behindBtn").onclick = () => { behindOpen = !behindOpen; refresh(); };
+    }
+    renderBehind();
   }
   function refresh() { renderPanel(); draw(); }
   function go(sec, push = true) {
     Object.values(st).forEach(v => v && v.playing && stopPlay(v));
-    st.sec = sec; st.sel = null; st.selPipe = null; $("#panel").innerHTML = "";
+    st.sec = sec; st.sel = null; st.selPipe = null; $("#panel").innerHTML = ""; behindOpen = false;
     view.k = 1; view.tx = 0; view.ty = 0; // each view opens on the whole network
     HANDLERS[sec].init && HANDLERS[sec].init();
     $$("#secs button").forEach(b => b.classList.toggle("on", b.dataset.sec === sec));
@@ -1487,8 +1554,11 @@ const App = (() => {
     refresh();
     if (push) history.replaceState(null, "", "#" + sec);
   }
-  function setTheme(name, redraw = true) {
-    PAL = THEMES[name] || THEMES.paper; document.documentElement.dataset.theme = name; store("demo-theme2", name);
+  function setTheme(name, redraw = true, tell = true) {
+    PAL = THEMES[name] || THEMES.paper; document.documentElement.dataset.theme = name;
+    try { sessionStorage.setItem("demo-theme2", name); } catch (e) { /* not kept */ } // this visit only: each visit opens light
+    // Inside the site, tell the header so its sun/moon icon follows (round 2: the switch drives the demo, and back).
+    if (tell && window.parent !== window) try { window.parent.postMessage({ type: "demo-theme", theme: name === "night" ? "dark" : "light" }, "*"); } catch (e) { /* no header */ }
     const pick = $("#themePick"); if (pick) pick.value = name;
     if (redraw) refresh();
   }
@@ -1518,7 +1588,10 @@ const App = (() => {
     const setNotes = on => { document.documentElement.toggleAttribute("data-notes", on); $("#notesBtn").classList.toggle("on", on); store("demo-notes", on ? "1" : "0"); };
     setNotes(stored("demo-notes") === "1");
     $("#notesBtn").onclick = () => { setNotes(!document.documentElement.hasAttribute("data-notes")); fitView(); draw(); };
-    setTheme(document.documentElement.dataset.theme in THEMES ? document.documentElement.dataset.theme : "paper", false);
+    setTheme(document.documentElement.dataset.theme in THEMES ? document.documentElement.dataset.theme : "paper", false, false);
+    window.addEventListener("message", e => { const d = e.data || {}; if (d.type !== "demo-set-theme") return;
+      const cur = document.documentElement.dataset.theme, want = d.theme === "dark" ? "night" : (cur === "clear" ? "clear" : "paper");
+      if (want !== cur) setTheme(want, true, false); });
     $("#presentBtn").classList.toggle("on", document.documentElement.classList.contains("present"));
     document.addEventListener("keydown", e => {
       if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
@@ -1543,7 +1616,7 @@ const App = (() => {
   const _ = { $, $$, G, R, S, D, C, COL, pal: () => PAL, heat, rgba, nameOf, regionId, regionIndex, caseOf, caseLabel, wetTags, allTags, stepsTo, FULL, pct, money, list,
     regionLabel, rowAt, riseAt, baseMm, stepLabel, table, trow, tcol, seenSet, score, SIM4_TEST, planIdx, ladderIdx, H: () => H, util, SCREENS, responseAt, spearman, st,
     focus, manholeFacts, bars, lineChart, cutaway, stat, chips, fold, nextBtn, on, refresh, draw, go, HANDLERS, ALTERNATIVES, PIPELINE, SENSOR_TYPES, METHODS, methodSets,
-    triagePipe, sensorLabels, load, homeFlow, plan: () => PLAN, planChips, planName, setPlan, ladderIdx, exactIdx, GF, LIB, verdict, regionLabels, REGION_COLS, riseColour, riseScale, sensorWhy, stopPlay, play, PRICE, SECTIONS, setMode, isSimple };
+    triagePipe, sensorLabels, load, homeFlow, ladderSvg, planCards, planMoves, tiles, surTiles, regionRise, BEAM, plan: () => PLAN, planChips, planName, setPlan, ladderIdx, exactIdx, GF, LIB, verdict, regionLabels, REGION_COLS, riseColour, riseScale, sensorWhy, stopPlay, play, PRICE, SECTIONS, setMode, isSimple };
   const registerPlain = o => { Object.assign(PLAIN.pages, o.pages || {}); Object.assign(PLAIN.read, o.read || {}); PLAIN.words.push(...(o.words || [])); };
   return { _, registerPlain, setMode, isSimple: () => isSimple(), init, prepare, go, st, toScreen, setTheme, togglePresent, THEMES, score, greedy, ladderIdx, planIdx, SIM4_TEST, unseenWeather, screenOf, chamberName: i => R().chambers[i], targetPool, screenRank, spearman, responseAt, SCREENS, util, H: () => H, SECTIONS };
 })();

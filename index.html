@@ -417,7 +417,7 @@ Built from public data. Runs entirely in the browser, no server and no tracking.
      document across a normal reload of this page, so a visitor who saw an earlier
      version keeps seeing it after a deploy. Changing the number is what forces the
      refetch. Bump it whenever an embedded page changes. -->
-<div class="pane" id="pane-demo" hidden><iframe data-src="demo/index.html?v=17&theme=paper" title="Product demo: the problem, the data, the method, the results and what comes next"></iframe></div>
+<div class="pane" id="pane-demo" hidden><iframe data-src="demo/index.html?v=18&theme=paper" title="Product demo: the problem, the data, the method, the results and what comes next"></iframe></div>
 <div class="pane" id="pane-sandbox" hidden><iframe data-src="osp_sandbox.html?v=34#sandbox" title="OSP Sandbox"></iframe></div>
 <div class="pane" id="pane-anatomy" hidden><iframe data-src="manhole_anatomy.html?v=33" title="What a maintenance hole is"></iframe></div>
 <div class="pane" id="pane-observability" hidden><iframe data-src="why_observability.html?v=33" title="Why observability is limited"></iframe></div>
@@ -549,6 +549,7 @@ function showTab(name){
   else if (want && frame && subOf(tab, frame) !== sub) { frame.src = want; }
   else if (frame && frame.hasAttribute('data-src')) { frame.src = frame.dataset.src; frame.removeAttribute('data-src'); }
   else if (frame) refit(frame);
+  if (tab === 'demo' && window.syncDemoTheme) window.syncDemoTheme();
   return true;
 }
 // A frame shown again after its tab was hidden can keep the width it had before, and the browser leaves the rest
@@ -595,9 +596,24 @@ window.addEventListener('hashchange', function(){ showTab(location.hash.slice(1)
     if (keep) { try { localStorage.setItem('sim4Theme', t); } catch (e) { /* not remembered */ } }
     tell();
   }
-  btn.addEventListener('click', function(){ apply(theme() === 'light' ? 'dark' : 'light', true); });
+  // The product demo opens light on every visit (its frame loads with theme=paper); a switch made during this visit,
+  // with the header or with the demo's own selector, holds across its sections and the tabs (sessionStorage).
+  var demo = document.querySelector('#pane-demo iframe'), demoPane = document.getElementById('pane-demo');
+  var demoTheme = (function(){ try { return sessionStorage.getItem('demoTheme') === 'dark' ? 'dark' : 'light'; } catch (e) { return 'light'; } })();
+  function keepDemo(t){ demoTheme = t; try { sessionStorage.setItem('demoTheme', t); } catch (e) { /* this page only */ } }
+  function tellDemo(){ try { if (demo && demo.contentWindow) demo.contentWindow.postMessage({ type: 'demo-set-theme', theme: demoTheme }, '*'); } catch (e) {} }
+  btn.addEventListener('click', function(){ var t = theme() === 'light' ? 'dark' : 'light'; apply(t, true); keepDemo(t); tellDemo(); });
   if (frame) frame.addEventListener('load', function(){ tell(); setTimeout(tell, 1500); setTimeout(tell, 4000); });
+  if (demo) demo.addEventListener('load', function(){ tellDemo(); setTimeout(tellDemo, 800); });
+  window.addEventListener('message', function(e){
+    var d = e.data || {};
+    if (!demo || e.source !== demo.contentWindow || d.type !== 'demo-theme') return;
+    keepDemo(d.theme === 'dark' ? 'dark' : 'light'); if (theme() !== demoTheme) apply(demoTheme, false);
+  });
+  // On the demo's tab the icon shows the demo's theme.
+  window.syncDemoTheme = function(){ if (theme() !== demoTheme) apply(demoTheme, false); tellDemo(); };
   apply(theme(), false);
+  if (demoPane && !demoPane.hidden) window.syncDemoTheme();
 })();
 </script>
 

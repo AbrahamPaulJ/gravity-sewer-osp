@@ -43,7 +43,23 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await click('#tabs button[data-tab="demo"]');
   let ready = false; for (let i = 0; i < 60 && !ready; i++) { await wait(250); ready = await ev(`(()=>{const f=document.querySelector('#pane-demo iframe');return !!(f && f.contentDocument && f.contentDocument.body && f.contentDocument.body.dataset.ready==='1')})()`); }
   ok("demo tab loads the demo in its pane", ready);
-  ok("demo tab opens in the light theme", await ev(`document.querySelector('#pane-demo iframe').contentDocument.documentElement.dataset.theme==='paper'`));
+  const dth = () => ev(`document.querySelector('#pane-demo iframe').contentDocument.documentElement.dataset.theme`);
+  ok("demo tab opens in the light theme, and the header icon shows light", await dth() === 'paper' && await ev(`document.documentElement.dataset.theme==='light'`));
+  await click('#themeToggle'); await wait(500);
+  ok("header switch: the demo turns dark", await dth() === 'night' && await ev(`document.documentElement.dataset.theme==='dark'`), await dth());
+  await ev(`document.querySelector('#pane-demo iframe').contentWindow.eval("App.go('regions')")`); await wait(200);
+  await click('#tabs button[data-tab="overview"]'); await wait(300); await click('#tabs button[data-tab="demo"]'); await wait(600);
+  ok("header switch: the choice holds across sections and tabs", await dth() === 'night' && await ev(`document.documentElement.dataset.theme==='dark'`));
+  await ev(`(()=>{const w=document.querySelector('#pane-demo iframe').contentWindow;w.eval("App.setTheme('paper')")})()`); await wait(500);
+  ok("demo's own selector: the header icon follows", await ev(`document.documentElement.dataset.theme==='light'`) && await ev(`sessionStorage.getItem('demoTheme')==='light'`));
+  await ev(`(()=>{const w=document.querySelector('#pane-demo iframe').contentWindow;w.eval("App.setTheme('night')")})()`); await wait(300);
+  // A new visit: a dark choice saved before is ignored, the demo opens light.
+  await ev(`sessionStorage.clear(); localStorage.setItem('sim4Theme','dark'); document.querySelector('#pane-demo iframe').contentWindow.localStorage.setItem('demo-theme2','night')`);
+  await send("Page.navigate", { url: `http://127.0.0.1:${HTTP}/index.html?visit=2#demo` }); await wait(1500);
+  for (let i = 0; i < 60; i++) { await wait(250); if (await ev(`(()=>{const f=document.querySelector('#pane-demo iframe');return !!(f&&f.contentDocument&&f.contentDocument.body&&f.contentDocument.body.dataset.ready==='1')})()`)) break; }
+  await wait(1000);
+  ok("a new visit opens the demo light, whatever was saved before", await dth() === 'paper' && await ev(`document.documentElement.dataset.theme==='light'`), await dth());
+  await ev(`localStorage.removeItem('sim4Theme')`);
   await shot("00_site_tab");
 
   // The demo alone
@@ -65,6 +81,50 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
     }
   }
   ok("Simple, as presented: no sentence blocks on any page", quiet, quietBad);
+  // Round 2
+  const src = fs.readFileSync(path.join(ROOT, "simulation_src", "sim4_numbers.py"), "utf8"), WIDTH = +(/^WIDTH\s*=\s*([\d_]+)/m.exec(src) || [0, 0])[1].replace(/_/g, "");
+  await ev(`App.go('algorithms')`); await wait(300);
+  ok("place sensors: the ladder diagram, S1 to 5 to 8, nothing moves, beam as in sim4_numbers.py", await ev(`(()=>{const t=(document.querySelector('svg.ladder')||{}).textContent||'';return /S1/.test(t)&&/every design/.test(t)&&/wet run/.test(t)&&/every possible 5/.test(t)&&/Nothing moves/.test(t)&&t.includes('best '+(${WIDTH}).toLocaleString('en-AU')+' sets')})()`) && WIDTH === await ev(`App._.BEAM`), WIDTH);
+  const cards = (await ev(`[...document.querySelectorAll('.plancard')].map(c=>c.innerText).join(' | ')`)).replace(/\s+/g, ' ');
+  ok("place sensors: Buy in stages 81% / 94% / 11 of 11 / nothing moves, highlighted", /^Buy in stages 81% worst 94% average 11 of 11 warned Nothing moves/.test(cards) && await ev(`document.querySelector('.plancard[data-plan="stages"]').classList.contains('on')`), cards);
+  const why5b = await ev(`SIM4.steps.find(s=>s.id==='5b').why.intro`), words = ["zero", "one", "two", "three", "four", "five"];
+  const mv = await ev(`App._.planMoves('once')`);
+  ok("place sensors: Buy all at once 88% / 94% / 11 of 11 / moves the same number as the story's 5b fold", /Buy all at once 88% worst 94% average 11 of 11 warned/.test(cards) && cards.includes(`${mv} level sensors moved`) && new RegExp(`would move ${words[mv]} sensors`).test(why5b), cards + " / " + mv);
+  await ev(`App.go('insights')`); await wait(300);
+  ok("what the runs show: 7 and 107 surcharged before growth", await ev(`[...document.querySelectorAll('.stats.sur .stat b')].map(b=>b.textContent).join()`) === "7,107" && /7 manholes surcharged/.test(await ev(`SIM4.steps.find(s=>s.id==='2').body`)) && /it has 107/.test(await ev(`SIM4.steps.find(s=>s.id==='2').body`)));
+  await ev(`App.go('regions')`); await wait(300);
+  const edgeT = await ev(`[...document.querySelectorAll('#labels .lbl.region.edge')].map(e=>e.textContent)`), chartT = await ev(`document.querySelector('svg.regchart').textContent`);
+  ok("which regions: each edge label carries its rise with the 2041 homes", edgeT.length === 9 && edgeT.every(t => /\+\d+ mm/.test(t)) && (chartT.match(/\+\d+ mm/g) || []).length === 9, edgeT.join());
+  await ev(`App.go('conclude')`); await wait(300);
+  const nd = 5 - +/Design wet only<\/td><td>\d+<\/td><td>\d+<\/td><td>(\d+)/.exec(await ev(`SIM4.steps.find(s=>s.id==='5a').notes.figures[0].table`))[1];
+  ok(`conclusion: three tiles, normal-day records save up to ${nd} level sensors, about $${nd * 25}k`, await ev(`document.querySelectorAll('.tiles > div').length===3`) && (await panel()).includes(`save up to ${nd} level sensors, about $${nd * 25}k`) && /rerun the method/.test(await panel()) && /new estates at the edge/.test(await panel()), await panel());
+  const MAP = { network: "1", simulate: "2", insights: "3", regions: "4", onesensor: "5a", algorithms: "5b", sensors: "6", conclude: "6" };
+  let bOk = true, bBad = "", bScroll = "";
+  for (const [w, h] of [[1920, 1080], [1366, 768]]) {
+    await send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile: false }); await wait(250);
+    for (const v of await ev(`App.SECTIONS.map(s=>s[0])`)) {
+      await ev(`App.go('${v}')`); await wait(v === "compare" || v === "check" || v === "future" ? 700 : 250);
+      const has = await ev(`!!document.querySelector('#behindBtn')`), closed = await ev(`document.querySelector('#behind').hidden`);
+      if (!!MAP[v] !== has || !closed) { bOk = false; bBad += `${v}@${w} `; continue; }
+      if (!MAP[v]) continue;
+      if (["insights", "regions", "onesensor", "algorithms", "conclude"].includes(v)) await shot(`r2_${w}_${v}_closed`);
+      await click('#behindBtn'); await wait(250);
+      const t = await ev(`document.querySelector('#behind').hidden?'':document.querySelector('#behind').innerText`), want = await ev(`SIM4.steps.find(s=>s.id==='${MAP[v]}').title`);
+      if (!t.includes(want) || !/Assumes/.test(t) || !/Source/.test(t)) { bOk = false; bBad += `${v}@${w}:content `; }
+      if (await ev(`(()=>{const b=document.querySelector('#behind');return b.getBoundingClientRect().bottom<=innerHeight+1 && getComputedStyle(b).overflowY==='auto'})()`) !== true) bScroll += `${v}@${w} `;
+      await shot(`r2_${w}_${v}_open`);
+      await click('#behindClose'); await wait(200);
+      if (!(await ev(`document.querySelector('#behind').hidden`))) { bOk = false; bBad += `${v}@${w}:close `; }
+    }
+  }
+  ok("behind this step: a closed panel on each mapped section (and only those), opening the story's step", bOk, bBad);
+  ok("behind this step: open, it fits the window and scrolls inside itself", !bScroll, bScroll);
+  await ev(`App.go('regions')`); await click('#behindBtn'); await wait(200); await ev(`App.go('algorithms')`); await wait(200);
+  ok("behind this step: closes again when moving to another section", await ev(`document.querySelector('#behind').hidden`));
+  await ev(`App.go('regions')`); await click('#behindBtn'); await wait(200);
+  ok("behind this step: sources link to the team's library", await ev(`!!document.querySelector('#behind a[href*="siddhu-123.github.io"]')`));
+  await ev(`App.go('problem')`);
+  await send("Emulation.setDeviceMetricsOverride", { width: 1600, height: 900, deviceScaleFactor: 1, mobile: false }); await wait(200);
   ok("Simple, as presented: no panel scrolling at 1920x1080 or 1366x768", noScroll, scrollBad);
   await send("Emulation.setDeviceMetricsOverride", { width: 1600, height: 900, deviceScaleFactor: 1, mobile: false }); await ev(`App.go('problem')`); await wait(200);
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "n", code: "KeyN", windowsVirtualKeyCode: 78 }); await wait(200);
@@ -74,6 +134,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   const fig = await ev(`(()=>{const o=App.SIM4_TEST();const a=App.score(App.ladderIdx(1),o),b=App.score(App.ladderIdx(5),o),c=App.score(App.ladderIdx(5),{...o,mm:25});return [a.worst,a.avg,a.warned,b.worst,b.avg,b.warned,b.warnable,c.worst,c.avg].map(x=>Math.round(x*100)/100)})()`);
   ok("engine reproduces Sim 4: 0%/53%, 8 warned; 81%/94%, 11 of 11; 25 mm 36%/45%", JSON.stringify(fig) === JSON.stringify([0, 0.53, 8, 0.81, 0.94, 11, 11, 0.36, 0.45]), JSON.stringify(fig));
   ok("fifteen views in four chapters, The problem first", await ev(`document.querySelectorAll('#secs .ch').length===4 && document.querySelectorAll('#secs button[data-sec]').length===15 && document.querySelector('#secs button[data-sec]').dataset.sec==='problem'`));
+  ok("order: Which regions, One is not enough, Place sensors, then Compare", await ev(`App.SECTIONS.map(s=>s[0]).join()`) === "problem,setting,network,approach,simulate,insights,regions,onesensor,algorithms,compare,check,sensors,repeat,future,conclude", await ev(`App.SECTIONS.map(s=>s[0]).join()`));
   ok("the plan defaults to Buy in stages (the nested list)", await ev(`App._.plan()==='stages' && App.planIdx(5).join()===App.ladderIdx(5).join()`));
   ok("sensor labels read S1 to S5", await ev(`(()=>{App.go('conclude');return [...document.querySelectorAll('#labels .lbl.sensor')].map(e=>e.textContent).join()==='S1,S2,S3,S4,S5'})()`));
   await ev(`App.go('setting')`); await wait(300);
@@ -116,9 +177,9 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await shot("03_simulate");
   // 4 Insights
   await click('#secs button[data-sec="insights"]'); await wait(300);
-  const before = await ev(`document.querySelector('.stats .stat b').textContent`);
+  const before = await ev(`document.querySelector('.stats:not(.sur) .stat b').textContent`);
   await click('[data-ms="sur"]'); await wait(200);
-  ok("insights: switching the measure changes the count", before !== await ev(`document.querySelector('.stats .stat b').textContent`));
+  ok("insights: switching the measure changes the count", before !== await ev(`document.querySelector('.stats:not(.sur) .stat b').textContent`));
   await click('[data-find]'); await wait(300);
   ok("insights: clicking a hotspot selects it", await ev(`App.st.sel!==null`));
   await shot("04_insights");
@@ -159,7 +220,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await shot("06_compare");
   // 7 Cross-check
   await click('#secs button[data-sec="check"]'); await wait(800);
-  const rho = await ev(`parseFloat(document.querySelector('.stats .stat b').textContent.replace('ρ = ',''))`);
+  const rho = await ev(`parseFloat(document.querySelector('.stats:not(.sur) .stat b').textContent.replace('ρ = ',''))`);
   ok("cross-check: flow/capacity agrees with the model (ρ > 0.5)", rho > 0.5, rho);
   ok("cross-check: scatter with the five sensors", await ev(`document.querySelectorAll('svg.scatter .dot.sensor').length===5`));
   await click("details.fold:last-of-type summary"); await wait(150); await input("#ckX", 300); await wait(200);
@@ -251,6 +312,7 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowLeft", code: "ArrowLeft", windowsVirtualKeyCode: 37 }); await wait(300);
   ok("← steps back a view", await ev(`App.st.sec==='future'`));
   let names = ""; for (const s of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${s}')`); await wait(150); names += await ev("document.body.innerText"); }
+  for (const v of ["network", "simulate", "insights", "regions", "onesensor", "algorithms", "sensors", "conclude"]) { await ev(`App.go('${v}')`); await wait(150); await click('#behindBtn'); await wait(150); names += await ev(`document.querySelector('#behind').innerText`); }
   ok("no words name the client or the suburb, in any view", !/SA Water|Walkerville|Rostrevor|Stonyfell|Woodforde|Malvern|Bolivar|Adelaide/i.test(names));
   await ev(`App.setMode('detailed')`); let all = ""; for (const s of await ev(`App.SECTIONS.map(s=>s[0])`)) { await ev(`App.go('${s}')`); await wait(150); all += await ev("document.body.textContent"); } await ev(`App.setMode('simple')`);
   const unsourced = /US EPA|Auckland|88\.6|Sydney Water|United Utilities|Nemhauser|Dual use|[Ff]loat[^.]{0,80}(150 mm|5 to 10 mm)|\u2014/.exec(names + all);

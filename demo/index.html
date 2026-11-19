@@ -249,16 +249,41 @@ html[data-mode="simple"]:not([data-notes]) #panel .stepcard,html[data-mode="simp
 .stats.three{grid-template-columns:repeat(3,1fr)}
 table.mini.wx td,table.mini.ramp td,table.mini.ramp th{font-size:12.5px}
 #notesBtn.on{background:var(--accent);color:var(--bg,#fff)}
+
+/* Round 2: the ladder, the two plan cards, "Behind this step", conclusion tiles */
+svg.ladder{display:block;margin:6px 0 2px}
+.plancards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 8px}
+.plancard{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;text-align:left;font:inherit;color:var(--dim);background:var(--panel);border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer}
+.plancard>b{grid-column:1/-1;color:var(--ink);font-size:13.5px}
+.plancard span{display:flex;flex-direction:column;font-size:11.5px;line-height:1.2}.plancard i{font-style:normal;font-weight:700;font-size:16px;color:var(--ink)}
+.plancard.on{border-color:var(--sensor);background:var(--sel);box-shadow:inset 0 0 0 1px var(--sensor)}
+.nextrow{display:flex;gap:8px;align-items:center;margin-top:12px}.nextrow .next{flex:1;margin-top:0!important;height:40px}.nextrow .behindbtn{height:40px}
+.behindbtn{flex:none;font:600 13px/1 var(--font);color:var(--accent);background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:0 12px;cursor:pointer;min-height:38px}
+.behindbtn.on{background:var(--sel);border-color:var(--accent)}
+#behind{grid-area:panel;align-self:end;z-index:6;max-height:72%;overflow-y:auto;overflow-x:hidden;background:var(--panel-bg);border-top:2px solid var(--accent);border-right:1px solid var(--line);padding:0 18px 18px;box-shadow:0 -10px 24px rgba(0,0,0,.12);font-size:13px;line-height:1.45}
+#behind[hidden]{display:none}
+#behind .bhead{position:sticky;top:0;background:var(--panel-bg);display:flex;align-items:center;gap:8px;padding:12px 0 8px;flex-wrap:wrap}
+#behind .bhead b{font-size:14px}#behind .bhead .dim{color:var(--faint);font-size:12px;flex:1}
+#behind .bhead button{border:1px solid var(--line);background:var(--panel);border-radius:7px;width:28px;height:28px;cursor:pointer;color:var(--ink)}
+#behind .bn{display:grid;grid-template-columns:62px 1fr;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}#behind .bn b{color:var(--dim);font-size:12px}
+#behind h4{margin:16px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim)}#behind h5{margin:12px 0 4px;font-size:13px}
+#behind p{margin:4px 0;color:var(--dim)}#behind a{color:var(--accent)}
+#behind table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:12px;margin:4px 0}#behind td,#behind th{overflow-wrap:anywhere}#behind th,#behind td{border-bottom:1px solid var(--line);padding:3px 5px;text-align:left;vertical-align:top}
+#behind .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px}#behind .stats>div{border:1px solid var(--line);border-radius:8px;padding:6px}#behind .stats b{display:block;font-size:16px}#behind .stats span{font-size:11.5px;color:var(--dim)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0}
+.tiles>div{border:1px solid var(--line);border-top:3px solid var(--sensor);border-radius:9px;padding:6px 8px;background:var(--panel);display:flex;flex-direction:column;gap:2px}
+.tiles b{font-size:12.5px}.tiles span{font-size:12px;color:var(--dim);line-height:1.25}
 </style>
 <script>
   // Apply the saved theme before the page paints (per-viewer convenience only; the page works without it).
-  (function () { try { var q = new URLSearchParams(location.search).get("theme"), t = q || localStorage.getItem("demo-theme2"); if (t) document.documentElement.dataset.theme = t;
+  (function () { try { var q = new URLSearchParams(location.search).get("theme"), t = q || sessionStorage.getItem("demo-theme2"); if (t) document.documentElement.dataset.theme = t;
     if (localStorage.getItem("demo-present") === "1") document.documentElement.classList.add("present"); } catch (e) {} })();
 </script>
 </head>
 <body>
 <nav id="secs" aria-label="Sections"></nav>
 <aside id="panel" aria-live="polite"></aside>
+<aside id="behind" hidden aria-label="Behind this step"></aside>
 <main id="mapwrap">
   <canvas id="map" aria-label="Map of the sewer network: drag to move, scroll to zoom, hover or click a manhole"></canvas>
   <div id="labels"></div>
@@ -280,8 +305,8 @@ table.mini.wx td,table.mini.ramp td,table.mini.ramp th{font-size:12.5px}
 <script src="../simulation4/data/sim4.js?v=7"></script>
 <script src="data/compare.js?v=2"></script>
 <script src="../simulation4/library.js?v=3"></script>
-<script src="app.js?v=22"></script>
-<script src="simple.js?v=12"></script>
+<script src="app.js?v=23"></script>
+<script src="simple.js?v=13"></script>
 <script>App.init();</script>
 </body>
 </html>

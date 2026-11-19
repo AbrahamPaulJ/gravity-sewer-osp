@@ -170,6 +170,7 @@
         const { c } = HANDLERS.insights.counts(), n = c.filter(Boolean).length, top = c.map((v, i) => [v, i]).filter(x => x[0]).sort((a, b) => b[0] - a[0]).slice(0, 3);
         const sel = q.cases.size === 1 ? [...q.cases][0] : "all";
         return `
+          ${_.surTiles()}
           <p class="lede">All the scenarios at once: the bigger and darker the dot, the more scenarios that manhole notices (water rises ${CM}).</p>
           <h3>Which weather</h3>
           ${chips([[D().design, "Wet day"], [wetTags()[1], "Very wet day"], ["all", "All weather"]], k => k === sel, "iw")}
@@ -188,9 +189,10 @@
         const a = st.algorithms; a.method = _.plan() === "once" ? "exact" : "sim4"; a.show = false; const x = facts(), hk = x.byK[a.k - 1], hit = hk.hit;
         return `
           <p class="lede">A sensor <b>notices</b> a scenario if its water rises ${CM}. We let the computer try combinations of the 328 manholes and keep the set that notices the most scenarios in the hardest weather.</p>
-          <h3>How many sensors</h3>
-          <div class="slider"><input id="alK" type="range" min="1" max="8" value="${a.k}"><span>${a.k} sensor${a.k > 1 ? "s" : ""} · ${money(a.k * _.PRICE)}</span></div>
-          ${_.planChips()}
+          <h3>How many level sensors</h3>
+          <div class="slider"><input id="alK" type="range" min="1" max="8" value="${a.k}"><span>${a.k} level sensor${a.k > 1 ? "s" : ""} · ${money(a.k * _.PRICE)}</span></div>
+          ${_.ladderSvg()}
+          ${_.planCards()}
           ${dotRow("scenarios noticed in the hardest weather", hit, hk.n, COL.sensor)}
           <div class="hint">${a.k < 5 ? `Add sensors and watch the dots fill.` : a.k === 5 ? `<b>Five is where it levels off:</b> ${[6, 7, 8].map(n => (d => `${n === 6 ? "a sixth" : n === 7 ? "a seventh" : "an eighth"} adds ${d} point${d === 1 ? "" : "s"}`)(Math.round(100 * x.byK[n - 1].share) - Math.round(100 * x.byK[n - 2].share))).join(", ")} in the hardest weather.` : "Past five, each sensor adds little."} Many nearby manholes would do almost as well, so the sites are areas, not exact lids.</div>
           ${thread(`In the scenario we follow, S${fol().warnSensor + 1} rises ${(fol().riseMm / 10).toFixed(0)} cm: it notices.`)}
@@ -253,7 +255,7 @@
           <table class="mini"><tr><td><b>1</b></td><td>Maps of the pipes and manholes, and the homes connected</td></tr><tr><td><b>2</b></td><td>Where new homes are expected</td></tr>
             <tr><td><b>3</b></td><td>Ideally, a few weeks of water-level readings on a normal day</td></tr><tr><td><b>4</b></td><td>A few hours of computer time to run the scenarios</td></tr><tr><td><b>5</b></td><td>This page's steps, on the new results</td></tr></table>
           <h3>What can you afford?</h3>
-          <div class="slider"><input id="rpK" type="range" min="1" max="8" value="${k}"><span>${k} sensor${k > 1 ? "s" : ""} · ${money(k * _.PRICE)}</span></div>
+          <div class="slider"><input id="rpK" type="range" min="1" max="8" value="${k}"><span>${k} level sensor${k > 1 ? "s" : ""} · ${money(k * _.PRICE)}</span></div>
           ${dotRow("scenarios noticed in the hardest weather", x.byK[k - 1].hit, x.byK[k - 1].n, COL.sensor)}
           <div class="hint">Want to change the areas, the weather or the rules? <button type="button" class="link" data-mode="detailed">Switch to Detailed</button></div>
           ${nextBtn()}`;
@@ -278,16 +280,15 @@
         const x = facts(); st.conclude.k = 5;
         const groups = [["monitor", "Monitor"], ["watch", "Keep an eye on"], ["leave", "Room to spare"]].map(([t, l]) => [t, l, Object.keys(D().triage).filter(r => D().triage[r] === t)]);
         return `
-          ${dotRow("scenarios noticed in the hardest weather", x.hard.hit, x.n, COL.sensor)}
-          <div class="hint">and <b>${x.all} of ${x.allN}</b> across all the wet weather we tested.</div>
+          <div class="hint">Our 5 notice <b>${x.hard.hit} of ${x.n}</b> scenarios in the hardest weather, and <b>${x.all} of ${x.allN}</b> across all the wet weather we tested.</div>
           <div class="tri">${groups.map(([t, l, rs]) => `<div class="${t}"><b>${l}</b>${rs.join(", ")}</div>`).join("")}</div>
+          ${_.tiles()}
           ${_.planChips()}
           ${_.verdict()}
           <h3>What we recommend</h3>
           <ol class="redo"><li><b>Start with one level sensor</b> at ${_.plan() === "stages" ? "S1, the design-wet-day site" : "the site the plan depends on most"}, for a wet season (about ${money(_.PRICE)}).</li><li><b>Check the model</b> against what it records.</li><li><b>Then place the rest</b>, about ${money(5 * _.PRICE)} for five, at assumed prices.</li></ol>
           <div class="hint"><b>Why it matters:</b> sensors give years of warning before a spill, and time to plan a fix rather than react to one.</div>
-          ${fold("What we need from you", `<ul class="plain"><li>A few weeks of water-level or flow readings from a normal day.</li><li>Your pipe ratings: how full is too full.</li><li>Where new homes are approved, year by year.</li><li>Where new estates could join the network and how big they could be, so we can decide whether growth at the edge should shape the sensor sites.</li></ul>`)}
-          ${fold("How sure we are", `<ul class="plain"><li><b>Firm:</b> where growth shows, and that five sensors beat one when the weather is unknown.</li><li><b>Less sure:</b> exact lids (many nearby sites do as well), timing, and costs. The model is not yet checked against real readings.</li><li><b>Assumed:</b> a new estate joins where there is open land at the edge of the network, no bigger than the pipe has room for, and adds sewage only.</li><li><b>Weak:</b> our 5 notice few new estates at the edge, and mostly as water backing up rather than the estate's own flow.</li></ul>`)}
+          ${fold("What we need, and how sure we are", `<ul class="plain"><li>A few weeks of water-level or flow readings from a normal day.</li><li>Your pipe ratings: how full is too full.</li><li>Where new homes are approved, year by year.</li><li>Where new estates could join the network and how big they could be, so we can decide whether growth at the edge should shape the sensor sites.</li></ul><ul class="plain"><li><b>Firm:</b> where growth shows, and that five sensors beat one when the weather is unknown.</li><li><b>Less sure:</b> exact lids (many nearby sites do as well), timing, and costs. The model is not yet checked against real readings.</li><li><b>Assumed:</b> a new estate joins where there is open land at the edge of the network, no bigger than the pipe has room for, and adds sewage only.</li><li><b>Weak:</b> our 5 notice few new estates at the edge, and mostly as water backing up rather than the estate's own flow.</li></ul>`)}
           ${nextBtn()}`;
       },
     },
