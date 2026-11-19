@@ -1480,9 +1480,12 @@ const App = (() => {
     const n = s.notes, row = (k, l) => n[k] ? `<div class="bn"><b>${l}</b><span>${cite(n[k])}</span></div>` : "";
     const fig = f => `<h5>${esc(f.title)}</h5>${f.intro ? `<p>${cite(f.intro)}</p>` : ""}${f.table || ""}`;
     const more = n.more ? `<h4>${esc(n.more.title)}</h4>` + n.more.blocks.map(b => `<h5>${esc(b.title)}</h5>${b.intro ? `<p>${cite(b.intro)}</p>` : ""}${b.html || (b.widget ? `<p class="dim">Interactive in Simulation 4, step ${esc(s.id)}.</p>` : "")}`).join("") : "";
-    return `<div class="bhead"><b>Behind this step</b><span class="dim">Simulation 4, step ${esc(s.id)}: ${esc(s.title)}</span><button type="button" id="behindClose" aria-label="Close">✕</button></div>
+    // The story's own links are relative to simulation4/ (step 6: "Open Explore's Greenfield view" is explore.html#...),
+    // so from the demo they would point at demo/explore.html. Send them to ../simulation4/, in a new tab.
+    const toSim4 = h => h.replace(/<a ([^>]*?)href="(?!https?:|#|\.\.\/|\/)([^"]+)"/g, '<a $1href="../simulation4/$2" target="_blank" rel="noopener"');
+    return toSim4(`<div class="bhead"><b>Behind this step</b><span class="dim">Simulation 4, step ${esc(s.id)}: ${esc(s.title)}</span><button type="button" id="behindClose" aria-label="Close">✕</button></div>
       <div class="bnotes">${row("assumes", "Assumes")}${row("source", "Source")}${row("limit", "Limit")}${row("next", "Next")}</div>
-      ${(n.figures || []).map(fig).join("")}${s.why ? fig(s.why) : ""}${more}`;
+      ${(n.figures || []).map(fig).join("")}${s.why ? fig(s.why) : ""}${more}`);
   }
   function renderBehind() {
     const id = STORY_STEP[st.sec], el = $("#behind"); if (!el) return;

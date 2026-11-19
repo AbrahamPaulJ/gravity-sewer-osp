@@ -125,6 +125,12 @@ let pass = 0, fail = 0; const ok = (n, c, note) => { c ? pass++ : fail++; consol
   ok("behind this step: closes again when moving to another section", await ev(`document.querySelector('#behind').hidden`));
   await ev(`App.go('regions')`); await click('#behindBtn'); await wait(200);
   ok("behind this step: sources link to the team's library", await ev(`!!document.querySelector('#behind a[href*="siddhu-123.github.io"]')`));
+  // The story's relative links (step 6: "Open Explore's Greenfield view") must reach simulation4/, not demo/.
+  await ev(`App.go('conclude')`); await wait(200); await click('#behindBtn'); await wait(250);
+  const gfLinks = await ev(`[...document.querySelectorAll('#behind a[href]')].map(a=>a.getAttribute('href')).filter(h=>!/^https?:/.test(h))`);
+  const broken = gfLinks.filter(h => !fs.existsSync(path.join(ROOT, "demo", h.split("#")[0])));
+  ok("behind this step: the story's own links reach Simulation 4 (Open Explore's Greenfield view)", gfLinks.some(h => /^\.\.\/simulation4\/explore\.html#fam=one/.test(h)) && !broken.length, JSON.stringify(gfLinks) + " broken " + JSON.stringify(broken));
+  await click('#behindClose'); await wait(150);
   await ev(`App.go('problem')`);
   await send("Emulation.setDeviceMetricsOverride", { width: 1600, height: 900, deviceScaleFactor: 1, mobile: false }); await wait(200);
   ok("Simple, as presented: no panel scrolling at 1920x1080 or 1366x768", noScroll, scrollBad);
