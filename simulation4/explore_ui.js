@@ -131,7 +131,7 @@ window.Sim35UI = (function () {
     site: null, add: 1,                 // greenfield: chamber index, growth size index
     caseTag: null,                      // the uncertainty case, by tag (shared by the families)
     rule: "r10", k: 5, method: "greedy",    // DEFAULT_METHOD, below: only the two greedy methods are offered
-    showW: true, showA: true,           // the chart and the figures: worst case, average, or both (19 Nov; at least one on)
+    showW: true, showA: true,           // the figures quote both the worst case and the average (the Show checkboxes went, 19 Nov)
     scope: "story",                     // the test sets are scored on: the story's (default) or the broader one (TEST_NOTE)
     showSensors: true, showHeat: false, showPumps: false, showConn: false,
     showEstates: false,                 // greenfield: every edge connection's estate at its largest size
@@ -246,15 +246,15 @@ window.Sim35UI = (function () {
   const STORY = () => X4().ladder || (((window.SIM4 || {}).play || {}).ladder) || [];
   const storyScope = () => st.scope !== "broad";
   /* 19 Nov: Greedy is two methods, one sensor at a time for the best worst case ("greedy") or for the best average
-     ("greedy-avg"). Worst case and Average are display toggles for every method (st.showW, st.showA, at least one on):
-     they pick the chart's lines and the figures quoted, not the set. */
+     ("greedy-avg"). The chart draws one line for each, by its own goal; the figures quote both the worst case and the
+     average (st.showW, st.showA stay on: the Show checkboxes went). */
   const isGreedy = m => m === "greedy" || m === "greedy-avg";
   /* Only the two greedy methods are offered. The nested beam search, warn, exact and risk code and data stay, hidden:
      add a method's id to SHOWN_METHODS to bring its button and chart line back. */
   const SHOWN_METHODS = ["greedy", "greedy-avg"], DEFAULT_METHOD = "greedy";
   const shownMethod = m => (SHOWN_METHODS.includes(m) ? m : DEFAULT_METHOD);
   const greedyObj = () => (st.method === "greedy-avg" ? "mean" : "worst");
-  const heatObj = () => (st.showW ? "worst" : "mean");     // the heatmap and a manhole's rank follow the figure shown
+  const heatObj = () => greedyObj();     // the heatmap and a manhole's rank follow the selected greedy's goal
   // "81% in the worst case and 94% on average", or just the one shown; fmt wraps each number.
   function figs(w, a, fmt = v => pct(v)) {
     const out = [];
@@ -784,12 +784,6 @@ window.Sim35UI = (function () {
     on("#addKnob", b => { st.add = +b.dataset.i; repaint(); });
     on("#methKnob", b => { st.method = shownMethod(b.dataset.m); st.pickedGreedy = isGreedy(st.method); repaint(); });
     on("#scopeKnob", b => { st.scope = b.dataset.s === "broad" ? "broad" : "story"; repaint(); });
-    // Worst case and Average checkboxes: either or both, never neither (the only one ticked is disabled in renderKnobs).
-    $$("#objKnob input").forEach(c => c.onchange = () => {
-      const k = c.dataset.o === "mean" ? "showA" : "showW", other = k === "showA" ? "showW" : "showA";
-      if (!c.checked && !st[other]) { c.checked = true; return; }
-      st[k] = c.checked; repaint();
-    });
     $("#region").onchange = () => { st.region = +$("#region").value; st.pick = null; repaint(); };
     $("#stepRange").oninput = () => { st.step = +$("#stepRange").value; repaint(); };
     $("#kRange").oninput = () => { st.k = +$("#kRange").value; repaint(); };
@@ -816,13 +810,6 @@ window.Sim35UI = (function () {
     if (GF()) $("#addKnob").innerHTML = R().growthLevels.map((g, i) => "<button data-i=" + JSON.stringify(String(i)) + ">+" + g + "</button>").join("");
     $$("#addKnob button").forEach(b => b.classList.toggle("on", +b.dataset.i === st.add));
     $$("#methKnob button").forEach(b => b.classList.toggle("on", b.dataset.m === st.method));
-    $$("#objKnob input").forEach(c => {
-      const mine = c.dataset.o === "mean" ? st.showA : st.showW, other = c.dataset.o === "mean" ? st.showW : st.showA;
-      c.checked = mine; c.disabled = mine && !other;
-      const lb = c.parentElement;
-      if (lb.dataset.title == null) lb.dataset.title = lb.title;
-      lb.title = c.disabled ? "At least one of Worst case and Average stays on: tick the other to turn this one off" : lb.dataset.title;
-    });
     $("#famInfo").dataset.tip = FAM_NOTE[st.fam];
     $("#infillBox").hidden = st.fam !== "infill";
     $("#oneBox").hidden = st.fam !== "one";
@@ -866,7 +853,7 @@ window.Sim35UI = (function () {
                                : st.method === "greedy-avg" ? "Greedy, average: each sensor is the best addition to the ones before it for the average over the cases, worked out on this page on the broader test. Catches more on average, but can leave one case poorly covered."
                                : "Greedy, worst case: each sensor is the best addition to the ones before it for the worst of the cases. Up to 10 points below the exact optimum at the same size.")
       : "Greedy is the greenfield runs' own order, " + (st.method === "greedy-avg" ? "for the best average" : "for the best worst case") + ".";
-    const objText = " Worst case and Average choose what the chart and the figures show, either or both; they do not change the set.";
+    const objText = " The chart draws each greedy by its own goal: Greedy: worst case by its worst case, Greedy: average by its average.";
     const scopeText = st.fam === "infill" && st.method !== "story" ? (storyScope() ? (storyExact(st.k) && st.method === "exact" ? "" : " Chosen on the broader test, scored here on the story's.") : " Scored on the broader test.") : "";
     // The selected method in one visible line, under its buttons (expert view).
     $("#methSay").innerHTML = st.method === "story" ? "<b>Nested beam search</b>: " + esc(NESTED_HOW) + " The recommendation."
@@ -1303,18 +1290,16 @@ window.Sim35UI = (function () {
     const dots = (arr, col, big, small) => arr.map((v, i) => v == null || (i !== k - 1 && !small) ? "" : '<circle cx="' + x(i) + '" cy="' + y(v) + '" r="' + (i === k - 1 ? big : small) + '" fill="' + col + '" stroke="var(--panel-2)" stroke-width="1.5"/>').join("");
     const grid = [0, 0.5, 1].map(v => '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--line)"/><text x="' + (L - 5) + '" y="' + (y(v) + 3.5) + '" text-anchor="end" font-size="10" fill="var(--faint)">' + (v * 100) + "%</text>").join("");
     const ticks = Array.from({ length: n }, (_, i) => '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="' + (i === k - 1 ? "var(--ink)" : "var(--faint)") + '">' + (i + 1) + "</text>").join("");
-    const hasA = s => s.a && s.a.some(v => v != null);
-    // One method's lines: its average dashed (when shown and it has one), its worst case solid (when shown).
-    const lines = (s, mine) => (st.showA && hasA(s) ? '<path class="cv-avg" d="' + line(s.a) + '" fill="none" stroke="' + s.col + '" stroke-width="' + (mine ? 2.2 : 1.4) + '" stroke-dasharray="5 4"/>' + dots(s.a, s.col, mine ? 3.5 : 2.5, mine ? 2 : 0) : "") +
-      (st.showW ? '<path class="cv-worst" d="' + line(s.w) + '" fill="none" stroke="' + s.col + '" stroke-width="' + (mine ? 3 : 1.6) + '"/>' + dots(s.w, s.col, mine ? 4.5 : 3, mine ? 2.5 : 0) : "");
-    // 19 Nov: only the selected method is drawn, its worst case and/or average as the Show checkboxes say (2 lines at most).
-    // To draw the other methods faded behind it again: series.filter(s => s !== sel).map(s => '<g class="cv-other" ...>').
-    const others = "";
-    const mine = '<g class="cv-sel' + (pulse ? " pulse" : "") + '" data-m="' + sel.id + '">' + lines(sel, true) + "</g>";
-    const shows = (st.showW ? "worst case solid" : "") + (st.showW && st.showA ? ", " : "") + (st.showA ? "average dashed" : "");
-    el.innerHTML = '<div class="lg"><span class="on"><i style="background:' + sel.col + '"></i>' + esc(sel.name) + "</span></div>" +
-      '<p class="quiet" id="curveNote"><b>' + esc(sel.name) + "</b>: " + shows + ". " + esc(note) + "</p>" +
-      '<svg viewBox="0 0 ' + W + " " + (H + 10) + '" role="img" aria-label="Share of detectable growth caught against number of sensors, ' + esc(shows) + ", " + esc(sel.name) + ' highlighted">' + grid +
+    // 19 Nov: one line per greedy, each by its own goal: Greedy: worst case by its worst case, Greedy: average by its
+    // average, the two methods there are to pick from. The selected one is bold, the other lighter for comparison.
+    const goal = s => (s.id === "greedy-avg" ? "average" : "worst case"), val = s => (s.id === "greedy-avg" ? s.a : s.w);
+    const one = (s, mine) => { const arr = val(s); return arr && arr.some(v => v != null) ? '<path class="cv-line" d="' + line(arr) + '" fill="none" stroke="' + s.col + '" stroke-width="' + (mine ? 3 : 1.8) + '"/>' + dots(arr, s.col, mine ? 4.5 : 3, mine ? 2.5 : 0) : ""; };
+    const others = series.filter(s => s !== sel).map(s => '<g class="cv-other" data-m="' + s.id + '">' + one(s, false) + "</g>").join("");
+    const mine = '<g class="cv-sel' + (pulse ? " pulse" : "") + '" data-m="' + sel.id + '">' + one(sel, true) + "</g>";
+    const shows = series.map(s => s.name + " by its " + goal(s)).join("; ");
+    el.innerHTML = '<div class="lg">' + series.map(s => '<span class="' + (s === sel ? "on" : "") + '"><i style="background:' + s.col + '"></i>' + esc(s.name) + "</span>").join("") + "</div>" +
+      '<p class="quiet" id="curveNote">Each greedy by its own goal: ' + esc(shows) + ". <b>" + esc(sel.name) + "</b> in bold. " + esc(note) + "</p>" +
+      '<svg viewBox="0 0 ' + W + " " + (H + 10) + '" role="img" aria-label="Share of detectable growth caught against number of sensors: ' + esc(shows) + ", " + esc(sel.name) + ' highlighted">' + grid +
       '<line x1="' + x(k - 1) + '" x2="' + x(k - 1) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--dim)" stroke-dasharray="3 3"/>' +
       others + mine +
       ticks + '<text x="' + ((L + W - Rr) / 2) + '" y="' + (H + 7) + '" text-anchor="middle" font-size="10" fill="var(--faint)">sensors</text>' +
@@ -2118,7 +2103,7 @@ window.Sim35UI = (function () {
      itself; this carries what it cannot see (a manhole picked on the map, a dropdown option,
      the Pumps toggle, whose "Highlight" title it reads as a private action, a popup closed
      with Esc) and gives a viewer who joins late the presenter's whole view. */
-  const LIVE = ["region", "step", "site", "add", "caseTag", "rule", "k", "method", "showW", "showA", "pickedGreedy", "pick", "scope"];
+  const LIVE = ["region", "step", "site", "add", "caseTag", "rule", "k", "method", "pickedGreedy", "pick", "scope"];
   const LIVE_TOGGLES = { showSensors: "#toggleSensors", showHeat: "#toggleHeat", showPumps: "#togglePumps", showEstates: "#toggleEstates",
                          showConn: "#toggleConn", legend: "#toggleLegend", areasView: "#toggleAreas", coverView: "#toggleCover" };
   const docOpen = () => $("#modal").hidden ? null : $("#modalBox .docbody > .lead") ? "ref" : $("#modalBox").classList.contains("wide") ? "qa" : "about";
@@ -2178,7 +2163,6 @@ window.Sim35UI = (function () {
     if (hp.get("k")) st.k = Math.max(1, Math.min(10, +hp.get("k") || st.k));
     if (["story", "warn", "greedy", "greedy-avg", "risk", "exact"].includes(hp.get("method"))) st.method = hp.get("method");
     if (st.method === "greedy" && hp.get("obj") === "mean") st.method = "greedy-avg";     // old links: Greedy with Best average
-    if (hp.get("show") === "worst") st.showA = false; else if (hp.get("show") === "average") st.showW = false;     // #show=worst|average|both
     if (hp.get("test") === "broad") st.scope = "broad";       // #test=broad: the broader test; the story's is the default
     if (hp.get("site") != null && names()[+hp.get("site")]) st.site = +hp.get("site");
     if (st.fam === "one" && (st.method === "exact" || st.method === "warn")) st.method = "greedy";

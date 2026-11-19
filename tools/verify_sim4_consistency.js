@@ -198,24 +198,25 @@ const server = http.createServer((q, s) => {
   ok("method: the old name Sim 4's list appears nowhere", !/Sim 4's list/.test(fs.readFileSync(path.join(PUB, "simulation4/explore.html"), "utf8")) && !/"Sim 4's list|Sim 4's list[:,]/.test(fs.readFileSync(path.join(PUB, "simulation4/explore_ui.js"), "utf8")));
   ok("method: the line under it explains greedy (worst case, one at a time, no sensor moves)", /^Greedy: worst case/.test(say) && /one sensor at a time/.test(say) && /worst case/.test(say) && /no sensor moves/.test(say), say.slice(0, 200));
 
-  // ---- the chart: one line per method, the selected one bold with its average dashed, pulsing when the method changes
-  const chart = () => ev(`(()=>{const c=document.getElementById("curve");return{sel:(c.querySelector(".cv-sel")||{}).dataset?.m||null,avg:!!c.querySelector(".cv-sel .cv-avg"),
-    dash:(c.querySelector(".cv-sel .cv-avg")||{getAttribute:()=>null}).getAttribute("stroke-dasharray"),same:(()=>{const a=c.querySelector(".cv-sel .cv-avg"),w=c.querySelector(".cv-sel .cv-worst");return!!a&&!!w&&a.getAttribute("stroke")===w.getAttribute("stroke")})(),
-    others:[...c.querySelectorAll(".cv-other")].map(g=>g.dataset.m).sort().join(),otherAvg:c.querySelectorAll(".cv-other .cv-avg").length,pulse:!!c.querySelector(".cv-sel.pulse"),
-    fade:+getComputedStyle(c.querySelector(".cv-other")||c).opacity,legend:(c.querySelector(".lg span.on")||{}).textContent||""}})()`);
+  // ---- the chart: one line per greedy, each by its own goal (worst case / average), the selected one bold, pulsing on change
+  const chart = () => ev(`(()=>{const c=document.getElementById("curve");return{sel:(c.querySelector(".cv-sel")||{}).dataset?.m||null,
+    lines:c.querySelectorAll(".cv-line").length,dashed:c.querySelectorAll("path[stroke-dasharray]").length,
+    others:[...c.querySelectorAll(".cv-other")].map(g=>g.dataset.m).sort().join(),pulse:!!c.querySelector(".cv-sel.pulse"),
+    fade:+getComputedStyle(c.querySelector(".cv-other")||c).opacity,legend:[...c.querySelectorAll(".lg span")].map(s=>s.textContent).join("|"),
+    on:(c.querySelector(".lg span.on")||{}).textContent||"",note:(document.getElementById("curveNote")||{}).textContent||""}})()`);
   let ch = await chart();
-  ok("chart: Greedy: worst case is drawn bold, its average dashed in the same colour", ch.sel === "greedy" && ch.avg && ch.dash && ch.same && ch.legend === "Greedy: worst case", JSON.stringify(ch));
-  ok("chart: only the selected method is drawn, its worst case and average: 2 lines, no other method", ch.others === "" && await ev('document.querySelectorAll("#curve .cv-worst").length') === 1 && await ev('document.querySelectorAll("#curve .cv-avg").length') === 1, JSON.stringify(ch));
+  ok("chart: two lines, one per greedy, Greedy: worst case bold and Greedy: average lighter, no dashed lines", ch.sel === "greedy" && ch.others === "greedy-avg" && ch.lines === 2 && ch.dashed === 0 && ch.fade > 0.4 && ch.fade < 1 && ch.legend === "Greedy: worst case|Greedy: average" && ch.on === "Greedy: worst case", JSON.stringify(ch));
+  ok("chart: each greedy drawn by its own goal, as the note says", /Greedy: worst case by its worst case; Greedy: average by its average/.test(ch.note), ch.note.slice(0, 160));
   const pulses = [];
   for (const m of ["greedy-avg", "greedy"]) {
     await click(`#methKnob button[data-m="${m}"]`); await wait(1200);
     ch = await chart();
-    pulses.push(ch.sel === m && ch.avg && ch.pulse && !ch.others.split(",").includes(m));
+    pulses.push(ch.sel === m && ch.pulse && ch.lines === 2 && ch.others === (m === "greedy" ? "greedy-avg" : "greedy"));
   }
-  ok("chart: each method selected in turn is the bold one, with its average, and pulses as it changes", pulses.every(Boolean), pulses.join());
+  ok("chart: each greedy selected in turn is the bold one, the other still drawn, and it pulses as it changes", pulses.every(Boolean), pulses.join());
   await click('#scopeKnob button[data-s="broad"]'); await wait(1500);
   ch = await chart();
-  ok("chart: on the broader test too, the selected method shows its average", ch.sel === "greedy" && ch.avg, JSON.stringify(ch));
+  ok("chart: on the broader test too, both greedy lines, the selected one bold", ch.sel === "greedy" && ch.lines === 2, JSON.stringify(ch));
   ok("chart: changing the test is not a method change, so no pulse", !ch.pulse);
   ok("chart: the pulse respects reduced motion", /prefers-reduced-motion:reduce\)\{#curve \.cv-sel\.pulse\{animation:none\}/.test(fs.readFileSync(path.join(PUB, "simulation4/explore.html"), "utf8")));
 
@@ -275,24 +276,10 @@ const server = http.createServer((q, s) => {
     await click("#btn-compass"); await wait(1500);
     ok("first load: the compass still turns it to the tilted view and back", !tilted && await ev("Growth3D.isTop()"), tilted);
     await click('#viewKnob button[data-v="expert"]'); await wait(1500);
-    const tog = () => ev('[...document.querySelectorAll("#objKnob input[type=checkbox]")].map(c=>(c.checked?"1":"0")).join("")');
-    const lines = () => ev('({w:document.querySelectorAll("#curve .cv-worst").length,a:document.querySelectorAll("#curve .cv-avg").length,lead:document.getElementById("sensorList").innerText.split("\\n")[0]})');
-    const shown = [];
-    for (const m of ["greedy", "greedy-avg"]) { await click(`#methKnob button[data-m="${m}"]`); await wait(900); shown.push(await ev('!!document.querySelector("#objKnob").getClientRects().length') && await tog() === "11"); }
-    ok("Show: Worst case and Average show for every method, both on to start", shown.every(Boolean), shown.join());
-    await click('#methKnob button[data-m="greedy"]'); await wait(1200);
-    const both = await lines();
-    await click('#objKnob input[data-o="worst"]'); await wait(900);
-    const aOnly = await lines(), t1 = await tog();
-    await click('#objKnob input[data-o="mean"]'); await wait(900);
-    const t2 = await tog();
-    ok("Show: Worst case off leaves the dashed averages only, and the figures say average", t1 === "01" && aOnly.w === 0 && aOnly.a === 1 && /average/.test(aOnly.lead) && !/worst/.test(aOnly.lead), JSON.stringify(aOnly));
-    ok("Show: the last one ticked cannot be unticked (it is disabled)", t2 === "01" && await ev('document.querySelector("#objKnob input[data-o=mean]").disabled'), t2);
-    await click('#objKnob input[data-o="worst"]'); await click('#objKnob input[data-o="mean"]'); await wait(900);
-    const wOnly = await lines();
-    ok("Show: Average off leaves the solid worst cases only, and the figures say worst", await tog() === "10" && wOnly.a === 0 && wOnly.w === 1 && /worst/.test(wOnly.lead) && !/average/.test(wOnly.lead), JSON.stringify(wOnly));
-    await click('#objKnob input[data-o="mean"]'); await wait(900);
-    ok("Show: both on draws both, one solid and one dashed line for the selected method", both.w === 1 && both.a === 1 && await tog() === "11", JSON.stringify(both));
+    const lead = () => ev('document.getElementById("sensorList").innerText.split("\\n")[0]');
+    const quotes = [];
+    for (const m of ["greedy", "greedy-avg"]) { await click(`#methKnob button[data-m="${m}"]`); await wait(900); const l = await lead(); quotes.push(/worst case/.test(l) && /on average/.test(l)); }
+    ok("no Show checkboxes: the figures quote both the worst case and the average, for either greedy", !(await ev('!!document.getElementById("objKnob")')) && quotes.every(Boolean), quotes.join());
     const names = await ev('[...document.querySelectorAll("#methKnob button")].filter(b=>!b.hidden).map(b=>b.textContent)');
     ok('Greedy is two methods: "Greedy: worst case" and "Greedy: average"', names.includes("Greedy: worst case") && names.includes("Greedy: average") && !names.some(n => /one at a time/.test(n)), names.join(" | "));
     await click('#scopeKnob button[data-s="broad"]'); await wait(1200);
@@ -304,7 +291,7 @@ const server = http.createServer((q, s) => {
     await send("Page.navigate", { url: `http://127.0.0.1:${HTTP}/simulation4/explore.html#view=expert&method=greedy&obj=mean&show=average` });
     for (let i = 0; i < 240; i++) { await wait(250); if (await ev('!!(document.querySelector("#sensorList") && document.querySelector("#sensorList").innerText.length > 50)')) break; }
     await wait(1500);
-    ok("hash: an old Greedy + Best average link opens Greedy: average; #show=average opens Average only", await ev('document.querySelector("#methKnob button.on").dataset.m') === "greedy-avg" && await tog() === "01");
+    ok("hash: an old Greedy + Best average link opens Greedy: average; an old #show=average is ignored, both figures quoted", await ev('document.querySelector("#methKnob button.on").dataset.m') === "greedy-avg" && /worst case/.test(await lead()) && /on average/.test(await lead()));
     // The map controls card
     const help = await ev(`(()=>{const b=document.querySelector("#btn-maphelp"),c=document.querySelector("#btn-compass").getBoundingClientRect(),r=b.getBoundingClientRect();
       return{next:Math.abs(r.top-c.top)<4&&Math.abs(r.left-c.right)<24,label:b.getAttribute("aria-label"),pop:!!document.querySelector("#btn-maphelpPop")}})()`);

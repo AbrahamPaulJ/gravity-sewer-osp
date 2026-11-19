@@ -157,19 +157,11 @@ h4{margin:14px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.
 #sensorBox{margin-top:14px; padding:11px; border:1px solid var(--line); border-radius:8px;
   background:var(--panel-2); font-size:12.5px}
 #sensorBox h4{margin-top:0}
-#objKnob,#methKnob{margin-top:8px}
+#methKnob{margin-top:8px}
 #curve{position:relative; margin-top:10px; --c-nested:#2ef56b; --c-exact:#e8743f; --c-greedy:#58a6ff; --c-greedy-avg:#a5a1ff; --c-warn:#e3b341; --c-risk:#db61a2}
 html[data-theme="light"] #curve{--c-nested:#1a7f37; --c-exact:#c4432b; --c-greedy:#0969da; --c-greedy-avg:#6639ba; --c-warn:#9a6700; --c-risk:#bf3989}
 /* 19 Nov: Worst case and Average are display toggles, either or both on. */
-#objKnob{align-items:center}
-#objKnob .knobLbl{flex:none; font-size:12px; color:var(--dim); padding-right:4px}
-/* Worst case and Average are checkboxes; the only one ticked is disabled, so at least one stays on. */
-#objKnob{gap:14px}
-#objKnob .chk{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink); cursor:pointer; user-select:none}
-#objKnob .chk input{width:15px; height:15px; margin:0; accent-color:var(--accent); cursor:pointer}
-#objKnob .chk:has(input:disabled){cursor:default}
-#objKnob .chk input:disabled{cursor:default; opacity:1}
-#curve .cv-other{opacity:.38}
+#curve .cv-other{opacity:.6}
 #curve .lg span.on{color:var(--ink); font-weight:600}
 #curve .lg span:not(.on){opacity:.65}
 /* The selected method's lines blink three times when the method changes, then stay bold. */
@@ -647,11 +639,6 @@ html[data-theme="light"] #themeBtn .moon{display:block}
     <label class="fld" for="kRange">Number of sensors: <b id="kVal"></b></label>
     <input type="range" id="kRange" min="1" max="10" step="1">
     <p class="x quiet" id="methNote" hidden>A new estate: the greenfield runs' own greedy order, for the best worst case or the best average.</p>
-    <div class="knob x" id="objKnob" role="group" aria-label="Show on the chart and in the figures">
-      <span class="knobLbl">Show</span>
-      <label class="chk" title="Show the worst case: solid lines on the chart, and the worst-case figures. Either or both can be on"><input type="checkbox" data-o="worst" checked> Worst case</label>
-      <label class="chk" title="Show the average over the cases: dashed lines on the chart, and the average figures. Either or both can be on"><input type="checkbox" data-o="mean" checked> Average</label>
-    </div>
     <div id="curve" class="x"></div>
     <div id="sensorList"></div>
   </div>
@@ -800,7 +787,7 @@ RegionLabels.init({ avoid: "#mapControls, .legend, #mapOverlays, #stage .mapCred
 <script src="../simulation35/data/room.js?v=1"></script>
 <script src="../simulation35/room_calc.js?v=2"></script>
 <script src="map_help.js?v=1"></script>
-<script src="explore_ui.js?v=41"></script>
+<script src="explore_ui.js?v=42"></script>
 <script type="module">
   Sim35UI.init();
 </script>
