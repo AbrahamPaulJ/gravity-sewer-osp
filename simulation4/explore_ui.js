@@ -732,7 +732,7 @@ window.Sim35UI = (function () {
   // The simple strip's "where": the regions, then greenfield, then no growth.
   function buildStrip() {
     $("#whereSel").innerHTML = regionOrder().map(i => { const r = S().regions[i]; return "<option value=" + JSON.stringify("r" + i) + ">" + esc(r.id + ": " + shortName(r)) + "</option>"; }).join("") +
-      '<option value="one">' + (GF() ? "A new estate at an edge connection" : "A new estate at one manhole") + '</option><option value="none">Nowhere: the suburb today</option>';
+      '<option value="one">' + (GF() ? "A new estate at an edge connection" : "A new estate at one manhole") + '</option>'; // "Nowhere: the suburb today" hidden for the final presentation (20 Nov)
     $("#whereSel").onchange = () => {
       const v = $("#whereSel").value;
       if (v === "one" || v === "none") { setFamily(v); return; }

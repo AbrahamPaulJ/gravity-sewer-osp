@@ -606,7 +606,7 @@ html[data-theme="light"] #themeBtn .moon{display:block}
   <div class="knob" id="famKnob">
     <button data-f="infill" title="New homes spread through a region, in proportion to the homes already there">Infill: a region densifies</button>
     <button data-f="one" title="A new estate joining the sewer at an edge manhole">Greenfield: one point</button>
-    <button data-f="none" title="The suburb as it is today, no growth placed">No growth: the suburb today</button>
+    <button data-f="none" title="The suburb as it is today, no growth placed" hidden style="display:none">No growth: the suburb today</button>
   </div>
 
   <div id="infillBox">
@@ -808,7 +808,7 @@ RegionLabels.init({ avoid: "#mapControls, .legend, #mapOverlays, #stage .mapCred
 <script src="../simulation35/data/room.js?v=1"></script>
 <script src="../simulation35/room_calc.js?v=2"></script>
 <script src="map_help.js?v=1"></script>
-<script src="explore_ui.js?v=53"></script>
+<script src="explore_ui.js?v=54"></script>
 <script type="module">
   Sim35UI.init();
 </script>
